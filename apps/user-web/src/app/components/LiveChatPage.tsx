@@ -238,7 +238,7 @@ export default function LiveChatPage() {
                 }`}
               >
                 <span className="shrink-0">
-                  <PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={22} />
+                  <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={22} />
                 </span>
                 <span className={`whitespace-nowrap text-[11px] font-bold ${isMine ? "text-primary" : "text-gray-500"}`}>{b.nickname}</span>
                 <span className="whitespace-nowrap text-sm font-medium text-gray-900">{b.text}</span>
@@ -253,7 +253,7 @@ export default function LiveChatPage() {
           const def = charById(p.characterId);
           return (
             <div key={p.socketId} title={p.nickname} className="opacity-90" style={{ filter: "saturate(0.9)" }}>
-              <PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={42} />
+              <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={42} />
             </div>
           );
         })}
@@ -273,7 +273,7 @@ export default function LiveChatPage() {
               <Sparkles className="h-3 w-3" /> {self.nickname}
             </div>
             <div style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.9))" }}>
-              <PixelSprite type={charById(self.characterId).type} colors={charById(self.characterId).colors} characterId={self.characterId} size={64} float />
+              <PixelSprite type={charById(self.characterId).type} colors={charById(self.characterId).colors} characterId={self.characterId} rarity={charById(self.characterId).rarity} size={64} float />
             </div>
           </div>
         </div>

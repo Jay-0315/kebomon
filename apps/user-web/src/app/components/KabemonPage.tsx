@@ -706,7 +706,6 @@ function CollectionTab({
           const isOwned = ownedSet.has(char.id);
           const isEquipped = char.id === equippedCharacterId;
           const isSelected = char.id === selected;
-          const isHidden = char.hiddenAchievement && !isOwned;
 
           return (
             <button
@@ -720,17 +719,12 @@ function CollectionTab({
                   : "border-border bg-muted hover:bg-muted/70"
               }`}
             >
-              <div className={`relative ${!isOwned ? "grayscale opacity-40" : ""}`}>
-                {isHidden ? (
+              <div className="relative">
+                {isOwned ? (
+                  <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={40} />
+                ) : (
                   <div className="w-10 h-10 flex items-center justify-center">
                     <Lock className="w-5 h-5 text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={40} />
-                )}
-                {!isOwned && !isHidden && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Lock className="w-3 h-3 text-muted-foreground" />
                   </div>
                 )}
                 {isEquipped && (
@@ -742,7 +736,7 @@ function CollectionTab({
               <p className={`text-[9px] leading-tight text-center truncate w-full ${
                 isOwned ? RARITY_COLOR[char.rarity] : "text-muted-foreground/60"
               }`}>
-                {isHidden ? "???" : getCharName(char, lang)}
+                {isOwned ? getCharName(char, lang) : "???"}
               </p>
             </button>
           );
@@ -770,13 +764,13 @@ function CharacterDetail({
   return (
     <div className={`bg-card rounded-xl border ${RARITY_BORDER[char.rarity]} p-4`}>
       <div className="flex items-center gap-4">
-        <div className={`p-2 rounded-xl ${RARITY_BG[char.rarity]} ${!isOwned ? "grayscale opacity-50" : ""}`}>
-          {isHidden ? (
+        <div className={`p-2 rounded-xl ${RARITY_BG[char.rarity]} ${!isOwned ? "opacity-70" : ""}`}>
+          {isOwned ? (
+            <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={56} float={isOwned} />
+          ) : (
             <div className="w-14 h-14 flex items-center justify-center">
               <Lock className="w-7 h-7 text-muted-foreground/40" />
             </div>
-          ) : (
-            <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={56} float={isOwned} />
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -786,7 +780,7 @@ function CharacterDetail({
             </span>
             <span className="text-xs text-muted-foreground">#{charNum(char.id)}</span>
           </div>
-          <p className="font-bold">{isHidden ? "???" : getCharName(char, lang)}</p>
+          <p className="font-bold">{isOwned ? getCharName(char, lang) : "???"}</p>
           <p className="text-xs text-muted-foreground">
             {isHidden
               ? t("kabemon.obtain_hidden")
