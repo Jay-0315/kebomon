@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.DS_Store
+.idea/
+.cache/
+apps/**/dist/
+apps/**/node_modules/
+.vscode/settings.json
+apps/api/package.json

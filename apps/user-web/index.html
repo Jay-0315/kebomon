@@ -1,0 +1,31 @@
+
+  <!DOCTYPE html>
+  <html lang="ko" class="dark">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+      <title>KEBO</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+      <script src="https://accounts.google.com/gsi/client" async defer></script>
+      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
+      <script>
+        (function() {
+          try {
+            var s = localStorage.getItem('kebo-local-settings');
+            if (s) {
+              var dark = JSON.parse(s).darkMode;
+              if (dark === false) document.documentElement.classList.remove('dark');
+            }
+          } catch(e) {}
+        })();
+      </script>
+    </head>
+
+    <body>
+      <div id="root"></div>
+      <script type="module" src="/src/main.tsx"></script>
+    </body>
+  </html>
+  

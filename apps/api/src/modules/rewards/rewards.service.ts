@@ -1,0 +1,837 @@
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+
+const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
+  { titleId: 1, type: "expense_count", value: 1 },
+  { titleId: 2, type: "attendance", value: 3 },
+  { titleId: 3, type: "points", value: 50 },
+  { titleId: 4, type: "expense_count", value: 15 },
+  { titleId: 5, type: "attendance", value: 20 },
+  { titleId: 6, type: "share_count", value: 5 },
+  { titleId: 7, type: "post_count", value: 7 },
+  { titleId: 8, type: "expense_count", value: 50 },
+  { titleId: 9, type: "streak", value: 20 },
+  { titleId: 10, type: "points", value: 1000 },
+  { titleId: 11, type: "share_count", value: 20 },
+  { titleId: 12, type: "expense_count", value: 150 },
+  { titleId: 13, type: "attendance", value: 90 },
+  { titleId: 14, type: "points", value: 5000 },
+  { titleId: 15, type: "post_count", value: 50 },
+  { titleId: 16, type: "expense_count", value: 400 },
+  { titleId: 17, type: "attendance", value: 200 },
+  { titleId: 18, type: "points", value: 15000 },
+  { titleId: 19, type: "streak", value: 60 },
+  { titleId: 20, type: "expense_count", value: 1500 },
+  { titleId: 21, type: "share_count", value: 1 },
+  { titleId: 22, type: "post_count", value: 1 },
+  { titleId: 23, type: "streak", value: 3 },
+  { titleId: 24, type: "points", value: 300 },
+  { titleId: 25, type: "streak", value: 7 },
+  { titleId: 26, type: "post_count", value: 20 },
+  { titleId: 27, type: "attendance", value: 60 },
+  { titleId: 28, type: "streak", value: 45 },
+  { titleId: 29, type: "share_count", value: 30 },
+  { titleId: 30, type: "post_count", value: 150 },
+];
+
+// Character rarity duplicate point values (mirrors frontend constants)
+const RARITY_DUPLICATE_POINTS: Record<string, number> = {
+  common: 5,
+  uncommon: 10,
+  rare: 20,
+  epic: 30,
+  legendary: 60,
+  mythic: 120,
+};
+
+// Gacha pool: characterId → rarity (140 gacha characters, synced with client characters.ts)
+const GACHA_POOL: { id: number; rarity: string }[] = [
+  // Common (20)
+  { id: 75, rarity: "common" }, { id: 76, rarity: "common" }, { id: 116, rarity: "common" },
+  { id: 125, rarity: "common" }, { id: 127, rarity: "common" }, { id: 139, rarity: "common" },
+  { id: 140, rarity: "common" }, { id: 152, rarity: "common" }, { id: 155, rarity: "common" },
+  { id: 156, rarity: "common" }, { id: 159, rarity: "common" }, { id: 174, rarity: "common" },
+  { id: 176, rarity: "common" }, { id: 205, rarity: "common" }, { id: 258, rarity: "common" },
+  { id: 275, rarity: "common" }, { id: 292, rarity: "common" }, { id: 333, rarity: "common" },
+  { id: 351, rarity: "common" }, { id: 391, rarity: "common" },
+  // Uncommon (23)
+  { id: 13, rarity: "uncommon" }, { id: 14, rarity: "uncommon" }, { id: 84, rarity: "uncommon" },
+  { id: 90, rarity: "uncommon" }, { id: 91, rarity: "uncommon" }, { id: 105, rarity: "uncommon" },
+  { id: 128, rarity: "uncommon" }, { id: 132, rarity: "uncommon" }, { id: 144, rarity: "uncommon" },
+  { id: 153, rarity: "uncommon" }, { id: 160, rarity: "uncommon" }, { id: 161, rarity: "uncommon" },
+  { id: 177, rarity: "uncommon" }, { id: 221, rarity: "uncommon" }, { id: 259, rarity: "uncommon" },
+  { id: 276, rarity: "uncommon" }, { id: 294, rarity: "uncommon" }, { id: 304, rarity: "uncommon" },
+  { id: 322, rarity: "uncommon" }, { id: 352, rarity: "uncommon" }, { id: 355, rarity: "uncommon" },
+  { id: 377, rarity: "uncommon" }, { id: 392, rarity: "uncommon" },
+  // Rare (24)
+  { id: 26, rarity: "rare" }, { id: 28, rarity: "rare" }, { id: 29, rarity: "rare" },
+  { id: 30, rarity: "rare" }, { id: 96, rarity: "rare" }, { id: 104, rarity: "rare" },
+  { id: 117, rarity: "rare" }, { id: 129, rarity: "rare" }, { id: 163, rarity: "rare" },
+  { id: 169, rarity: "rare" }, { id: 173, rarity: "rare" }, { id: 178, rarity: "rare" },
+  { id: 179, rarity: "rare" }, { id: 194, rarity: "rare" }, { id: 240, rarity: "rare" },
+  { id: 260, rarity: "rare" }, { id: 271, rarity: "rare" }, { id: 277, rarity: "rare" },
+  { id: 287, rarity: "rare" }, { id: 305, rarity: "rare" }, { id: 323, rarity: "rare" },
+  { id: 335, rarity: "rare" }, { id: 378, rarity: "rare" }, { id: 393, rarity: "rare" },
+  // Epic (26)
+  { id: 41, rarity: "epic" }, { id: 42, rarity: "epic" }, { id: 43, rarity: "epic" },
+  { id: 44, rarity: "epic" }, { id: 99, rarity: "epic" }, { id: 120, rarity: "epic" },
+  { id: 121, rarity: "epic" }, { id: 131, rarity: "epic" }, { id: 136, rarity: "epic" },
+  { id: 180, rarity: "epic" }, { id: 206, rarity: "epic" }, { id: 220, rarity: "epic" },
+  { id: 238, rarity: "epic" }, { id: 241, rarity: "epic" }, { id: 252, rarity: "epic" },
+  { id: 254, rarity: "epic" }, { id: 272, rarity: "epic" }, { id: 278, rarity: "epic" },
+  { id: 288, rarity: "epic" }, { id: 293, rarity: "epic" }, { id: 306, rarity: "epic" },
+  { id: 313, rarity: "epic" }, { id: 324, rarity: "epic" }, { id: 337, rarity: "epic" },
+  { id: 372, rarity: "epic" }, { id: 388, rarity: "epic" },
+  // Legendary (20)
+  { id: 61, rarity: "legendary" }, { id: 135, rarity: "legendary" }, { id: 137, rarity: "legendary" },
+  { id: 154, rarity: "legendary" }, { id: 191, rarity: "legendary" }, { id: 216, rarity: "legendary" },
+  { id: 232, rarity: "legendary" }, { id: 233, rarity: "legendary" }, { id: 242, rarity: "legendary" },
+  { id: 253, rarity: "legendary" }, { id: 267, rarity: "legendary" }, { id: 273, rarity: "legendary" },
+  { id: 290, rarity: "legendary" }, { id: 307, rarity: "legendary" }, { id: 308, rarity: "legendary" },
+  { id: 331, rarity: "legendary" }, { id: 338, rarity: "legendary" }, { id: 349, rarity: "legendary" },
+  { id: 373, rarity: "legendary" }, { id: 389, rarity: "legendary" },
+  // Mythic (27)
+  { id: 64, rarity: "mythic" }, { id: 65, rarity: "mythic" }, { id: 66, rarity: "mythic" },
+  { id: 67, rarity: "mythic" }, { id: 69, rarity: "mythic" }, { id: 83, rarity: "mythic" },
+  { id: 150, rarity: "mythic" }, { id: 158, rarity: "mythic" }, { id: 172, rarity: "mythic" },
+  { id: 193, rarity: "mythic" }, { id: 204, rarity: "mythic" }, { id: 208, rarity: "mythic" },
+  { id: 235, rarity: "mythic" }, { id: 239, rarity: "mythic" }, { id: 243, rarity: "mythic" },
+  { id: 255, rarity: "mythic" }, { id: 268, rarity: "mythic" }, { id: 274, rarity: "mythic" },
+  { id: 291, rarity: "mythic" }, { id: 309, rarity: "mythic" }, { id: 332, rarity: "mythic" },
+  { id: 336, rarity: "mythic" }, { id: 339, rarity: "mythic" }, { id: 344, rarity: "mythic" },
+  { id: 350, rarity: "mythic" }, { id: 375, rarity: "mythic" }, { id: 390, rarity: "mythic" },
+];
+
+// Gacha rates (sum = 100)
+const GACHA_RATES: Record<string, number> = {
+  common: 35,
+  uncommon: 26,
+  rare: 20,
+  epic: 10,
+  legendary: 6,
+  mythic: 3,
+};
+
+const GACHA_COST_SINGLE = 120;
+const GACHA_COST_TEN = 1200;
+const STARTER_IDS = [141, 11, 12];
+
+// Achievement definitions: which stat value unlocks which character
+const ACHIEVEMENTS: { characterId: number; type: string; value: number }[] = [
+  // ── Block 1 (1-100) ───────────────────────────────────────
+  { characterId: 4, type: "expense_count", value: 1 },
+  { characterId: 5, type: "attendance", value: 3 },
+  { characterId: 6, type: "post_count", value: 2 },
+  { characterId: 7, type: "expense_count", value: 5 },
+  { characterId: 8, type: "attendance", value: 7 },
+  { characterId: 9, type: "post_count", value: 1 },
+  { characterId: 16, type: "expense_count", value: 10 },
+  { characterId: 17, type: "streak", value: 3 },
+  { characterId: 18, type: "points", value: 100 },
+  { characterId: 19, type: "post_count", value: 3 },
+  { characterId: 20, type: "expense_count", value: 2 },
+  { characterId: 21, type: "attendance", value: 14 },
+  { characterId: 22, type: "expense_count", value: 20 },
+  { characterId: 31, type: "expense_count", value: 30 },
+  { characterId: 32, type: "attendance", value: 21 },
+  { characterId: 33, type: "points", value: 200 },
+  { characterId: 34, type: "attendance", value: 30 },
+  { characterId: 35, type: "streak", value: 7 },
+  { characterId: 36, type: "post_count", value: 10 },
+  { characterId: 37, type: "expense_count", value: 50 },
+  { characterId: 38, type: "points", value: 500 },
+  { characterId: 39, type: "streak", value: 14 },
+  { characterId: 40, type: "streak", value: 21 },
+  { characterId: 51, type: "points", value: 1000 },
+  { characterId: 52, type: "expense_count", value: 100 },
+  { characterId: 53, type: "attendance", value: 50 },
+  { characterId: 54, type: "post_count", value: 20 },
+  { characterId: 55, type: "post_count", value: 30 },
+  { characterId: 56, type: "streak", value: 30 },
+  { characterId: 57, type: "points", value: 2000 },
+  { characterId: 58, type: "expense_count", value: 200 },
+  { characterId: 59, type: "attendance", value: 90 },
+  { characterId: 60, type: "expense_count", value: 150 },
+  { characterId: 71, type: "points", value: 5000 },
+  { characterId: 72, type: "expense_count", value: 500 },
+  { characterId: 73, type: "attendance", value: 180 },
+  { characterId: 74, type: "streak", value: 60 },
+  { characterId: 75, type: "post_count", value: 50 },
+  { characterId: 76, type: "post_count", value: 100 },
+  { characterId: 77, type: "points", value: 10000 },
+  { characterId: 78, type: "expense_count", value: 1000 },
+  { characterId: 79, type: "attendance", value: 365 },
+  { characterId: 80, type: "streak", value: 100 },
+  { characterId: 91, type: "points", value: 50000 },
+  { characterId: 92, type: "expense_count", value: 2000 },
+  { characterId: 93, type: "expense_count", value: 5000 },
+  { characterId: 94, type: "streak", value: 365 },
+  // ── Block 2 (101-200) ─────────────────────────────────────
+  { characterId: 104, type: "expense_count", value: 3 },
+  { characterId: 105, type: "attendance", value: 5 },
+  { characterId: 106, type: "post_count", value: 5 },
+  { characterId: 107, type: "expense_count", value: 7 },
+  { characterId: 108, type: "attendance", value: 10 },
+  { characterId: 109, type: "streak", value: 5 },
+  { characterId: 116, type: "expense_count", value: 15 },
+  { characterId: 117, type: "streak", value: 10 },
+  { characterId: 118, type: "points", value: 150 },
+  { characterId: 119, type: "post_count", value: 7 },
+  { characterId: 120, type: "expense_count", value: 25 },
+  { characterId: 121, type: "attendance", value: 28 },
+  { characterId: 122, type: "expense_count", value: 40 },
+  { characterId: 131, type: "expense_count", value: 60 },
+  { characterId: 132, type: "attendance", value: 42 },
+  { characterId: 133, type: "points", value: 300 },
+  { characterId: 134, type: "attendance", value: 60 },
+  { characterId: 135, type: "streak", value: 28 },
+  { characterId: 136, type: "post_count", value: 15 },
+  { characterId: 137, type: "expense_count", value: 75 },
+  { characterId: 138, type: "points", value: 750 },
+  { characterId: 139, type: "streak", value: 45 },
+  { characterId: 140, type: "streak", value: 50 },
+  { characterId: 151, type: "points", value: 1500 },
+  { characterId: 152, type: "expense_count", value: 120 },
+  { characterId: 153, type: "attendance", value: 75 },
+  { characterId: 154, type: "post_count", value: 25 },
+  { characterId: 155, type: "post_count", value: 40 },
+  { characterId: 156, type: "streak", value: 35 },
+  { characterId: 157, type: "points", value: 2500 },
+  { characterId: 158, type: "expense_count", value: 250 },
+  { characterId: 159, type: "attendance", value: 120 },
+  { characterId: 160, type: "expense_count", value: 175 },
+  { characterId: 171, type: "points", value: 7500 },
+  { characterId: 172, type: "expense_count", value: 750 },
+  { characterId: 173, type: "attendance", value: 270 },
+  { characterId: 174, type: "streak", value: 75 },
+  { characterId: 175, type: "post_count", value: 60 },
+  { characterId: 176, type: "post_count", value: 120 },
+  { characterId: 177, type: "points", value: 15000 },
+  { characterId: 178, type: "expense_count", value: 1500 },
+  { characterId: 179, type: "attendance", value: 400 },
+  { characterId: 180, type: "streak", value: 120 },
+  { characterId: 191, type: "points", value: 75000 },
+  { characterId: 192, type: "expense_count", value: 3000 },
+  { characterId: 193, type: "expense_count", value: 7500 },
+  { characterId: 194, type: "streak", value: 400 },
+  // ── Block 3 (201-300) ─────────────────────────────────────
+  { characterId: 204, type: "expense_count", value: 4 },
+  { characterId: 205, type: "attendance", value: 6 },
+  { characterId: 206, type: "post_count", value: 6 },
+  { characterId: 207, type: "expense_count", value: 9 },
+  { characterId: 208, type: "attendance", value: 12 },
+  { characterId: 209, type: "streak", value: 6 },
+  { characterId: 216, type: "expense_count", value: 18 },
+  { characterId: 217, type: "streak", value: 12 },
+  { characterId: 218, type: "points", value: 250 },
+  { characterId: 219, type: "post_count", value: 8 },
+  { characterId: 220, type: "expense_count", value: 35 },
+  { characterId: 221, type: "attendance", value: 35 },
+  { characterId: 222, type: "expense_count", value: 55 },
+  { characterId: 231, type: "expense_count", value: 70 },
+  { characterId: 232, type: "attendance", value: 45 },
+  { characterId: 233, type: "points", value: 400 },
+  { characterId: 234, type: "attendance", value: 55 },
+  { characterId: 235, type: "streak", value: 15 },
+  { characterId: 236, type: "post_count", value: 18 },
+  { characterId: 237, type: "expense_count", value: 80 },
+  { characterId: 238, type: "points", value: 900 },
+  { characterId: 239, type: "streak", value: 42 },
+  { characterId: 240, type: "streak", value: 55 },
+  { characterId: 251, type: "points", value: 1750 },
+  { characterId: 252, type: "expense_count", value: 130 },
+  { characterId: 253, type: "attendance", value: 80 },
+  { characterId: 254, type: "post_count", value: 28 },
+  { characterId: 255, type: "post_count", value: 45 },
+  { characterId: 256, type: "streak", value: 40 },
+  { characterId: 257, type: "points", value: 3000 },
+  { characterId: 258, type: "expense_count", value: 300 },
+  { characterId: 259, type: "attendance", value: 135 },
+  { characterId: 260, type: "expense_count", value: 225 },
+  { characterId: 271, type: "points", value: 12500 },
+  { characterId: 272, type: "expense_count", value: 1250 },
+  { characterId: 273, type: "attendance", value: 300 },
+  { characterId: 274, type: "streak", value: 80 },
+  { characterId: 275, type: "post_count", value: 75 },
+  { characterId: 276, type: "post_count", value: 150 },
+  { characterId: 277, type: "points", value: 20000 },
+  { characterId: 278, type: "expense_count", value: 2500 },
+  { characterId: 279, type: "attendance", value: 450 },
+  { characterId: 280, type: "streak", value: 150 },
+  { characterId: 291, type: "points", value: 100000 },
+  { characterId: 292, type: "expense_count", value: 4000 },
+  { characterId: 293, type: "expense_count", value: 10000 },
+  { characterId: 294, type: "streak", value: 450 },
+  // ── Block 4 (301-400) ─────────────────────────────────────
+  { characterId: 304, type: "expense_count", value: 6 },
+  { characterId: 305, type: "attendance", value: 9 },
+  { characterId: 306, type: "post_count", value: 9 },
+  { characterId: 307, type: "expense_count", value: 11 },
+  { characterId: 308, type: "attendance", value: 16 },
+  { characterId: 309, type: "streak", value: 8 },
+  { characterId: 316, type: "expense_count", value: 22 },
+  { characterId: 317, type: "streak", value: 16 },
+  { characterId: 318, type: "points", value: 350 },
+  { characterId: 319, type: "post_count", value: 12 },
+  { characterId: 320, type: "expense_count", value: 45 },
+  { characterId: 321, type: "attendance", value: 38 },
+  { characterId: 322, type: "expense_count", value: 65 },
+  { characterId: 331, type: "expense_count", value: 85 },
+  { characterId: 332, type: "attendance", value: 50 },
+  { characterId: 333, type: "points", value: 450 },
+  { characterId: 334, type: "attendance", value: 65 },
+  { characterId: 335, type: "streak", value: 18 },
+  { characterId: 336, type: "post_count", value: 22 },
+  { characterId: 337, type: "expense_count", value: 95 },
+  { characterId: 338, type: "points", value: 800 },
+  { characterId: 339, type: "streak", value: 48 },
+  { characterId: 340, type: "streak", value: 58 },
+  { characterId: 351, type: "points", value: 2250 },
+  { characterId: 352, type: "expense_count", value: 160 },
+  { characterId: 353, type: "attendance", value: 90 },
+  { characterId: 354, type: "post_count", value: 32 },
+  { characterId: 355, type: "post_count", value: 48 },
+  { characterId: 356, type: "streak", value: 42 },
+  { characterId: 357, type: "points", value: 3500 },
+  { characterId: 358, type: "expense_count", value: 350 },
+  { characterId: 359, type: "attendance", value: 160 },
+  { characterId: 360, type: "expense_count", value: 275 },
+  { characterId: 371, type: "points", value: 17500 },
+  { characterId: 372, type: "expense_count", value: 1750 },
+  { characterId: 373, type: "attendance", value: 330 },
+  { characterId: 374, type: "streak", value: 110 },
+  { characterId: 375, type: "post_count", value: 80 },
+  { characterId: 376, type: "post_count", value: 175 },
+  { characterId: 377, type: "points", value: 30000 },
+  { characterId: 378, type: "expense_count", value: 3500 },
+  { characterId: 379, type: "attendance", value: 500 },
+  { characterId: 380, type: "streak", value: 180 },
+  { characterId: 391, type: "points", value: 125000 },
+  { characterId: 392, type: "expense_count", value: 5500 },
+  { characterId: 393, type: "expense_count", value: 12500 },
+  { characterId: 394, type: "streak", value: 500 },
+];
+
+function pickGachaRarity(
+  forceRareOrAbove = false,
+  forceLegendaryOrAbove = false,
+): string {
+  if (forceLegendaryOrAbove) {
+    return weightedRandom({ legendary: 70, mythic: 30 });
+  }
+  if (forceRareOrAbove) {
+    return weightedRandom({ rare: 65, epic: 20, legendary: 10, mythic: 5 });
+  }
+  return weightedRandom(GACHA_RATES);
+}
+
+function weightedRandom(weights: Record<string, number>): string {
+  const total = Object.values(weights).reduce((s, v) => s + v, 0);
+  let rand = Math.random() * total;
+  for (const [key, weight] of Object.entries(weights)) {
+    rand -= weight;
+    if (rand <= 0) return key;
+  }
+  return Object.keys(weights)[Object.keys(weights).length - 1];
+}
+
+function pickFromPool(rarity: string): { id: number; rarity: string } {
+  const pool = GACHA_POOL.filter((c) => c.rarity === rarity);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// 등급별 알: 일반(커먼~레어) / 큰(커먼~에픽) / 황금(커먼~레전더리)
+export type EggType = "normal" | "big" | "golden";
+const EGG_RATES: Record<EggType, Record<string, number>> = {
+  normal: { common: 55, uncommon: 30, rare: 15 },
+  big: { common: 42, uncommon: 28, rare: 20, epic: 10 },
+  golden: { common: 35, uncommon: 26, rare: 22, epic: 12, legendary: 5 },
+};
+function eggDelta(eggType: EggType, delta: number) {
+  if (eggType === "normal") return { normalEggs: { increment: delta } };
+  if (eggType === "big") return { bigEggs: { increment: delta } };
+  return { goldenEggs: { increment: delta } };
+}
+function eggCount(reward: { normalEggs: number; bigEggs: number; goldenEggs: number }, eggType: EggType): number {
+  if (eggType === "normal") return reward.normalEggs;
+  if (eggType === "big") return reward.bigEggs;
+  return reward.goldenEggs;
+}
+
+@Injectable()
+export class RewardsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  private async getOrCreateReward(userId: string) {
+    let reward = await this.prisma.userReward.findUnique({ where: { userId } });
+    if (!reward) {
+      reward = await this.prisma.userReward.create({ data: { userId } });
+    }
+    return reward;
+  }
+
+  async recordAttendance(userId: string): Promise<void> {
+    const nowKTC = new Date(Date.now() + 9 * 3_600_000);
+    const todayKTC = nowKTC.toISOString().slice(0, 10);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { lastLoginAt: true },
+    });
+    if (!user) return;
+
+    const lastLoginKTC = user.lastLoginAt
+      ? new Date(user.lastLoginAt.getTime() + 9 * 3_600_000)
+          .toISOString()
+          .slice(0, 10)
+      : null;
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    });
+
+    if (lastLoginKTC === todayKTC) return;
+
+    const yesterdayKTC = new Date(Date.now() + 9 * 3_600_000 - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const isConsecutive = lastLoginKTC === yesterdayKTC;
+
+    const reward = await this.getOrCreateReward(userId);
+
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        attendanceDays: { increment: 1 },
+        streakDays: isConsecutive ? reward.streakDays + 1 : 1,
+      },
+    });
+  }
+
+  async getSummary(userId: string) {
+    const reward = await this.getOrCreateReward(userId);
+
+    const ownedChars = await this.prisma.userCharacter.findMany({
+      where: { userId },
+      select: { characterId: true },
+    });
+
+    const ownedTitles = await this.prisma.userTitle.findMany({
+      where: { userId },
+      select: { titleId: true },
+    });
+
+    return {
+      attendanceDays: reward.attendanceDays,
+      missionPoints: reward.missionPoints,
+      streakDays: reward.streakDays,
+      equippedCharacterId: reward.equippedCharacterId,
+      equippedTitleId: reward.equippedTitleId,
+      ownedCharacterIds: ownedChars.map((c) => c.characterId),
+      ownedTitleIds: ownedTitles.map((t) => t.titleId),
+      gachaPityCount: reward.gachaPityCount,
+      legendaryPityCount: reward.legendaryPityCount,
+      totalPointsUsed: reward.totalPointsUsed,
+      normalEggs: reward.normalEggs,
+      bigEggs: reward.bigEggs,
+      goldenEggs: reward.goldenEggs,
+    };
+  }
+
+  async selectStarter(userId: string, characterId: number) {
+    if (!STARTER_IDS.includes(characterId)) {
+      throw new BadRequestException("유효한 스타팅 캐릭터가 아닙니다.");
+    }
+
+    const alreadyOwnsStarter = await this.prisma.userCharacter.findFirst({
+      where: { userId, characterId: { in: STARTER_IDS } },
+    });
+    if (alreadyOwnsStarter) {
+      throw new BadRequestException("이미 스타팅 캐릭터를 선택했습니다.");
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.userCharacter.create({ data: { userId, characterId } }),
+      this.prisma.userReward.upsert({
+        where: { userId },
+        create: { userId, equippedCharacterId: characterId },
+        update: { equippedCharacterId: characterId },
+      }),
+    ]);
+
+    return { characterId };
+  }
+
+  async equipCharacter(userId: string, characterId: number) {
+    const owned = await this.prisma.userCharacter.findUnique({
+      where: { userId_characterId: { userId, characterId } },
+    });
+    if (!owned) {
+      throw new BadRequestException(
+        `캐릭터 #${characterId}를 보유하고 있지 않습니다.`,
+      );
+    }
+
+    const updated = await this.prisma.userReward.update({
+      where: { userId },
+      data: { equippedCharacterId: characterId },
+    });
+
+    return { equippedCharacterId: updated.equippedCharacterId };
+  }
+
+  /** 레이드 클리어 보상: 포인트 또는 알 (확률은 게이트웨이에서 결정) */
+  async grantRaidReward(
+    userId: string,
+    reward: { kind: "points"; points: number } | { kind: "egg"; egg: EggType },
+  ) {
+    await this.getOrCreateReward(userId);
+    if (reward.kind === "points") {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { missionPoints: { increment: Math.max(0, reward.points) } },
+      });
+    } else {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: eggDelta(reward.egg, 1),
+      });
+    }
+  }
+
+  /** 알 까기: 알 1개 소비 → 등급별 가챠로 캐릭터 1개 (중복이면 포인트 환급) */
+  async openEgg(userId: string, eggType: EggType) {
+    const reward = await this.getOrCreateReward(userId);
+    if (eggCount(reward, eggType) <= 0) {
+      throw new BadRequestException("보유한 알이 없습니다.");
+    }
+
+    const rarity = weightedRandom(EGG_RATES[eggType]);
+    const pick = pickFromPool(rarity);
+
+    const owned = await this.prisma.userCharacter.findUnique({
+      where: { userId_characterId: { userId, characterId: pick.id } },
+    });
+    const isDuplicate = !!owned;
+    const dupPoints = isDuplicate ? (RARITY_DUPLICATE_POINTS[pick.rarity] ?? 0) : 0;
+
+    if (isDuplicate) {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { ...eggDelta(eggType, -1), missionPoints: { increment: dupPoints } },
+      });
+    } else {
+      await this.prisma.$transaction([
+        this.prisma.userReward.update({
+          where: { userId },
+          data: eggDelta(eggType, -1),
+        }),
+        this.prisma.userCharacter.create({ data: { userId, characterId: pick.id } }),
+      ]);
+    }
+
+    return {
+      eggType,
+      characterId: pick.id,
+      rarity: pick.rarity,
+      isDuplicate,
+      points: dupPoints,
+    };
+  }
+
+  async performGacha(userId: string, count: 1 | 10) {
+    const cost = count === 10 ? GACHA_COST_TEN : GACHA_COST_SINGLE;
+    const reward = await this.getOrCreateReward(userId);
+
+    if (reward.missionPoints < cost) {
+      throw new BadRequestException(
+        `포인트가 부족합니다. 필요: ${cost}P, 보유: ${reward.missionPoints}P`,
+      );
+    }
+
+    // Load already-owned characters to detect duplicates
+    const owned = await this.prisma.userCharacter.findMany({
+      where: { userId },
+      select: { characterId: true },
+    });
+    const ownedSet = new Set(owned.map((c) => c.characterId));
+
+    const results: {
+      characterId: number;
+      rarity: string;
+      isDuplicate: boolean;
+      bonusPoints: number;
+    }[] = [];
+    let totalBonusPoints = 0;
+    let pity = reward.gachaPityCount; // rare+ 보장 카운터 (consecutive non-rare)
+    let legendaryPity = reward.legendaryPityCount; // 천장 카운터 (80연 레전더리+ 보장)
+
+    for (let i = 0; i < count; i++) {
+      const isLastInTen = count === 10 && i === 9;
+      const hasRarePlus = results.some((r) =>
+        ["rare", "epic", "legendary", "mythic"].includes(r.rarity),
+      );
+      // 10연: 마지막 자리에서 레어+ 없으면 강제 / 단일: 누적 pity 9 이상이면 다음 뽑기에서 강제
+      const forceRare =
+        (isLastInTen && !hasRarePlus) || (count === 1 && pity >= 9);
+      // 천장: 79회 누적 시 다음(80번째) 레전더리+ 확정
+      const forceLegendary = legendaryPity >= 79;
+
+      const rarity = pickGachaRarity(forceRare, forceLegendary);
+      const char = pickFromPool(rarity);
+      const isDuplicate = ownedSet.has(char.id);
+      const bonusPoints = isDuplicate
+        ? (RARITY_DUPLICATE_POINTS[rarity] ?? 0)
+        : 0;
+
+      results.push({ characterId: char.id, rarity, isDuplicate, bonusPoints });
+      totalBonusPoints += bonusPoints;
+
+      if (!isDuplicate) ownedSet.add(char.id);
+
+      if (["legendary", "mythic"].includes(rarity)) {
+        pity = 0;
+        legendaryPity = 0; // 천장 리셋
+      } else if (["rare", "epic"].includes(rarity)) {
+        pity = 0;
+        legendaryPity += 1;
+      } else {
+        pity += 1;
+        legendaryPity += 1;
+      }
+    }
+
+    // Persist new characters and point changes in a transaction
+    const newChars = results.filter((r) => !r.isDuplicate);
+    await this.prisma.$transaction([
+      this.prisma.userReward.update({
+        where: { userId },
+        data: {
+          missionPoints: reward.missionPoints - cost + totalBonusPoints,
+          gachaPityCount: pity,
+          legendaryPityCount: legendaryPity,
+          totalPointsUsed: { increment: cost },
+        },
+      }),
+      ...newChars.map((r) =>
+        this.prisma.userCharacter.create({
+          data: { userId, characterId: r.characterId },
+        }),
+      ),
+    ]);
+
+    return {
+      results,
+      pointsSpent: cost,
+      bonusPoints: totalBonusPoints,
+      remainingPoints: reward.missionPoints - cost + totalBonusPoints,
+      gachaPityCount: pity,
+      legendaryPityCount: legendaryPity,
+    };
+  }
+
+  async equipTitle(userId: string, titleId: number) {
+    const owned = await this.prisma.userTitle.findUnique({
+      where: { userId_titleId: { userId, titleId } },
+    });
+    if (!owned) {
+      throw new BadRequestException(
+        `칭호 #${titleId}를 보유하고 있지 않습니다.`,
+      );
+    }
+    const updated = await this.prisma.userReward.update({
+      where: { userId },
+      data: { equippedTitleId: titleId },
+    });
+    return { equippedTitleId: updated.equippedTitleId };
+  }
+
+  async unequipTitle(userId: string) {
+    const updated = await this.prisma.userReward.update({
+      where: { userId },
+      data: { equippedTitleId: null },
+    });
+    return { equippedTitleId: updated.equippedTitleId };
+  }
+
+  async checkAndGrantTitles(userId: string) {
+    const reward = await this.getOrCreateReward(userId);
+    const [expenseCount, postCount, shareCount] = await Promise.all([
+      this.prisma.expense.count({ where: { userId } }),
+      this.prisma.communityPost.count({ where: { userId } }),
+      this.prisma.expense.count({ where: { userId, sharedToCommunity: true } }),
+    ]);
+
+    const stats: Record<string, number> = {
+      expense_count: expenseCount,
+      post_count: postCount,
+      share_count: shareCount,
+      attendance: reward.attendanceDays,
+      streak: reward.streakDays,
+      points: reward.totalPointsUsed,
+    };
+
+    const ownedTitles = await this.prisma.userTitle.findMany({
+      where: { userId },
+      select: { titleId: true },
+    });
+    const ownedSet = new Set(ownedTitles.map((t) => t.titleId));
+
+    const newlyUnlocked: number[] = [];
+    for (const ach of TITLE_ACHIEVEMENTS) {
+      if (!ownedSet.has(ach.titleId) && (stats[ach.type] ?? 0) >= ach.value) {
+        newlyUnlocked.push(ach.titleId);
+      }
+    }
+
+    if (newlyUnlocked.length > 0) {
+      await this.prisma.$transaction(
+        newlyUnlocked.map((titleId) =>
+          this.prisma.userTitle.upsert({
+            where: { userId_titleId: { userId, titleId } },
+            create: { userId, titleId },
+            update: {},
+          }),
+        ),
+      );
+    }
+
+    return { newlyUnlocked };
+  }
+
+  // ── 활동 보상 트리거 ───────────────────────────────────────
+
+  private dateDiff(newer: string, older: string): number {
+    return Math.round(
+      (new Date(newer).getTime() - new Date(older).getTime()) / 86_400_000,
+    );
+  }
+
+  private calcStreak(sortedUniqueDates: string[], today: string): number {
+    if (sortedUniqueDates.length === 0) return 0;
+    const last = sortedUniqueDates[sortedUniqueDates.length - 1];
+    if (this.dateDiff(today, last) > 1) return 0;
+    let streak = 1;
+    for (let i = sortedUniqueDates.length - 1; i > 0; i--) {
+      if (this.dateDiff(sortedUniqueDates[i], sortedUniqueDates[i - 1]) === 1)
+        streak++;
+      else break;
+    }
+    return streak;
+  }
+
+  async onExpenseCreated(
+    userId: string,
+    expenseDate: string,
+    isGroupExpense: boolean,
+  ) {
+    const reward = await this.getOrCreateReward(userId);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const expenses = await this.prisma.expense.findMany({
+      where: { userId },
+      select: { expenseDate: true, groupId: true },
+      orderBy: { expenseDate: "asc" },
+    });
+
+    const uniqueDates = [
+      ...new Set(expenses.map((e) => e.expenseDate.toISOString().slice(0, 10))),
+    ].sort();
+    const attendanceDays = uniqueDates.length;
+    const streakDays = this.calcStreak(uniqueDates, today);
+
+    let pointsDelta = 0;
+    if (attendanceDays > reward.attendanceDays) pointsDelta += 50; // 새 출석일 +50P
+    if (streakDays > reward.streakDays && streakDays > 1) pointsDelta += 20; // 연속 출석 +20P
+
+    // 그룹 지출 기록: 건당 50P, 하루 최대 3회
+    if (isGroupExpense) {
+      const todayGroupCount = expenses.filter(
+        (e) => e.groupId && e.expenseDate.toISOString().slice(0, 10) === today,
+      ).length;
+      if (todayGroupCount <= 3) pointsDelta += 50;
+    }
+
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        attendanceDays,
+        streakDays,
+        ...(pointsDelta > 0
+          ? { missionPoints: { increment: pointsDelta } }
+          : {}),
+      },
+    });
+  }
+
+  async onPostCreated(userId: string) {
+    await this.getOrCreateReward(userId);
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: { missionPoints: { increment: 50 } },
+    });
+  }
+
+  async checkAndGrantAchievements(userId: string) {
+    const reward = await this.getOrCreateReward(userId);
+
+    const [expenseCount, postCount] = await Promise.all([
+      this.prisma.expense.count({ where: { userId } }),
+      this.prisma.communityPost.count({ where: { userId } }),
+    ]);
+
+    const stats: Record<string, number> = {
+      expense_count: expenseCount,
+      post_count: postCount,
+      attendance: reward.attendanceDays,
+      streak: reward.streakDays,
+      points: reward.totalPointsUsed,
+    };
+
+    const owned = await this.prisma.userCharacter.findMany({
+      where: { userId },
+      select: { characterId: true },
+    });
+    const ownedSet = new Set(owned.map((c) => c.characterId));
+
+    const newlyUnlocked: number[] = [];
+    for (const ach of ACHIEVEMENTS) {
+      if (
+        !ownedSet.has(ach.characterId) &&
+        (stats[ach.type] ?? 0) >= ach.value
+      ) {
+        newlyUnlocked.push(ach.characterId);
+      }
+    }
+
+    if (newlyUnlocked.length > 0) {
+      await this.prisma.$transaction(
+        newlyUnlocked.map((characterId) =>
+          this.prisma.userCharacter.upsert({
+            where: { userId_characterId: { userId, characterId } },
+            create: { userId, characterId },
+            update: {},
+          }),
+        ),
+      );
+      // 업적 달성 알림
+      for (const characterId of newlyUnlocked) {
+        void this.notifications.create({
+          userId,
+          type: "achievement",
+          title: "업적 달성!",
+          body: "새로운 케보몬을 획득했어요. 도감에서 확인해보세요.",
+          link: "/kabemon",
+        });
+      }
+    }
+
+    return { newlyUnlocked };
+  }
+}

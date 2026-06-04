@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install deps at build time — layer is cached until package.json changes
+COPY package.json package-lock.json* ./
+COPY apps/api/package.json ./apps/api/
+
+RUN npm install
+
+# Pre-generate Prisma client so it's baked into the image
+COPY apps/api/prisma ./apps/api/prisma
+RUN cd apps/api && npx prisma generate
+
+EXPOSE 4000
+
+CMD ["npm", "run", "dev:api"]

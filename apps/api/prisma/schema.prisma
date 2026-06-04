@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum CurrencyCode {
+  KRW
+  JPY
+}
+
+enum AuthProvider {
+  GOOGLE
+  KAKAO
+  LINE
+  APPLE
+}
+
+enum GroupJoinStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id              String          @id @default(uuid())
+  name            String
+  email           String          @unique
+  passwordHash    String?         @map("password_hash")
+  role            String          @default("USER")
+  baseCountryCode String          @map("base_country_code") @db.Char(2)
+  baseCurrency    CurrencyCode    @map("base_currency")
+  profilePhoto    String?         @map("profile_photo") @db.LongText
+  hasPassword     Boolean         @default(false) @map("has_password")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  lastLoginAt     DateTime?       @map("last_login_at")
+  settings         AppSetting?
+  expenses         Expense[]
+  posts            CommunityPost[]
+  comments         Comment[]
+  reward           UserReward?
+  characters       UserCharacter[]
+  titles           UserTitle[]
+  identities       UserIdentity[]
+  postLikes        PostLike[]
+  hostedGroups        Group[]               @relation("GroupHost")
+  groupMemberships    GroupMember[]
+  groupJoinRequests   GroupJoinRequest[]
+  passwordChangeHistory PasswordChangeHistory?
+  notifications    Notification[]
+  @@map("users")
+}
+
+model Notification {
+  id        BigInt   @id @default(autoincrement())
+  userId    String   @map("user_id")
+  type      String   @db.VarChar(20) // "comment" | "achievement"
+  title     String   @db.VarChar(120)
+  body      String   @db.VarChar(255)
+  link      String?  @db.VarChar(255)
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model UserIdentity {
+  id             BigInt       @id @default(autoincrement())
+  userId         String       @map("user_id")
+  provider       AuthProvider
+  providerUserId String       @map("provider_user_id")
+  providerEmail  String?      @map("provider_email")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("user_identities")
+}
+
+model UserReward {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  missionPoints       Int      @default(0) @map("mission_points")
+  attendanceDays      Int      @default(0) @map("attendance_days")
+  streakDays          Int      @default(0) @map("streak_days")
+  equippedCharacterId Int?     @map("equipped_character_id")
+  equippedTitleId     Int?     @map("equipped_title_id")
+  gachaPityCount      Int      @default(0) @map("gacha_pity_count")
+  legendaryPityCount  Int      @default(0) @map("legendary_pity_count")
+  totalPointsUsed     Int      @default(0) @map("total_points_used")
+  normalEggs          Int      @default(0) @map("normal_eggs")
+  bigEggs             Int      @default(0) @map("big_eggs")
+  goldenEggs          Int      @default(0) @map("golden_eggs")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_rewards")
+}
+
+model UserTitle {
+  id         BigInt   @id @default(autoincrement())
+  userId     String   @map("user_id")
+  titleId    Int      @map("title_id")
+  obtainedAt DateTime @default(now()) @map("obtained_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, titleId])
+  @@index([userId])
+  @@map("user_titles")
+}
+
+model UserCharacter {
+  id          BigInt   @id @default(autoincrement())
+  userId      String   @map("user_id")
+  characterId Int      @map("character_id")
+  obtainedAt  DateTime @default(now()) @map("obtained_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, characterId])
+  @@index([userId])
+  @@map("user_characters")
+}
+
+model AppSetting {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  notifications Boolean  @default(true)
+  darkMode      Boolean  @default(true) @map("dark_mode")
+  autoBackup    Boolean  @default(false) @map("auto_backup")
+  themeColor    String   @default("emerald") @map("theme_color") @db.VarChar(20)
+  language      String   @default("ko") @db.VarChar(5)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("app_settings")
+}
+
+model Expense {
+  id                String       @id @default(uuid())
+  userId            String       @map("user_id")
+  expenseDate       DateTime     @map("expense_date")
+  category          String
+  spentAmount       Decimal      @map("spent_amount") @db.Decimal(12, 2)
+  spentCurrency     CurrencyCode @map("spent_currency")
+  baseAmount        Decimal      @map("base_amount") @db.Decimal(12, 2)
+  baseCurrency      CurrencyCode @map("base_currency")
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(12, 6)
+  countryCode       String       @map("country_code") @db.Char(2)
+  memo              String
+  groupName         String?      @map("group_name")
+  groupId           String?      @map("group_id")
+  participants      Int?
+  receiptUrl        String?      @map("receipt_url") @db.LongText
+  sharedToCommunity Boolean      @default(false) @map("shared_to_community")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group             Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+  @@map("expenses")
+}
+
+enum PostCategory {
+  brag
+  tip
+  chat
+}
+
+model CommunityPost {
+  id         String       @id @default(uuid())
+  userId     String       @map("user_id")
+  content    String       @db.LongText
+  category   PostCategory @default(chat)
+  imageUrl   String?      @map("image_url") @db.LongText
+  likesCount Int          @default(0) @map("likes_count")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes      PostLike[]
+  comments   Comment[]
+
+  @@map("community_posts")
+}
+
+model PostLike {
+  id        BigInt        @id @default(autoincrement())
+  postId    String        @map("post_id")
+  userId    String        @map("user_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+model Comment {
+  id        BigInt        @id @default(autoincrement())
+  postId    String        @map("post_id")
+  userId    String        @map("user_id")
+  parentId  BigInt?       @map("parent_id")
+  content   String        @db.Text
+  imageUrl  String?       @map("image_url") @db.LongText
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]     @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model Group {
+  id            String             @id @default(uuid())
+  name          String
+  inviteCode    String             @unique @map("invite_code") @db.VarChar(8)
+  hostUserId    String             @map("host_user_id")
+  isPublic      Boolean            @default(false) @map("is_public")
+  codeExpiresAt DateTime?          @map("code_expires_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+  host          User               @relation("GroupHost", fields: [hostUserId], references: [id], onDelete: Cascade)
+  members       GroupMember[]
+  joinRequests  GroupJoinRequest[]
+  expenses      Expense[]
+
+  @@index([hostUserId])
+  @@map("groups")
+}
+
+model GroupMember {
+  id       BigInt   @id @default(autoincrement())
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model PasswordChangeHistory {
+  id        BigInt   @id @default(autoincrement())
+  userId    String   @unique @map("user_id")
+  changedAt DateTime @default(now()) @map("changed_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_change_history")
+}
+
+enum VerificationPurpose {
+  SIGNUP
+  RESET_PASSWORD
+}
+
+model EmailVerificationCode {
+  id        BigInt                @id @default(autoincrement())
+  email     String                @db.VarChar(190)
+  code      String                @db.Char(6)
+  purpose   VerificationPurpose
+  expiresAt DateTime              @map("expires_at")
+  usedAt    DateTime?             @map("used_at")
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  @@index([email, purpose])
+  @@map("email_verification_codes")
+}
+
+model GroupJoinRequest {
+  id        BigInt          @id @default(autoincrement())
+  groupId   String          @map("group_id")
+  userId    String          @map("user_id")
+  status    GroupJoinStatus @default(PENDING)
+  createdAt DateTime        @default(now()) @map("created_at")
+  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([userId])
+  @@map("group_join_requests")
+}
+
