@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Swords, Users, Send, ArrowLeft, Trophy, Egg, Sparkles, Clock } from "lucide-react";
+import { Swords, Users, Send, ArrowLeft, Trophy, Egg, Sparkles, Clock, Heart } from "lucide-react";
 import { useAppData, type EggType, type EggOpenResult } from "../context/AppDataContext";
 import { getRaidSocket, disconnectRaidSocket } from "../lib/socket";
 import { getStoredUser } from "../lib/auth";
@@ -93,12 +93,20 @@ function JumpGame({
   const clearedRef = useRef(cleared);
   clearedRef.current = cleared;
   const [stunned, setStunned] = useState(false);
+  const [lives, setLives] = useState(5); // 남은 목숨 (5번 맞으면 사망)
+  const [deadUntil, setDeadUntil] = useState(0); // 부활 시각(Date.now 기준), 0=생존
+  const [deadRemain, setDeadRemain] = useState(0); // 부활까지 남은 초
+
+  const MAX_HITS = 5;
+  const REVIVE_MS = 30000; // 30초 쿨타임
 
   const g = useRef({
     jy: 0,
     vy: 0,
     grounded: true,
     stunUntil: 0,
+    hits: 0,
+    deadUntil: 0, // Date.now 기준
     obstacles: [] as Obstacle[],
     spawnAcc: 0,
     nextSpawn: 1100,
@@ -109,12 +117,25 @@ function JumpGame({
   const doJump = useCallback(() => {
     const st = g.current;
     if (clearedRef.current) return;
+    if (Date.now() < st.deadUntil) return; // 사망 중엔 점프 불가
     if (performance.now() < st.stunUntil) return;
     if (st.grounded) {
       st.vy = 11;
       st.grounded = false;
     }
   }, []);
+
+  // 부활 카운트다운 표시
+  useEffect(() => {
+    if (!deadUntil) {
+      setDeadRemain(0);
+      return;
+    }
+    const tick = () => setDeadRemain(Math.max(0, Math.ceil((deadUntil - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [deadUntil]);
 
   // 키보드(스페이스/↑) — 페이지 스크롤 방지
   useEffect(() => {
@@ -159,7 +180,25 @@ function JumpGame({
       const H = canvas.height;
       const groundY = H - GROUND_H;
 
-      if (!clearedRef.current) {
+      const realNow = Date.now();
+      const dead = st.deadUntil > realNow;
+
+      if (!clearedRef.current && dead) {
+        // 사망 중 — 부활 대기 (게임 정지)
+      } else if (!clearedRef.current) {
+        // 부활 처리
+        if (st.deadUntil !== 0 && realNow >= st.deadUntil) {
+          st.deadUntil = 0;
+          st.hits = 0;
+          st.obstacles = [];
+          st.spawnAcc = 0;
+          st.jy = 0;
+          st.vy = 0;
+          st.grounded = true;
+          setDeadUntil(0);
+          setLives(MAX_HITS);
+        }
+
         st.elapsed += dt;
 
         // 점프 물리
@@ -190,11 +229,25 @@ function JumpGame({
           o.x -= st.speed * dtf;
           const overlapX = o.x < HITX + HITW && o.x + o.ow > HITX;
           if (overlapX && !o.hit && !o.counted && st.jy < o.oh) {
-            // 충돌 → 스턴
+            // 충돌 → 목숨 감소
             o.hit = true;
-            st.stunUntil = now + 650;
-            setStunned(true);
-            window.setTimeout(() => setStunned(false), 650);
+            st.hits += 1;
+            setLives(Math.max(0, MAX_HITS - st.hits));
+            if (st.hits >= MAX_HITS) {
+              // 사망 → 30초 후 부활
+              st.deadUntil = Date.now() + REVIVE_MS;
+              st.obstacles = [];
+              st.jy = 0;
+              st.vy = 0;
+              st.grounded = true;
+              setDeadUntil(st.deadUntil);
+              setStunned(false);
+              break;
+            } else {
+              st.stunUntil = now + 650;
+              setStunned(true);
+              window.setTimeout(() => setStunned(false), 650);
+            }
           }
           if (!o.counted && !o.hit && o.x + o.ow < HITX) {
             // 무사히 넘김 → 보스 데미지
@@ -254,21 +307,33 @@ function JumpGame({
         style={{
           left: 40,
           bottom: 16,
-          transition: "filter 0.1s",
-          filter: stunned ? "grayscale(1) brightness(1.4)" : undefined,
+          transition: "filter 0.1s, opacity 0.2s",
+          opacity: deadUntil > 0 ? 0.35 : 1,
+          filter: deadUntil > 0 ? "grayscale(1)" : stunned ? "grayscale(1) brightness(1.4)" : undefined,
         }}
       >
         <PixelSprite type={charDef.type} colors={charDef.colors} characterId={charDef.id} size={44} />
+      </div>
+      {/* 목숨(하트) */}
+      <div className="pointer-events-none absolute left-2 top-2 z-10 flex gap-0.5">
+        {Array.from({ length: MAX_HITS }).map((_, i) => (
+          <Heart key={i} className={`h-4 w-4 ${i < lives ? "fill-red-500 text-red-500" : "text-gray-400/60"}`} />
+        ))}
       </div>
       {/* 안내 */}
       <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold text-white">
         {t("raid.jump_hint")}
       </div>
-      {stunned && (
+      {deadUntil > 0 ? (
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 text-white">
+          <div className="text-lg font-extrabold">{t("raid.jump_dead")}</div>
+          <div className="mt-1 text-sm">{t("raid.jump_revive").replace("{s}", String(deadRemain))}</div>
+        </div>
+      ) : stunned ? (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600/85 px-4 py-1.5 text-sm font-extrabold text-white">
           {t("raid.jump_stun")}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -591,7 +656,14 @@ export default function RaidPage() {
         {/* boss-issued mission */}
         <div className="mt-2 rounded-lg bg-primary/10 px-3 py-2">
           <p className="text-xs font-semibold text-primary">「{bossName(state?.boss.characterId)}」 {state?.mission.label}</p>
-          <p className="mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-50">{state?.mission.target}</p>
+          <p
+            className={`mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-50 ${raidType === 4 ? "select-none" : ""}`}
+            style={raidType === 4 ? { WebkitUserSelect: "none", userSelect: "none" } : undefined}
+            onCopy={raidType === 4 ? (e) => e.preventDefault() : undefined}
+            onContextMenu={raidType === 4 ? (e) => e.preventDefault() : undefined}
+          >
+            {state?.mission.target}
+          </p>
           {state?.mission.hint ? <p className="text-xs text-muted-foreground">{state.mission.hint}</p> : null}
         </div>
       </div>
