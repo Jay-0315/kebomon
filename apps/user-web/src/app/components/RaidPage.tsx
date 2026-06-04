@@ -260,20 +260,80 @@ function JumpGame({
 
       // ── 그리기 ──
       ctx.clearRect(0, 0, W, H);
-      // 바닥
-      ctx.fillStyle = "#c9b896";
+
+      // 하늘 그라데이션
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#7fc1ff");
+      sky.addColorStop(0.55, "#bfe6ff");
+      sky.addColorStop(1, "#eafaf0");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      // 태양
+      ctx.fillStyle = "rgba(255,240,150,0.5)";
+      ctx.beginPath(); ctx.arc(W - 50, 42, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff0a6";
+      ctx.beginPath(); ctx.arc(W - 50, 42, 21, 0, Math.PI * 2); ctx.fill();
+
+      // 구름 (천천히 흐름)
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      const cloud = (cx: number, cy: number, s: number) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 10 * s, 0, Math.PI * 2);
+        ctx.arc(cx + 13 * s, cy + 3 * s, 13 * s, 0, Math.PI * 2);
+        ctx.arc(cx + 29 * s, cy, 10 * s, 0, Math.PI * 2);
+        ctx.arc(cx + 15 * s, cy - 6 * s, 11 * s, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      const span = W + 140;
+      const drift = now * 0.012;
+      for (const b of [{ x: 60, y: 40, s: 1 }, { x: 250, y: 66, s: 0.7 }, { x: 430, y: 30, s: 0.85 }]) {
+        let cx = (b.x - drift) % span;
+        if (cx < -70) cx += span;
+        cloud(cx, b.y, b.s);
+      }
+
+      // 먼 언덕 (parallax 2층)
+      const hill = (color: string, baseY: number, amp: number, speed: number, wl: number) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        const off = (now * speed) % wl;
+        for (let x = -off; x <= W + 4; x += 6) {
+          ctx.lineTo(x, baseY - Math.sin(((x + off) / wl) * Math.PI * 2) * amp);
+        }
+        ctx.lineTo(W, H);
+        ctx.closePath();
+        ctx.fill();
+      };
+      hill("#c4e3a8", groundY - 18, 12, 0.01, 240);
+      hill("#a9d889", groundY - 4, 20, 0.02, 340);
+
+      // 바닥: 잔디 + 흙
+      ctx.fillStyle = "#caa06b";
       ctx.fillRect(0, groundY, W, GROUND_H);
-      ctx.fillStyle = "#a18a63";
-      ctx.fillRect(0, groundY, W, 3);
-      // 장애물
+      ctx.fillStyle = "#7ec46a";
+      ctx.fillRect(0, groundY, W, 6);
+      ctx.fillStyle = "#5fa854";
+      ctx.fillRect(0, groundY + 6, W, 2);
+      // 흐르는 잔디 무늬 (속도감)
+      ctx.fillStyle = "rgba(95,168,84,0.55)";
+      const gscroll = (now * 0.18) % 26;
+      for (let x = -gscroll; x < W; x += 26) ctx.fillRect(x, groundY + 9, 7, 2);
+
+      // 장애물 (가시 덤불)
       for (const o of st.obstacles) {
         const topY = groundY - o.oh;
-        ctx.fillStyle = o.hit ? "#9ca3af" : "#3f7d5a";
+        const body = o.hit ? "#9ca3af" : "#2f7d52";
+        ctx.fillStyle = body;
         ctx.fillRect(o.x, topY, o.ow, o.oh);
+        ctx.fillStyle = o.hit ? "#bcc2ca" : "#43a06b"; // 밝은 면
+        ctx.fillRect(o.x, topY, Math.max(3, o.ow * 0.35), o.oh);
+        ctx.fillStyle = body; // 가시 끝
         ctx.beginPath();
-        ctx.moveTo(o.x, topY);
-        ctx.lineTo(o.x + o.ow / 2, topY - 9);
-        ctx.lineTo(o.x + o.ow, topY);
+        ctx.moveTo(o.x - 1, topY);
+        ctx.lineTo(o.x + o.ow / 2, topY - 11);
+        ctx.lineTo(o.x + o.ow + 1, topY);
         ctx.closePath();
         ctx.fill();
       }
@@ -495,7 +555,7 @@ export default function RaidPage() {
     const answer = contribAnswer.trim();
     const ok = meta.hasAnswer ? text.length >= 3 && answer.length >= 1 : text.length >= 2;
     if (ok) {
-      getRaidSocket().emit("raid:contribute", { raidType, text, answer: meta.hasAnswer ? answer : undefined });
+      getRaidSocket().emit("raid:contribute", { raidType, text, answer: meta.hasAnswer ? answer : undefined, userId: getStoredUser()?.id });
     }
     setContributed(true);
   };

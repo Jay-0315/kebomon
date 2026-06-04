@@ -132,6 +132,20 @@ model UserCharacter {
   @@map("user_characters")
 }
 
+/** 레이드 기여 콘텐츠 (3=퀴즈 문제, 4=받아쓰기 문장) — 영구 저장 후 출제 풀로 재활용 */
+model RaidContent {
+  id        BigInt   @id @default(autoincrement())
+  raidType  Int      @map("raid_type")
+  text      String   @db.Text
+  answer    String?  @db.Text
+  active    Boolean  @default(true)
+  createdBy String?  @map("created_by") @db.VarChar(36)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([raidType, active])
+  @@map("raid_contents")
+}
+
 model AppSetting {
   id            String   @id @default(uuid())
   userId        String   @unique @map("user_id")

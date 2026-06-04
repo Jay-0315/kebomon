@@ -6,8 +6,10 @@ import {
   ConnectedSocket,
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
+import { OnModuleInit } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
 import { RewardsService, EggType as RewardEggType } from "../rewards/rewards.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 export const RAID_TYPES = [1, 3, 4] as const;
 export const MAX_PLAYERS = 5;
@@ -128,14 +130,33 @@ function newRoom(type: number): RaidRoom {
   cors: { origin: true, credentials: true },
   path: "/socket.io",
 })
-export class RaidGateway implements OnGatewayDisconnect {
+export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly rewards: RewardsService) {}
+  constructor(
+    private readonly rewards: RewardsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   private rooms = new Map<number, RaidRoom>();
   private cooldowns = new Map<number, number>();
+
+  /** 서버 시작 시 DB에 저장된 기여 콘텐츠를 출제 풀에 로드 */
+  async onModuleInit() {
+    try {
+      const rows = await this.prisma.raidContent.findMany({ where: { active: true } });
+      for (const row of rows) {
+        if (row.raidType === 3 && row.answer) {
+          QUIZ_BANK.push({ q: row.text, a: [row.answer] });
+        } else if (row.raidType === 4) {
+          TYPING_SENTENCES.push(row.text);
+        }
+      }
+    } catch {
+      // DB 미연결 등은 무시하고 기본 풀로 동작
+    }
+  }
 
   private getRoom(type: number): RaidRoom {
     if (!this.rooms.has(type)) this.rooms.set(type, newRoom(type));
@@ -186,21 +207,24 @@ export class RaidGateway implements OnGatewayDisconnect {
   }
 
   @SubscribeMessage("raid:contribute")
-  contribute(@MessageBody() data: { raidType: number; text: string; answer?: string }) {
+  async contribute(@MessageBody() data: { raidType: number; text: string; answer?: string; userId?: string }) {
     const type = data?.raidType;
     const text = String(data?.text ?? "").trim().slice(0, 80);
+    const createdBy = data?.userId ? String(data.userId).slice(0, 36) : null;
     if (text.length < 1) return;
 
     if (type === 3) {
       const a = String(data?.answer ?? "").trim().slice(0, 40);
-      if (text.length >= 3 && a.length >= 1) {
+      if (text.length >= 3 && a.length >= 1 && !QUIZ_BANK.some((q) => q.q === text)) {
         QUIZ_BANK.push({ q: text, a: [a] });
-        if (QUIZ_BANK.length > 200) QUIZ_BANK.splice(0, QUIZ_BANK.length - 200);
+        if (QUIZ_BANK.length > 500) QUIZ_BANK.splice(0, QUIZ_BANK.length - 500);
+        await this.prisma.raidContent.create({ data: { raidType: 3, text, answer: a, createdBy } }).catch(() => undefined);
       }
     } else if (type === 4) {
-      if (text.length >= 4) {
+      if (text.length >= 4 && !TYPING_SENTENCES.includes(text)) {
         TYPING_SENTENCES.push(text);
-        if (TYPING_SENTENCES.length > 200) TYPING_SENTENCES.splice(0, TYPING_SENTENCES.length - 200);
+        if (TYPING_SENTENCES.length > 500) TYPING_SENTENCES.splice(0, TYPING_SENTENCES.length - 500);
+        await this.prisma.raidContent.create({ data: { raidType: 4, text, createdBy } }).catch(() => undefined);
       }
     }
   }

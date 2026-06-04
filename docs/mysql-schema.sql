@@ -151,6 +151,18 @@ CREATE TABLE notifications (
   CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 레이드 기여 콘텐츠 (3=퀴즈, 4=받아쓰기) — 영구 저장 후 출제 풀로 재활용
+CREATE TABLE raid_contents (
+  id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
+  raid_type  INT          NOT NULL,
+  text       TEXT         NOT NULL,
+  answer     TEXT         NULL,
+  active     TINYINT(1)   NOT NULL DEFAULT 1,
+  created_by VARCHAR(36)  NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_raid_contents_type (raid_type, active)
+);
+
 CREATE TABLE user_titles (
   id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
   user_id    VARCHAR(36)  NOT NULL,
