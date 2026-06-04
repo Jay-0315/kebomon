@@ -105,12 +105,12 @@ const GACHA_POOL: { id: number; rarity: string }[] = [
 
 // Gacha rates (sum = 100)
 const GACHA_RATES: Record<string, number> = {
-  common: 35,
-  uncommon: 26,
-  rare: 20,
-  epic: 10,
-  legendary: 6,
-  mythic: 3,
+  common: 45,
+  uncommon: 30,
+  rare: 15,
+  epic: 6,
+  legendary: 3,
+  mythic: 1,
 };
 
 const GACHA_COST_SINGLE = 120;
@@ -318,10 +318,10 @@ function pickGachaRarity(
   forceLegendaryOrAbove = false,
 ): string {
   if (forceLegendaryOrAbove) {
-    return weightedRandom({ legendary: 70, mythic: 30 });
+    return weightedRandom({ legendary: 90, mythic: 10 });
   }
   if (forceRareOrAbove) {
-    return weightedRandom({ rare: 65, epic: 20, legendary: 10, mythic: 5 });
+    return weightedRandom({ rare: 70, epic: 25, legendary: 4, mythic: 1 });
   }
   return weightedRandom(GACHA_RATES);
 }
