@@ -262,14 +262,14 @@ export default function LiveChatPage() {
       {self && (
         <div className="relative z-10 flex flex-col items-center pb-4">
           <div
-            className="pointer-events-none absolute -top-10 h-40 w-40"
+            className="pointer-events-none absolute -top-4 h-28 w-28"
             style={{
-              background: "radial-gradient(circle at 50% 40%, rgba(255,241,170,0.9), rgba(255,241,170,0) 70%)",
+              background: "radial-gradient(circle at 50% 45%, rgba(255,241,170,0.9), rgba(255,241,170,0) 70%)",
               animation: "spotlight-pulse 2.5s ease-in-out infinite",
             }}
           />
           <div className="relative flex flex-col items-center">
-            <div className="mb-1 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow">
+            <div className="relative z-20 mb-4 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow">
               <Sparkles className="h-3 w-3" /> {self.nickname}
             </div>
             <div style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.9))" }}>
