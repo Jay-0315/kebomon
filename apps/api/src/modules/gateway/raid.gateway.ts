@@ -7,10 +7,9 @@ import {
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import * as https from "https";
 import { RewardsService, EggType as RewardEggType } from "../rewards/rewards.service";
 
-export const RAID_TYPES = [1, 2, 3, 4] as const;
+export const RAID_TYPES = [1, 3, 4] as const;
 export const MAX_PLAYERS = 5;
 export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
@@ -18,7 +17,6 @@ type EggType = "normal" | "big" | "golden";
 
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
   1: { name: "점프 레이드", points: 30, goal: 40, cry: "내 장애물을 피할 수 있겠나?!" },
-  2: { name: "끝말잇기 레이드", points: 50, goal: 30, cry: "말의 사슬을 이어보아라." },
   3: { name: "퀴즈 레이드", points: 50, goal: 25, cry: "내 물음에 답하라!" },
   4: { name: "받아쓰기 레이드", points: 80, goal: 25, cry: "정확히 받아써라. 오차는 없다." },
 };
@@ -44,10 +42,6 @@ function rollReward(points: number): RaidReward {
   const egg: RewardEggType = r < 60 ? "normal" : r < 95 ? "big" : "golden";
   return { kind: "egg", egg };
 }
-
-// ─── 점프 레이드 ──────────────────────────────────────────────────
-const JUMP_MOVES = ["점프", "슬라이드", "회피", "구르기", "방어"];
-function nextJumpMove() { return JUMP_MOVES[(Math.random() * JUMP_MOVES.length) | 0]; }
 
 // ─── 퀴즈 뱅크 ──────────────────────────────────────────────────
 const QUIZ_BANK: { q: string; a: string[] }[] = [
@@ -92,91 +86,9 @@ const TYPING_SENTENCES = [
   "포기하지 않으면 끝난 것이 아니다",
 ];
 
-// ─── 끝말잇기 사전 (로컬 500+ 단어) ─────────────────────────────
-const WORD_DICT = new Set<string>([
-  "가구","가로수","가방","가수","가슴","가을","가족","강아지","개미","개나리",
-  "거울","거미","거북이","게임","고래","고구마","고기","고양이","공원","공항",
-  "과일","과자","교실","교통","구름","국수","기린","기차","기둥","기와",
-  "나무","나비","나라","낙타","남자","낮잠","내일","노래","노력","눈물",
-  "다리","달걀","달력","당근","대나무","대문","대학","도서관","도서","도시",
-  "도마뱀","돌고래","두부","드라마","등대","등산",
-  "라면","리본","리듬",
-  "마늘","마차","망고","매미","머리","메뚜기","면도","모자","문어","물고기",
-  "물병","미소","미역",
-  "바다","바나나","바람","박쥐","반지","밥상","배추","뱀","버스","벚꽃",
-  "병아리","보석","봄비","부엉이","분수","불꽃","비행기","비누","빵",
-  "사과","사자","사진","산수","살구","새우","서울","선물","선생","성당",
-  "소금","수건","수달","수박","수영","시계","식물",
-  "아기","아침","안경","여름","역사","영화","오리","우산","우유",
-  "유리","은행","이불","이슬","인삼","인형",
-  "자두","자전거","자석","장갑","장미","장난감","전화","정원",
-  "제비","조개","종이","주사위","지구","지도","지렁이","지하철","진주",
-  "참새","청소","초밥","축구","침대",
-  "카메라","카페","코끼리","코코아","코알라","키위",
-  "탑승","태양","토끼","토마토","통장",
-  "파도","포도","표범",
-  "하늘","하루","항구","행복","형광등","형제","화분","화살",
-  "가게","갈매기","갈비","감자","강물","갑옷","개구리","건물","경찰","계단",
-  "계란","고드름","공룡","공부","공주","과학","교복","국화","그림","근육",
-  "금메달","기억","기초","김치","꽃집","나침반","낙엽","냉면","냉장고",
-  "단풍","닭갈비","대화","도토리","독수리","동굴","동물원","동화","두루미",
-  "딸기","땅콩","떡국","마라톤","마음","마을","맛집","먹이","메론","명절",
-  "모래","모험","목도리","목욕","무지개","미래","미술관","박물관","반딧불",
-  "방울","배려","배추","백합","버섯","벌판","보름달","보물","부산","분필",
-  "비둘기","빙하","사막","사슴","사탕","산딸기","상자","색연필","서점",
-  "석류","선인장","소나기","소나무","소방차","소풍","속담","솜사탕","수수께끼",
-  "수족관","스키","시냇물","시장","식빵","신발","아이스크림","악어","야구",
-  "야채","양말","양파","어항","연꽃","연필","열쇠","영웅","옥수수","와인",
-  "왕관","요리","우물","우주","운동","원숭이","유산균","은하수","음악",
-  "의자","이야기","일기","일출","임금","자동차","자유","작가","장어",
-  "전자레인지","점프","정글","조각","지팡이","집게","차표","창문","채소",
-  "책상","천둥","체육관","추억","친구","칠판","탈춤","편지","포크","피아노",
-  "하마","학교","한국","한라산","한복","항아리","해바라기","호랑이","홍차",
-  "화려","환경","황새","희망","슬라이드","회피","구르기","방어","출석",
-  "포인트","리워드","케보몬","도감","업적","칭호","레이드","미션","보스",
-]);
-
-// Wiktionary 검증 캐시
-const wiktCache = new Map<string, boolean>();
-
-const START_WORDS = ["사과", "바다", "나무", "구름", "하늘", "보석", "강아지", "토마토", "참새", "기차"];
-
 const ADJ = ["야비한", "수상한", "느긋한", "용감한", "엉뚱한", "도도한", "발랄한", "시크한", "엉큼한", "낭만적인", "까칠한", "천진한"];
 const ANI = ["바다코끼리", "너구리", "수달", "북극곰", "펭귄", "고슴도치", "미어캣", "알파카", "카피바라", "라쿤", "다람쥐", "판다"];
 const nick = () => `${ADJ[(Math.random() * ADJ.length) | 0]} ${ANI[(Math.random() * ANI.length) | 0]}`;
-
-const lastChar = (w: string) => w.trim().slice(-1);
-const firstChar = (w: string) => w.trim().slice(0, 1);
-
-function lookupWiktionary(word: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const cached = wiktCache.get(word);
-    if (cached !== undefined) { resolve(cached); return; }
-
-    const path = `/w/api.php?action=query&titles=${encodeURIComponent(word)}&format=json&prop=info`;
-    const options = { hostname: "ko.wiktionary.org", path, method: "GET", timeout: 3000 };
-
-    const req = https.request(options, (res) => {
-      let body = "";
-      res.on("data", (chunk: Buffer) => { body += chunk.toString(); });
-      res.on("end", () => {
-        try {
-          const data = JSON.parse(body) as { query?: { pages?: Record<string, { pageid?: number }> } };
-          const pages = data.query?.pages;
-          const page = pages ? Object.values(pages)[0] : undefined;
-          const exists = !!(page && typeof page.pageid === "number" && page.pageid > 0);
-          wiktCache.set(word, exists);
-          resolve(exists);
-        } catch {
-          resolve(false);
-        }
-      });
-    });
-    req.on("error", () => resolve(false));
-    req.on("timeout", () => { req.destroy(); resolve(false); });
-    req.end();
-  });
-}
 
 interface Player {
   socketId: string;
@@ -191,10 +103,8 @@ interface RaidRoom {
   players: Map<string, Player>;
   progress: number;
   cleared: boolean;
-  bossCharId: number;
-  jumpMove: string;
-  chain: string[];
-  used: Set<string>;
+  bossCharId: number; // 이 방의 랜덤 보스 케보몬
+  // mission-specific
   quizIndex: number;
   typingSentence: string;
 }
@@ -202,16 +112,12 @@ interface RaidRoom {
 const room = (type: number) => `raid:${type}`;
 
 function newRoom(type: number): RaidRoom {
-  const start = START_WORDS[(Math.random() * START_WORDS.length) | 0];
   return {
     type,
     players: new Map(),
     progress: 0,
     cleared: false,
     bossCharId: randomBoss(),
-    jumpMove: nextJumpMove(),
-    chain: [start],
-    used: new Set([start]),
     quizIndex: (Math.random() * QUIZ_BANK.length) | 0,
     typingSentence: TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0],
   };
@@ -241,7 +147,7 @@ export class RaidGateway implements OnGatewayDisconnect {
     @MessageBody() data: { raidType: number; characterId: number; userId?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const type = RAID_TYPES.includes(data?.raidType as 1 | 2 | 3 | 4) ? data.raidType : 1;
+    const type = RAID_TYPES.includes(data?.raidType as 1 | 3 | 4) ? data.raidType : 1;
 
     const until = this.cooldowns.get(type) ?? 0;
     if (until > Date.now()) {
@@ -299,6 +205,36 @@ export class RaidGateway implements OnGatewayDisconnect {
     }
   }
 
+  /** 점프 레이드(타입1): 장애물을 넘을 때마다 보스에게 데미지 1 */
+  @SubscribeMessage("raid:jump")
+  jump(@ConnectedSocket() client: Socket) {
+    const player = this.findPlayer(client.id);
+    if (!player || player.raidType !== 1) return;
+    const r = this.getRoom(1);
+    if (r.cleared) return;
+    r.progress += 1;
+    this.applyProgress(r, 1);
+  }
+
+  /** 진행도 증가 후 클리어 판정 + 상태 브로드캐스트 (점프/입력 공용) */
+  private applyProgress(r: RaidRoom, type: number) {
+    const meta = RAID_META[type];
+    if (r.progress >= meta.goal) {
+      r.cleared = true;
+      r.progress = meta.goal;
+      this.cooldowns.set(type, Date.now() + RAID_COOLDOWN_MS);
+      for (const p of r.players.values()) {
+        const reward = rollReward(meta.points);
+        if (p.userId) {
+          this.rewards.grantRaidReward(p.userId, reward).catch(() => undefined);
+        }
+        this.server.to(p.socketId).emit("raid:cleared", { reward });
+      }
+      this.broadcastLobby();
+    }
+    this.broadcastState(type);
+  }
+
   @SubscribeMessage("raid:input")
   async input(@MessageBody() data: { text: string }, @ConnectedSocket() client: Socket) {
     const player = this.findPlayer(client.id);
@@ -318,46 +254,11 @@ export class RaidGateway implements OnGatewayDisconnect {
 
     if (r.cleared) return;
 
-    const meta = RAID_META[player.raidType];
     let progressed = false;
     let feedback: string | null = null;
 
     if (player.raidType === 1) {
-      const input = text.replace(/\s/g, "").replace(/!/g, "");
-      if (input === r.jumpMove) {
-        r.progress += 1;
-        progressed = true;
-        r.jumpMove = nextJumpMove();
-        feedback = "회피 성공! ✓";
-      } else {
-        feedback = `"${r.jumpMove}"을(를) 입력해야 합니다!`;
-      }
-    } else if (player.raidType === 2) {
-      const prev = r.chain[r.chain.length - 1];
-      const w = text.replace(/\s/g, "");
-
-      if (w.length < 2) {
-        feedback = "두 글자 이상 입력해주세요";
-      } else if (firstChar(w) !== lastChar(prev)) {
-        feedback = `'${lastChar(prev)}'(으)로 시작하는 단어를 입력하세요`;
-      } else if (r.used.has(w)) {
-        feedback = "이미 사용된 단어입니다";
-      } else {
-        let valid = WORD_DICT.has(w);
-        if (!valid) {
-          valid = await lookupWiktionary(w);
-          if (valid) WORD_DICT.add(w);
-        }
-
-        if (!valid) {
-          feedback = "사전에 등록되어 있지 않은 단어입니다";
-        } else {
-          r.chain.push(w);
-          r.used.add(w);
-          r.progress += 1;
-          progressed = true;
-        }
-      }
+      // 점프 레이드는 액션 게임(raid:jump)으로 진행 — 채팅 입력은 데미지 없음
     } else if (player.raidType === 3) {
       const cur = QUIZ_BANK[r.quizIndex % QUIZ_BANK.length];
       if (cur.a.some((ans) =>
@@ -381,20 +282,7 @@ export class RaidGateway implements OnGatewayDisconnect {
     }
 
     if (progressed) {
-      if (r.progress >= meta.goal) {
-        r.cleared = true;
-        r.progress = meta.goal;
-        this.cooldowns.set(player.raidType, Date.now() + RAID_COOLDOWN_MS);
-        for (const p of r.players.values()) {
-          const reward = rollReward(meta.points);
-          if (p.userId) {
-            this.rewards.grantRaidReward(p.userId, reward).catch(() => undefined);
-          }
-          this.server.to(p.socketId).emit("raid:cleared", { reward });
-        }
-        this.broadcastLobby();
-      }
-      this.broadcastState(player.raidType);
+      this.applyProgress(r, player.raidType);
     }
   }
 
@@ -422,11 +310,7 @@ export class RaidGateway implements OnGatewayDisconnect {
   }
 
   private missionView(r: RaidRoom) {
-    if (r.type === 1) return { label: "장애물을 피해라!", target: `${r.jumpMove}!`, hint: "점프 / 슬라이드 / 회피 / 구르기 / 방어" };
-    if (r.type === 2) {
-      const last = r.chain[r.chain.length - 1];
-      return { label: "끝말잇기를 이어라!", target: last, hint: `'${lastChar(last)}'(으)로 시작 · 실제 단어만` };
-    }
+    if (r.type === 1) return { label: "장애물을 점프로 넘어라!", target: "SPACE ↑", hint: "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지" };
     if (r.type === 3) return { label: "퀴즈를 맞혀라!", target: QUIZ_BANK[r.quizIndex % QUIZ_BANK.length].q, hint: "" };
     return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence, hint: "" };
   }

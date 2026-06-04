@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Swords, Users, Send, ArrowLeft, Trophy, Egg, Sparkles, Clock } from "lucide-react";
 import { useAppData, type EggType, type EggOpenResult } from "../context/AppDataContext";
 import { getRaidSocket, disconnectRaidSocket } from "../lib/socket";
@@ -47,7 +47,7 @@ function PixelEggSVG({ type, size = 48 }: { type: "normal" | "big" | "golden"; s
 
 const getBossChar = (raidId: number) => CHARACTERS[(raidId * 43) % CHARACTERS.length];
 
-const RAID_IDS = [1, 2, 3, 4];
+const RAID_IDS = [1, 3, 4];
 // 기여(문제 출제)를 받는 레이드 — 퀴즈·받아쓰기만 (점프·끝말잇기는 제외)
 const CONTRIBUTABLE = new Set([3, 4]);
 
@@ -72,6 +72,207 @@ type Reward = { kind: "points"; points: number } | { kind: "egg"; egg: EggType }
 
 const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTERS[0];
 
+// ─── 점프 액션 게임 (점프 레이드 / 타입1) ─────────────────────────────────
+// 장애물이 계속 다가오고, 스페이스바(또는 터치)로 점프해서 넘으면 보스에게 데미지.
+type Obstacle = { x: number; ow: number; oh: number; counted: boolean; hit: boolean };
+function JumpGame({
+  charDef,
+  cleared,
+  onClear,
+}: {
+  charDef: ReturnType<typeof charById>;
+  cleared: boolean;
+  onClear: () => void;
+}) {
+  const { t } = useLang();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
+  const onClearRef = useRef(onClear);
+  onClearRef.current = onClear;
+  const clearedRef = useRef(cleared);
+  clearedRef.current = cleared;
+  const [stunned, setStunned] = useState(false);
+
+  const g = useRef({
+    jy: 0,
+    vy: 0,
+    grounded: true,
+    stunUntil: 0,
+    obstacles: [] as Obstacle[],
+    spawnAcc: 0,
+    nextSpawn: 1100,
+    speed: 4,
+    elapsed: 0,
+  });
+
+  const doJump = useCallback(() => {
+    const st = g.current;
+    if (clearedRef.current) return;
+    if (performance.now() < st.stunUntil) return;
+    if (st.grounded) {
+      st.vy = 11;
+      st.grounded = false;
+    }
+  }, []);
+
+  // 키보드(스페이스/↑) — 페이지 스크롤 방지
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.key === " " || e.key === "ArrowUp") {
+        e.preventDefault();
+        doJump();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [doJump]);
+
+  // 게임 루프
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    let raf = 0;
+    let last = performance.now();
+
+    const GROUND_H = 16; // 바닥 두께
+    const HITX = 50; // 플레이어 히트박스 좌표
+    const HITW = 30;
+    const JUMP_V = 11;
+    const GRAVITY = 0.6; // per frame
+
+    const resize = () => {
+      const w = wrapRef.current?.clientWidth ?? 600;
+      canvas.width = Math.max(280, w);
+      canvas.height = 200;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const loop = (now: number) => {
+      let dt = now - last;
+      last = now;
+      if (dt > 50) dt = 50;
+      const dtf = dt / 16.67;
+      const st = g.current;
+      const W = canvas.width;
+      const H = canvas.height;
+      const groundY = H - GROUND_H;
+
+      if (!clearedRef.current) {
+        st.elapsed += dt;
+
+        // 점프 물리
+        if (!st.grounded) {
+          st.jy += st.vy * dtf;
+          st.vy -= GRAVITY * dtf;
+          if (st.jy <= 0) {
+            st.jy = 0;
+            st.vy = 0;
+            st.grounded = true;
+          }
+        }
+
+        // 시간이 지날수록 살짝 빨라짐
+        st.speed = 4 + Math.min(3.5, st.elapsed / 14000);
+
+        // 장애물 생성
+        st.spawnAcc += dt;
+        if (st.spawnAcc >= st.nextSpawn) {
+          st.spawnAcc = 0;
+          st.nextSpawn = 850 + Math.random() * 650 - Math.min(350, st.elapsed / 40);
+          const oh = 22 + Math.floor(Math.random() * 22);
+          st.obstacles.push({ x: W + 12, ow: 16 + Math.floor(Math.random() * 12), oh, counted: false, hit: false });
+        }
+
+        // 이동 / 충돌 / 통과 판정
+        for (const o of st.obstacles) {
+          o.x -= st.speed * dtf;
+          const overlapX = o.x < HITX + HITW && o.x + o.ow > HITX;
+          if (overlapX && !o.hit && !o.counted && st.jy < o.oh) {
+            // 충돌 → 스턴
+            o.hit = true;
+            st.stunUntil = now + 650;
+            setStunned(true);
+            window.setTimeout(() => setStunned(false), 650);
+          }
+          if (!o.counted && !o.hit && o.x + o.ow < HITX) {
+            // 무사히 넘김 → 보스 데미지
+            o.counted = true;
+            onClearRef.current();
+          }
+        }
+        st.obstacles = st.obstacles.filter((o) => o.x + o.ow > -30);
+      }
+
+      // ── 그리기 ──
+      ctx.clearRect(0, 0, W, H);
+      // 바닥
+      ctx.fillStyle = "#c9b896";
+      ctx.fillRect(0, groundY, W, GROUND_H);
+      ctx.fillStyle = "#a18a63";
+      ctx.fillRect(0, groundY, W, 3);
+      // 장애물
+      for (const o of st.obstacles) {
+        const topY = groundY - o.oh;
+        ctx.fillStyle = o.hit ? "#9ca3af" : "#3f7d5a";
+        ctx.fillRect(o.x, topY, o.ow, o.oh);
+        ctx.beginPath();
+        ctx.moveTo(o.x, topY);
+        ctx.lineTo(o.x + o.ow / 2, topY - 9);
+        ctx.lineTo(o.x + o.ow, topY);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 플레이어(DOM) 위치 갱신
+      if (playerRef.current) {
+        playerRef.current.style.bottom = `${GROUND_H + st.jy}px`;
+      }
+
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={wrapRef}
+      onPointerDown={doJump}
+      className="relative mx-3 mb-2 mt-1 select-none overflow-hidden rounded-xl border border-border bg-gradient-to-b from-sky-100 to-amber-50 dark:from-slate-800 dark:to-slate-900"
+      style={{ height: 200, touchAction: "none", cursor: "pointer" }}
+    >
+      <canvas ref={canvasRef} className="block h-[200px] w-full" />
+      {/* 플레이어 캐릭터 */}
+      <div
+        ref={playerRef}
+        className="pointer-events-none absolute"
+        style={{
+          left: 40,
+          bottom: 16,
+          transition: "filter 0.1s",
+          filter: stunned ? "grayscale(1) brightness(1.4)" : undefined,
+        }}
+      >
+        <PixelSprite type={charDef.type} colors={charDef.colors} characterId={charDef.id} size={44} />
+      </div>
+      {/* 안내 */}
+      <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold text-white">
+        {t("raid.jump_hint")}
+      </div>
+      {stunned && (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600/85 px-4 py-1.5 text-sm font-extrabold text-white">
+          {t("raid.jump_stun")}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RaidPage() {
   const { rewardSummary, openEgg, refreshRewards } = useAppData();
   const { t, lang } = useLang();
@@ -80,14 +281,11 @@ export default function RaidPage() {
 
   const RAIDS: Record<number, { name: string; bossName: string; desc: string }> = {
     1: { name: t("raid.type.1.name"), bossName: t("raid.type.1.boss"), desc: t("raid.type.1.desc") },
-    2: { name: t("raid.type.2.name"), bossName: t("raid.type.2.boss"), desc: t("raid.type.2.desc") },
     3: { name: t("raid.type.3.name"), bossName: t("raid.type.3.boss"), desc: t("raid.type.3.desc") },
     4: { name: t("raid.type.4.name"), bossName: t("raid.type.4.boss"), desc: t("raid.type.4.desc") },
   };
 
   const CONTRIBUTE_META: Record<number, { title: string; field: string; placeholder: string; hasAnswer: boolean; answerPlaceholder?: string }> = {
-    1: { title: t("raid.contrib.1.title"), field: t("raid.contrib.1.field"), placeholder: t("raid.contrib.1.placeholder"), hasAnswer: false },
-    2: { title: t("raid.contrib.2.title"), field: t("raid.contrib.2.field"), placeholder: t("raid.contrib.2.placeholder"), hasAnswer: false },
     3: { title: t("raid.contrib.3.title"), field: t("raid.contrib.3.field"), placeholder: t("raid.contrib.3.placeholder"), hasAnswer: true, answerPlaceholder: t("raid.contrib.3.answer_placeholder") },
     4: { title: t("raid.contrib.4.title"), field: t("raid.contrib.4.field"), placeholder: t("raid.contrib.4.placeholder"), hasAnswer: false },
   };
@@ -128,7 +326,7 @@ export default function RaidPage() {
   const [view, setView] = useState<"lobby" | "room">("lobby");
   const [raidType, setRaidType] = useState(1);
   const [lobby, setLobby] = useState<Record<number, { count: number; cooldownUntil: number; bossCharId?: number }>>({
-    1: { count: 0, cooldownUntil: 0 }, 2: { count: 0, cooldownUntil: 0 },
+    1: { count: 0, cooldownUntil: 0 },
     3: { count: 0, cooldownUntil: 0 }, 4: { count: 0, cooldownUntil: 0 },
   });
   const [now, setNow] = useState(Date.now());
@@ -225,6 +423,7 @@ export default function RaidPage() {
     getRaidSocket().emit("raid:input", { text });
     setInput("");
   };
+  const emitJump = useCallback(() => { getRaidSocket().emit("raid:jump"); }, []);
   const submitContribution = () => {
     const meta = CONTRIBUTE_META[raidType];
     const text = contribText.trim();
@@ -404,53 +603,71 @@ export default function RaidPage() {
         </div>
       )}
 
-      {/* chat bubbles */}
-      <div className="pointer-events-none absolute inset-x-0 top-64 bottom-40 z-30 overflow-hidden">
-        {bubbles.map((b, i) => {
-          const def = charById(b.characterId);
-          const mine = b.socketId === self?.socketId;
-          return (
-            <div key={b.id} className="absolute left-1/2 -translate-x-1/2" style={{ top: `${(i % 8) * 12}%`, animation: "raid-bubble 4s ease-out forwards" }}>
-              <div className={`flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-md ${mine ? "border-2 border-primary" : "border border-gray-200"}`}>
-                <PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={20} />
-                <span className={`text-[11px] font-bold ${mine ? "text-primary" : "text-gray-500"}`}>{b.nickname}</span>
-                <span className="text-sm font-medium text-gray-900">{b.text}</span>
+      {raidType === 1 ? (
+        /* ── 점프 액션 게임 ── */
+        <div className="relative z-10 mt-auto flex flex-1 flex-col justify-end">
+          {/* 함께 싸우는 동료 */}
+          {others.length > 0 && (
+            <div className="flex flex-wrap items-end justify-center gap-1 px-4">
+              {others.map((p) => {
+                const def = charById(p.characterId);
+                return <div key={p.socketId} title={p.nickname}><PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={32} /></div>;
+              })}
+            </div>
+          )}
+          <JumpGame charDef={charById(self?.characterId ?? myCharacterId)} cleared={state?.cleared ?? false} onClear={emitJump} />
+        </div>
+      ) : (
+        <>
+          {/* chat bubbles */}
+          <div className="pointer-events-none absolute inset-x-0 top-52 bottom-40 z-30 overflow-hidden">
+            {bubbles.map((b, i) => {
+              const def = charById(b.characterId);
+              const mine = b.socketId === self?.socketId;
+              return (
+                <div key={b.id} className="absolute left-1/2 -translate-x-1/2" style={{ top: `${(i % 8) * 12}%`, animation: "raid-bubble 4s ease-out forwards" }}>
+                  <div className={`flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-md ${mine ? "border-2 border-primary" : "border border-gray-200"}`}>
+                    <PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={20} />
+                    <span className={`text-[11px] font-bold ${mine ? "text-primary" : "text-gray-500"}`}>{b.nickname}</span>
+                    <span className="text-sm font-medium text-gray-900">{b.text}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* party crowd */}
+          <div className="relative z-10 mt-auto flex flex-wrap items-end justify-center gap-1 px-4 pb-2">
+            {others.map((p) => {
+              const def = charById(p.characterId);
+              return <div key={p.socketId} title={p.nickname}><PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={44} /></div>;
+            })}
+          </div>
+          {self && (
+            <div className="relative z-10 flex flex-col items-center pb-4">
+              <div className="mb-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow">{self.nickname}</div>
+              <div style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.8))" }}>
+                <PixelSprite type={charById(self.characterId).type} colors={charById(self.characterId).colors} characterId={self.characterId} size={60} float />
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* party crowd */}
-      <div className="relative z-10 mt-auto flex flex-wrap items-end justify-center gap-1 px-4 pb-2">
-        {others.map((p) => {
-          const def = charById(p.characterId);
-          return <div key={p.socketId} title={p.nickname}><PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={44} /></div>;
-        })}
-      </div>
-      {self && (
-        <div className="relative z-10 flex flex-col items-center pb-4">
-          <div className="mb-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow">{self.nickname}</div>
-          <div style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.8))" }}>
-            <PixelSprite type={charById(self.characterId).type} colors={charById(self.characterId).colors} characterId={self.characterId} size={60} float />
+          {/* input */}
+          <div className="relative z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-3 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) send(); }}
+              maxLength={60}
+              placeholder={t("raid.input_placeholder")}
+              className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            />
+            <button onClick={send} className="flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105">
+              <Send className="h-4 w-4" /> {t("raid.send")}
+            </button>
           </div>
-        </div>
+        </>
       )}
-
-      {/* input */}
-      <div className="relative z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-3 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) send(); }}
-          maxLength={60}
-          placeholder={t("raid.input_placeholder")}
-          className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-        />
-        <button onClick={send} className="flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105">
-          <Send className="h-4 w-4" /> {t("raid.send")}
-        </button>
-      </div>
 
       {/* clear overlay */}
       {reward && (
