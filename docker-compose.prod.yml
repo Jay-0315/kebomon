@@ -36,6 +36,9 @@ services:
   mysql:
     image: mysql:8.4
     container_name: kebo-mysql
+    # SSH 터널 전용: EC2 루프백(127.0.0.1)에만 바인딩 → 인터넷 비노출, DataGrip은 SSH 터널로 접속
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-kebo}
       MYSQL_USER: ${MYSQL_USER:-kebo}
