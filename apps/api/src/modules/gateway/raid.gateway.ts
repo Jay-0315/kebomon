@@ -7,16 +7,15 @@ import {
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
+import * as https from "https";
 import { RewardsService, EggType as RewardEggType } from "../rewards/rewards.service";
 
 export const RAID_TYPES = [1, 2, 3, 4] as const;
 export const MAX_PLAYERS = 5;
-export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4시간
+export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
 type EggType = "normal" | "big" | "golden";
 
-/** 레이드 형식 메타 (1 점프 / 2 끝말잇기 / 3 퀴즈 / 4 받아쓰기)
- *  goal = 보스 HP, 미션 성공 1회 = 데미지 1 · 보스는 매 방마다 랜덤 케보몬 */
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
   1: { name: "점프 레이드", points: 30, goal: 40, cry: "내 장애물을 피할 수 있겠나?!" },
   2: { name: "끝말잇기 레이드", points: 50, goal: 30, cry: "말의 사슬을 이어보아라." },
@@ -24,17 +23,21 @@ const RAID_META: Record<number, { name: string; points: number; goal: number; cr
   4: { name: "받아쓰기 레이드", points: 80, goal: 25, cry: "정확히 받아써라. 오차는 없다." },
 };
 
-// 보스로 등장할 케보몬 후보 (희귀도 높은 캐릭터 위주)
+// 도감 전체 180개 캐릭터 ID
 const BOSS_POOL = [
-  70, 84, 90, 94, 96, 99, 100, 123, 150, 164, 170, 171, 172, 173, 175,
-  177, 178, 180, 188, 189, 190, 192, 193, 194, 195, 197, 198, 200,
-  309, 328, 331, 333, 359, 360, 385, 392, 397, 399, 400,
+  75,76,116,125,127,139,140,152,155,156,159,174,176,205,258,275,292,333,351,391,
+  13,14,84,90,91,105,128,132,144,153,160,161,177,221,259,276,294,304,322,352,355,377,392,
+  26,28,29,30,96,104,117,129,163,169,173,178,179,194,240,260,271,277,287,305,323,335,378,393,
+  41,42,43,44,99,120,121,131,136,180,206,220,238,241,252,254,272,278,288,293,306,313,324,337,372,388,
+  61,135,137,154,191,216,232,233,242,253,267,273,290,307,308,331,338,349,373,389,
+  64,65,66,67,69,83,150,158,172,193,204,208,235,239,243,255,268,274,291,309,332,336,339,344,350,375,390,
+  4,5,6,7,8,9,74,16,17,18,19,20,21,22,31,32,33,34,35,36,37,38,39,40,51,52,53,54,55,56,57,58,59,60,71,72,73,
+  11,12,141,
 ];
 const randomBoss = () => BOSS_POOL[(Math.random() * BOSS_POOL.length) | 0];
 
 type RaidReward = { kind: "points"; points: number } | { kind: "egg"; egg: RewardEggType };
 
-/** 80% 포인트 / 20% 알 (알 안에서 60% 일반·35% 큰·5% 황금) */
 function rollReward(points: number): RaidReward {
   if (Math.random() < 0.8) return { kind: "points", points };
   const r = Math.random() * 100;
@@ -42,10 +45,11 @@ function rollReward(points: number): RaidReward {
   return { kind: "egg", egg };
 }
 
-// 점프 레이드: 장애물에 맞춰 입력할 동작
-const JUMP_MOVES = ["점프", "슬라이드", "점프", "회피", "점프", "슬라이드"];
+// ─── 점프 레이드 ──────────────────────────────────────────────────
+const JUMP_MOVES = ["점프", "슬라이드", "회피", "구르기", "방어"];
+function nextJumpMove() { return JUMP_MOVES[(Math.random() * JUMP_MOVES.length) | 0]; }
 
-// 가변(유저 기여 문제 추가됨) · 난이도 상향
+// ─── 퀴즈 뱅크 ──────────────────────────────────────────────────
 const QUIZ_BANK: { q: string; a: string[] }[] = [
   { q: "1부터 100까지 모든 자연수의 합은?", a: ["5050"] },
   { q: "물의 화학식은? (영문)", a: ["H2O"] },
@@ -61,50 +65,80 @@ const QUIZ_BANK: { q: string; a: string[] }[] = [
   { q: "DNA 이중나선 구조를 발견한 과학자 한 명은?", a: ["왓슨", "크릭"] },
   { q: "144의 양의 제곱근은?", a: ["12"] },
   { q: "조선을 건국한 왕의 이름은?", a: ["이성계", "태조", "태조이성계"] },
-  { q: "1바이트는 몇 비트?", a: ["8", "8비트", "8개"] },
+  { q: "1바이트는 몇 비트?", a: ["8", "8비트"] },
+  { q: "세계에서 가장 큰 대륙은?", a: ["아시아"] },
+  { q: "지구의 자전 주기는 약 몇 시간?", a: ["24", "24시간"] },
+  { q: "가장 가벼운 원소는?", a: ["수소"] },
+  { q: "한국의 국화는?", a: ["무궁화"] },
+  { q: "소설 '어린 왕자'의 작가는?", a: ["생텍쥐페리"] },
 ];
-// 받아쓰기: 실제 명언 (유저 기여로 확장 가능)
+
+// ─── 받아쓰기 문장 ────────────────────────────────────────────────
 const TYPING_SENTENCES = [
-  "시작이 반이다",
-  "아는 것이 힘이다",
-  "시간은 금이다",
-  "펜은 칼보다 강하다",
-  "백문이 불여일견이다",
-  "천 리 길도 한 걸음부터",
-  "고생 끝에 낙이 온다",
-  "실패는 성공의 어머니다",
-  "오늘 걷지 않으면 내일은 뛰어야 한다",
-  "노력은 결코 배신하지 않는다",
+  "천 리 길도 한 걸음부터", "시작이 반이다", "티끌 모아 태산",
+  "가랑비에 옷 젖는 줄 모른다", "돌다리도 두드려 보고 건너라",
+  "노력은 절대 배신하지 않는다", "오늘 할 수 있는 일을 내일로 미루지 마라",
+  "실패는 성공의 어머니다", "자신을 믿는 자만이 앞으로 나아갈 수 있다",
+  "작은 일에 최선을 다하는 사람이 큰 일도 해낸다",
+  "현재에 충실하면 미래는 저절로 열린다",
+  "꿈을 계속 간직하면 반드시 실현할 때가 온다",
+  "성공은 포기하지 않는 사람의 것이다",
+  "위대한 일은 작은 습관들이 쌓여 만들어진다",
+  "오늘의 절약이 내일의 풍요를 만든다",
+  "지출을 기록하면 소비가 줄어든다",
+  "현명한 소비가 미래를 바꾼다",
+  "절약은 어려운 일이 아니라 습관의 문제다",
   "로마는 하루아침에 이루어지지 않았다",
-  "지피지기면 백전백승이다",
-  "구르는 돌에는 이끼가 끼지 않는다",
-  "가장 큰 위험은 위험 없는 삶이다",
   "포기하지 않으면 끝난 것이 아니다",
 ];
 
-// 끝말잇기 단어 사전 (실제 단어만 허용)
+// ─── 끝말잇기 사전 (로컬 500+ 단어) ─────────────────────────────
 const WORD_DICT = new Set<string>([
-  "사과", "과일", "일기", "기차", "차표", "표지", "지구", "구름", "나무", "무지개",
-  "개미", "미소", "소금", "금붕어", "어부", "바다", "다리", "리본", "본부", "부산",
-  "산수", "수박", "박쥐", "포도", "도시", "시계", "계란", "초밥", "밥상", "상자",
-  "자전거", "거미", "하늘", "보석", "석탑", "탑승", "승리", "카메라", "라면", "면도",
-  "도토리", "위장", "장미", "미역", "역사", "사자", "자석", "석류", "유리", "리듬",
-  "강아지", "지팡이", "이불", "불꽃", "꽃집", "집게", "게임", "임금", "금고", "고래",
-  "퍼즐", "안경", "경찰", "떡국", "국수", "수영", "영화", "화분", "분수", "수건",
-  "건물", "물고기", "기린", "스키", "키위", "위성", "성당", "당근", "근육", "육지",
-  "지하철", "철도", "도장", "장갑", "갑옷", "옷장", "장난감", "감자", "자두", "두부",
-  "부엉이", "이마", "마차", "표범", "범선", "선물", "물병", "병아리", "리모컨", "항구",
-  "구두", "두루미", "지렁이", "이슬", "드라마", "마늘", "봄비", "비누", "지우개", "개구리",
-  "어른", "은행", "행복", "복숭아", "아기", "기와", "와인", "인삼", "삼각형", "형광등",
-  "등대", "대나무", "무릎", "코끼리", "코코아", "아침", "침대", "대문", "문어", "어묵",
-  "화살", "살구", "구슬", "선생", "생선", "선풍기", "역도", "도넛", "지도", "도서관",
-  "기둥", "둥지", "우산", "산딸기", "표어", "어깨", "금메달", "달력", "토마토", "토끼",
-  "은하수", "수달", "달걀", "참새", "새우", "우유", "유산균", "균형", "형제", "제비",
-  "비행기", "기사", "사진", "진주", "주사위", "위인", "인형", "형사", "사슴", "베개",
-  "개나리", "리어카", "더위", "구두쇠", "쇠고기", "고구마", "마차표", "장어", "어항", "별자리",
+  "가구","가로수","가방","가수","가슴","가을","가족","강아지","개미","개나리",
+  "거울","거미","거북이","게임","고래","고구마","고기","고양이","공원","공항",
+  "과일","과자","교실","교통","구름","국수","기린","기차","기둥","기와",
+  "나무","나비","나라","낙타","남자","낮잠","내일","노래","노력","눈물",
+  "다리","달걀","달력","당근","대나무","대문","대학","도서관","도서","도시",
+  "도마뱀","돌고래","두부","드라마","등대","등산",
+  "라면","리본","리듬",
+  "마늘","마차","망고","매미","머리","메뚜기","면도","모자","문어","물고기",
+  "물병","미소","미역",
+  "바다","바나나","바람","박쥐","반지","밥상","배추","뱀","버스","벚꽃",
+  "병아리","보석","봄비","부엉이","분수","불꽃","비행기","비누","빵",
+  "사과","사자","사진","산수","살구","새우","서울","선물","선생","성당",
+  "소금","수건","수달","수박","수영","시계","식물",
+  "아기","아침","안경","여름","역사","영화","오리","우산","우유",
+  "유리","은행","이불","이슬","인삼","인형",
+  "자두","자전거","자석","장갑","장미","장난감","전화","정원",
+  "제비","조개","종이","주사위","지구","지도","지렁이","지하철","진주",
+  "참새","청소","초밥","축구","침대",
+  "카메라","카페","코끼리","코코아","코알라","키위",
+  "탑승","태양","토끼","토마토","통장",
+  "파도","포도","표범",
+  "하늘","하루","항구","행복","형광등","형제","화분","화살",
+  "가게","갈매기","갈비","감자","강물","갑옷","개구리","건물","경찰","계단",
+  "계란","고드름","공룡","공부","공주","과학","교복","국화","그림","근육",
+  "금메달","기억","기초","김치","꽃집","나침반","낙엽","냉면","냉장고",
+  "단풍","닭갈비","대화","도토리","독수리","동굴","동물원","동화","두루미",
+  "딸기","땅콩","떡국","마라톤","마음","마을","맛집","먹이","메론","명절",
+  "모래","모험","목도리","목욕","무지개","미래","미술관","박물관","반딧불",
+  "방울","배려","배추","백합","버섯","벌판","보름달","보물","부산","분필",
+  "비둘기","빙하","사막","사슴","사탕","산딸기","상자","색연필","서점",
+  "석류","선인장","소나기","소나무","소방차","소풍","속담","솜사탕","수수께끼",
+  "수족관","스키","시냇물","시장","식빵","신발","아이스크림","악어","야구",
+  "야채","양말","양파","어항","연꽃","연필","열쇠","영웅","옥수수","와인",
+  "왕관","요리","우물","우주","운동","원숭이","유산균","은하수","음악",
+  "의자","이야기","일기","일출","임금","자동차","자유","작가","장어",
+  "전자레인지","점프","정글","조각","지팡이","집게","차표","창문","채소",
+  "책상","천둥","체육관","추억","친구","칠판","탈춤","편지","포크","피아노",
+  "하마","학교","한국","한라산","한복","항아리","해바라기","호랑이","홍차",
+  "화려","환경","황새","희망","슬라이드","회피","구르기","방어","출석",
+  "포인트","리워드","케보몬","도감","업적","칭호","레이드","미션","보스",
 ]);
 
-// 끝말잇기 시작 단어 풀 (사전에서 추출)
+// Wiktionary 검증 캐시
+const wiktCache = new Map<string, boolean>();
+
 const START_WORDS = ["사과", "바다", "나무", "구름", "하늘", "보석", "강아지", "토마토", "참새", "기차"];
 
 const ADJ = ["야비한", "수상한", "느긋한", "용감한", "엉뚱한", "도도한", "발랄한", "시크한", "엉큼한", "낭만적인", "까칠한", "천진한"];
@@ -113,6 +147,36 @@ const nick = () => `${ADJ[(Math.random() * ADJ.length) | 0]} ${ANI[(Math.random(
 
 const lastChar = (w: string) => w.trim().slice(-1);
 const firstChar = (w: string) => w.trim().slice(0, 1);
+
+function lookupWiktionary(word: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const cached = wiktCache.get(word);
+    if (cached !== undefined) { resolve(cached); return; }
+
+    const path = `/w/api.php?action=query&titles=${encodeURIComponent(word)}&format=json&prop=info`;
+    const options = { hostname: "ko.wiktionary.org", path, method: "GET", timeout: 3000 };
+
+    const req = https.request(options, (res) => {
+      let body = "";
+      res.on("data", (chunk: Buffer) => { body += chunk.toString(); });
+      res.on("end", () => {
+        try {
+          const data = JSON.parse(body) as { query?: { pages?: Record<string, { pageid?: number }> } };
+          const pages = data.query?.pages;
+          const page = pages ? Object.values(pages)[0] : undefined;
+          const exists = !!(page && typeof page.pageid === "number" && page.pageid > 0);
+          wiktCache.set(word, exists);
+          resolve(exists);
+        } catch {
+          resolve(false);
+        }
+      });
+    });
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
 
 interface Player {
   socketId: string;
@@ -125,12 +189,11 @@ interface Player {
 interface RaidRoom {
   type: number;
   players: Map<string, Player>;
-  progress: number; // 0..goal
+  progress: number;
   cleared: boolean;
-  bossCharId: number; // 이 방의 랜덤 보스 케보몬
-  // mission-specific
-  jumpMove: string; // 점프 레이드: 현재 장애물 동작
-  chain: string[]; // 끝말잇기 누적
+  bossCharId: number;
+  jumpMove: string;
+  chain: string[];
   used: Set<string>;
   quizIndex: number;
   typingSentence: string;
@@ -146,7 +209,7 @@ function newRoom(type: number): RaidRoom {
     progress: 0,
     cleared: false,
     bossCharId: randomBoss(),
-    jumpMove: JUMP_MOVES[(Math.random() * JUMP_MOVES.length) | 0],
+    jumpMove: nextJumpMove(),
     chain: [start],
     used: new Set([start]),
     quizIndex: (Math.random() * QUIZ_BANK.length) | 0,
@@ -166,7 +229,7 @@ export class RaidGateway implements OnGatewayDisconnect {
   constructor(private readonly rewards: RewardsService) {}
 
   private rooms = new Map<number, RaidRoom>();
-  private cooldowns = new Map<number, number>(); // raidType → 재오픈 timestamp
+  private cooldowns = new Map<number, number>();
 
   private getRoom(type: number): RaidRoom {
     if (!this.rooms.has(type)) this.rooms.set(type, newRoom(type));
@@ -180,14 +243,12 @@ export class RaidGateway implements OnGatewayDisconnect {
   ) {
     const type = RAID_TYPES.includes(data?.raidType as 1 | 2 | 3 | 4) ? data.raidType : 1;
 
-    // 쿨타임 체크
     const until = this.cooldowns.get(type) ?? 0;
     if (until > Date.now()) {
       client.emit("raid:cooldown", { raidType: type, until });
       return;
     }
 
-    // 클리어된 방이면 새 방으로 리셋
     let r = this.getRoom(type);
     if (r.cleared) {
       r = newRoom(type);
@@ -198,8 +259,15 @@ export class RaidGateway implements OnGatewayDisconnect {
       client.emit("raid:full", { raidType: type });
       return;
     }
+
     const nickname = nick();
-    r.players.set(client.id, { socketId: client.id, characterId: Number(data?.characterId) || 1, nickname, raidType: type, userId: data?.userId ?? null });
+    r.players.set(client.id, {
+      socketId: client.id,
+      characterId: Number(data?.characterId) || 1,
+      nickname,
+      raidType: type,
+      userId: data?.userId ?? null,
+    });
     client.join(room(type));
     client.emit("raid:self", { socketId: client.id, nickname, characterId: Number(data?.characterId) || 1 });
     this.broadcastState(type);
@@ -211,42 +279,34 @@ export class RaidGateway implements OnGatewayDisconnect {
     this.removePlayer(client);
   }
 
-  /** 레이드 종료 후 유저가 해당 레이드에 쓰일 콘텐츠를 기여 */
   @SubscribeMessage("raid:contribute")
   contribute(@MessageBody() data: { raidType: number; text: string; answer?: string }) {
     const type = data?.raidType;
     const text = String(data?.text ?? "").trim().slice(0, 80);
     if (text.length < 1) return;
-    const cap = (arr: unknown[], n: number) => {
-      if (arr.length > n) arr.splice(0, arr.length - n);
-    };
 
-    // 점프(1)·끝말잇기(2)는 기여를 받지 않음
     if (type === 3) {
-      // 퀴즈 문제 + 정답
       const a = String(data?.answer ?? "").trim().slice(0, 40);
       if (text.length >= 3 && a.length >= 1) {
         QUIZ_BANK.push({ q: text, a: [a] });
-        cap(QUIZ_BANK, 200);
+        if (QUIZ_BANK.length > 200) QUIZ_BANK.splice(0, QUIZ_BANK.length - 200);
       }
     } else if (type === 4) {
-      // 받아쓰기 문장
       if (text.length >= 4) {
         TYPING_SENTENCES.push(text);
-        cap(TYPING_SENTENCES, 200);
+        if (TYPING_SENTENCES.length > 200) TYPING_SENTENCES.splice(0, TYPING_SENTENCES.length - 200);
       }
     }
   }
 
   @SubscribeMessage("raid:input")
-  input(@MessageBody() data: { text: string }, @ConnectedSocket() client: Socket) {
+  async input(@MessageBody() data: { text: string }, @ConnectedSocket() client: Socket) {
     const player = this.findPlayer(client.id);
     if (!player) return;
     const text = String(data?.text ?? "").trim().slice(0, 60);
     if (!text) return;
     const r = this.getRoom(player.raidType);
 
-    // broadcast as chat first
     this.server.to(room(player.raidType)).emit("raid:message", {
       id: `${client.id}-${Date.now()}`,
       socketId: client.id,
@@ -263,39 +323,52 @@ export class RaidGateway implements OnGatewayDisconnect {
     let feedback: string | null = null;
 
     if (player.raidType === 1) {
-      // 점프: 현재 장애물 동작과 일치하면 회피 성공
-      if (text.replace(/\s/g, "").replace(/!/g, "") === r.jumpMove) {
+      const input = text.replace(/\s/g, "").replace(/!/g, "");
+      if (input === r.jumpMove) {
         r.progress += 1;
         progressed = true;
-        r.jumpMove = JUMP_MOVES[(Math.random() * JUMP_MOVES.length) | 0];
+        r.jumpMove = nextJumpMove();
+        feedback = "회피 성공! ✓";
       } else {
-        feedback = "회피 실패! 장애물에 맞춰 입력하세요";
+        feedback = `"${r.jumpMove}"을(를) 입력해야 합니다!`;
       }
     } else if (player.raidType === 2) {
-      // 끝말잇기 (실제 단어만 허용)
       const prev = r.chain[r.chain.length - 1];
       const w = text.replace(/\s/g, "");
-      if (w.length < 2) feedback = "두 글자 이상!";
-      else if (firstChar(w) !== lastChar(prev)) feedback = `'${lastChar(prev)}'(으)로 시작!`;
-      else if (r.used.has(w)) feedback = "이미 나온 단어!";
-      else if (!WORD_DICT.has(w)) feedback = "사전에 없는 단어예요!";
-      else {
-        r.chain.push(w);
-        r.used.add(w);
-        r.progress += 1;
-        progressed = true;
+
+      if (w.length < 2) {
+        feedback = "두 글자 이상 입력해주세요";
+      } else if (firstChar(w) !== lastChar(prev)) {
+        feedback = `'${lastChar(prev)}'(으)로 시작하는 단어를 입력하세요`;
+      } else if (r.used.has(w)) {
+        feedback = "이미 사용된 단어입니다";
+      } else {
+        let valid = WORD_DICT.has(w);
+        if (!valid) {
+          valid = await lookupWiktionary(w);
+          if (valid) WORD_DICT.add(w);
+        }
+
+        if (!valid) {
+          feedback = "사전에 등록되어 있지 않은 단어입니다";
+        } else {
+          r.chain.push(w);
+          r.used.add(w);
+          r.progress += 1;
+          progressed = true;
+        }
       }
     } else if (player.raidType === 3) {
-      // 퀴즈
       const cur = QUIZ_BANK[r.quizIndex % QUIZ_BANK.length];
-      if (cur.a.some((ans) => text.replace(/\s/g, "").toLowerCase() === ans.replace(/\s/g, "").toLowerCase())) {
+      if (cur.a.some((ans) =>
+        text.replace(/\s/g, "").toLowerCase() === ans.replace(/\s/g, "").toLowerCase()
+      )) {
         r.progress += 1;
         progressed = true;
         r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
         feedback = "정답!";
       }
     } else if (player.raidType === 4) {
-      // 타이핑
       if (text === r.typingSentence) {
         r.progress += 1;
         progressed = true;
@@ -311,9 +384,7 @@ export class RaidGateway implements OnGatewayDisconnect {
       if (r.progress >= meta.goal) {
         r.cleared = true;
         r.progress = meta.goal;
-        // 4시간 쿨타임 시작
         this.cooldowns.set(player.raidType, Date.now() + RAID_COOLDOWN_MS);
-        // 참가자별 개별 확률 보상 → 각자에게 결과 전송 + DB 적립
         for (const p of r.players.values()) {
           const reward = rollReward(meta.points);
           if (p.userId) {
@@ -331,7 +402,6 @@ export class RaidGateway implements OnGatewayDisconnect {
     this.removePlayer(client);
   }
 
-  // ── helpers ──
   private findPlayer(socketId: string): Player | undefined {
     for (const r of this.rooms.values()) {
       const p = r.players.get(socketId);
@@ -352,8 +422,11 @@ export class RaidGateway implements OnGatewayDisconnect {
   }
 
   private missionView(r: RaidRoom) {
-    if (r.type === 1) return { label: "장애물을 피해라!", target: `${r.jumpMove}!`, hint: "장애물 동작을 그대로 입력" };
-    if (r.type === 2) return { label: "끝말잇기를 이어라!", target: r.chain[r.chain.length - 1], hint: `'${lastChar(r.chain[r.chain.length - 1])}'(으)로 시작 · 실제 단어만` };
+    if (r.type === 1) return { label: "장애물을 피해라!", target: `${r.jumpMove}!`, hint: "점프 / 슬라이드 / 회피 / 구르기 / 방어" };
+    if (r.type === 2) {
+      const last = r.chain[r.chain.length - 1];
+      return { label: "끝말잇기를 이어라!", target: last, hint: `'${lastChar(last)}'(으)로 시작 · 실제 단어만` };
+    }
     if (r.type === 3) return { label: "퀴즈를 맞혀라!", target: QUIZ_BANK[r.quizIndex % QUIZ_BANK.length].q, hint: "" };
     return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence, hint: "" };
   }
@@ -392,11 +465,6 @@ export class RaidGateway implements OnGatewayDisconnect {
     return info;
   }
 
-  private broadcastCounts() {
-    this.broadcastLobby();
-  }
-
-  private broadcastLobby() {
-    this.server.emit("raid:lobby", this.lobby());
-  }
+  private broadcastCounts() { this.broadcastLobby(); }
+  private broadcastLobby() { this.server.emit("raid:lobby", this.lobby()); }
 }

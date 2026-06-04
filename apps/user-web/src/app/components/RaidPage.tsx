@@ -340,9 +340,9 @@ export default function RaidPage() {
   const others = (state?.participants ?? []).filter((p) => p.socketId !== self?.socketId);
 
   return (
-    <div className="relative -m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-gradient-to-b from-background to-muted sm:-m-6 lg:h-screen dark:from-gray-900 dark:to-gray-950">
+    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-gradient-to-b from-background to-muted dark:from-gray-900 dark:to-gray-950">
       <style>{`
-        @keyframes raid-bubble{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+        @keyframes raid-bubble{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(10px)}}
         @keyframes boss-hit{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
         @keyframes boss-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
       `}</style>
@@ -399,13 +399,13 @@ export default function RaidPage() {
 
       {/* feedback toast */}
       {feedback && (
-        <div className="pointer-events-none absolute left-1/2 top-40 z-40 -translate-x-1/2 rounded-full bg-black/70 px-4 py-1.5 text-sm font-bold text-white">
+        <div className="pointer-events-none absolute left-1/2 top-52 z-40 -translate-x-1/2 rounded-full bg-black/70 px-4 py-1.5 text-sm font-bold text-white">
           {feedback}
         </div>
       )}
 
       {/* chat bubbles */}
-      <div className="pointer-events-none absolute inset-x-0 top-52 bottom-40 z-30 overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-64 bottom-40 z-30 overflow-hidden">
         {bubbles.map((b, i) => {
           const def = charById(b.characterId);
           const mine = b.socketId === self?.socketId;

@@ -64,12 +64,10 @@ const SOCIAL_PROVIDER_META: Record<
 export default function SettingsPage() {
   const {
     settings,
-    countries,
     profile,
-    updateProfileCurrency,
     updateSettings,
   } = useAppData();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -316,24 +314,6 @@ export default function SettingsPage() {
                 }`}
               />
             </button>
-          </div>
-
-          <div className="p-3 rounded bg-muted">
-            <p className="font-medium mb-2">{t("settings.base_country")}</p>
-            <select
-              value={profile.baseCountryCode}
-              onChange={(e) => updateProfileCurrency(e.target.value)}
-              className="w-full px-3 py-2 bg-input-background rounded border border-border focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {countries.map((country) => (
-                <option key={country.code} value={country.code}>
-                  {country.flag} {country.name} · {country.currency}
-                </option>
-              ))}
-            </select>
-            <p className="text-sm text-muted-foreground mt-2">
-              {t("settings.currency_note")}
-            </p>
           </div>
 
           {/* 비밀번호 변경 — hasPassword인 유저만 표시 */}

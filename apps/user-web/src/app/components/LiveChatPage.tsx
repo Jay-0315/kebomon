@@ -191,7 +191,7 @@ export default function LiveChatPage() {
   }
 
   return (
-    <div className="relative -m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:-m-6 lg:h-screen">
+    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-gradient-to-b from-background to-muted dark:from-gray-900 dark:to-gray-950">
       <style>{`
         @keyframes chat-bubble-in {
           0% { opacity: 0; transform: translateY(8px) scale(0.9); }

@@ -138,6 +138,11 @@ export default function Layout() {
           </button>
         </div>
 
+        {/* Notification Bell - 로고 바로 아래 */}
+        <div className="px-4 py-2 border-b border-sidebar-border">
+          <NotificationBell navStyle />
+        </div>
+
         {/* Navigation */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <NavLinks />
@@ -270,11 +275,6 @@ export default function Layout() {
           </aside>
         </div>
       )}
-
-      {/* ── Desktop notification bell (top-right) ── */}
-      <div className="hidden lg:block fixed top-4 right-4 z-50">
-        <NotificationBell />
-      </div>
 
       {/* ── Main Content ── */}
       <main
