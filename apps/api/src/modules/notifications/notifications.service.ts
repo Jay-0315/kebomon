@@ -65,6 +65,20 @@ export class NotificationsService {
     return { ok: true };
   }
 
+  async deleteOne(userId: string, id: string) {
+    await this.prisma.notification.deleteMany({
+      where: { id: BigInt(id), userId },
+    });
+    return { ok: true };
+  }
+
+  async deleteAll(userId: string) {
+    await this.prisma.notification.deleteMany({
+      where: { userId },
+    });
+    return { ok: true };
+  }
+
   private serialize(n: {
     id: bigint; userId: string; type: string; title: string;
     body: string; link: string | null; isRead: boolean; createdAt: Date;

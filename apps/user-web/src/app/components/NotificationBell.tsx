@@ -146,7 +146,7 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
     <div className={`absolute ${pos} z-50 w-80 max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card shadow-xl`}>
       <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
         <span className="text-sm font-bold">{t("notification.title")}</span>
-        {allItems.filter((n) => !n.isLocal).length > 0 && (
+        {items.length > 0 && (
           <button
             onClick={clearAll}
             className="text-[11px] text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"

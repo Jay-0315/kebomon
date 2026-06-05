@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Home, User, Settings, Globe, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck } from "lucide-react";
 import Footer from "./Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { clearAuthSession } from "../lib/auth";
@@ -43,6 +43,10 @@ export default function Layout() {
     path === "/"
       ? location.pathname === "/"
       : location.pathname.startsWith(path);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     clearAuthSession();
@@ -144,7 +148,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-auto">
+        <nav className="flex-1 p-4 overflow-y-hidden">
           <NavLinks />
         </nav>
 
