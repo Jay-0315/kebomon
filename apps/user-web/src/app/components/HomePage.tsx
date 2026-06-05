@@ -1,5 +1,12 @@
 import { useNavigate, Link } from "react-router";
-import { Heart, Pencil, ChevronRight, TrendingUp, MessageSquare, Award } from "lucide-react";
+import {
+  Heart,
+  Pencil,
+  ChevronRight,
+  TrendingUp,
+  MessageSquare,
+  Award,
+} from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { CHARACTERS } from "../data/characters";
@@ -7,19 +14,23 @@ import { formatRelativeTime } from "../lib/date-utils";
 import { extractFirstImage } from "../lib/image-utils";
 import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
+import { MessageCircle } from "lucide-react";
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { posts, profile, rewardSummary, profilePhoto, togglePostLike } = useAppData();
+  const { posts, profile, rewardSummary, profilePhoto, togglePostLike } =
+    useAppData();
   const { t, lang } = useLang();
 
   const recentPosts = [...posts]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
     .slice(0, 4);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-
       {/* ── Profile banner ── */}
       <div className="bg-card rounded border border-border p-5 flex items-center gap-4">
         <div
@@ -27,7 +38,11 @@ export default function HomePage() {
           className="shrink-0 cursor-pointer"
         >
           {profilePhoto ? (
-            <img src={profilePhoto} alt={profile.name} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/40" />
+            <img
+              src={profilePhoto}
+              alt={profile.name}
+              className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/40"
+            />
           ) : (
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/70 to-accent/80 flex items-center justify-center text-white font-bold text-xl">
               {profile.name[0]}
@@ -41,7 +56,10 @@ export default function HomePage() {
               <TitleBadge titleId={rewardSummary.equippedTitleId} size="xs" />
             </div>
           )}
-          <p className="text-sm text-muted-foreground">{rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} 수집 · {rewardSummary.missionPoints}P</p>
+          <p className="text-sm text-muted-foreground">
+            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} 수집 ·{" "}
+            {rewardSummary.missionPoints}P
+          </p>
         </div>
         <button
           onClick={() => navigate("/community")}
@@ -63,7 +81,9 @@ export default function HomePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm">{t("nav.kabemon")}</p>
-            <p className="text-xs text-muted-foreground">{t("home.kabemon_sub")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("home.kabemon_sub")}
+            </p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         </Link>
@@ -76,7 +96,9 @@ export default function HomePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm">{t("mypage.title_section")}</p>
-            <p className="text-xs text-muted-foreground">{t("home.titles_sub")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("home.titles_sub")}
+            </p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         </Link>
@@ -89,7 +111,10 @@ export default function HomePage() {
             <MessageSquare className="w-4 h-4 text-primary" />
             {t("home.recent_posts")}
           </h3>
-          <Link to="/community" className="text-sm text-primary hover:underline">
+          <Link
+            to="/community"
+            className="text-sm text-primary hover:underline"
+          >
             {t("home.view_all")}
           </Link>
         </div>
@@ -121,25 +146,43 @@ export default function HomePage() {
                 >
                   {/* Author row */}
                   <div className="flex items-center gap-3 mb-3">
-                    <UserAvatar authorId={post.authorId} authorName={post.authorName} photoUrl={post.authorPhotoUrl} />
+                    <UserAvatar
+                      authorId={post.authorId}
+                      authorName={post.authorName}
+                      photoUrl={post.authorPhotoUrl}
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm">{post.authorName}</p>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${catColors[post.category]}`}>
-                          {t(`community.${post.category}` as Parameters<typeof t>[0])}
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${catColors[post.category]}`}
+                        >
+                          {t(
+                            `community.${post.category}` as Parameters<
+                              typeof t
+                            >[0],
+                          )}
                         </span>
                       </div>
                       {post.authorEquippedTitleId && (
-                        <TitleBadge titleId={post.authorEquippedTitleId} size="xs" />
+                        <TitleBadge
+                          titleId={post.authorEquippedTitleId}
+                          size="xs"
+                        />
                       )}
-                      <p className="text-xs text-muted-foreground">{formatRelativeTime(post.createdAt, lang)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatRelativeTime(post.createdAt, lang)}
+                      </p>
                     </div>
                   </div>
 
                   {/* Content */}
                   <div className="flex gap-3 items-start mb-3">
                     <p className="text-sm leading-relaxed line-clamp-3 flex-1 min-w-0">
-                      {post.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}
+                      {post.content
+                        .replace(/<[^>]*>/g, " ")
+                        .replace(/\s+/g, " ")
+                        .trim()}
                     </p>
                     {extractFirstImage(post.content) && (
                       <img
@@ -153,14 +196,25 @@ export default function HomePage() {
                   {/* Engagement */}
                   <div className="flex items-center gap-4 text-muted-foreground">
                     <button
-                      onClick={(e) => { e.stopPropagation(); togglePostLike(post.id); }}
-                      className={`flex items-center gap-1 text-xs transition-colors ${post.isLiked ? "text-primary" : "hover:text-primary"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePostLike(post.id);
+                      }}
+                      className={`flex items-center gap-1 text-xs transition-colors ${
+                        post.isLiked ? "text-primary" : "hover:text-primary"
+                      }`}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${post.isLiked ? "fill-current" : ""}`} />
+                      <Heart
+                        className={`w-3.5 h-3.5 ${post.isLiked ? "fill-current" : ""}`}
+                      />
                       {post.likes}
                     </button>
+
                     {post.commentCount > 0 && (
-                      <span className="text-xs flex items-center gap-1">💬 {post.commentCount}</span>
+                      <span className="text-xs flex items-center gap-1">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        {post.commentCount}
+                      </span>
                     )}
                   </div>
                 </div>

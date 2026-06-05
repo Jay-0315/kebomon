@@ -11,6 +11,7 @@ import { extractFirstImage } from "../lib/image-utils";
 import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
 import type { CommunityPost, PostCategory, Comment } from "../types/domain";
+import { MessageCircle } from "lucide-react";
 
 const CATEGORY_OPTIONS: PostCategory[] = ["brag", "tip", "chat"];
 
@@ -27,8 +28,12 @@ function mapComment(c: Record<string, unknown>): Comment {
     postId: String(c.postId ?? ""),
     authorId: String(c.userId ?? c.authorId),
     authorName: String(u.name ?? c.authorName ?? "사용자"),
-    authorPhotoUrl: (c.authorPhotoUrl as string | null | undefined) ?? (u.profilePhoto as string | null | undefined) ?? null,
-    authorEquippedTitleId: (c.authorEquippedTitleId as number | null | undefined) ?? null,
+    authorPhotoUrl:
+      (c.authorPhotoUrl as string | null | undefined) ??
+      (u.profilePhoto as string | null | undefined) ??
+      null,
+    authorEquippedTitleId:
+      (c.authorEquippedTitleId as number | null | undefined) ?? null,
     parentId: null,
     content: String(c.content ?? ""),
     imageUrl: (c.imageUrl as string | null) ?? null,
@@ -44,8 +49,12 @@ function mapPost(raw: Record<string, unknown>): CommunityPost {
     id: String(raw.id),
     authorId: String(raw.userId ?? raw.authorId),
     authorName: String(u.name ?? raw.authorName ?? "사용자"),
-    authorPhotoUrl: (raw.authorPhotoUrl as string | null | undefined) ?? (u.profilePhoto as string | null | undefined) ?? null,
-    authorEquippedTitleId: (raw.authorEquippedTitleId as number | null | undefined) ?? null,
+    authorPhotoUrl:
+      (raw.authorPhotoUrl as string | null | undefined) ??
+      (u.profilePhoto as string | null | undefined) ??
+      null,
+    authorEquippedTitleId:
+      (raw.authorEquippedTitleId as number | null | undefined) ?? null,
     content: String(raw.content),
     category: (raw.category as PostCategory) ?? "chat",
     imageUrl: (raw.imageUrl as string | null) ?? null,
@@ -77,28 +86,37 @@ export default function CommunityPage() {
   const [postCategory, setPostCategory] = useState<PostCategory>("chat");
   const [submitting, setSubmitting] = useState(false);
 
-  const catLabel = (cat: PostCategory) => t(`community.${cat}` as Parameters<typeof t>[0]);
+  const catLabel = (cat: PostCategory) =>
+    t(`community.${cat}` as Parameters<typeof t>[0]);
 
-  const isContentEmpty = (html: string) => html.replace(/<[^>]*>/g, "").trim().length === 0;
+  const isContentEmpty = (html: string) =>
+    html.replace(/<[^>]*>/g, "").trim().length === 0;
 
   const stripHtml = (html: string) =>
-    html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-  const fetchPosts = useCallback(async (p: number, cat: PostCategory | "all") => {
-    setLoading(true);
-    try {
-      const qs = new URLSearchParams({ page: String(p) });
-      if (currentUser) qs.set("userId", currentUser.id);
-      if (cat !== "all") qs.set("category", cat);
-      const data = await api.get<{ posts: Record<string, unknown>[]; totalPages: number }>(
-        `/community/posts?${qs.toString()}`,
-      );
-      setPosts(data.posts.map(mapPost));
-      setTotalPages(data.totalPages);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser?.id]);
+  const fetchPosts = useCallback(
+    async (p: number, cat: PostCategory | "all") => {
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams({ page: String(p) });
+        if (currentUser) qs.set("userId", currentUser.id);
+        if (cat !== "all") qs.set("category", cat);
+        const data = await api.get<{
+          posts: Record<string, unknown>[];
+          totalPages: number;
+        }>(`/community/posts?${qs.toString()}`);
+        setPosts(data.posts.map(mapPost));
+        setTotalPages(data.totalPages);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentUser?.id],
+  );
 
   useEffect(() => {
     setPage(1);
@@ -127,7 +145,11 @@ export default function CommunityPage() {
     if (isContentEmpty(content) || submitting) return;
     setSubmitting(true);
     try {
-      await createPost({ content, category: postCategory, imageUrl: undefined });
+      await createPost({
+        content,
+        category: postCategory,
+        imageUrl: undefined,
+      });
       closeForm();
       setPage(1);
       await fetchPosts(1, activeTab);
@@ -141,11 +163,17 @@ export default function CommunityPage() {
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
-          ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 }
+          ? {
+              ...p,
+              isLiked: !p.isLiked,
+              likes: p.isLiked ? p.likes - 1 : p.likes + 1,
+            }
           : p,
       ),
     );
-    await api.post(`/community/posts/${postId}/like`, { userId: currentUser.id });
+    await api.post(`/community/posts/${postId}/like`, {
+      userId: currentUser.id,
+    });
   };
 
   const tabs: (PostCategory | "all")[] = ["all", ...CATEGORY_OPTIONS];
@@ -170,7 +198,9 @@ export default function CommunityPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-all ${
-              activeTab === tab ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              activeTab === tab
+                ? "bg-card shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab === "all" ? t("community.all") : catLabel(tab)}
@@ -203,18 +233,31 @@ export default function CommunityPage() {
                 >
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-center gap-2.5">
-                      <UserAvatar authorId={post.authorId} authorName={post.authorName} photoUrl={post.authorPhotoUrl} />
+                      <UserAvatar
+                        authorId={post.authorId}
+                        authorName={post.authorName}
+                        photoUrl={post.authorPhotoUrl}
+                      />
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{post.authorName}</p>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}>
+                          <p className="font-medium text-sm">
+                            {post.authorName}
+                          </p>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}
+                          >
                             {catLabel(post.category)}
                           </span>
                         </div>
                         {post.authorEquippedTitleId && (
-                          <TitleBadge titleId={post.authorEquippedTitleId} size="xs" />
+                          <TitleBadge
+                            titleId={post.authorEquippedTitleId}
+                            size="xs"
+                          />
                         )}
-                        <p className="text-xs text-muted-foreground">{formatRelativeTime(post.createdAt, lang)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatRelativeTime(post.createdAt, lang)}
+                        </p>
                       </div>
                     </div>
                     <p className="text-sm leading-relaxed line-clamp-3 text-foreground/90">
@@ -234,9 +277,16 @@ export default function CommunityPage() {
                 {post.recentComments.length > 0 && (
                   <div className="mx-4 mb-2 bg-muted/50 rounded-md p-2 space-y-1">
                     {post.recentComments.map((c) => (
-                      <p key={c.id} className="text-xs text-muted-foreground line-clamp-1">
-                        <span className="font-medium text-foreground/70">{c.authorName}</span>{" "}
-                        {c.content || <span className="italic">({t("common.photo")})</span>}
+                      <p
+                        key={c.id}
+                        className="text-xs text-muted-foreground line-clamp-1"
+                      >
+                        <span className="font-medium text-foreground/70">
+                          {c.authorName}
+                        </span>{" "}
+                        {c.content || (
+                          <span className="italic">({t("common.photo")})</span>
+                        )}
                       </p>
                     ))}
                   </div>
@@ -245,17 +295,22 @@ export default function CommunityPage() {
                 {/* 하단 액션 바 */}
                 <div className="flex items-center gap-4 px-4 py-3 border-t border-border text-muted-foreground">
                   <button
-                    onClick={(e) => { e.stopPropagation(); void handleToggleLike(post.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleToggleLike(post.id);
+                    }}
                     className={`flex items-center gap-1.5 text-sm transition-colors ${post.isLiked ? "text-primary" : "hover:text-primary"}`}
                   >
-                    <Heart className={`w-4 h-4 ${post.isLiked ? "fill-current" : ""}`} />
+                    <Heart
+                      className={`w-4 h-4 ${post.isLiked ? "fill-current" : ""}`}
+                    />
                     {post.likes}
                   </button>
                   <button
                     onClick={() => navigate(`/community/${post.id}`)}
                     className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors"
                   >
-                    <span className="text-base leading-none">💬</span>
+                    <MessageCircle className="w-4 h-4" />
                     {post.commentCount}
                   </button>
                   <button
@@ -293,11 +348,20 @@ export default function CommunityPage() {
 
       {/* 글 작성 모달 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={closeForm}>
-          <div className="bg-card rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={closeForm}
+        >
+          <div
+            className="bg-card rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-5">
               <h3>{t("community.new_post")}</h3>
-              <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={closeForm}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

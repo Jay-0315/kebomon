@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
-  ArrowLeft, Heart, MessageCircle, Image, X, Pencil, Trash2, CornerDownRight,
+  ArrowLeft,
+  Heart,
+  MessageCircle,
+  Image,
+  X,
+  Pencil,
+  Trash2,
+  CornerDownRight,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
@@ -12,7 +19,12 @@ import { formatRelativeTime } from "../lib/date-utils";
 import RichTextEditor from "./RichTextEditor";
 import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
-import type { CommunityPost, Comment, CommentsPage, PostCategory } from "../types/domain";
+import type {
+  CommunityPost,
+  Comment,
+  CommentsPage,
+  PostCategory,
+} from "../types/domain";
 
 const CATEGORY_OPTIONS: PostCategory[] = ["brag", "tip", "chat"];
 
@@ -29,7 +41,8 @@ function mapComment(c: Record<string, unknown>): Comment {
     authorId: String(c.authorId),
     authorName: String(c.authorName ?? "사용자"),
     authorPhotoUrl: (c.authorPhotoUrl as string | null | undefined) ?? null,
-    authorEquippedTitleId: (c.authorEquippedTitleId as number | null | undefined) ?? null,
+    authorEquippedTitleId:
+      (c.authorEquippedTitleId as number | null | undefined) ?? null,
     parentId: c.parentId != null ? String(c.parentId) : null,
     content: String(c.content),
     imageUrl: (c.imageUrl as string | null) ?? null,
@@ -52,20 +65,36 @@ interface CommentCardProps {
   isReply?: boolean;
 }
 
-function CommentCard({ comment, currentUserId, onReply, onDelete, onEdit, isReply }: CommentCardProps) {
+function CommentCard({
+  comment,
+  currentUserId,
+  onReply,
+  onDelete,
+  onEdit,
+  isReply,
+}: CommentCardProps) {
   const { t, lang } = useLang();
   return (
     <div className={`flex gap-3 ${isReply ? "ml-8 mt-2" : ""}`}>
-      {isReply && <CornerDownRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />}
+      {isReply && (
+        <CornerDownRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+      )}
       <div className="flex-1 bg-muted/40 rounded-lg p-3">
         <div className="flex items-start justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-2">
-            <UserAvatar authorId={comment.authorId} authorName={comment.authorName} size="xs" photoUrl={comment.authorPhotoUrl} />
+            <UserAvatar
+              authorId={comment.authorId}
+              authorName={comment.authorName}
+              size="xs"
+              photoUrl={comment.authorPhotoUrl}
+            />
             <span className="text-xs font-medium">{comment.authorName}</span>
             {comment.authorEquippedTitleId && (
               <TitleBadge titleId={comment.authorEquippedTitleId} size="xs" />
             )}
-            <span className="text-[10px] text-muted-foreground">{formatRelativeTime(comment.createdAt, lang)}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {formatRelativeTime(comment.createdAt, lang)}
+            </span>
           </div>
           <div className="flex gap-1 shrink-0">
             {!isReply && (
@@ -78,19 +107,31 @@ function CommentCard({ comment, currentUserId, onReply, onDelete, onEdit, isRepl
             )}
             {comment.authorId === currentUserId && (
               <>
-                <button onClick={() => onEdit(comment)} className="p-1 rounded hover:bg-accent/30 transition-colors">
+                <button
+                  onClick={() => onEdit(comment)}
+                  className="p-1 rounded hover:bg-accent/30 transition-colors"
+                >
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button onClick={() => onDelete(comment.id)} className="p-1 rounded text-destructive hover:bg-destructive/10 transition-colors">
+                <button
+                  onClick={() => onDelete(comment.id)}
+                  className="p-1 rounded text-destructive hover:bg-destructive/10 transition-colors"
+                >
                   <Trash2 className="w-3 h-3" />
                 </button>
               </>
             )}
           </div>
         </div>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          {comment.content}
+        </p>
         {comment.imageUrl && (
-          <img src={comment.imageUrl} alt="" className="mt-2 max-h-40 rounded-md object-cover border border-border" />
+          <img
+            src={comment.imageUrl}
+            alt=""
+            className="mt-2 max-h-40 rounded-md object-cover border border-border"
+          />
         )}
         {comment.replies.map((reply) => (
           <CommentCard
@@ -131,14 +172,18 @@ export default function PostDetailPage() {
   // 댓글 작성/수정 폼
   const [commentContent, setCommentContent] = useState("");
   const [commentImage, setCommentImage] = useState<string | null>(null);
-  const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(
+    null,
+  );
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const commentFileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  const catLabel = (cat: PostCategory) => t(`community.${cat}` as Parameters<typeof t>[0]);
-  const isContentEmpty = (html: string) => html.replace(/<[^>]*>/g, "").trim().length === 0;
+  const catLabel = (cat: PostCategory) =>
+    t(`community.${cat}` as Parameters<typeof t>[0]);
+  const isContentEmpty = (html: string) =>
+    html.replace(/<[^>]*>/g, "").trim().length === 0;
 
   const fetchPost = async () => {
     if (!id) return;
@@ -150,8 +195,10 @@ export default function PostDetailPage() {
         id: String(data.id),
         authorId: String(data.authorId),
         authorName: String(data.authorName ?? "사용자"),
-        authorPhotoUrl: (data.authorPhotoUrl as string | null | undefined) ?? null,
-        authorEquippedTitleId: (data.authorEquippedTitleId as number | null | undefined) ?? null,
+        authorPhotoUrl:
+          (data.authorPhotoUrl as string | null | undefined) ?? null,
+        authorEquippedTitleId:
+          (data.authorEquippedTitleId as number | null | undefined) ?? null,
         content: String(data.content),
         category: (data.category as PostCategory) ?? "chat",
         imageUrl: (data.imageUrl as string | null) ?? null,
@@ -185,7 +232,9 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchPost(), fetchComments(1)]).finally(() => setLoading(false));
+    Promise.all([fetchPost(), fetchComments(1)]).finally(() =>
+      setLoading(false),
+    );
   }, [id]);
 
   const handlePageChange = (p: number) => {
@@ -265,10 +314,13 @@ export default function PostDetailPage() {
     setSubmitting(true);
     try {
       if (editingComment) {
-        await api.patch(`/community/posts/${id}/comments/${editingComment.id}?userId=${currentUser.id}`, {
-          content: commentContent,
-          imageUrl: commentImage,
-        });
+        await api.patch(
+          `/community/posts/${id}/comments/${editingComment.id}?userId=${currentUser.id}`,
+          {
+            content: commentContent,
+            imageUrl: commentImage,
+          },
+        );
       } else {
         await api.post(`/community/posts/${id}/comments`, {
           userId: currentUser.id,
@@ -286,7 +338,9 @@ export default function PostDetailPage() {
 
   const handleDeleteComment = async (commentId: string) => {
     if (!currentUser || !id) return;
-    await api.delete(`/community/posts/${id}/comments/${commentId}?userId=${currentUser.id}`);
+    await api.delete(
+      `/community/posts/${id}/comments/${commentId}?userId=${currentUser.id}`,
+    );
     await Promise.all([fetchPost(), fetchComments(page)]);
   };
 
@@ -302,7 +356,10 @@ export default function PostDetailPage() {
     <div className="space-y-4">
       {/* 상단 네비 */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate("/community")} className="p-2 rounded-md bg-muted hover:bg-accent/30 transition-colors">
+        <button
+          onClick={() => navigate("/community")}
+          className="p-2 rounded-md bg-muted hover:bg-accent/30 transition-colors"
+        >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-base font-semibold">{t("nav.community")}</h2>
@@ -312,26 +369,40 @@ export default function PostDetailPage() {
       <div className="bg-card rounded border border-border p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
-            <UserAvatar authorId={post.authorId} authorName={post.authorName} photoUrl={post.authorPhotoUrl} />
+            <UserAvatar
+              authorId={post.authorId}
+              authorName={post.authorName}
+              photoUrl={post.authorPhotoUrl}
+            />
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium text-sm">{post.authorName}</p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}
+                >
                   {catLabel(post.category)}
                 </span>
               </div>
               {post.authorEquippedTitleId && (
                 <TitleBadge titleId={post.authorEquippedTitleId} size="xs" />
               )}
-              <p className="text-xs text-muted-foreground">{formatRelativeTime(post.createdAt, lang)}</p>
+              <p className="text-xs text-muted-foreground">
+                {formatRelativeTime(post.createdAt, lang)}
+              </p>
             </div>
           </div>
           {post.authorId === currentUser?.id && (
             <div className="flex gap-1.5 shrink-0">
-              <button onClick={openPostEdit} className="p-1.5 rounded bg-muted hover:bg-accent/20 transition-colors">
+              <button
+                onClick={openPostEdit}
+                className="p-1.5 rounded bg-muted hover:bg-accent/20 transition-colors"
+              >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
-              <button onClick={handleDeletePost} className="p-1.5 rounded bg-muted text-destructive hover:bg-destructive/10 transition-colors">
+              <button
+                onClick={handleDeletePost}
+                className="p-1.5 rounded bg-muted text-destructive hover:bg-destructive/10 transition-colors"
+              >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -348,7 +419,9 @@ export default function PostDetailPage() {
             onClick={handleLike}
             className={`flex items-center gap-1.5 text-sm transition-colors ${post.isLiked ? "text-primary" : "hover:text-primary"}`}
           >
-            <Heart className={`w-4 h-4 ${post.isLiked ? "fill-current" : ""}`} />
+            <Heart
+              className={`w-4 h-4 ${post.isLiked ? "fill-current" : ""}`}
+            />
             {post.likes}
           </button>
           <div className="flex items-center gap-1.5 text-sm">
@@ -360,7 +433,10 @@ export default function PostDetailPage() {
 
       {/* 댓글 목록 */}
       <div className="bg-card rounded border border-border p-4">
-        <h3 className="text-sm font-semibold mb-4">{t("comment.count")} {post.commentCount}{t("comment.count_suffix")}</h3>
+        <h3 className="text-sm font-semibold mb-4">
+          {t("comment.count")} {post.commentCount}
+          {t("comment.count_suffix")}
+        </h3>
 
         {commentsData && commentsData.comments.length > 0 ? (
           <div className="space-y-3">
@@ -376,13 +452,18 @@ export default function PostDetailPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-6">{t("comment.first")}</p>
+          <p className="text-sm text-muted-foreground text-center py-6">
+            {t("comment.first")}
+          </p>
         )}
 
         {/* 페이지네이션 */}
         {commentsData && commentsData.totalPages > 1 && (
           <div className="flex items-center justify-center gap-1 mt-4">
-            {Array.from({ length: commentsData.totalPages }, (_, i) => i + 1).map((p) => (
+            {Array.from(
+              { length: commentsData.totalPages },
+              (_, i) => i + 1,
+            ).map((p) => (
               <button
                 key={p}
                 onClick={() => handlePageChange(p)}
@@ -404,7 +485,9 @@ export default function PostDetailPage() {
         {(replyTo || editingComment) && (
           <div className="flex items-center justify-between mb-3 p-2 bg-muted/60 rounded text-xs text-muted-foreground">
             <span>
-              {editingComment ? t("comment.editing") : `${replyTo!.author}${t("comment.reply_to")}`}
+              {editingComment
+                ? t("comment.editing")
+                : `${replyTo!.author}${t("comment.reply_to")}`}
             </span>
             <button onClick={cancelForm} className="hover:text-foreground">
               <X className="w-3.5 h-3.5" />
@@ -423,7 +506,11 @@ export default function PostDetailPage() {
 
           {commentImage ? (
             <div className="relative inline-block">
-              <img src={commentImage} alt="" className="max-h-32 rounded-md object-cover border border-border" />
+              <img
+                src={commentImage}
+                alt=""
+                className="max-h-32 rounded-md object-cover border border-border"
+              />
               <button
                 type="button"
                 onClick={() => setCommentImage(null)}
@@ -443,13 +530,23 @@ export default function PostDetailPage() {
               <Image className="w-4 h-4" />
               {t("comment.attach_image")}
             </button>
-            <input ref={commentFileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleCommentImage} />
+            <input
+              ref={commentFileRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={handleCommentImage}
+            />
             <button
               type="submit"
               disabled={submitting || (!commentContent.trim() && !commentImage)}
               className="px-4 py-1.5 bg-primary/80 text-primary-foreground rounded-md text-sm font-medium hover:shadow-md transition-all disabled:opacity-60"
             >
-              {submitting ? "..." : editingComment ? t("comment.edit_btn") : t("comment.submit_btn")}
+              {submitting
+                ? "..."
+                : editingComment
+                  ? t("comment.edit_btn")
+                  : t("comment.submit_btn")}
             </button>
           </div>
         </form>
@@ -457,11 +554,20 @@ export default function PostDetailPage() {
 
       {/* 게시글 수정 모달 */}
       {showPostEdit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowPostEdit(false)}>
-          <div className="bg-card rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowPostEdit(false)}
+        >
+          <div
+            className="bg-card rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-5">
               <h3>{t("community.edit_post")}</h3>
-              <button onClick={() => setShowPostEdit(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setShowPostEdit(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
