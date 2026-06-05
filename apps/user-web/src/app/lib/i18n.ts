@@ -374,6 +374,12 @@ const dict = {
     "raid.contrib.4.title": "받아쓰기에 쓰일 명언을 남겨주세요",
     "raid.contrib.4.field": "명언",
     "raid.contrib.4.placeholder": "예: 시작이 반이다",
+    "raid.type.5.name": "탄막 레이드",
+    "raid.type.5.boss": "별빛 마도사",
+    "raid.type.5.desc": "쏟아지는 탄막을 피하며 보석을 모아라!",
+    "raid.bullet_hint": "WASD / 방향키로 이동 · 터치 시 따라 이동",
+    "raid.bullet_dead": "쓰러졌다!",
+    "raid.bullet_revive": "부활까지 {s}초",
   },
   ja: {
     // Comments
@@ -749,6 +755,12 @@ const dict = {
     "raid.contrib.4.title": "書き取りに使う名言を残してください",
     "raid.contrib.4.field": "名言",
     "raid.contrib.4.placeholder": "例: 始まりは半分だ",
+    "raid.type.5.name": "弾幕レイド",
+    "raid.type.5.boss": "星空の魔道士",
+    "raid.type.5.desc": "降り注ぐ弾幕をかわしながら宝石を集めろ！",
+    "raid.bullet_hint": "WASD / 方向キーで移動・タッチで追従",
+    "raid.bullet_dead": "倒れた！",
+    "raid.bullet_revive": "復活まで{s}秒",
   },
 } as const;
 

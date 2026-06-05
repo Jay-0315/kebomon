@@ -11,7 +11,7 @@ import { Server, Socket } from "socket.io";
 import { RewardsService, EggType as RewardEggType } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
 
-export const RAID_TYPES = [1, 3, 4] as const;
+export const RAID_TYPES = [1, 3, 4, 5] as const;
 export const MAX_PLAYERS = 5;
 export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
@@ -21,6 +21,7 @@ const RAID_META: Record<number, { name: string; points: number; goal: number; cr
   1: { name: "점프 레이드", points: 30, goal: 40, cry: "내 장애물을 피할 수 있겠나?!" },
   3: { name: "퀴즈 레이드", points: 50, goal: 25, cry: "내 물음에 답하라!" },
   4: { name: "받아쓰기 레이드", points: 80, goal: 25, cry: "정확히 받아써라. 오차는 없다." },
+  5: { name: "탄막 레이드", points: 60, goal: 30, cry: "내 탄막을 피할 수 있겠나?!" },
 };
 
 // 도감 전체 180개 캐릭터 ID
@@ -243,6 +244,17 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     }
   }
 
+  /** 탄막 레이드(타입5): 보석 수집 시 보스에게 데미지 1 */
+  @SubscribeMessage("raid:gem")
+  gem(@ConnectedSocket() client: Socket) {
+    const player = this.findPlayer(client.id);
+    if (!player || player.raidType !== 5) return;
+    const r = this.getRoom(5);
+    if (r.cleared) return;
+    r.progress += 1;
+    this.applyProgress(r, 5, player.nickname);
+  }
+
   /** 점프 레이드(타입1): 장애물을 넘을 때마다 보스에게 데미지 1 */
   @SubscribeMessage("raid:jump")
   jump(@ConnectedSocket() client: Socket) {
@@ -358,6 +370,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   private missionView(r: RaidRoom) {
     if (r.type === 1) return { label: "장애물을 점프로 넘어라!", target: "SPACE ↑", hint: "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지" };
     if (r.type === 3) return { label: "퀴즈를 맞혀라!", target: QUIZ_BANK[r.quizIndex % QUIZ_BANK.length].q, hint: "" };
+    if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −1" };
     return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence, hint: "" };
   }
 
