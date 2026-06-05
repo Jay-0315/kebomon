@@ -7,6 +7,12 @@ ALTER TABLE user_rewards
   ADD COLUMN legendary_pity_count INT NOT NULL DEFAULT 0 AFTER gacha_pity_count;
 
 
+ALTER TABLE community_posts
+  ADD COLUMN category ENUM('brag', 'tip', 'chat') NOT NULL DEFAULT 'chat' AFTER content;
+
+ALTER TABLE community_posts
+  ADD COLUMN image_url LONGTEXT NULL AFTER category;
+
 CREATE TABLE post_likes (
   id         BIGINT      AUTO_INCREMENT PRIMARY KEY,
   post_id    VARCHAR(36) NOT NULL,
@@ -19,6 +25,7 @@ CREATE TABLE post_likes (
   CONSTRAINT fk_post_likes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+DROP TABLE IF EXISTS community_post_expenses;
 CREATE TABLE comments (
   id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
   post_id    VARCHAR(36)  NOT NULL,
@@ -68,3 +75,15 @@ CREATE TABLE email_verification_codes (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_email_purpose (email, purpose)
 );
+
+-- 2026-06-01: 스토리기능 제거
+DROP TABLE group_stories;
+
+-- 2026-06-05: 레이드/라이브 카운트 + 출석판 월 단위 시스템 추가
+ALTER TABLE user_rewards
+  ADD COLUMN raid_count           INT          NOT NULL DEFAULT 0    AFTER golden_eggs,
+  ADD COLUMN live_count           INT          NOT NULL DEFAULT 0    AFTER raid_count,
+  ADD COLUMN last_attendance_date VARCHAR(10)  NULL                  AFTER live_count,
+  ADD COLUMN month_key            VARCHAR(7)   NULL                  AFTER last_attendance_date,
+  ADD COLUMN month_days           INT          NOT NULL DEFAULT 0    AFTER month_key,
+  ADD COLUMN month_week_rewards   INT          NOT NULL DEFAULT 0    AFTER month_days;

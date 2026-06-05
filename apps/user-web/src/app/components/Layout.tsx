@@ -1,11 +1,10 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Home, User, Settings, Globe, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords } from "lucide-react";
+import { Home, User, Settings, Globe, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck } from "lucide-react";
 import Footer from "./Footer";
 import { useState } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { clearAuthSession } from "../lib/auth";
-import { CHARACTERS } from "../data/characters";
 import TitleBadge from "./TitleBadge";
 import NotificationBell from "./NotificationBell";
 
@@ -30,6 +29,7 @@ export default function Layout() {
     { path: "/", icon: Home, label: t("nav.home") },
     { path: "/community", icon: Newspaper, label: t("nav.community") },
     { path: "/kabemon", icon: Gamepad2, label: t("nav.kabemon") },
+    { path: "/attendance", icon: CalendarCheck, label: t("nav.attendance") },
     { path: "/live", icon: Radio, label: t("nav.live") },
     { path: "/raid", icon: Swords, label: t("nav.raid") },
   ];
@@ -170,10 +170,7 @@ export default function Layout() {
               {rewardSummary.equippedTitleId ? (
                 <TitleBadge titleId={rewardSummary.equippedTitleId} size="xs" />
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length}{" "}
-                  수집
-                </p>
+                <p className="text-xs text-muted-foreground/60 truncate">{t("nav.no_title")}</p>
               )}
             </div>
           </Link>
@@ -249,15 +246,9 @@ export default function Layout() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{profile.name}</p>
                   {rewardSummary.equippedTitleId ? (
-                    <TitleBadge
-                      titleId={rewardSummary.equippedTitleId}
-                      size="xs"
-                    />
+                    <TitleBadge titleId={rewardSummary.equippedTitleId} size="xs" />
                   ) : (
-                    <p className="text-xs text-muted-foreground">
-                      {rewardSummary.ownedCharacterIds.length}/
-                      {CHARACTERS.length} 수집
-                    </p>
+                    <p className="text-xs text-muted-foreground/60 truncate">{t("nav.no_title")}</p>
                   )}
                 </div>
               </Link>

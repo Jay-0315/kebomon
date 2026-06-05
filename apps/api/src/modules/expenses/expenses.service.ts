@@ -40,11 +40,6 @@ export class ExpensesService {
       },
     });
 
-    await this.rewards.onExpenseCreated(
-      dto.userId,
-      dto.expenseDate,
-      !!dto.groupId,
-    );
     await Promise.all([
       this.rewards.checkAndGrantAchievements(dto.userId),
       this.rewards.checkAndGrantTitles(dto.userId),

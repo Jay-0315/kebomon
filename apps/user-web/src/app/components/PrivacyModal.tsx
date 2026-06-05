@@ -41,7 +41,7 @@ export default function PrivacyModal({ onClose }: Props) {
                   <li>メールアドレス・パスワード（ハッシュ化） — 会員識別・認証</li>
                   <li>ニックネーム・プロフィール画像 — サービス内表示</li>
                   <li>Googleアカウント情報（ID・メール） — ソーシャルログイン連携</li>
-                  <li>支出記録・グループ情報・投稿・コメント — 家計簿・コミュニティ機能の提供</li>
+                  <li>投稿・コメント・ケボモンリワード情報 — コミュニティ・ゲーム機能の提供</li>
                   <li>アクセスログ・接続環境情報 — 不正利用防止・サービス改善</li>
                 </ul>
               </section>
@@ -51,7 +51,7 @@ export default function PrivacyModal({ onClose }: Props) {
               </section>
               <section className="space-y-1.5">
                 <h4 className="font-semibold text-foreground">3. 個人情報の削除（廃棄）手順</h4>
-                <p className="text-muted-foreground">退会処理時、データベース上の個人情報（支出・投稿・コメント・リワード等）をカスケード削除します。電子ファイルは復元不可能な方法で削除されます。</p>
+                <p className="text-muted-foreground">退会処理時、データベース上の個人情報（投稿・コメント・リワード等）をカスケード削除します。電子ファイルは復元不可能な方法で削除されます。</p>
               </section>
               <section className="space-y-1.5">
                 <h4 className="font-semibold text-foreground">4. 第三者への提供</h4>
@@ -84,7 +84,7 @@ export default function PrivacyModal({ onClose }: Props) {
                   <li>이메일 주소·비밀번호(해시 저장) — 회원 식별 및 인증</li>
                   <li>닉네임·프로필 사진 — 서비스 내 표시</li>
                   <li>Google 계정 정보(ID·이메일) — 소셜 로그인 연동</li>
-                  <li>지출 내역·그룹 정보·게시글·댓글 — 가계부·커뮤니티 기능 제공</li>
+                  <li>게시글·댓글·케보몬 리워드 정보 — 커뮤니티·게임 기능 제공</li>
                   <li>접속 로그·접속 환경 정보 — 부정 이용 방지 및 서비스 개선</li>
                 </ul>
               </section>
@@ -94,7 +94,7 @@ export default function PrivacyModal({ onClose }: Props) {
               </section>
               <section className="space-y-1.5">
                 <h4 className="font-semibold text-foreground">3. 개인정보의 파기 절차 및 방법</h4>
-                <p className="text-muted-foreground">회원 탈퇴 처리 시 데이터베이스에서 개인정보(지출·게시글·댓글·리워드 등)를 즉시 삭제(CASCADE)합니다. 전자파일은 복구 불가능한 방법으로 영구 삭제합니다.</p>
+                <p className="text-muted-foreground">회원 탈퇴 처리 시 데이터베이스에서 개인정보(게시글·댓글·리워드 등)를 즉시 삭제(CASCADE)합니다. 전자파일은 복구 불가능한 방법으로 영구 삭제합니다.</p>
               </section>
               <section className="space-y-1.5">
                 <h4 className="font-semibold text-foreground">4. 개인정보의 제3자 제공</h4>

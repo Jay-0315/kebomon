@@ -58,10 +58,9 @@ const RARITY_GLOW: Record<CharacterRarity, string> = {
 
 function getMissions(t: TFunc) {
   return [
-    { icon: <CheckCircle2 className="w-4 h-4 text-green-400" />,  label: t("mission.attendance"), reward: "+50P",  desc: t("mission.attendance_desc") },
-    { icon: <Flame        className="w-4 h-4 text-orange-400" />, label: t("mission.record"),     reward: "+50P",  desc: t("mission.record_desc") },
-    { icon: <Zap          className="w-4 h-4 text-blue-400"   />, label: t("mission.write"),      reward: "+50P",  desc: t("mission.write_desc") },
-    { icon: <Sparkles     className="w-4 h-4 text-pink-400"   />, label: t("mission.streak"),     reward: "+20P",  desc: t("mission.streak_desc") },
+    { icon: <CheckCircle2 className="w-4 h-4 text-green-400" />,  label: t("mission.attendance"), reward: "50~150P", desc: t("mission.attendance_desc") },
+    { icon: <Zap          className="w-4 h-4 text-blue-400"   />, label: t("mission.write"),      reward: "+50P",   desc: t("mission.write_desc") },
+    { icon: <Sparkles     className="w-4 h-4 text-pink-400"   />, label: t("mission.streak"),     reward: "+20P",   desc: t("mission.streak_desc") },
   ];
 }
 
@@ -425,7 +424,7 @@ export default function KabemonPage() {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="mx-auto max-w-3xl space-y-4">
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
@@ -442,13 +441,13 @@ export default function KabemonPage() {
         {/* ── Tab Navigation ── */}
         <div className="flex gap-1 bg-muted p-1 rounded-xl">
           {(["character", "collection", "gacha", "achievement"] as Tab[]).map((t_) => {
-            const icons = {
+            const icons: Record<Tab, React.ReactNode> = {
               character: <User className="w-3.5 h-3.5" />,
               collection: <BookOpen className="w-3.5 h-3.5" />,
               gacha: <Sparkles className="w-3.5 h-3.5" />,
               achievement: <Trophy className="w-3.5 h-3.5" />,
             };
-            const labels = { character: t("kabemon.my_character"), collection: t("kabemon.pokedex"), gacha: t("kabemon.gacha_tab"), achievement: t("kabemon.achievement_tab") };
+            const labels: Record<Tab, string> = { character: t("kabemon.my_character"), collection: t("kabemon.pokedex"), gacha: t("kabemon.gacha_tab"), achievement: t("kabemon.achievement_tab") };
             return (
               <button
                 key={t_}
@@ -491,7 +490,7 @@ export default function KabemonPage() {
                 </div>
               </div>
 
-              {/* Stats */}
+              {/* Stats + 출석판 */}
               <div className="bg-card rounded-xl border border-border p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <Trophy className="w-4 h-4 text-primary" />
@@ -622,6 +621,7 @@ export default function KabemonPage() {
             t={t}
           />
         )}
+
       </div>
 
       {/* ── 알 부화 연출 ── */}
@@ -665,8 +665,23 @@ function CollectionTab({
   t: TFunc;
 }) {
   const { lang } = useLang();
+  const topRef = React.useRef<HTMLDivElement>(null);
+
+  // 보유 캐릭터 상단 정렬
+  const sorted = [...filtered].sort((a, b) => {
+    const ao = ownedSet.has(a.id) ? 0 : 1;
+    const bo = ownedSet.has(b.id) ? 0 : 1;
+    return ao - bo;
+  });
+
+  const handleSelect = (id: number) => {
+    onSelectChar(id);
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="space-y-4">
+      <div ref={topRef} />
       {/* Selected char detail */}
       {selectedChar && (
         <CharacterDetail
@@ -700,9 +715,9 @@ function CollectionTab({
         {filtered.filter((c) => ownedSet.has(c.id)).length}/{filtered.length} {t("kabemon.collection_count")}
       </p>
 
-      {/* Grid */}
+      {/* Grid — 보유 캐릭터 상단 정렬 */}
       <div className="grid grid-cols-5 gap-2">
-        {filtered.map((char) => {
+        {sorted.map((char) => {
           const isOwned = ownedSet.has(char.id);
           const isEquipped = char.id === equippedCharacterId;
           const isSelected = char.id === selected;
@@ -710,7 +725,7 @@ function CollectionTab({
           return (
             <button
               key={char.id}
-              onClick={() => onSelectChar(char.id)}
+              onClick={() => handleSelect(char.id)}
               className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                 isEquipped
                   ? `${RARITY_BORDER[char.rarity]} bg-primary/10 ring-1 ring-primary/40`
@@ -946,12 +961,12 @@ function GachaTab({
 
 // ─── Achievement Tab ──────────────────────────────────────────────────────
 const CATEGORY_ICON: Record<AchievementType, { icon: React.ReactNode; color: string; labelKey: TranslationKey }> = {
-  attendance:    { icon: <CheckCircle2 className="w-4 h-4" />, color: "text-blue-400",   labelKey: "kabemon.cat_attendance" },
-  streak:        { icon: <Flame        className="w-4 h-4" />, color: "text-orange-400", labelKey: "kabemon.cat_streak" },
-  expense_count: { icon: <Zap          className="w-4 h-4" />, color: "text-yellow-400", labelKey: "kabemon.cat_expense" },
-  share_count:   { icon: <Star         className="w-4 h-4" />, color: "text-green-400",  labelKey: "kabemon.cat_share" },
-  post_count:    { icon: <Sparkles     className="w-4 h-4" />, color: "text-purple-400", labelKey: "kabemon.cat_post" },
-  points:        { icon: <Gift         className="w-4 h-4" />, color: "text-primary",    labelKey: "kabemon.cat_points" },
+  attendance:  { icon: <CheckCircle2 className="w-4 h-4" />, color: "text-blue-400",   labelKey: "kabemon.cat_attendance" },
+  streak:      { icon: <Flame        className="w-4 h-4" />, color: "text-orange-400", labelKey: "kabemon.cat_streak" },
+  raid_count:  { icon: <Zap          className="w-4 h-4" />, color: "text-yellow-400", labelKey: "kabemon.cat_raid" },
+  live_count:  { icon: <Star         className="w-4 h-4" />, color: "text-green-400",  labelKey: "kabemon.cat_live" },
+  post_count:  { icon: <Sparkles     className="w-4 h-4" />, color: "text-purple-400", labelKey: "kabemon.cat_post" },
+  points:      { icon: <Gift         className="w-4 h-4" />, color: "text-primary",    labelKey: "kabemon.cat_points" },
 };
 
 function AchievementTab({
@@ -1348,3 +1363,4 @@ function AchievementRevealModal({
     </div>
   );
 }
+

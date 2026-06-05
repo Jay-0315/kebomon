@@ -151,7 +151,7 @@ export default function CommunityPage() {
   const tabs: (PostCategory | "all")[] = ["all", ...CATEGORY_OPTIONS];
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h2>{t("nav.community")}</h2>

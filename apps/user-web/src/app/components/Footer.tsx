@@ -17,10 +17,10 @@ function FooterContent() {
   const serviceLinks = [
     { to: "/", label: t("nav.home") },
     { to: "/community", label: t("nav.community") },
-    { to: "/groups", label: t("nav.groups") },
     { to: "/kabemon", label: t("nav.kabemon") },
-    { to: "/mypage", label: t("nav.mypage") },
-    { to: "/settings", label: t("nav.settings") },
+    { to: "/attendance", label: t("nav.attendance") },
+    { to: "/live", label: t("nav.live") },
+    { to: "/raid", label: t("nav.raid") },
   ];
 
   const legalLinks = [
@@ -61,8 +61,8 @@ function FooterContent() {
 
               <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
                 {lang === "ja"
-                  ? "為替機能付き家計簿 & コミュニティサービス"
-                  : "커뮤니티 서비스"}
+                  ? "ゲームコミュニティ & ケボモンサービス"
+                  : "커뮤니티 & 케보몬 서비스"}
               </p>
 
               <a

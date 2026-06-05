@@ -28,7 +28,6 @@ export default function SignupPage() {
   });
   const [verificationCode, setVerificationCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
-  const [codeVerified, setCodeVerified] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -45,7 +44,6 @@ export default function SignupPage() {
         purpose: "SIGNUP",
       });
       setCodeSent(true);
-      setCodeVerified(false);
       setVerificationCode("");
       setCodeMessage(t("signup.code_sent"));
     } catch (err: unknown) {
@@ -77,7 +75,6 @@ export default function SignupPage() {
         password: formData.password,
         verificationCode,
       });
-      setCodeVerified(true);
       setAuthSession(response.accessToken, response.user);
       window.location.assign(response.needsStarter ? "/starter" : "/");
     } catch (err: unknown) {
@@ -141,8 +138,7 @@ export default function SignupPage() {
                     onChange={(e) => {
                       setFormData({ ...formData, email: e.target.value });
                       setCodeSent(false);
-                      setCodeVerified(false);
-                    }}
+                                    }}
                     placeholder="example@email.com"
                     className={inputCls}
                     required

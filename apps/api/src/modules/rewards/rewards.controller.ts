@@ -49,4 +49,9 @@ export class RewardsController {
   checkTitles(@Body() body: { userId: string }) {
     return this.rewardsService.checkAndGrantTitles(body.userId);
   }
+
+  @Post("attendance/claim")
+  claimAttendance(@Body() body: { userId: string }) {
+    return this.rewardsService.claimAttendance(body.userId);
+  }
 }

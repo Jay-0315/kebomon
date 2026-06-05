@@ -121,6 +121,11 @@ export interface RewardSummary {
   normalEggs: number;
   bigEggs: number;
   goldenEggs: number;
+  raidCount: number;
+  liveCount: number;
+  attendanceClaimedToday: boolean;
+  monthDays: number;
+  monthWeekRewards: number;
 }
 
 export interface UserProfile {

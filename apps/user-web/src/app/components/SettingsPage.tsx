@@ -173,7 +173,7 @@ export default function SettingsPage() {
   const currentLang = settings.language ?? "ko";
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <h2>{t("settings.title")}</h2>
 
       {/* Appearance */}

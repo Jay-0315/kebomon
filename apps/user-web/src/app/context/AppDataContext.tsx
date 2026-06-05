@@ -2,7 +2,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -24,7 +23,6 @@ export interface EggOpenResult {
   isDuplicate: boolean;
   points: number;
 }
-import { countries, exchangeRates, getCountryByCode, getExchangeRate } from "../data/currency";
 import { CHARACTERS as _CHARS } from "../data/characters";
 const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
 import { initialAppData } from "../data/seed";
@@ -35,10 +33,6 @@ import type {
   AppSettings,
   CommunityPost,
   CommunityPostDraft,
-  CurrencyCode,
-  ExchangeRate,
-  Expense,
-  ExpenseDraft,
   PostCategory,
   RewardSummary,
   UserProfile,
@@ -53,19 +47,11 @@ interface AppDataContextValue {
   isLoading: boolean;
   profile: UserProfile;
   settings: AppSettings;
-  countries: typeof countries;
-  exchangeRates: ExchangeRate[];
-  expenses: Expense[];
   posts: CommunityPost[];
   rewardSummary: RewardSummary;
-  monthlyTotals: { month: string; amount: number }[];
-  createExpense: (draft: ExpenseDraft) => Promise<void>;
-  updateExpense: (expenseId: string, draft: ExpenseDraft) => Promise<void>;
-  deleteExpense: (expenseId: string) => Promise<void>;
   createPost: (draft: CommunityPostDraft) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   togglePostLike: (postId: string) => Promise<void>;
-  updateProfileCurrency: (countryCode: string) => Promise<void>;
   updateSettings: (settings: Partial<AppSettings>) => Promise<void>;
   equipCharacter: (characterId: number) => Promise<void>;
   selectStarter: (characterId: number) => Promise<void>;
@@ -76,7 +62,7 @@ interface AppDataContextValue {
   equipTitle: (titleId: number) => Promise<void>;
   unequipTitle: () => Promise<void>;
   checkTitles: () => Promise<number[]>;
-  getCountryName: (code: string) => string;
+  claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
   refreshData: () => Promise<void>;
   profilePhoto: string | null;
   updateProfilePhoto: (photo: string | null) => void;
@@ -100,31 +86,13 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     normalEggs: summary?.normalEggs ?? 0,
     bigEggs: summary?.bigEggs ?? 0,
     goldenEggs: summary?.goldenEggs ?? 0,
+    raidCount: summary?.raidCount ?? 0,
+    liveCount: summary?.liveCount ?? 0,
+    attendanceClaimedToday: summary?.attendanceClaimedToday ?? false,
+    monthDays: summary?.monthDays ?? 0,
+    monthWeekRewards: summary?.monthWeekRewards ?? 0,
   };
 }
-
-function mapExpense(apiExpense: Record<string, unknown>): Expense {
-  return {
-    id: String(apiExpense.id),
-    date: String(apiExpense.expenseDate).slice(0, 10),
-    category: String(apiExpense.category),
-    spentAmount: Number(apiExpense.spentAmount),
-    spentCurrency: String(apiExpense.spentCurrency) as CurrencyCode,
-    baseAmount: Number(apiExpense.baseAmount),
-    baseCurrency: String(apiExpense.baseCurrency) as CurrencyCode,
-    exchangeRate: Number(apiExpense.exchangeRate),
-    countryCode: String(apiExpense.countryCode),
-    memo: String(apiExpense.memo),
-    group: (apiExpense.groupName as string | null) ?? undefined,
-    participants: (apiExpense.participants as number | null) ?? undefined,
-    receipt: (apiExpense.receiptUrl as string | null) ?? undefined,
-    sharedToCommunity: Boolean(apiExpense.sharedToCommunity),
-    createdAt: String(apiExpense.createdAt),
-    updatedAt: String(apiExpense.updatedAt),
-  };
-}
-
-
 
 function mapPost(apiPost: Record<string, unknown>): CommunityPost {
   const user = (apiPost.user as Record<string, unknown> | undefined) ?? {};
@@ -167,16 +135,6 @@ function mapComment(c: Record<string, unknown>): import("../types/domain").Comme
   };
 }
 
-function getMonthlyTotals(expenses: Expense[]) {
-  const grouped = expenses.reduce<Record<string, number>>((acc, expense) => {
-    const month = `${Number(expense.date.slice(5, 7))}월`;
-    acc[month] = (acc[month] ?? 0) + expense.baseAmount;
-    return acc;
-  }, {});
-
-  return Object.entries(grouped).map(([month, amount]) => ({ month, amount }));
-}
-
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const storedUser = getStoredUser();
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -197,12 +155,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [rewardsFailed, setRewardsFailed] = useState(false);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [rewardSummary, setRewardSummary] = useState<RewardSummary>(
     normalizeRewardSummary(undefined),
   );
-  const [remoteExchangeRates, setRemoteExchangeRates] = useState<ExchangeRate[]>(exchangeRates);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     const userId = getStoredUser()?.id;
     return userId ? localStorage.getItem(profilePhotoKey(userId)) : null;
@@ -238,22 +194,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
-    const [profileResult, expensesResult, postsResult, rewardsResult, ratesResult] =
+    const [profileResult, postsResult, rewardsResult] =
       await Promise.allSettled([
         api.get<{
           id: string;
           name: string;
           email: string;
           baseCountryCode: string;
-          baseCurrency: CurrencyCode;
+          baseCurrency: string;
           profilePhoto?: string | null;
           hasPassword?: boolean;
           settings?: AppSettings;
         }>(`/users/${currentUser.id}/profile`),
-        api.get<Record<string, unknown>[]>(`/expenses?userId=${currentUser.id}`),
         api.get<{ posts: Record<string, unknown>[] }>(`/community/posts?userId=${currentUser.id}`),
         api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`),
-        api.get<ExchangeRate[]>("/exchange-rates"),
       ]);
 
     if (profileResult.status === "fulfilled") {
@@ -263,7 +217,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         name: p.name,
         email: p.email,
         baseCountryCode: p.baseCountryCode,
-        baseCurrency: p.baseCurrency,
+        baseCurrency: p.baseCurrency as UserProfile["baseCurrency"],
         hasPassword: p.hasPassword ?? false,
       });
       if (p.settings) setSettings((prev) => ({ ...prev, ...(p.settings as AppSettings) }));
@@ -277,9 +231,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-    if (expensesResult.status === "fulfilled") {
-      setExpenses(expensesResult.value.map(mapExpense));
-    }
     if (postsResult.status === "fulfilled") {
       setPosts(postsResult.value.posts.map(mapPost));
     }
@@ -288,9 +239,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setRewardsFailed(false);
     } else {
       setRewardsFailed(true);
-    }
-    if (ratesResult.status === "fulfilled") {
-      setRemoteExchangeRates(ratesResult.value);
     }
     setIsLoading(false);
     setHasInitialized(true);
@@ -306,63 +254,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setHasInitialized(true);
     }
   }, []);
-
-  const createExpense = async (draft: ExpenseDraft) => {
-    const currentUser = getStoredUser();
-    if (!currentUser) {
-      return;
-    }
-
-    await api.post("/expenses", {
-      userId: currentUser.id,
-      expenseDate: draft.date,
-      category: draft.category,
-      spentAmount: draft.spentAmount,
-      spentCurrency: draft.spentCurrency,
-      baseAmount: Math.round(
-        draft.spentAmount *
-          getExchangeRate(draft.spentCurrency, profile.baseCurrency, remoteExchangeRates),
-      ),
-      baseCurrency: profile.baseCurrency,
-      exchangeRate: getExchangeRate(draft.spentCurrency, profile.baseCurrency, remoteExchangeRates),
-      countryCode: draft.countryCode,
-      memo: draft.memo,
-      groupName: draft.group || undefined,
-      groupId: draft.groupId || undefined,
-      participants: draft.participants,
-      receiptUrl: draft.receipt,
-      sharedToCommunity: false,
-    });
-
-    await refreshData();
-  };
-
-  const updateExpense = async (expenseId: string, draft: ExpenseDraft) => {
-    await api.patch(`/expenses/${expenseId}`, {
-      expenseDate: draft.date,
-      category: draft.category,
-      spentAmount: draft.spentAmount,
-      spentCurrency: draft.spentCurrency,
-      baseAmount: Math.round(
-        draft.spentAmount *
-          getExchangeRate(draft.spentCurrency, profile.baseCurrency, remoteExchangeRates),
-      ),
-      baseCurrency: profile.baseCurrency,
-      exchangeRate: getExchangeRate(draft.spentCurrency, profile.baseCurrency, remoteExchangeRates),
-      countryCode: draft.countryCode,
-      memo: draft.memo,
-      groupName: draft.group || undefined,
-      participants: draft.participants,
-      receiptUrl: draft.receipt,
-    });
-
-    await refreshData();
-  };
-
-  const deleteExpense = async (expenseId: string) => {
-    await api.delete(`/expenses/${expenseId}`);
-    await refreshData();
-  };
 
   const createPost = async (draft: CommunityPostDraft) => {
     const currentUser = getStoredUser();
@@ -387,28 +278,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const currentUser = getStoredUser();
     if (!currentUser) return;
     await api.post(`/community/posts/${postId}/like`, { userId: currentUser.id });
-    await refreshData();
-  };
-
-  const updateProfileCurrency = async (countryCode: string) => {
-    const currentUser = getStoredUser();
-    if (!currentUser) {
-      return;
-    }
-
-    const country = getCountryByCode(countryCode);
-    const updatedProfile = await api.patch<UserProfile>(`/users/${currentUser.id}/profile`, {
-      baseCountryCode: country.code,
-      baseCurrency: country.currency,
-    });
-    localStorage.setItem(
-      "kebo-auth-user",
-      JSON.stringify({
-        ...currentUser,
-        baseCountryCode: updatedProfile.baseCountryCode,
-        baseCurrency: updatedProfile.baseCurrency,
-      }),
-    );
     await refreshData();
   };
 
@@ -521,6 +390,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result.newlyUnlocked;
   };
 
+  const claimAttendance = async (): Promise<{ alreadyClaimed: boolean; points: number }> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return { alreadyClaimed: true, points: 0 };
+    const result = await api.post<{
+      alreadyClaimed: boolean;
+      points: number;
+      streakDays: number;
+      attendanceDays: number;
+      monthDays: number;
+      monthWeekRewards: number;
+      eggReward?: "big" | "golden" | null;
+    }>(
+      "/rewards/attendance/claim",
+      { userId: currentUser.id },
+    );
+    if (!result.alreadyClaimed) {
+      setRewardSummary((prev) => ({
+        ...prev,
+        missionPoints: prev.missionPoints + result.points,
+        attendanceDays: result.attendanceDays,
+        streakDays: result.streakDays,
+        attendanceClaimedToday: true,
+        monthDays: result.monthDays,
+        monthWeekRewards: result.monthWeekRewards,
+        bigEggs: result.eggReward === "big" ? prev.bigEggs + 1 : prev.bigEggs,
+        goldenEggs: result.eggReward === "golden" ? prev.goldenEggs + 1 : prev.goldenEggs,
+      }));
+    }
+    return { alreadyClaimed: result.alreadyClaimed, points: result.points };
+  };
+
   const checkAchievements = async (): Promise<number[]> => {
     const currentUser = getStoredUser();
     if (!currentUser) return [];
@@ -551,27 +451,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     await refreshData();
   };
 
-  const monthlyTotals = useMemo(() => getMonthlyTotals(expenses), [expenses]);
-
   const value: AppDataContextValue = {
     hasInitialized,
     rewardsFailed,
     isLoading,
     profile,
     settings,
-    countries,
-    exchangeRates: remoteExchangeRates,
-    expenses,
     posts,
     rewardSummary,
-    monthlyTotals,
-    createExpense,
-    updateExpense,
-    deleteExpense,
     createPost,
     deletePost,
     togglePostLike,
-    updateProfileCurrency,
     updateSettings,
     equipCharacter,
     selectStarter,
@@ -582,7 +472,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     equipTitle,
     unequipTitle,
     checkTitles,
-    getCountryName: (code: string) => getCountryByCode(code).name,
+    claimAttendance,
     refreshData,
     profilePhoto,
     updateProfilePhoto,

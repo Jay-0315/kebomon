@@ -159,7 +159,6 @@ function JumpGame({
     const GROUND_H = 16; // 바닥 두께
     const HITX = 50; // 플레이어 히트박스 좌표
     const HITW = 30;
-    const JUMP_V = 11;
     const GRAVITY = 0.6; // per frame
 
     const resize = () => {
@@ -463,6 +462,8 @@ export default function RaidPage() {
   const [full, setFull] = useState(false);
   const [input, setInput] = useState("");
   const [hit, setHit] = useState(false);
+  const [bossLine, setBossLine] = useState<string>("");
+  const [damageNums, setDamageNums] = useState<{ id: number; x: number }[]>([]);
   const [contributed, setContributed] = useState(false);
   const [contribText, setContribText] = useState("");
   const [contribAnswer, setContribAnswer] = useState("");
@@ -512,6 +513,14 @@ export default function RaidPage() {
       setLobby((p) => ({ ...p, [d.raidType]: { count: p[d.raidType]?.count ?? 0, cooldownUntil: d.until } }));
       setView("lobby");
     };
+    const onBossHit = (d: { line: string }) => {
+      setBossLine(d.line);
+      setTimeout(() => setBossLine(""), 2200);
+      const id = Date.now();
+      const x = 30 + Math.random() * 40;
+      setDamageNums((p) => [...p.slice(-4), { id, x }]);
+      setTimeout(() => setDamageNums((p) => p.filter((n) => n.id !== id)), 900);
+    };
 
     s.on("raid:lobby", onLobby);
     s.on("raid:state", onState);
@@ -521,11 +530,12 @@ export default function RaidPage() {
     s.on("raid:cleared", onCleared);
     s.on("raid:full", onFull);
     s.on("raid:cooldown", onCooldown);
+    s.on("raid:bossHit", onBossHit);
     s.emit("raid:counts");
     return () => {
       s.off("raid:lobby", onLobby); s.off("raid:state", onState); s.off("raid:self", onSelf);
       s.off("raid:message", onMsg); s.off("raid:feedback", onFeedback); s.off("raid:cleared", onCleared);
-      s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown);
+      s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown); s.off("raid:bossHit", onBossHit);
       Object.values(timers.current).forEach(clearTimeout);
     };
   }, []);
@@ -614,36 +624,38 @@ export default function RaidPage() {
                 key={id}
                 onClick={() => !disabled && enter(id)}
                 disabled={disabled}
-                className={`group rounded-2xl border p-4 text-left transition-all ${
+                className={`group flex flex-col rounded-2xl border p-4 text-left transition-all ${
                   disabled ? "cursor-not-allowed border-border opacity-60" : "border-border bg-card hover:border-primary hover:shadow-lg"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  {/* boss sprite */}
-                  <div className={`shrink-0 rounded-xl bg-black/5 p-1 dark:bg-white/5 ${onCooldown ? "grayscale" : ""}`}>
-                    <PixelSprite type={bossDef.type} colors={bossDef.colors} characterId={bossDef.id} size={52} />
+                {/* boss sprite — 상단 중앙 */}
+                <div className="flex justify-center pb-3 pt-1">
+                  <div className={`rounded-2xl bg-black/5 px-6 py-2 dark:bg-white/5 ${onCooldown ? "grayscale" : ""}`}>
+                    <PixelCharacter characterId={bossDef.id} size={64} float={!onCooldown} />
                   </div>
+                </div>
+                {/* 텍스트 정보 */}
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="truncate text-base font-bold">{RAIDS[id].name}</span>
-                      <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" /> {info.count}/{MAX_PLAYERS}
-                      </span>
-                    </div>
+                    <p className="truncate text-base font-bold">{RAIDS[id].name}</p>
                     <p className="truncate text-xs text-muted-foreground">BOSS · {getCharName(bossDef, lang)}</p>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">{RAIDS[id].desc}</p>
                   </div>
+                  <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" /> {info.count}/{MAX_PLAYERS}
+                  </span>
                 </div>
+                {/* 상태 뱃지 */}
                 {onCooldown ? (
-                  <div className="mt-2 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive">
+                  <div className="mt-3 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive">
                     <Clock className="h-3 w-3" /> {t("raid.cooldown_prefix")} {fmtCooldown(info.cooldownUntil - now)}
                   </div>
                 ) : full5 ? (
-                  <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
+                  <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
                     {t("raid.full")}
                   </div>
                 ) : (
-                  <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                     <Swords className="h-3 w-3" /> {t("raid.available")}
                   </div>
                 )}
@@ -669,6 +681,8 @@ export default function RaidPage() {
         @keyframes raid-bubble{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(10px)}}
         @keyframes boss-hit{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
         @keyframes boss-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        @keyframes damage-float{0%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-32px) scale(0.8)}}
+        @keyframes boss-talk-in{0%{opacity:0;transform:translateY(4px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0}}
       `}</style>
 
       {/* header */}
@@ -687,15 +701,26 @@ export default function RaidPage() {
       {/* boss panel */}
       <div className="relative z-20 border-b border-border bg-white/60 px-4 py-3 backdrop-blur dark:bg-gray-900/50">
         <div className="flex items-center gap-3">
-          {/* boss sprite */}
-          <div
-            className="shrink-0"
-            style={{
-              animation: state?.cleared ? undefined : hit ? "boss-hit 0.35s" : "boss-float 2.5s ease-in-out infinite",
-              filter: state?.cleared ? "grayscale(1) opacity(0.4)" : hit ? "brightness(2)" : undefined,
-            }}
-          >
-            {state && <PixelCharacter characterId={state.boss.characterId} size={72} />}
+          {/* boss sprite + 데미지 이펙트 */}
+          <div className="relative shrink-0">
+            <div
+              style={{
+                animation: state?.cleared ? undefined : hit ? "boss-hit 0.35s" : "boss-float 2.5s ease-in-out infinite",
+                filter: state?.cleared ? "grayscale(1) opacity(0.4)" : hit ? "brightness(2)" : undefined,
+              }}
+            >
+              {state && <PixelCharacter characterId={state.boss.characterId} size={72} />}
+            </div>
+            {/* 데미지 숫자 */}
+            {damageNums.map((n) => (
+              <span
+                key={n.id}
+                className="pointer-events-none absolute -top-4 font-extrabold text-red-500 text-base"
+                style={{ left: `${n.x}%`, animation: "damage-float 0.9s ease-out forwards" }}
+              >
+                -1
+              </span>
+            ))}
           </div>
           {/* boss info + HP */}
           <div className="min-w-0 flex-1">
@@ -711,6 +736,15 @@ export default function RaidPage() {
               />
             </div>
             <p className="mt-0.5 text-right text-[11px] font-semibold text-red-500">HP {state?.hp ?? 0} / {state?.maxHp ?? 0}</p>
+            {/* 보스 대사 */}
+            {bossLine && (
+              <p
+                className="mt-1 text-xs font-semibold text-orange-500 dark:text-orange-400 italic"
+                style={{ animation: "boss-talk-in 2.2s ease-out forwards" }}
+              >
+                💬 {bossLine}
+              </p>
+            )}
           </div>
         </div>
         {/* boss-issued mission */}

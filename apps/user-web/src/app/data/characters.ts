@@ -41,8 +41,8 @@ export type ObtainMethod = "starter" | "achievement" | "gacha";
 export type AchievementType =
   | "attendance"
   | "streak"
-  | "expense_count"
-  | "share_count"
+  | "raid_count"
+  | "live_count"
   | "post_count"
   | "points";
 
@@ -3326,10 +3326,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 
   {
     characterId: 4,
-    type: "expense_count",
+    type: "raid_count",
     value: 1,
     hidden: false,
-    label: "첫 번째 지출 기록",
+    label: "첫 레이드 클리어",
   },
   {
     characterId: 5,
@@ -3347,10 +3347,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 7,
-    type: "expense_count",
-    value: 5,
+    type: "raid_count",
+    value: 3,
     hidden: false,
-    label: "지출 5회 기록",
+    label: "레이드 3회 클리어",
   },
   {
     characterId: 8,
@@ -3369,10 +3369,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // Uncommon
   {
     characterId: 16,
-    type: "expense_count",
-    value: 10,
+    type: "live_count",
+    value: 3,
     hidden: false,
-    label: "지출 10회 기록",
+    label: "라이브 채널 3회 참여",
   },
   {
     characterId: 17,
@@ -3397,10 +3397,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 20,
-    type: "expense_count",
-    value: 2,
+    type: "live_count",
+    value: 1,
     hidden: false,
-    label: "지출 2회 기록",
+    label: "라이브 채널 첫 참여",
   },
   {
     characterId: 21,
@@ -3411,18 +3411,18 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 22,
-    type: "expense_count",
-    value: 20,
+    type: "raid_count",
+    value: 8,
     hidden: false,
-    label: "지출 20회 기록",
+    label: "레이드 8회 클리어",
   },
   // Rare
   {
     characterId: 31,
-    type: "expense_count",
-    value: 30,
+    type: "raid_count",
+    value: 12,
     hidden: false,
-    label: "지출 30회 기록",
+    label: "레이드 12회 클리어",
   },
   {
     characterId: 32,
@@ -3461,10 +3461,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 37,
-    type: "expense_count",
-    value: 50,
+    type: "live_count",
+    value: 10,
     hidden: false,
-    label: "지출 50회 기록",
+    label: "라이브 채널 10회 참여",
   },
   {
     characterId: 38,
@@ -3497,10 +3497,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 52,
-    type: "expense_count",
-    value: 100,
+    type: "raid_count",
+    value: 25,
     hidden: true,
-    label: "지출 100회 기록",
+    label: "레이드 25회 클리어",
   },
   {
     characterId: 53,
@@ -3539,10 +3539,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 58,
-    type: "expense_count",
-    value: 200,
+    type: "live_count",
+    value: 20,
     hidden: true,
-    label: "지출 200회 기록",
+    label: "라이브 채널 20회 참여",
   },
   {
     characterId: 59,
@@ -3553,10 +3553,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 60,
-    type: "expense_count",
-    value: 150,
+    type: "raid_count",
+    value: 20,
     hidden: true,
-    label: "지출 150회 기록",
+    label: "레이드 20회 클리어",
   },
   // Legendary – hidden
   {
@@ -3568,10 +3568,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 72,
-    type: "expense_count",
-    value: 500,
+    type: "raid_count",
+    value: 40,
     hidden: true,
-    label: "지출 500회 기록",
+    label: "레이드 40회 클리어",
   },
   {
     characterId: 73,

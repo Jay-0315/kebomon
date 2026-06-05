@@ -36,6 +36,20 @@ const BOSS_POOL = [
 ];
 const randomBoss = () => BOSS_POOL[(Math.random() * BOSS_POOL.length) | 0];
 
+const BOSS_LINES = [
+  (nick: string) => `엄청나군… ${nick}.`,
+  (nick: string) => `흥, 운이 좋았을 뿐이야, ${nick}!`,
+  (nick: string) => `${nick}… 아직 끝나지 않았다!`,
+  (nick: string) => `이 정도로 날 막을 순 없어!`,
+  (nick: string) => `크윽… ${nick}, 제법이군.`,
+  (nick: string) => `방심했다! 다음엔 그러지 않겠어!`,
+  (nick: string) => `${nick}! 각오해라!`,
+  (nick: string) => `한 방 먹었구나… 기억해 둬.`,
+  (nick: string) => `아프군… 하지만 이 정도야!`,
+  (nick: string) => `${nick}이여… 강하구나. 하지만!`,
+];
+const randomBossLine = (nick: string) => BOSS_LINES[(Math.random() * BOSS_LINES.length) | 0](nick);
+
 type RaidReward = { kind: "points"; points: number } | { kind: "egg"; egg: RewardEggType };
 
 function rollReward(points: number): RaidReward {
@@ -237,12 +251,20 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     const r = this.getRoom(1);
     if (r.cleared) return;
     r.progress += 1;
-    this.applyProgress(r, 1);
+    this.applyProgress(r, 1, player.nickname);
   }
 
   /** 진행도 증가 후 클리어 판정 + 상태 브로드캐스트 (점프/입력 공용) */
-  private applyProgress(r: RaidRoom, type: number) {
+  private applyProgress(r: RaidRoom, type: number, attackerNickname?: string) {
     const meta = RAID_META[type];
+
+    // 보스 대사 + 데미지 이펙트
+    if (attackerNickname && !r.cleared) {
+      const line = randomBossLine(attackerNickname);
+      const hp = Math.max(0, meta.goal - r.progress);
+      this.server.to(room(type)).emit("raid:bossHit", { line, hp, maxHp: meta.goal });
+    }
+
     if (r.progress >= meta.goal) {
       r.cleared = true;
       r.progress = meta.goal;
@@ -306,7 +328,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     }
 
     if (progressed) {
-      this.applyProgress(r, player.raidType);
+      this.applyProgress(r, player.raidType, player.nickname);
     }
   }
 

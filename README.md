@@ -5,20 +5,20 @@
 
 ## Apps
 
-| 앱               | 설명                                         |
-| ---------------- | -------------------------------------------- |
-| `apps/user-web`  | 사용자용 가계부/커뮤니티 웹앱 (React + Vite) |
-| `apps/admin-web` | 관리자용 운영 웹앱 스캐폴드                  |
-| `apps/api`       | 백엔드 REST API (NestJS + Prisma)            |
+| 앱               | 설명                                  |
+| ---------------- | ------------------------------------- |
+| `apps/user-web`  | 사용자용 커뮤니티 웹앱 (React + Vite) |
+| `apps/admin-web` | 관리자용 운영 웹앱 스캐폴드           |
+| `apps/api`       | 백엔드 REST API (NestJS + Prisma)     |
 
 ## Stack
 
-| 구분     | 기술                                                                             |
-| -------- | -------------------------------------------------------------------------------- |
+| 구분     | 기술                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------------------- |
 | Frontend | React 18, TypeScript 6, Vite 6, Tailwind CSS v4, React Router v7, Motion, Tiptap v3, MUI v7, Recharts |
-| Backend  | NestJS v11, Prisma ORM v6, JWT 인증, Socket.io v4 (WebSocket)                   |
-| Database | MySQL 8.4                                                                        |
-| 기타     | Docker Compose, npm workspaces                                                   |
+| Backend  | NestJS v11, Prisma ORM v6, JWT 인증, Socket.io v4 (WebSocket)                                         |
+| Database | MySQL 8.4                                                                                             |
+| 기타     | Docker Compose, npm workspaces                                                                        |
 
 ---
 
@@ -121,7 +121,7 @@ docker restart kebo-api
 - 게시글 카테고리 3종 — 자랑(`brag`) / 팁 공유(`tip`) / 잡담(`chat`)
 - 게시글 작성·수정·삭제, Tiptap 리치 텍스트 에디터 (서식·이미지 삽입)
 - 이미지 첨부 — 클라이언트에서 1280px·75% JPEG 압축 후 base64 저장
-- 게시글 목록 페이지네이션 (서버 사이드, 페이지당 n개)
+- 게시글 목록 페이지네이션 (서버 사이드, 페이지당 20개)
 - 목록에서 게시글 첫 번째 이미지 썸네일 미리보기
 - 좋아요 토글
 - 댓글 + 대댓글(1단계) — 이미지 첨부, 텍스트 없이 이미지만 제출 가능, 수정/삭제
@@ -153,7 +153,7 @@ docker restart kebo-api
 | 확률        | 커먼 35% / 언커먼 26% / 레어 20% / 에픽 10% / 레전더리 6% / 신화 3% |
 | 천장        | 80연 내 레전더리 이상 1종 보장                                      |
 | 10연 보장   | 언커먼 이상 1종 보장                                                |
-| 중복 보상   | 등급별 포인트 환산 (커먼 10P ~ 신화 100P)                           |
+| 중복 보상   | 등급별 포인트 환산 (커먼 5P ~ 신화 120P)                            |
 
 **업적** (188종)
 

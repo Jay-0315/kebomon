@@ -3,36 +3,36 @@ import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
-  { titleId: 1, type: "expense_count", value: 1 },
-  { titleId: 2, type: "attendance", value: 3 },
-  { titleId: 3, type: "points", value: 50 },
-  { titleId: 4, type: "expense_count", value: 15 },
-  { titleId: 5, type: "attendance", value: 20 },
-  { titleId: 6, type: "share_count", value: 5 },
-  { titleId: 7, type: "post_count", value: 7 },
-  { titleId: 8, type: "expense_count", value: 50 },
-  { titleId: 9, type: "streak", value: 20 },
-  { titleId: 10, type: "points", value: 1000 },
-  { titleId: 11, type: "share_count", value: 20 },
-  { titleId: 12, type: "expense_count", value: 150 },
-  { titleId: 13, type: "attendance", value: 90 },
-  { titleId: 14, type: "points", value: 5000 },
-  { titleId: 15, type: "post_count", value: 50 },
-  { titleId: 16, type: "expense_count", value: 400 },
-  { titleId: 17, type: "attendance", value: 200 },
-  { titleId: 18, type: "points", value: 15000 },
-  { titleId: 19, type: "streak", value: 60 },
-  { titleId: 20, type: "expense_count", value: 1500 },
-  { titleId: 21, type: "share_count", value: 1 },
-  { titleId: 22, type: "post_count", value: 1 },
-  { titleId: 23, type: "streak", value: 3 },
-  { titleId: 24, type: "points", value: 300 },
-  { titleId: 25, type: "streak", value: 7 },
-  { titleId: 26, type: "post_count", value: 20 },
-  { titleId: 27, type: "attendance", value: 60 },
-  { titleId: 28, type: "streak", value: 45 },
-  { titleId: 29, type: "share_count", value: 30 },
-  { titleId: 30, type: "post_count", value: 150 },
+  { titleId: 1,  type: "raid_count",  value: 1 },
+  { titleId: 2,  type: "attendance",  value: 3 },
+  { titleId: 3,  type: "points",      value: 50 },
+  { titleId: 4,  type: "raid_count",  value: 5 },
+  { titleId: 5,  type: "attendance",  value: 20 },
+  { titleId: 6,  type: "live_count",  value: 10 },
+  { titleId: 7,  type: "post_count",  value: 7 },
+  { titleId: 8,  type: "raid_count",  value: 20 },
+  { titleId: 9,  type: "streak",      value: 20 },
+  { titleId: 10, type: "points",      value: 1000 },
+  { titleId: 11, type: "live_count",  value: 30 },
+  { titleId: 12, type: "raid_count",  value: 50 },
+  { titleId: 13, type: "attendance",  value: 90 },
+  { titleId: 14, type: "points",      value: 5000 },
+  { titleId: 15, type: "post_count",  value: 50 },
+  { titleId: 16, type: "raid_count",  value: 100 },
+  { titleId: 17, type: "attendance",  value: 200 },
+  { titleId: 18, type: "points",      value: 15000 },
+  { titleId: 19, type: "streak",      value: 60 },
+  { titleId: 20, type: "raid_count",  value: 200 },
+  { titleId: 21, type: "live_count",  value: 1 },
+  { titleId: 22, type: "post_count",  value: 1 },
+  { titleId: 23, type: "streak",      value: 3 },
+  { titleId: 24, type: "points",      value: 300 },
+  { titleId: 25, type: "streak",      value: 7 },
+  { titleId: 26, type: "post_count",  value: 20 },
+  { titleId: 27, type: "attendance",  value: 60 },
+  { titleId: 28, type: "streak",      value: 45 },
+  { titleId: 29, type: "live_count",  value: 60 },
+  { titleId: 30, type: "post_count",  value: 150 },
 ];
 
 // Character rarity duplicate point values (mirrors frontend constants)
@@ -120,196 +120,196 @@ const STARTER_IDS = [141, 11, 12];
 // Achievement definitions: which stat value unlocks which character
 const ACHIEVEMENTS: { characterId: number; type: string; value: number }[] = [
   // ── Block 1 (1-100) ───────────────────────────────────────
-  { characterId: 4, type: "expense_count", value: 1 },
+  { characterId: 4, type: "raid_count", value: 1 },
   { characterId: 5, type: "attendance", value: 3 },
   { characterId: 6, type: "post_count", value: 2 },
-  { characterId: 7, type: "expense_count", value: 5 },
+  { characterId: 7, type: "raid_count", value: 3 },
   { characterId: 8, type: "attendance", value: 7 },
   { characterId: 9, type: "post_count", value: 1 },
-  { characterId: 16, type: "expense_count", value: 10 },
+  { characterId: 16, type: "live_count", value: 3 },
   { characterId: 17, type: "streak", value: 3 },
   { characterId: 18, type: "points", value: 100 },
   { characterId: 19, type: "post_count", value: 3 },
-  { characterId: 20, type: "expense_count", value: 2 },
+  { characterId: 20, type: "live_count", value: 1 },
   { characterId: 21, type: "attendance", value: 14 },
-  { characterId: 22, type: "expense_count", value: 20 },
-  { characterId: 31, type: "expense_count", value: 30 },
+  { characterId: 22, type: "raid_count", value: 8 },
+  { characterId: 31, type: "raid_count", value: 12 },
   { characterId: 32, type: "attendance", value: 21 },
   { characterId: 33, type: "points", value: 200 },
   { characterId: 34, type: "attendance", value: 30 },
   { characterId: 35, type: "streak", value: 7 },
   { characterId: 36, type: "post_count", value: 10 },
-  { characterId: 37, type: "expense_count", value: 50 },
+  { characterId: 37, type: "live_count", value: 10 },
   { characterId: 38, type: "points", value: 500 },
   { characterId: 39, type: "streak", value: 14 },
   { characterId: 40, type: "streak", value: 21 },
   { characterId: 51, type: "points", value: 1000 },
-  { characterId: 52, type: "expense_count", value: 100 },
+  { characterId: 52, type: "raid_count", value: 25 },
   { characterId: 53, type: "attendance", value: 50 },
   { characterId: 54, type: "post_count", value: 20 },
   { characterId: 55, type: "post_count", value: 30 },
   { characterId: 56, type: "streak", value: 30 },
   { characterId: 57, type: "points", value: 2000 },
-  { characterId: 58, type: "expense_count", value: 200 },
+  { characterId: 58, type: "live_count", value: 20 },
   { characterId: 59, type: "attendance", value: 90 },
-  { characterId: 60, type: "expense_count", value: 150 },
+  { characterId: 60, type: "raid_count", value: 20 },
   { characterId: 71, type: "points", value: 5000 },
-  { characterId: 72, type: "expense_count", value: 500 },
+  { characterId: 72, type: "raid_count", value: 40 },
   { characterId: 73, type: "attendance", value: 180 },
   { characterId: 74, type: "streak", value: 60 },
   { characterId: 75, type: "post_count", value: 50 },
   { characterId: 76, type: "post_count", value: 100 },
   { characterId: 77, type: "points", value: 10000 },
-  { characterId: 78, type: "expense_count", value: 1000 },
+  { characterId: 78, type: "live_count", value: 40 },
   { characterId: 79, type: "attendance", value: 365 },
   { characterId: 80, type: "streak", value: 100 },
   { characterId: 91, type: "points", value: 50000 },
-  { characterId: 92, type: "expense_count", value: 2000 },
-  { characterId: 93, type: "expense_count", value: 5000 },
+  { characterId: 92, type: "raid_count", value: 80 },
+  { characterId: 93, type: "raid_count", value: 120 },
   { characterId: 94, type: "streak", value: 365 },
   // ── Block 2 (101-200) ─────────────────────────────────────
-  { characterId: 104, type: "expense_count", value: 3 },
+  { characterId: 104, type: "raid_count", value: 2 },
   { characterId: 105, type: "attendance", value: 5 },
   { characterId: 106, type: "post_count", value: 5 },
-  { characterId: 107, type: "expense_count", value: 7 },
+  { characterId: 107, type: "live_count", value: 2 },
   { characterId: 108, type: "attendance", value: 10 },
   { characterId: 109, type: "streak", value: 5 },
-  { characterId: 116, type: "expense_count", value: 15 },
+  { characterId: 116, type: "raid_count", value: 6 },
   { characterId: 117, type: "streak", value: 10 },
   { characterId: 118, type: "points", value: 150 },
   { characterId: 119, type: "post_count", value: 7 },
-  { characterId: 120, type: "expense_count", value: 25 },
+  { characterId: 120, type: "live_count", value: 6 },
   { characterId: 121, type: "attendance", value: 28 },
-  { characterId: 122, type: "expense_count", value: 40 },
-  { characterId: 131, type: "expense_count", value: 60 },
+  { characterId: 122, type: "raid_count", value: 15 },
+  { characterId: 131, type: "live_count", value: 12 },
   { characterId: 132, type: "attendance", value: 42 },
   { characterId: 133, type: "points", value: 300 },
   { characterId: 134, type: "attendance", value: 60 },
   { characterId: 135, type: "streak", value: 28 },
   { characterId: 136, type: "post_count", value: 15 },
-  { characterId: 137, type: "expense_count", value: 75 },
+  { characterId: 137, type: "raid_count", value: 22 },
   { characterId: 138, type: "points", value: 750 },
   { characterId: 139, type: "streak", value: 45 },
   { characterId: 140, type: "streak", value: 50 },
   { characterId: 151, type: "points", value: 1500 },
-  { characterId: 152, type: "expense_count", value: 120 },
+  { characterId: 152, type: "live_count", value: 18 },
   { characterId: 153, type: "attendance", value: 75 },
   { characterId: 154, type: "post_count", value: 25 },
   { characterId: 155, type: "post_count", value: 40 },
   { characterId: 156, type: "streak", value: 35 },
   { characterId: 157, type: "points", value: 2500 },
-  { characterId: 158, type: "expense_count", value: 250 },
+  { characterId: 158, type: "raid_count", value: 30 },
   { characterId: 159, type: "attendance", value: 120 },
-  { characterId: 160, type: "expense_count", value: 175 },
+  { characterId: 160, type: "live_count", value: 22 },
   { characterId: 171, type: "points", value: 7500 },
-  { characterId: 172, type: "expense_count", value: 750 },
+  { characterId: 172, type: "raid_count", value: 50 },
   { characterId: 173, type: "attendance", value: 270 },
   { characterId: 174, type: "streak", value: 75 },
   { characterId: 175, type: "post_count", value: 60 },
   { characterId: 176, type: "post_count", value: 120 },
   { characterId: 177, type: "points", value: 15000 },
-  { characterId: 178, type: "expense_count", value: 1500 },
+  { characterId: 178, type: "live_count", value: 50 },
   { characterId: 179, type: "attendance", value: 400 },
   { characterId: 180, type: "streak", value: 120 },
   { characterId: 191, type: "points", value: 75000 },
-  { characterId: 192, type: "expense_count", value: 3000 },
-  { characterId: 193, type: "expense_count", value: 7500 },
+  { characterId: 192, type: "raid_count", value: 100 },
+  { characterId: 193, type: "raid_count", value: 150 },
   { characterId: 194, type: "streak", value: 400 },
   // ── Block 3 (201-300) ─────────────────────────────────────
-  { characterId: 204, type: "expense_count", value: 4 },
+  { characterId: 204, type: "raid_count", value: 2 },
   { characterId: 205, type: "attendance", value: 6 },
   { characterId: 206, type: "post_count", value: 6 },
-  { characterId: 207, type: "expense_count", value: 9 },
+  { characterId: 207, type: "live_count", value: 3 },
   { characterId: 208, type: "attendance", value: 12 },
   { characterId: 209, type: "streak", value: 6 },
-  { characterId: 216, type: "expense_count", value: 18 },
+  { characterId: 216, type: "raid_count", value: 7 },
   { characterId: 217, type: "streak", value: 12 },
   { characterId: 218, type: "points", value: 250 },
   { characterId: 219, type: "post_count", value: 8 },
-  { characterId: 220, type: "expense_count", value: 35 },
+  { characterId: 220, type: "live_count", value: 8 },
   { characterId: 221, type: "attendance", value: 35 },
-  { characterId: 222, type: "expense_count", value: 55 },
-  { characterId: 231, type: "expense_count", value: 70 },
+  { characterId: 222, type: "raid_count", value: 18 },
+  { characterId: 231, type: "live_count", value: 14 },
   { characterId: 232, type: "attendance", value: 45 },
   { characterId: 233, type: "points", value: 400 },
   { characterId: 234, type: "attendance", value: 55 },
   { characterId: 235, type: "streak", value: 15 },
   { characterId: 236, type: "post_count", value: 18 },
-  { characterId: 237, type: "expense_count", value: 80 },
+  { characterId: 237, type: "raid_count", value: 25 },
   { characterId: 238, type: "points", value: 900 },
   { characterId: 239, type: "streak", value: 42 },
   { characterId: 240, type: "streak", value: 55 },
   { characterId: 251, type: "points", value: 1750 },
-  { characterId: 252, type: "expense_count", value: 130 },
+  { characterId: 252, type: "live_count", value: 18 },
   { characterId: 253, type: "attendance", value: 80 },
   { characterId: 254, type: "post_count", value: 28 },
   { characterId: 255, type: "post_count", value: 45 },
   { characterId: 256, type: "streak", value: 40 },
   { characterId: 257, type: "points", value: 3000 },
-  { characterId: 258, type: "expense_count", value: 300 },
+  { characterId: 258, type: "raid_count", value: 35 },
   { characterId: 259, type: "attendance", value: 135 },
-  { characterId: 260, type: "expense_count", value: 225 },
+  { characterId: 260, type: "live_count", value: 25 },
   { characterId: 271, type: "points", value: 12500 },
-  { characterId: 272, type: "expense_count", value: 1250 },
+  { characterId: 272, type: "raid_count", value: 60 },
   { characterId: 273, type: "attendance", value: 300 },
   { characterId: 274, type: "streak", value: 80 },
   { characterId: 275, type: "post_count", value: 75 },
   { characterId: 276, type: "post_count", value: 150 },
   { characterId: 277, type: "points", value: 20000 },
-  { characterId: 278, type: "expense_count", value: 2500 },
+  { characterId: 278, type: "live_count", value: 55 },
   { characterId: 279, type: "attendance", value: 450 },
   { characterId: 280, type: "streak", value: 150 },
   { characterId: 291, type: "points", value: 100000 },
-  { characterId: 292, type: "expense_count", value: 4000 },
-  { characterId: 293, type: "expense_count", value: 10000 },
+  { characterId: 292, type: "raid_count", value: 110 },
+  { characterId: 293, type: "raid_count", value: 170 },
   { characterId: 294, type: "streak", value: 450 },
   // ── Block 4 (301-400) ─────────────────────────────────────
-  { characterId: 304, type: "expense_count", value: 6 },
+  { characterId: 304, type: "raid_count", value: 3 },
   { characterId: 305, type: "attendance", value: 9 },
   { characterId: 306, type: "post_count", value: 9 },
-  { characterId: 307, type: "expense_count", value: 11 },
+  { characterId: 307, type: "live_count", value: 4 },
   { characterId: 308, type: "attendance", value: 16 },
   { characterId: 309, type: "streak", value: 8 },
-  { characterId: 316, type: "expense_count", value: 22 },
+  { characterId: 316, type: "raid_count", value: 8 },
   { characterId: 317, type: "streak", value: 16 },
   { characterId: 318, type: "points", value: 350 },
   { characterId: 319, type: "post_count", value: 12 },
-  { characterId: 320, type: "expense_count", value: 45 },
+  { characterId: 320, type: "live_count", value: 10 },
   { characterId: 321, type: "attendance", value: 38 },
-  { characterId: 322, type: "expense_count", value: 65 },
-  { characterId: 331, type: "expense_count", value: 85 },
+  { characterId: 322, type: "raid_count", value: 20 },
+  { characterId: 331, type: "live_count", value: 15 },
   { characterId: 332, type: "attendance", value: 50 },
   { characterId: 333, type: "points", value: 450 },
   { characterId: 334, type: "attendance", value: 65 },
   { characterId: 335, type: "streak", value: 18 },
   { characterId: 336, type: "post_count", value: 22 },
-  { characterId: 337, type: "expense_count", value: 95 },
+  { characterId: 337, type: "raid_count", value: 28 },
   { characterId: 338, type: "points", value: 800 },
   { characterId: 339, type: "streak", value: 48 },
   { characterId: 340, type: "streak", value: 58 },
   { characterId: 351, type: "points", value: 2250 },
-  { characterId: 352, type: "expense_count", value: 160 },
+  { characterId: 352, type: "live_count", value: 22 },
   { characterId: 353, type: "attendance", value: 90 },
   { characterId: 354, type: "post_count", value: 32 },
   { characterId: 355, type: "post_count", value: 48 },
   { characterId: 356, type: "streak", value: 42 },
   { characterId: 357, type: "points", value: 3500 },
-  { characterId: 358, type: "expense_count", value: 350 },
+  { characterId: 358, type: "raid_count", value: 40 },
   { characterId: 359, type: "attendance", value: 160 },
-  { characterId: 360, type: "expense_count", value: 275 },
+  { characterId: 360, type: "live_count", value: 30 },
   { characterId: 371, type: "points", value: 17500 },
-  { characterId: 372, type: "expense_count", value: 1750 },
+  { characterId: 372, type: "raid_count", value: 65 },
   { characterId: 373, type: "attendance", value: 330 },
   { characterId: 374, type: "streak", value: 110 },
   { characterId: 375, type: "post_count", value: 80 },
   { characterId: 376, type: "post_count", value: 175 },
   { characterId: 377, type: "points", value: 30000 },
-  { characterId: 378, type: "expense_count", value: 3500 },
+  { characterId: 378, type: "live_count", value: 60 },
   { characterId: 379, type: "attendance", value: 500 },
   { characterId: 380, type: "streak", value: 180 },
   { characterId: 391, type: "points", value: 125000 },
-  { characterId: 392, type: "expense_count", value: 5500 },
-  { characterId: 393, type: "expense_count", value: 12500 },
+  { characterId: 392, type: "raid_count", value: 120 },
+  { characterId: 393, type: "raid_count", value: 180 },
   { characterId: 394, type: "streak", value: 500 },
 ];
 
@@ -375,42 +375,90 @@ export class RewardsService {
   }
 
   async recordAttendance(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) return;
+    await this.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+  }
+
+  async incrementLiveCount(userId: string): Promise<void> {
+    await this.getOrCreateReward(userId);
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: { liveCount: { increment: 1 } },
+    });
+  }
+
+  /** 출석 버튼 클릭 — 하루 1회, 월 단위 출석판, 7일마다 알 지급 */
+  async claimAttendance(userId: string): Promise<{
+    alreadyClaimed: boolean;
+    points: number;
+    streakDays: number;
+    attendanceDays: number;
+    monthDays: number;
+    monthWeekRewards: number;
+    eggReward: "big" | "golden" | null;
+  }> {
     const nowKTC = new Date(Date.now() + 9 * 3_600_000);
     const todayKTC = nowKTC.toISOString().slice(0, 10);
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { lastLoginAt: true },
-    });
-    if (!user) return;
-
-    const lastLoginKTC = user.lastLoginAt
-      ? new Date(user.lastLoginAt.getTime() + 9 * 3_600_000)
-          .toISOString()
-          .slice(0, 10)
-      : null;
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { lastLoginAt: new Date() },
-    });
-
-    if (lastLoginKTC === todayKTC) return;
-
-    const yesterdayKTC = new Date(Date.now() + 9 * 3_600_000 - 86_400_000)
-      .toISOString()
-      .slice(0, 10);
-    const isConsecutive = lastLoginKTC === yesterdayKTC;
+    const currentMonthKey = todayKTC.slice(0, 7); // "YYYY-MM"
 
     const reward = await this.getOrCreateReward(userId);
 
-    await this.prisma.userReward.update({
+    if (reward.lastAttendanceDate === todayKTC) {
+      return { alreadyClaimed: true, points: 0, streakDays: reward.streakDays, attendanceDays: reward.attendanceDays, monthDays: reward.monthDays, monthWeekRewards: reward.monthWeekRewards, eggReward: null };
+    }
+
+    // 월 바뀌면 monthDays·monthWeekRewards 리셋
+    const monthReset = reward.monthKey !== currentMonthKey;
+    const prevMonthDays = monthReset ? 0 : reward.monthDays;
+    const prevWeekRewards = monthReset ? 0 : reward.monthWeekRewards;
+
+    const yesterdayKTC = new Date(Date.now() + 9 * 3_600_000 - 86_400_000).toISOString().slice(0, 10);
+    const isConsecutive = !monthReset && reward.lastAttendanceDate === yesterdayKTC;
+    const newStreak = isConsecutive ? reward.streakDays + 1 : 1;
+
+    const pointOptions = [50, 100, 150];
+    const basePoints = pointOptions[Math.floor(Math.random() * pointOptions.length)];
+    const streakBonus = isConsecutive && newStreak > 1 ? 20 : 0;
+    const points = basePoints + streakBonus;
+
+    const newMonthDays = prevMonthDays + 1;
+
+    // 7일 단위 알 보상 체크 (주차별: 1~2주=큰알, 3~4주=황금알)
+    let eggReward: "big" | "golden" | null = null;
+    let newWeekRewards = prevWeekRewards;
+    const weekIndex = Math.floor((newMonthDays - 1) / 7); // 0-based: 0=1주차, 1=2주차, 2=3주차, 3=4주차
+    const weekBit = 1 << weekIndex;
+    if (newMonthDays % 7 === 0 && weekIndex < 4 && !(prevWeekRewards & weekBit)) {
+      eggReward = weekIndex < 2 ? "big" : "golden";
+      newWeekRewards |= weekBit;
+    }
+
+    const eggUpdate = eggReward === "big" ? { bigEggs: { increment: 1 } } : eggReward === "golden" ? { goldenEggs: { increment: 1 } } : {};
+
+    const updated = await this.prisma.userReward.update({
       where: { userId },
       data: {
         attendanceDays: { increment: 1 },
-        streakDays: isConsecutive ? reward.streakDays + 1 : 1,
+        streakDays: newStreak,
+        missionPoints: { increment: points },
+        lastAttendanceDate: todayKTC,
+        monthKey: currentMonthKey,
+        monthDays: newMonthDays,
+        monthWeekRewards: newWeekRewards,
+        ...eggUpdate,
       },
     });
+
+    return {
+      alreadyClaimed: false,
+      points,
+      streakDays: updated.streakDays,
+      attendanceDays: updated.attendanceDays,
+      monthDays: updated.monthDays,
+      monthWeekRewards: updated.monthWeekRewards,
+      eggReward,
+    };
   }
 
   async getSummary(userId: string) {
@@ -426,6 +474,7 @@ export class RewardsService {
       select: { titleId: true },
     });
 
+    const todayKTC = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
     return {
       attendanceDays: reward.attendanceDays,
       missionPoints: reward.missionPoints,
@@ -440,6 +489,11 @@ export class RewardsService {
       normalEggs: reward.normalEggs,
       bigEggs: reward.bigEggs,
       goldenEggs: reward.goldenEggs,
+      raidCount: reward.raidCount,
+      liveCount: reward.liveCount,
+      attendanceClaimedToday: reward.lastAttendanceDate === todayKTC,
+      monthDays: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthDays : 0,
+      monthWeekRewards: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthWeekRewards : 0,
     };
   }
 
@@ -494,12 +548,12 @@ export class RewardsService {
     if (reward.kind === "points") {
       await this.prisma.userReward.update({
         where: { userId },
-        data: { missionPoints: { increment: Math.max(0, reward.points) } },
+        data: { missionPoints: { increment: Math.max(0, reward.points) }, raidCount: { increment: 1 } },
       });
     } else {
       await this.prisma.userReward.update({
         where: { userId },
-        data: eggDelta(reward.egg, 1),
+        data: { ...eggDelta(reward.egg, 1), raidCount: { increment: 1 } },
       });
     }
   }
@@ -661,19 +715,15 @@ export class RewardsService {
 
   async checkAndGrantTitles(userId: string) {
     const reward = await this.getOrCreateReward(userId);
-    const [expenseCount, postCount, shareCount] = await Promise.all([
-      this.prisma.expense.count({ where: { userId } }),
-      this.prisma.communityPost.count({ where: { userId } }),
-      this.prisma.expense.count({ where: { userId, sharedToCommunity: true } }),
-    ]);
+    const postCount = await this.prisma.communityPost.count({ where: { userId } });
 
     const stats: Record<string, number> = {
-      expense_count: expenseCount,
-      post_count: postCount,
-      share_count: shareCount,
-      attendance: reward.attendanceDays,
-      streak: reward.streakDays,
-      points: reward.totalPointsUsed,
+      raid_count:  reward.raidCount,
+      live_count:  reward.liveCount,
+      post_count:  postCount,
+      attendance:  reward.attendanceDays,
+      streak:      reward.streakDays,
+      points:      reward.totalPointsUsed,
     };
 
     const ownedTitles = await this.prisma.userTitle.findMany({
@@ -704,72 +754,6 @@ export class RewardsService {
     return { newlyUnlocked };
   }
 
-  // ── 활동 보상 트리거 ───────────────────────────────────────
-
-  private dateDiff(newer: string, older: string): number {
-    return Math.round(
-      (new Date(newer).getTime() - new Date(older).getTime()) / 86_400_000,
-    );
-  }
-
-  private calcStreak(sortedUniqueDates: string[], today: string): number {
-    if (sortedUniqueDates.length === 0) return 0;
-    const last = sortedUniqueDates[sortedUniqueDates.length - 1];
-    if (this.dateDiff(today, last) > 1) return 0;
-    let streak = 1;
-    for (let i = sortedUniqueDates.length - 1; i > 0; i--) {
-      if (this.dateDiff(sortedUniqueDates[i], sortedUniqueDates[i - 1]) === 1)
-        streak++;
-      else break;
-    }
-    return streak;
-  }
-
-  async onExpenseCreated(
-    userId: string,
-    expenseDate: string,
-    isGroupExpense: boolean,
-  ) {
-    const reward = await this.getOrCreateReward(userId);
-
-    const today = new Date().toISOString().slice(0, 10);
-
-    const expenses = await this.prisma.expense.findMany({
-      where: { userId },
-      select: { expenseDate: true, groupId: true },
-      orderBy: { expenseDate: "asc" },
-    });
-
-    const uniqueDates = [
-      ...new Set(expenses.map((e) => e.expenseDate.toISOString().slice(0, 10))),
-    ].sort();
-    const attendanceDays = uniqueDates.length;
-    const streakDays = this.calcStreak(uniqueDates, today);
-
-    let pointsDelta = 0;
-    if (attendanceDays > reward.attendanceDays) pointsDelta += 50; // 새 출석일 +50P
-    if (streakDays > reward.streakDays && streakDays > 1) pointsDelta += 20; // 연속 출석 +20P
-
-    // 그룹 지출 기록: 건당 50P, 하루 최대 3회
-    if (isGroupExpense) {
-      const todayGroupCount = expenses.filter(
-        (e) => e.groupId && e.expenseDate.toISOString().slice(0, 10) === today,
-      ).length;
-      if (todayGroupCount <= 3) pointsDelta += 50;
-    }
-
-    await this.prisma.userReward.update({
-      where: { userId },
-      data: {
-        attendanceDays,
-        streakDays,
-        ...(pointsDelta > 0
-          ? { missionPoints: { increment: pointsDelta } }
-          : {}),
-      },
-    });
-  }
-
   async onPostCreated(userId: string) {
     await this.getOrCreateReward(userId);
     await this.prisma.userReward.update({
@@ -781,17 +765,15 @@ export class RewardsService {
   async checkAndGrantAchievements(userId: string) {
     const reward = await this.getOrCreateReward(userId);
 
-    const [expenseCount, postCount] = await Promise.all([
-      this.prisma.expense.count({ where: { userId } }),
-      this.prisma.communityPost.count({ where: { userId } }),
-    ]);
+    const postCount = await this.prisma.communityPost.count({ where: { userId } });
 
     const stats: Record<string, number> = {
-      expense_count: expenseCount,
-      post_count: postCount,
-      attendance: reward.attendanceDays,
-      streak: reward.streakDays,
-      points: reward.totalPointsUsed,
+      raid_count:  reward.raidCount,
+      live_count:  reward.liveCount,
+      post_count:  postCount,
+      attendance:  reward.attendanceDays,
+      streak:      reward.streakDays,
+      points:      reward.totalPointsUsed,
     };
 
     const owned = await this.prisma.userCharacter.findMany({

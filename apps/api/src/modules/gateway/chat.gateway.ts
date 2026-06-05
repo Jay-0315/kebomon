@@ -7,6 +7,7 @@ import {
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
+import { RewardsService } from "../rewards/rewards.service";
 
 export const CHANNEL_IDS = [1, 2, 3, 4] as const;
 
@@ -55,18 +56,23 @@ export class ChatGateway implements OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  // socketId -> participant (in-memory only, never persisted)
+  constructor(private readonly rewards: RewardsService) {}
+
   private participants = new Map<string, Participant>();
 
   @SubscribeMessage("chat:join")
   handleJoin(
-    @MessageBody() data: { channelId: number; characterId: number },
+    @MessageBody() data: { channelId: number; characterId: number; userId?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const channelId = CHANNEL_IDS.includes(data?.channelId as 1 | 2 | 3 | 4)
       ? data.channelId
       : 1;
     const characterId = Number(data?.characterId) || 1;
+
+    if (data?.userId) {
+      this.rewards.incrementLiveCount(data.userId).catch(() => undefined);
+    }
 
     // leave previous channel if switching
     const prev = this.participants.get(client.id);

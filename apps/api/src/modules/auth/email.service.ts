@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { Resend } from "resend";
 
 @Injectable()
@@ -14,14 +18,22 @@ export class EmailService {
 
   async sendVerificationCode(email: string, code: string): Promise<void> {
     const subject = `[Kebo] 이메일 인증번호: ${code}`;
-    const html = this.buildCodeEmail(code, "이메일 인증", "회원가입을 완료하려면 아래 인증번호를 입력하세요.");
+    const html = this.buildCodeEmail(
+      code,
+      "이메일 인증",
+      "회원가입을 완료하려면 아래 인증번호를 입력하세요.",
+    );
 
     await this.send(email, subject, html);
   }
 
   async sendPasswordResetCode(email: string, code: string): Promise<void> {
     const subject = `[Kebo] 비밀번호 재설정 인증번호: ${code}`;
-    const html = this.buildCodeEmail(code, "비밀번호 재설정", "비밀번호를 재설정하려면 아래 인증번호를 입력하세요.");
+    const html = this.buildCodeEmail(
+      code,
+      "비밀번호 재설정",
+      "비밀번호를 재설정하려면 아래 인증번호를 입력하세요.",
+    );
 
     await this.send(email, subject, html);
   }
@@ -42,12 +54,16 @@ export class EmailService {
 
       if (error) {
         this.logger.error(`Resend 발송 실패: ${JSON.stringify(error)}`);
-        throw new ServiceUnavailableException("이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        throw new ServiceUnavailableException(
+          "이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        );
       }
     } catch (err) {
       if (err instanceof ServiceUnavailableException) throw err;
       this.logger.error(`Resend 예외: ${String(err)}`);
-      throw new ServiceUnavailableException("이메일 발송 중 오류가 발생했습니다.");
+      throw new ServiceUnavailableException(
+        "이메일 발송 중 오류가 발생했습니다.",
+      );
     }
   }
 
@@ -63,7 +79,7 @@ export class EmailService {
         <tr>
           <td style="padding:32px 40px 24px;border-bottom:1px solid #2a2a2a;">
             <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Kebo</div>
-            <div style="font-size:13px;color:#888;margin-top:4px;">가계부 & 커뮤니티 서비스</div>
+            <div style="font-size:13px;color:#888;margin-top:4px;">커뮤니티 서비스</div>
           </td>
         </tr>
         <tr>
