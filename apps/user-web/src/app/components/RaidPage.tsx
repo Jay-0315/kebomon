@@ -600,7 +600,7 @@ export default function RaidPage() {
 
   const [view, setView] = useState<"lobby" | "room">("lobby");
   const [raidType, setRaidType] = useState(1);
-  const [lobby, setLobby] = useState<Record<number, { count: number; cooldownUntil: number; bossCharId?: number }>>({
+  const [lobby, setLobby] = useState<Record<number, { count: number; cooldownUntil: number; bossCharId?: number; currentHp?: number; maxHp?: number }>>({
     1: { count: 0, cooldownUntil: 0 },
     3: { count: 0, cooldownUntil: 0 }, 4: { count: 0, cooldownUntil: 0 },
   });
@@ -642,7 +642,7 @@ export default function RaidPage() {
 
   useEffect(() => {
     const s = getRaidSocket();
-    const onLobby = (d: Record<number, { count: number; cooldownUntil: number; bossCharId?: number }>) => setLobby((p) => ({ ...p, ...d }));
+    const onLobby = (d: Record<number, { count: number; cooldownUntil: number; bossCharId?: number; currentHp?: number; maxHp?: number }>) => setLobby((p) => ({ ...p, ...d }));
     const onState = (d: RaidState) => setState(d);
     const onSelf = (d: SelfInfo) => setSelf(d);
     const onMsg = (m: ChatMsg) => {
@@ -785,22 +785,59 @@ export default function RaidPage() {
                   disabled ? "cursor-not-allowed border-border opacity-60" : "border-border bg-card hover:border-primary hover:shadow-lg"
                 }`}
               >
-                {/* boss sprite — 상단 중앙 */}
+                {/* ── 상단 정보 바: 인원 + HP ── */}
+                <div className="mb-2 flex items-center gap-2">
+                  {/* 인원수 */}
+                  <span className="flex shrink-0 items-center gap-1 text-sm font-bold">
+                    <Users className="h-3.5 w-3.5" />
+                    <span className={full5 ? "text-destructive" : "text-foreground"}>
+                      {info.count}
+                    </span>
+                    <span className="text-muted-foreground font-normal">/{MAX_PLAYERS}</span>
+                  </span>
+                  {/* HP 바 */}
+                  <div className="flex-1 min-w-0">
+                    {info.currentHp !== undefined && info.maxHp ? (
+                      <>
+                        <div className="flex justify-between mb-0.5">
+                          <span className="text-[10px] text-muted-foreground">HP</span>
+                          <span className="text-[10px] text-red-400 font-semibold">
+                            {info.currentHp}/{info.maxHp}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300"
+                            style={{ width: `${Math.round((info.currentHp / info.maxHp) * 100)}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between mb-0.5">
+                          <span className="text-[10px] text-muted-foreground">HP</span>
+                          <span className="text-[10px] text-muted-foreground">대기중</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="h-full w-full rounded-full bg-gradient-to-r from-red-600/40 to-red-400/40" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* boss sprite — 중앙 */}
                 <div className="flex justify-center pb-3 pt-1">
                   <div className={`rounded-2xl bg-black/5 px-6 py-2 dark:bg-white/5 ${onCooldown ? "grayscale" : ""}`}>
                     <PixelCharacter characterId={bossDef.id} size={64} float={!onCooldown} />
                   </div>
                 </div>
                 {/* 텍스트 정보 */}
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-base font-bold">{RAIDS[id].name}</p>
                     <p className="truncate text-xs text-muted-foreground">BOSS · {getCharName(bossDef, lang)}</p>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">{RAIDS[id].desc}</p>
                   </div>
-                  <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" /> {info.count}/{MAX_PLAYERS}
-                  </span>
                 </div>
                 {/* 상태 뱃지 */}
                 {onCooldown ? (
