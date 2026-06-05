@@ -74,7 +74,7 @@ const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTE
 
 // ─── 점프 액션 게임 (점프 레이드 / 타입1) ─────────────────────────────────
 // 장애물이 계속 다가오고, 스페이스바(또는 터치)로 점프해서 넘으면 보스에게 데미지.
-type Obstacle = { x: number; ow: number; oh: number; counted: boolean; hit: boolean };
+type Obstacle = { x: number; ow: number; oh: number; counted: boolean; hit: boolean; kind: number };
 function JumpGame({
   charDef,
   cleared,
@@ -104,6 +104,7 @@ function JumpGame({
     jy: 0,
     vy: 0,
     grounded: true,
+    isJumpHeld: false,
     stunUntil: 0,
     hits: 0,
     deadUntil: 0, // Date.now 기준
@@ -117,12 +118,17 @@ function JumpGame({
   const doJump = useCallback(() => {
     const st = g.current;
     if (clearedRef.current) return;
-    if (Date.now() < st.deadUntil) return; // 사망 중엔 점프 불가
+    if (Date.now() < st.deadUntil) return;
     if (performance.now() < st.stunUntil) return;
     if (st.grounded) {
-      st.vy = 11;
+      st.vy = 9.5;
       st.grounded = false;
+      st.isJumpHeld = true;
     }
+  }, []);
+
+  const releaseJump = useCallback(() => {
+    g.current.isJumpHeld = false;
   }, []);
 
   // 부활 카운트다운 표시
@@ -139,15 +145,24 @@ function JumpGame({
 
   // 키보드(스페이스/↑) — 페이지 스크롤 방지
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space" || e.key === " " || e.key === "ArrowUp") {
         e.preventDefault();
-        doJump();
+        if (!e.repeat) doJump();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [doJump]);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.key === " " || e.key === "ArrowUp") {
+        releaseJump();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [doJump, releaseJump]);
 
   // 게임 루프
   useEffect(() => {
@@ -156,10 +171,11 @@ function JumpGame({
     let raf = 0;
     let last = performance.now();
 
-    const GROUND_H = 16; // 바닥 두께
+    const GROUND_H = 16;
+    const GRAVITY = 0.72;       // 낙하 / 키 뗐을 때 중력
+    const HOLD_GRAVITY = 0.40;  // 홀드 상승 중 중력 (낮을수록 더 높이 올라감)
     const HITX = 50; // 플레이어 히트박스 좌표
     const HITW = 30;
-    const GRAVITY = 0.6; // per frame
 
     const resize = () => {
       const w = wrapRef.current?.clientWidth ?? 600;
@@ -200,14 +216,16 @@ function JumpGame({
 
         st.elapsed += dt;
 
-        // 점프 물리
+        // 점프 물리 — 홀드 중(상승)이면 중력 감소, 키 떼면 즉시 빠르게 낙하
         if (!st.grounded) {
           st.jy += st.vy * dtf;
-          st.vy -= GRAVITY * dtf;
+          const grav = (st.isJumpHeld && st.vy > 0) ? HOLD_GRAVITY : GRAVITY;
+          st.vy -= grav * dtf;
           if (st.jy <= 0) {
             st.jy = 0;
             st.vy = 0;
             st.grounded = true;
+            st.isJumpHeld = false;
           }
         }
 
@@ -219,8 +237,10 @@ function JumpGame({
         if (st.spawnAcc >= st.nextSpawn) {
           st.spawnAcc = 0;
           st.nextSpawn = 850 + Math.random() * 650 - Math.min(350, st.elapsed / 40);
-          const oh = 22 + Math.floor(Math.random() * 22);
-          st.obstacles.push({ x: W + 12, ow: 16 + Math.floor(Math.random() * 12), oh, counted: false, hit: false });
+          const kind = Math.floor(Math.random() * 3); // 0=단독, 1=쌍, 2=클러스터
+          const oh = kind === 2 ? 22 + Math.floor(Math.random() * 10) : 26 + Math.floor(Math.random() * 18);
+          const ow = kind === 1 ? 28 + Math.floor(Math.random() * 8) : 16 + Math.floor(Math.random() * 10);
+          st.obstacles.push({ x: W + 12, ow, oh, counted: false, hit: false, kind });
         }
 
         // 이동 / 충돌 / 통과 판정
@@ -320,21 +340,78 @@ function JumpGame({
       const gscroll = (now * 0.18) % 26;
       for (let x = -gscroll; x < W; x += 26) ctx.fillRect(x, groundY + 9, 7, 2);
 
-      // 장애물 (가시 덤불)
+      // 장애물 — 도트 선인장
+      const drawCactus = (bx: number, by: number, w: number, h: number, hit: boolean) => {
+        const dark  = hit ? "#9ca3af" : "#1b5e35";
+        const mid   = hit ? "#b0b8c1" : "#2d6a4f";
+        const light = hit ? "#cdd5dc" : "#52b788";
+        const u = Math.max(2, Math.floor(w / 7)); // 픽셀 1칸 크기
+        const sw = u * 2;                          // 줄기 두께
+        const cx = bx + Math.floor(w / 2) - u;    // 줄기 중심 x
+
+        // 줄기
+        ctx.fillStyle = mid;
+        ctx.fillRect(cx, by, sw, h);
+        // 줄기 하이라이트
+        ctx.fillStyle = light;
+        ctx.fillRect(cx + u, by + u, u, h - u * 2);
+        // 줄기 테두리
+        ctx.fillStyle = dark;
+        ctx.fillRect(cx - 1, by, 1, h);
+        ctx.fillRect(cx + sw, by, 1, h);
+
+        // 왼쪽 팔 (높이 40% 지점)
+        const arm1Y = by + Math.floor(h * 0.38);
+        const aW = Math.floor(w * 0.38);
+        const aH = Math.floor(h * 0.32);
+        ctx.fillStyle = mid;
+        ctx.fillRect(cx - aW, arm1Y, aW, sw);          // 수평
+        ctx.fillRect(cx - aW, arm1Y - aH, sw, aH + sw);// 수직 (위로)
+        ctx.fillStyle = light;
+        ctx.fillRect(cx - aW + 1, arm1Y + 1, aW - 2, u);// 수평 하이라이트
+        ctx.fillRect(cx - aW + u, arm1Y - aH + u, u, aH);// 수직 하이라이트
+        ctx.fillStyle = dark;
+        ctx.fillRect(cx - aW, arm1Y - aH - 1, sw, 1);  // 팔 끝 상단 테두리
+
+        // 오른쪽 팔 (높이 58% 지점, 좌측보다 약간 낮게)
+        const arm2Y = by + Math.floor(h * 0.55);
+        const aW2 = Math.floor(w * 0.30);
+        const aH2 = Math.floor(h * 0.24);
+        ctx.fillStyle = mid;
+        ctx.fillRect(cx + sw, arm2Y, aW2, sw);
+        ctx.fillRect(cx + sw + aW2 - sw, arm2Y - aH2, sw, aH2 + sw);
+        ctx.fillStyle = light;
+        ctx.fillRect(cx + sw + 1, arm2Y + 1, aW2 - 2, u);
+        ctx.fillRect(cx + sw + aW2 - sw + u, arm2Y - aH2 + u, u, aH2);
+        ctx.fillStyle = dark;
+        ctx.fillRect(cx + sw + aW2 - sw, arm2Y - aH2 - 1, sw, 1);
+
+        // 꼭대기 뾰족점 (도트 1픽셀)
+        ctx.fillStyle = dark;
+        ctx.fillRect(cx + u - Math.floor(u / 2), by - u, u, u);
+      };
+
       for (const o of st.obstacles) {
         const topY = groundY - o.oh;
-        const body = o.hit ? "#9ca3af" : "#2f7d52";
-        ctx.fillStyle = body;
-        ctx.fillRect(o.x, topY, o.ow, o.oh);
-        ctx.fillStyle = o.hit ? "#bcc2ca" : "#43a06b"; // 밝은 면
-        ctx.fillRect(o.x, topY, Math.max(3, o.ow * 0.35), o.oh);
-        ctx.fillStyle = body; // 가시 끝
-        ctx.beginPath();
-        ctx.moveTo(o.x - 1, topY);
-        ctx.lineTo(o.x + o.ow / 2, topY - 11);
-        ctx.lineTo(o.x + o.ow + 1, topY);
-        ctx.closePath();
-        ctx.fill();
+        if (o.kind === 1) {
+          // 쌍 선인장: 크기 다른 두 그루
+          const w1 = Math.floor(o.ow * 0.55);
+          const w2 = Math.floor(o.ow * 0.48);
+          const h1 = o.oh;
+          const h2 = Math.floor(o.oh * 0.78);
+          drawCactus(o.x,            groundY - h1, w1, h1, o.hit);
+          drawCactus(o.x + w1 + 3,   groundY - h2, w2, h2, o.hit);
+        } else if (o.kind === 2) {
+          // 클러스터: 작은 3그루
+          const w3 = Math.floor(o.ow * 0.36);
+          const h3 = o.oh;
+          drawCactus(o.x,            groundY - Math.floor(h3 * 0.85), w3, Math.floor(h3 * 0.85), o.hit);
+          drawCactus(o.x + w3 + 2,   groundY - h3, w3, h3, o.hit);
+          drawCactus(o.x + w3 * 2 + 4, groundY - Math.floor(h3 * 0.7), w3, Math.floor(h3 * 0.7), o.hit);
+        } else {
+          // 단독 선인장
+          drawCactus(o.x, topY, o.ow, o.oh, o.hit);
+        }
       }
 
       // 플레이어(DOM) 위치 갱신
@@ -355,6 +432,8 @@ function JumpGame({
     <div
       ref={wrapRef}
       onPointerDown={doJump}
+      onPointerUp={releaseJump}
+      onPointerLeave={releaseJump}
       className="relative mx-3 mb-2 mt-1 select-none overflow-hidden rounded-xl border border-border bg-gradient-to-b from-sky-100 to-amber-50 dark:from-slate-800 dark:to-slate-900"
       style={{ height: 200, touchAction: "none", cursor: "pointer" }}
     >
