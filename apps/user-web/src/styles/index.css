@@ -2,6 +2,15 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/* ── Scrollbar hide (scroll still works via wheel/drag) ── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Tiptap editor content styles ── */
 .tiptap-content h1 { font-size: 1.5rem; font-weight: 700; margin: 0.75rem 0 0.5rem; line-height: 1.3; }
 .tiptap-content h2 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.5rem; line-height: 1.3; }

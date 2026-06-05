@@ -148,7 +148,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-hidden">
+        <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
           <NavLinks />
         </nav>
 
