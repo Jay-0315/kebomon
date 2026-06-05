@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "react-router";
-import { Heart, Pencil, Users, ChevronRight, TrendingUp, MessageSquare } from "lucide-react";
+import { Heart, Pencil, ChevronRight, TrendingUp, MessageSquare, Award } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { CHARACTERS } from "../data/characters";
@@ -51,19 +51,32 @@ export default function HomePage() {
       </div>
 
       {/* ── Quick links ── */}
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Link
           to="/kabemon"
           className="bg-card rounded border border-border p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
         >
-          <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5 text-primary" />
+          <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 text-primary" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-medium text-sm">{t("nav.kabemon")}</p>
             <p className="text-xs text-muted-foreground">{t("home.kabemon_sub")}</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto shrink-0" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </Link>
+        <Link
+          to="/mypage?titles"
+          className="bg-card rounded border border-border p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+        >
+          <div className="w-9 h-9 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Award className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm">{t("mypage.title_section")}</p>
+            <p className="text-xs text-muted-foreground">{t("home.titles_sub")}</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         </Link>
       </div>
 

@@ -27,7 +27,7 @@ function timeAgo(iso: string, lang: string): string {
   return lang === "ja" ? `${d}日前` : `${d}일 전`;
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ navStyle = false }: { navStyle?: boolean }) {
   const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notif[]>([]);
@@ -89,6 +89,63 @@ export default function NotificationBell() {
     if (n.link) navigate(n.link);
   };
 
+  const Dropdown = ({ pos }: { pos: string }) => (
+    <div className={`absolute ${pos} z-50 w-80 max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card shadow-xl`}>
+      <div className="border-b border-border px-4 py-2.5 text-sm font-bold">{t("notification.title")}</div>
+      <div className="max-h-96 overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground">{t("notification.empty")}</div>
+        ) : (
+          items.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => onClickItem(n)}
+              className={`flex w-full items-start gap-2.5 border-b border-border px-4 py-3 text-left transition-colors hover:bg-sidebar-accent ${
+                n.isRead ? "" : "bg-primary/5"
+              }`}
+            >
+              <span className="mt-0.5 shrink-0">
+                {n.type === "comment" ? (
+                  <MessageSquare className="h-4 w-4 text-blue-400" />
+                ) : (
+                  <Trophy className="h-4 w-4 text-amber-400" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-semibold">{n.title}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(n.createdAt, lang)}</span>
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.body}</span>
+              </span>
+              {!n.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  if (navStyle) {
+    return (
+      <div ref={ref} className="relative w-full">
+        <button
+          onClick={toggle}
+          className="flex w-full items-center gap-3 rounded px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+        >
+          <Bell className="h-5 w-5 shrink-0" />
+          <span>{t("notification.title")}</span>
+          {unread > 0 && (
+            <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </button>
+        {open && <Dropdown pos="left-full top-0 ml-2" />}
+      </div>
+    );
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -103,43 +160,7 @@ export default function NotificationBell() {
           </span>
         )}
       </button>
-
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
-          <div className="border-b border-border px-4 py-2.5 text-sm font-bold">{t("notification.title")}</div>
-          <div className="max-h-96 overflow-y-auto">
-            {items.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">{t("notification.empty")}</div>
-            ) : (
-              items.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => onClickItem(n)}
-                  className={`flex w-full items-start gap-2.5 border-b border-border px-4 py-3 text-left transition-colors hover:bg-sidebar-accent ${
-                    n.isRead ? "" : "bg-primary/5"
-                  }`}
-                >
-                  <span className="mt-0.5 shrink-0">
-                    {n.type === "comment" ? (
-                      <MessageSquare className="h-4 w-4 text-blue-400" />
-                    ) : (
-                      <Trophy className="h-4 w-4 text-amber-400" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-semibold">{n.title}</span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(n.createdAt, lang)}</span>
-                    </span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.body}</span>
-                  </span>
-                  {!n.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+      {open && <Dropdown pos="right-0 top-full mt-2" />}
     </div>
   );
 }

@@ -41,14 +41,7 @@ export default function LiveChatPage() {
   const { t } = useLang();
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
 
-  const channelNames = useMemo(() => ({
-    1: t("live.channel.1"),
-    2: t("live.channel.2"),
-    3: t("live.channel.3"),
-    4: t("live.channel.4"),
-  }), [t]);
-
-  const [view, setView] = useState<"lobby" | "room">("lobby");
+const [view, setView] = useState<"lobby" | "room">("lobby");
   const [channelId, setChannelId] = useState<number>(1);
   const [counts, setCounts] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 });
   const [roster, setRoster] = useState<RosterEntry[]>([]);
@@ -170,10 +163,9 @@ export default function LiveChatPage() {
               className="group flex items-center justify-between rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg"
             >
               <div>
-                <div className="flex items-center gap-1.5 text-lg font-bold">
+                <div className="flex items-center gap-2 text-lg font-bold">
                   <span>{CHANNEL_EMOJIS[id]}</span>
-                  채널 {id}
-                  <span className="text-sm font-medium text-muted-foreground">· {channelNames[id]}</span>
+                  ch.{id}
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
@@ -212,10 +204,8 @@ export default function LiveChatPage() {
           <ArrowLeft className="h-4 w-4" /> {t("live.leave")}
         </button>
         <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100">
-          <Radio className="h-4 w-4 text-primary" /> 채널 {channelId}
-          <span className="text-sm font-medium text-gray-500 dark:text-gray-300">
-            {CHANNEL_EMOJIS[channelId]} {channelNames[channelId as 1 | 2 | 3 | 4]}
-          </span>
+          <Radio className="h-4 w-4 text-primary" />
+          {CHANNEL_EMOJIS[channelId]} ch.{channelId}
         </div>
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
           <Users className="h-4 w-4" /> {roster.length}

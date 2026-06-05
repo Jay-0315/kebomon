@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Home, Users, User, Settings, Globe, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords } from "lucide-react";
+import { Home, User, Settings, Globe, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords } from "lucide-react";
 import Footer from "./Footer";
 import { useState } from "react";
 import { useAppData } from "../context/AppDataContext";
@@ -32,10 +32,10 @@ export default function Layout() {
     { path: "/kabemon", icon: Gamepad2, label: t("nav.kabemon") },
     { path: "/live", icon: Radio, label: t("nav.live") },
     { path: "/raid", icon: Swords, label: t("nav.raid") },
-    { path: "/mypage", icon: User, label: t("nav.mypage") },
   ];
 
   const settingsItems = [
+    { path: "/mypage", icon: User, label: t("nav.mypage") },
     { path: "/settings", icon: Settings, label: t("nav.settings") },
   ];
 
@@ -138,8 +138,8 @@ export default function Layout() {
           </button>
         </div>
 
-        {/* Notification Bell - 로고 바로 아래 */}
-        <div className="px-4 py-2 border-b border-sidebar-border">
+        {/* Notification Bell */}
+        <div className="px-4 pt-1.5 pb-0.5">
           <NotificationBell navStyle />
         </div>
 

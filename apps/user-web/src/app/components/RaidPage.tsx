@@ -752,7 +752,7 @@ export default function RaidPage() {
       ) : (
         <>
           {/* chat bubbles */}
-          <div className="pointer-events-none absolute inset-x-0 top-52 bottom-40 z-30 overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-64 bottom-40 z-30 overflow-hidden">
             {bubbles.map((b, i) => {
               const def = charById(b.characterId);
               const mine = b.socketId === self?.socketId;
