@@ -126,10 +126,10 @@ export default function AttendancePage() {
           }`}
         >
           {claiming
-            ? `⏳ ${t("attendance.btn_processing")}`
+            ? t("attendance.btn_processing")
             : attendanceClaimedToday
             ? `✓ ${t("attendance.btn_done")}`
-            : `📅 ${t("attendance.btn_check")}`}
+            : t("attendance.btn_check")}
         </button>
       </div>
 
