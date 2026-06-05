@@ -276,9 +276,9 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         }
         this.server.to(p.socketId).emit("raid:cleared", { reward });
       }
-      this.broadcastLobby();
     }
     this.broadcastState(type);
+    this.broadcastLobby();
   }
 
   @SubscribeMessage("raid:input")
@@ -384,12 +384,16 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   }
 
   private lobby() {
-    const info: Record<number, { count: number; cooldownUntil: number; bossCharId: number }> = {};
+    const info: Record<number, { count: number; cooldownUntil: number; bossCharId: number; currentHp: number; maxHp: number }> = {};
     for (const t of RAID_TYPES) {
+      const r = this.rooms.get(t);
+      const meta = RAID_META[t];
       info[t] = {
-        count: this.rooms.get(t)?.players.size ?? 0,
+        count: r?.players.size ?? 0,
         cooldownUntil: this.cooldowns.get(t) ?? 0,
         bossCharId: this.getRoom(t).bossCharId,
+        currentHp: r && !r.cleared ? Math.max(0, meta.goal - r.progress) : meta.goal,
+        maxHp: meta.goal,
       };
     }
     return info;

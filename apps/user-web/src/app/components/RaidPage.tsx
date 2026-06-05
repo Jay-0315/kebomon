@@ -785,74 +785,52 @@ export default function RaidPage() {
                   disabled ? "cursor-not-allowed border-border opacity-60" : "border-border bg-card hover:border-primary hover:shadow-lg"
                 }`}
               >
-                {/* ── 상단 정보 바: 인원 + HP ── */}
-                <div className="mb-2 flex items-center gap-2">
-                  {/* 인원수 */}
+                {/* ── 상단: 인원 + 상태 뱃지 ── */}
+                <div className="mb-2 flex items-center justify-between">
                   <span className="flex shrink-0 items-center gap-1 text-sm font-bold">
                     <Users className="h-3.5 w-3.5" />
-                    <span className={full5 ? "text-destructive" : "text-foreground"}>
-                      {info.count}
-                    </span>
+                    <span className={full5 ? "text-destructive" : "text-foreground"}>{info.count}</span>
                     <span className="text-muted-foreground font-normal">/{MAX_PLAYERS}</span>
                   </span>
-                  {/* HP 바 */}
-                  <div className="flex-1 min-w-0">
-                    {info.currentHp !== undefined && info.maxHp ? (
-                      <>
-                        <div className="flex justify-between mb-0.5">
-                          <span className="text-[10px] text-muted-foreground">HP</span>
-                          <span className="text-[10px] text-red-400 font-semibold">
-                            {info.currentHp}/{info.maxHp}
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300"
-                            style={{ width: `${Math.round((info.currentHp / info.maxHp) * 100)}%` }}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex justify-between mb-0.5">
-                          <span className="text-[10px] text-muted-foreground">HP</span>
-                          <span className="text-[10px] text-muted-foreground">대기중</span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div className="h-full w-full rounded-full bg-gradient-to-r from-red-600/40 to-red-400/40" />
-                        </div>
-                      </>
-                    )}
+                  {onCooldown ? (
+                    <span className="flex items-center gap-1 text-xs font-bold text-destructive">
+                      <Clock className="h-3 w-3" /> {fmtCooldown(info.cooldownUntil - now)}
+                    </span>
+                  ) : full5 ? (
+                    <span className="text-xs font-semibold text-muted-foreground">{t("raid.full")}</span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-primary">
+                      <Swords className="h-3 w-3" /> {t("raid.available")}
+                    </span>
+                  )}
+                </div>
+                {/* ── HP 바 (상시 표시) ── */}
+                <div className="mb-4">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground">HP</span>
+                    <span className="text-[10px] font-semibold text-red-400">
+                      {info.currentHp ?? info.maxHp ?? '-'} / {info.maxHp ?? '-'}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500"
+                      style={{ width: `${info.maxHp ? Math.round(((info.currentHp ?? info.maxHp) / info.maxHp) * 100) : 100}%` }}
+                    />
                   </div>
                 </div>
-                {/* boss sprite — 중앙 */}
-                <div className="flex justify-center pb-3 pt-1">
-                  <div className={`rounded-2xl bg-black/5 px-6 py-2 dark:bg-white/5 ${onCooldown ? "grayscale" : ""}`}>
+                {/* ── 보스 스프라이트 ── */}
+                <div className="flex justify-center mb-3">
+                  <div className={`rounded-2xl bg-black/5 px-6 py-4 dark:bg-white/5 ${onCooldown ? "grayscale" : ""}`}>
                     <PixelCharacter characterId={bossDef.id} size={64} float={!onCooldown} />
                   </div>
                 </div>
-                {/* 텍스트 정보 */}
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-bold">{RAIDS[id].name}</p>
-                    <p className="truncate text-xs text-muted-foreground">BOSS · {getCharName(bossDef, lang)}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{RAIDS[id].desc}</p>
-                  </div>
+                {/* ── 텍스트 정보 ── */}
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold">{RAIDS[id].name}</p>
+                  <p className="truncate text-xs text-muted-foreground">BOSS · {getCharName(bossDef, lang)}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{RAIDS[id].desc}</p>
                 </div>
-                {/* 상태 뱃지 */}
-                {onCooldown ? (
-                  <div className="mt-3 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive">
-                    <Clock className="h-3 w-3" /> {t("raid.cooldown_prefix")} {fmtCooldown(info.cooldownUntil - now)}
-                  </div>
-                ) : full5 ? (
-                  <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
-                    {t("raid.full")}
-                  </div>
-                ) : (
-                  <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    <Swords className="h-3 w-3" /> {t("raid.available")}
-                  </div>
-                )}
               </button>
             );
           })}
