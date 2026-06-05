@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Heart, Plus, X, MessageCircle, ChevronRight } from "lucide-react";
+import { Heart, Plus, X, ChevronRight } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
 import { useNavigate } from "react-router";
 import { useAppData } from "../context/AppDataContext";
@@ -255,7 +255,7 @@ export default function CommunityPage() {
                     onClick={() => navigate(`/community/${post.id}`)}
                     className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors"
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <span className="text-base leading-none">💬</span>
                     {post.commentCount}
                   </button>
                   <button
@@ -293,8 +293,8 @@ export default function CommunityPage() {
 
       {/* 글 작성 모달 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50" onClick={closeForm}>
-          <div className="bg-card rounded-t-xl sm:rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={closeForm}>
+          <div className="bg-card rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3>{t("community.new_post")}</h3>
               <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">

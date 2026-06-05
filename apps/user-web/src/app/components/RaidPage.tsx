@@ -75,14 +75,19 @@ const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTE
 // ─── 점프 액션 게임 (점프 레이드 / 타입1) ─────────────────────────────────
 // 장애물이 계속 다가오고, 스페이스바(또는 터치)로 점프해서 넘으면 보스에게 데미지.
 type Obstacle = { x: number; ow: number; oh: number; counted: boolean; hit: boolean; kind: number };
+type PlayerLiveMap = Record<string, { lives: number; characterId: number; nickname: string }>;
 function JumpGame({
   charDef,
   cleared,
   onClear,
+  playerLives = {},
+  mySocketId,
 }: {
   charDef: ReturnType<typeof charById>;
   cleared: boolean;
   onClear: () => void;
+  playerLives?: PlayerLiveMap;
+  mySocketId?: string;
 }) {
   const { t } = useLang();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -110,7 +115,7 @@ function JumpGame({
     deadUntil: 0, // Date.now 기준
     obstacles: [] as Obstacle[],
     spawnAcc: 0,
-    nextSpawn: 1100,
+    nextSpawn: 900,
     speed: 4,
     elapsed: 0,
   });
@@ -229,14 +234,19 @@ function JumpGame({
           }
         }
 
-        // 시간이 지날수록 살짝 빨라짐
-        st.speed = 4 + Math.min(3.5, st.elapsed / 14000);
+        // 시간이 지날수록 빨라짐
+        st.speed = 4.2 + Math.min(3.0, st.elapsed / 18000);
 
         // 장애물 생성
         st.spawnAcc += dt;
         if (st.spawnAcc >= st.nextSpawn) {
           st.spawnAcc = 0;
-          st.nextSpawn = 850 + Math.random() * 650 - Math.min(350, st.elapsed / 40);
+          // 들쑥날쑥: 25% 확률로 짧은 간격(연속 장애물), 75%는 일반 간격
+          const burst = Math.random() < 0.25;
+          st.nextSpawn = burst
+            ? 550 + Math.random() * 300                      // 연속: 550~850ms
+            : 1000 + Math.random() * 1100                    // 일반: 1000~2100ms
+          st.nextSpawn -= Math.min(380, st.elapsed / 50);
           const kind = Math.floor(Math.random() * 3); // 0=단독, 1=쌍, 2=클러스터
           const oh = kind === 2 ? 22 + Math.floor(Math.random() * 10) : 26 + Math.floor(Math.random() * 18);
           const ow = kind === 1 ? 28 + Math.floor(Math.random() * 8) : 16 + Math.floor(Math.random() * 10);
@@ -282,37 +292,75 @@ function JumpGame({
 
       // 하늘 그라데이션
       const sky = ctx.createLinearGradient(0, 0, 0, H);
-      sky.addColorStop(0, "#7fc1ff");
-      sky.addColorStop(0.55, "#bfe6ff");
-      sky.addColorStop(1, "#eafaf0");
+      sky.addColorStop(0, "#4a90d9");
+      sky.addColorStop(0.45, "#85c1f0");
+      sky.addColorStop(0.75, "#c9e8f8");
+      sky.addColorStop(1, "#e8f5e0");
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, H);
 
-      // 태양
-      ctx.fillStyle = "rgba(255,240,150,0.5)";
-      ctx.beginPath(); ctx.arc(W - 50, 42, 34, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#fff0a6";
-      ctx.beginPath(); ctx.arc(W - 50, 42, 21, 0, Math.PI * 2); ctx.fill();
+      // 태양 (광선 포함)
+      const sunX = W - 60;
+      const sunY = 38;
+      ctx.fillStyle = "rgba(255,230,100,0.18)";
+      ctx.beginPath(); ctx.arc(sunX, sunY, 50, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,235,120,0.35)";
+      ctx.beginPath(); ctx.arc(sunX, sunY, 36, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffe87a";
+      ctx.beginPath(); ctx.arc(sunX, sunY, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff5c0";
+      ctx.beginPath(); ctx.arc(sunX, sunY, 13, 0, Math.PI * 2); ctx.fill();
 
-      // 구름 (천천히 흐름)
-      ctx.fillStyle = "rgba(255,255,255,0.92)";
-      const cloud = (cx: number, cy: number, s: number) => {
+      // 구름 (속도 다른 2레이어)
+      const drawCloud = (cx: number, cy: number, s: number, alpha: number) => {
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
         ctx.beginPath();
-        ctx.arc(cx, cy, 10 * s, 0, Math.PI * 2);
-        ctx.arc(cx + 13 * s, cy + 3 * s, 13 * s, 0, Math.PI * 2);
-        ctx.arc(cx + 29 * s, cy, 10 * s, 0, Math.PI * 2);
-        ctx.arc(cx + 15 * s, cy - 6 * s, 11 * s, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 11 * s, 0, Math.PI * 2);
+        ctx.arc(cx + 14 * s, cy + 4 * s, 14 * s, 0, Math.PI * 2);
+        ctx.arc(cx + 32 * s, cy + 1 * s, 11 * s, 0, Math.PI * 2);
+        ctx.arc(cx + 17 * s, cy - 7 * s, 12 * s, 0, Math.PI * 2);
         ctx.fill();
       };
-      const span = W + 140;
-      const drift = now * 0.012;
-      for (const b of [{ x: 60, y: 40, s: 1 }, { x: 250, y: 66, s: 0.7 }, { x: 430, y: 30, s: 0.85 }]) {
-        let cx = (b.x - drift) % span;
-        if (cx < -70) cx += span;
-        cloud(cx, b.y, b.s);
+      const span = W + 160;
+      const drift1 = now * 0.013;
+      const drift2 = now * 0.007;
+      for (const b of [{ x: 50, y: 38, s: 1, a: 0.9 }, { x: 260, y: 60, s: 0.65, a: 0.75 }, { x: 440, y: 28, s: 0.82, a: 0.85 }]) {
+        let cx = (b.x - drift1) % span;
+        if (cx < -80) cx += span;
+        drawCloud(cx, b.y, b.s, b.a);
+      }
+      for (const b of [{ x: 140, y: 72, s: 0.55, a: 0.6 }, { x: 360, y: 48, s: 0.72, a: 0.65 }]) {
+        let cx = (b.x - drift2) % span;
+        if (cx < -80) cx += span;
+        drawCloud(cx, b.y, b.s, b.a);
       }
 
-      // 먼 언덕 (parallax 2층)
+      // 원거리 산 (픽셀 스타일, 2층)
+      const drawMtLayer = (color: string, baseY: number, peaks: { x: number; h: number }[]) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        ctx.lineTo(0, baseY);
+        for (const p of peaks) {
+          ctx.lineTo(p.x - p.h * 0.7, baseY);
+          ctx.lineTo(p.x, baseY - p.h);
+          ctx.lineTo(p.x + p.h * 0.7, baseY);
+        }
+        ctx.lineTo(W, baseY);
+        ctx.lineTo(W, H);
+        ctx.closePath();
+        ctx.fill();
+      };
+      drawMtLayer("rgba(150,185,215,0.45)", groundY - 40, [
+        { x: W * 0.08, h: 38 }, { x: W * 0.23, h: 55 }, { x: W * 0.44, h: 42 },
+        { x: W * 0.62, h: 60 }, { x: W * 0.8, h: 35 }, { x: W * 0.95, h: 48 },
+      ]);
+      drawMtLayer("rgba(130,165,100,0.55)", groundY - 22, [
+        { x: W * 0.05, h: 22 }, { x: W * 0.18, h: 30 }, { x: W * 0.35, h: 24 },
+        { x: W * 0.52, h: 28 }, { x: W * 0.7, h: 20 }, { x: W * 0.86, h: 26 }, { x: W * 0.98, h: 18 },
+      ]);
+
+      // 먼 언덕 (parallax)
       const hill = (color: string, baseY: number, amp: number, speed: number, wl: number) => {
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -325,20 +373,24 @@ function JumpGame({
         ctx.closePath();
         ctx.fill();
       };
-      hill("#c4e3a8", groundY - 18, 12, 0.01, 240);
-      hill("#a9d889", groundY - 4, 20, 0.02, 340);
+      hill("#b8dba0", groundY - 16, 11, 0.009, 260);
+      hill("#98cb7e", groundY - 3, 18, 0.018, 360);
 
       // 바닥: 잔디 + 흙
-      ctx.fillStyle = "#caa06b";
+      ctx.fillStyle = "#b8864e";
       ctx.fillRect(0, groundY, W, GROUND_H);
-      ctx.fillStyle = "#7ec46a";
-      ctx.fillRect(0, groundY, W, 6);
-      ctx.fillStyle = "#5fa854";
-      ctx.fillRect(0, groundY + 6, W, 2);
-      // 흐르는 잔디 무늬 (속도감)
-      ctx.fillStyle = "rgba(95,168,84,0.55)";
-      const gscroll = (now * 0.18) % 26;
-      for (let x = -gscroll; x < W; x += 26) ctx.fillRect(x, groundY + 9, 7, 2);
+      ctx.fillStyle = "#6dc057";
+      ctx.fillRect(0, groundY, W, 7);
+      ctx.fillStyle = "#52a040";
+      ctx.fillRect(0, groundY + 7, W, 2);
+      // 잔디 줄기 픽셀 (속도감)
+      ctx.fillStyle = "rgba(82,160,64,0.6)";
+      const gscroll = (now * 0.2) % 24;
+      for (let x = -gscroll; x < W; x += 24) {
+        ctx.fillRect(x, groundY + 9, 3, 3);
+        ctx.fillRect(x + 8, groundY + 10, 2, 2);
+        ctx.fillRect(x + 16, groundY + 9, 3, 3);
+      }
 
       // 장애물 — 도트 선인장
       const drawCactus = (bx: number, by: number, w: number, h: number, hit: boolean) => {
@@ -462,6 +514,26 @@ function JumpGame({
       <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold text-white">
         {t("raid.jump_hint")}
       </div>
+      {/* 다른 플레이어 목숨 현황 (우측 하단) */}
+      {Object.keys(playerLives).filter((sid) => sid !== mySocketId).length > 0 && (
+        <div className="pointer-events-none absolute right-2 bottom-2 z-10 flex flex-col items-end gap-1">
+          {Object.entries(playerLives)
+            .filter(([sid]) => sid !== mySocketId)
+            .map(([sid, info]) => {
+              const def = charById(info.characterId);
+              return (
+                <div key={sid} className="flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5">
+                  <PixelSprite type={def.type} colors={def.colors} characterId={def.id} size={16} />
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: MAX_HITS }).map((_, i) => (
+                      <Heart key={i} className={`h-2.5 w-2.5 ${i < info.lives ? "fill-red-400 text-red-400" : "text-gray-500/50"}`} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      )}
       {deadUntil > 0 ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 text-white">
           <div className="text-lg font-extrabold">{t("raid.jump_dead")}</div>
@@ -546,6 +618,7 @@ export default function RaidPage() {
   const [contributed, setContributed] = useState(false);
   const [contribText, setContribText] = useState("");
   const [contribAnswer, setContribAnswer] = useState("");
+  const [jumpPlayerLives, setJumpPlayerLives] = useState<PlayerLiveMap>({});
   const prevHp = useRef<number | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -600,6 +673,9 @@ export default function RaidPage() {
       setDamageNums((p) => [...p.slice(-4), { id, x }]);
       setTimeout(() => setDamageNums((p) => p.filter((n) => n.id !== id)), 900);
     };
+    const onJumpLives = (d: { socketId: string; lives: number; characterId: number; nickname: string }) => {
+      setJumpPlayerLives((p) => ({ ...p, [d.socketId]: { lives: d.lives, characterId: d.characterId, nickname: d.nickname } }));
+    };
 
     s.on("raid:lobby", onLobby);
     s.on("raid:state", onState);
@@ -610,11 +686,13 @@ export default function RaidPage() {
     s.on("raid:full", onFull);
     s.on("raid:cooldown", onCooldown);
     s.on("raid:bossHit", onBossHit);
+    s.on("raid:jump_lives", onJumpLives);
     s.emit("raid:counts");
     return () => {
       s.off("raid:lobby", onLobby); s.off("raid:state", onState); s.off("raid:self", onSelf);
       s.off("raid:message", onMsg); s.off("raid:feedback", onFeedback); s.off("raid:cleared", onCleared);
       s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown); s.off("raid:bossHit", onBossHit);
+      s.off("raid:jump_lives", onJumpLives);
       Object.values(timers.current).forEach(clearTimeout);
     };
   }, []);
@@ -821,7 +899,7 @@ export default function RaidPage() {
                 className="mt-1 text-xs font-semibold text-orange-500 dark:text-orange-400 italic"
                 style={{ animation: "boss-talk-in 2.2s ease-out forwards" }}
               >
-                💬 {bossLine}
+                {bossLine}
               </p>
             )}
           </div>
@@ -860,7 +938,13 @@ export default function RaidPage() {
               })}
             </div>
           )}
-          <JumpGame charDef={charById(self?.characterId ?? myCharacterId)} cleared={state?.cleared ?? false} onClear={emitJump} />
+          <JumpGame
+            charDef={charById(self?.characterId ?? myCharacterId)}
+            cleared={state?.cleared ?? false}
+            onClear={emitJump}
+            playerLives={jumpPlayerLives}
+            mySocketId={self?.socketId}
+          />
         </div>
       ) : (
         <>

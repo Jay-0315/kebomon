@@ -428,13 +428,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       userId: currentUser.id,
     });
     if (result.newlyUnlocked.length > 0) {
-      setRewardSummary((prev) => ({
-        ...prev,
-        ownedCharacterIds: [
-          ...prev.ownedCharacterIds,
-          ...result.newlyUnlocked.filter((id) => !prev.ownedCharacterIds.includes(id)),
-        ],
-      }));
+      // 서버에서 최신 상태를 받아 즉시 반영
+      const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
+      setRewardSummary(normalizeRewardSummary(summary));
     }
     return result.newlyUnlocked;
   };

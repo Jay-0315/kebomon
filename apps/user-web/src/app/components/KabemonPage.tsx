@@ -345,7 +345,7 @@ function GachaCapsuleModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function KabemonPage() {
-  const { rewardSummary, equipCharacter, checkAchievements, performGacha, openEgg } = useAppData();
+  const { rewardSummary, equipCharacter, checkAchievements, performGacha, openEgg, refreshRewards } = useAppData();
   const { t, lang } = useLang();
   const [opening, setOpening] = useState<EggType | null>(null);
   const [eggResult, setEggResult] = useState<EggOpenResult | null>(null);
@@ -406,6 +406,9 @@ export default function KabemonPage() {
     setCheckingAchievements(true);
     try {
       const unlocked = await checkAchievements();
+      if (unlocked.length > 0) {
+        await refreshRewards();
+      }
       setNewAchievements(unlocked);
     } finally {
       setCheckingAchievements(false);
@@ -1168,11 +1171,14 @@ function AchievementRevealModal({
   const { lang } = useLang();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [phase, setPhase] = useState<"medal" | "busting" | "revealed">("medal");
+  const [showSummary, setShowSummary] = useState(false);
 
   const charId = newlyUnlocked[currentIdx];
   const char = CHARACTERS.find((c) => c.id === charId);
   const ach = char ? ACHIEVEMENT_BY_CHARACTER.get(char.id) : undefined;
   const reveal = char ? RARITY_REVEAL[char.rarity] : undefined;
+  // safeChar는 showSummary가 아닐 때 항상 존재 (위 guard에서 보장)
+  const safeChar = char!
   const isLast = currentIdx === newlyUnlocked.length - 1;
 
   const bust = () => {
@@ -1191,19 +1197,18 @@ function AchievementRevealModal({
   };
 
   const skipAll = () => {
-    setCurrentIdx(newlyUnlocked.length - 1);
-    setPhase("revealed");
+    setShowSummary(true);
   };
 
-  if (!char) return null;
+  if (!showSummary && !char) return null;
 
-  const rayColor = phase === "revealed" && reveal ? reveal.glow : "#f59e0b";
-  const headerColor = phase === "revealed" && reveal ? reveal.glow : "#f59e0b";
+  const rayColor = !showSummary && phase === "revealed" && reveal ? reveal.glow : "#f59e0b";
+  const headerColor = !showSummary && phase === "revealed" && reveal ? reveal.glow : "#f59e0b";
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-slate-950/98">
       {/* Skip */}
-      {phase === "medal" && (
+      {!showSummary && phase === "medal" && newlyUnlocked.length > 1 && (
         <button
           onClick={skipAll}
           className="absolute top-5 right-5 text-white/50 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors z-20"
@@ -1212,21 +1217,55 @@ function AchievementRevealModal({
         </button>
       )}
 
+      {/* 스킵 요약 화면 */}
+      {showSummary && (
+        <div className="relative z-10 flex flex-col items-center gap-5 px-4 w-full max-w-sm">
+          <p className="text-white font-bold text-lg tracking-wide">{t("kabemon.ach_skip_summary")}</p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            {newlyUnlocked.map((cId) => {
+              const c = CHARACTERS.find((ch) => ch.id === cId);
+              if (!c) return null;
+              const rv = RARITY_REVEAL[c.rarity];
+              return (
+                <div
+                  key={cId}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl ${RARITY_BG[c.rarity]}`}
+                  style={rv ? { boxShadow: `0 0 12px 3px ${rv.glow}50` } : undefined}
+                >
+                  <PixelSprite type={c.type} colors={c.colors} characterId={c.id} rarity={c.rarity} size={48} />
+                  <p className={`text-xs font-semibold text-center leading-tight ${RARITY_COLOR[c.rarity]}`}>{getCharName(c, lang)}</p>
+                  <p className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${RARITY_BG[c.rarity]} ${RARITY_COLOR[c.rarity]}`}>{getRarityLabel(c.rarity, lang)}</p>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={onClose}
+            className="mt-2 w-64 py-3 rounded-2xl font-bold text-white text-sm"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)", boxShadow: "0 4px 24px #7c3aed40" }}
+          >
+            {t("kabemon.ach_confirm")}
+          </button>
+        </div>
+      )}
+
       {/* Rotating light rays */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          width: "200vmax",
-          height: "200vmax",
-          top: "50%",
-          left: "50%",
-          background: `repeating-conic-gradient(from 0deg, ${rayColor}14 0deg, ${rayColor}22 11deg, transparent 11deg, transparent 22deg)`,
-          animation: "achRayRotate 14s linear infinite",
-        }}
-      />
+      {!showSummary && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: "200vmax",
+            height: "200vmax",
+            top: "50%",
+            left: "50%",
+            background: `repeating-conic-gradient(from 0deg, ${rayColor}14 0deg, ${rayColor}22 11deg, transparent 11deg, transparent 22deg)`,
+            animation: "achRayRotate 14s linear infinite",
+          }}
+        />
+      )}
 
       {/* Progress dots (multiple achievements) */}
-      {newlyUnlocked.length > 1 && (
+      {!showSummary && newlyUnlocked.length > 1 && (
         <div className="absolute top-6 flex gap-1.5 z-10">
           {newlyUnlocked.map((_, i) => (
             <div
@@ -1246,20 +1285,22 @@ function AchievementRevealModal({
       )}
 
       {/* Title */}
-      <p
-        className="absolute text-sm font-bold tracking-[0.22em] z-10"
-        style={{
-          top: newlyUnlocked.length > 1 ? 54 : 42,
-          color: headerColor,
-          textShadow: `0 0 16px ${headerColor}80, 0 0 4px ${headerColor}`,
-          transition: "color 0.5s, text-shadow 0.5s",
-        }}
-      >
-        {t("kabemon.ach_unlocked_title")}
-      </p>
+      {!showSummary && (
+        <p
+          className="absolute text-sm font-bold tracking-[0.22em] z-10"
+          style={{
+            top: newlyUnlocked.length > 1 ? 54 : 42,
+            color: headerColor,
+            textShadow: `0 0 16px ${headerColor}80, 0 0 4px ${headerColor}`,
+            transition: "color 0.5s, text-shadow 0.5s",
+          }}
+        >
+          {t("kabemon.ach_unlocked_title")}
+        </p>
+      )}
 
       {/* Medal / Busting phase */}
-      {(phase === "medal" || phase === "busting") && (
+      {!showSummary && (phase === "medal" || phase === "busting") && (
         <div
           className="relative flex flex-col items-center gap-5 z-10"
           onClick={phase === "medal" ? bust : undefined}
@@ -1297,7 +1338,7 @@ function AchievementRevealModal({
       )}
 
       {/* Revealed phase */}
-      {phase === "revealed" && (
+      {!showSummary && phase === "revealed" && (
         <div
           className="relative flex flex-col items-center gap-5 z-10"
           style={{ animation: "achContentReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both" }}
@@ -1321,25 +1362,25 @@ function AchievementRevealModal({
 
           {/* Character */}
           <div
-            className={`relative rounded-2xl ${RARITY_BG[char.rarity]} overflow-hidden`}
+            className={`relative rounded-2xl ${RARITY_BG[safeChar.rarity]} overflow-hidden`}
             style={{
               minHeight: 200,
               ...(reveal ? { boxShadow: `0 0 44px 14px ${reveal.glow}50, 0 0 14px 4px ${reveal.glow}40` } : {}),
             }}
           >
             <div className="flex items-center justify-center py-6">
-              <PixelCharacter characterId={char.id} size={128} float />
+              <PixelCharacter characterId={safeChar.id} size={128} float />
             </div>
           </div>
 
           {/* Info */}
           <div className="flex flex-col items-center gap-2 text-center px-6">
             <span
-              className={`text-xs font-bold px-3 py-0.5 rounded-full ${RARITY_BG[char.rarity]} ${RARITY_COLOR[char.rarity]}`}
+              className={`text-xs font-bold px-3 py-0.5 rounded-full ${RARITY_BG[safeChar.rarity]} ${RARITY_COLOR[safeChar.rarity]}`}
             >
-              {getRarityLabel(char.rarity, lang)}
+              {getRarityLabel(safeChar.rarity, lang)}
             </span>
-            <p className={`text-3xl font-bold ${RARITY_COLOR[char.rarity]}`}>{getCharName(char, lang)}</p>
+            <p className={`text-3xl font-bold ${RARITY_COLOR[safeChar.rarity]}`}>{getCharName(safeChar, lang)}</p>
             {ach && (
               <p className="text-sm text-white/50 max-w-[240px] leading-snug">{getAchLabel(ach, lang)}</p>
             )}

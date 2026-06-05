@@ -85,6 +85,7 @@ const dict = {
     "kabemon.ach_tap_hint": "탭하여 공개",
     "kabemon.ach_next": "다음 보상",
     "kabemon.ach_confirm": "확인",
+    "kabemon.ach_skip_summary": "이번에 획득한 케보몬",
     "kabemon.cat_attendance": "출석",
     "kabemon.cat_streak": "연속 출석",
     "kabemon.cat_raid": "레이드",
@@ -300,6 +301,9 @@ const dict = {
     // Notification
     "notification.title": "알림",
     "notification.empty": "알림이 없어요",
+    "notification.clear_all": "전체 삭제",
+    "notification.attendance_reminder": "출석 체크 미완료",
+    "notification.attendance_reminder_body": "오늘 출석 체크를 아직 하지 않았어요!",
     // Egg
     "egg.normal": "일반 알",
     "egg.big": "큰 알",
@@ -469,6 +473,7 @@ const dict = {
     "kabemon.ach_tap_hint": "タップして公開",
     "kabemon.ach_next": "次の報酬",
     "kabemon.ach_confirm": "確認",
+    "kabemon.ach_skip_summary": "今回獲得したケボモン",
     "kabemon.cat_attendance": "出席",
     "kabemon.cat_streak": "連続出席",
     "kabemon.cat_raid": "レイド",
@@ -671,6 +676,9 @@ const dict = {
     // Notification
     "notification.title": "通知",
     "notification.empty": "通知がありません",
+    "notification.clear_all": "全て削除",
+    "notification.attendance_reminder": "出席チェック未完了",
+    "notification.attendance_reminder_body": "今日の出席チェックがまだです！",
     // Egg
     "egg.normal": "普通の卵",
     "egg.big": "大きな卵",

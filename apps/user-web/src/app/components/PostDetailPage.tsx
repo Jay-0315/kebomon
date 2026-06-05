@@ -457,8 +457,8 @@ export default function PostDetailPage() {
 
       {/* 게시글 수정 모달 */}
       {showPostEdit && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50" onClick={() => setShowPostEdit(false)}>
-          <div className="bg-card rounded-t-xl sm:rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowPostEdit(false)}>
+          <div className="bg-card rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3>{t("community.edit_post")}</h3>
               <button onClick={() => setShowPostEdit(false)} className="text-muted-foreground hover:text-foreground">

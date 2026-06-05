@@ -13,7 +13,9 @@ export default function HomePage() {
   const { posts, profile, rewardSummary, profilePhoto, togglePostLike } = useAppData();
   const { t, lang } = useLang();
 
-  const recentPosts = posts.slice(0, 5);
+  const recentPosts = [...posts]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 4);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">

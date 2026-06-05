@@ -1,8 +1,53 @@
 import { useState } from "react";
-import { CalendarCheck, Flame, CheckCircle2 } from "lucide-react";
+import { CalendarCheck, Flame } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
+
+function PixelPaw({ size = 22, color = "rgba(220,38,38,0.85)" }: { size?: number; color?: string }) {
+  /*
+   * 고양이 발바닥 도장 (viewBox 24×24)
+   *  T2   T3  ← 안쪽 (높음)
+   * T1     T4  ← 바깥 (낮음)
+   *   [패드]
+   */
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24"
+      style={{ imageRendering: "pixelated", display: "block" }}>
+
+      {/* ── T1: 왼쪽 바깥 젤리 ── */}
+      <rect x="1"  y="6"  width="2" height="1" fill={color} />
+      <rect x="0"  y="7"  width="4" height="4" fill={color} />
+      <rect x="1"  y="11" width="2" height="1" fill={color} />
+
+      {/* ── T2: 왼쪽 안 젤리 ── */}
+      <rect x="6"  y="4"  width="2" height="1" fill={color} />
+      <rect x="5"  y="5"  width="4" height="4" fill={color} />
+      <rect x="6"  y="9"  width="2" height="1" fill={color} />
+
+      {/* ── T3: 오른쪽 안 젤리 ── */}
+      <rect x="15" y="4"  width="2" height="1" fill={color} />
+      <rect x="14" y="5"  width="4" height="4" fill={color} />
+      <rect x="15" y="9"  width="2" height="1" fill={color} />
+
+      {/* ── T4: 오른쪽 바깥 젤리 ── */}
+      <rect x="20" y="6"  width="2" height="1" fill={color} />
+      <rect x="19" y="7"  width="4" height="4" fill={color} />
+      <rect x="20" y="11" width="2" height="1" fill={color} />
+
+      {/* ── 메인 발바닥 패드 ── */}
+      <rect x="6"  y="12" width="12" height="1" fill={color} />
+      <rect x="5"  y="13" width="14" height="1" fill={color} />
+      <rect x="4"  y="14" width="16" height="1" fill={color} />
+      <rect x="3"  y="15" width="18" height="4" fill={color} />
+      <rect x="4"  y="19" width="16" height="1" fill={color} />
+      <rect x="5"  y="20" width="14" height="1" fill={color} />
+      <rect x="7"  y="21" width="10" height="1" fill={color} />
+      <rect x="9"  y="22" width="6"  height="1" fill={color} />
+    </svg>
+  );
+}
+
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
@@ -157,7 +202,7 @@ export default function AttendancePage() {
                 <p className="text-[10px] font-semibold text-center leading-tight text-muted-foreground">
                   {day}{t("attendance.week_label")} {t(eggKey)}
                 </p>
-                {claimed && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                {claimed && <PixelPaw size={16} color="color-mix(in srgb, var(--primary) 80%, transparent)" />}
               </div>
             );
           })}
@@ -181,26 +226,34 @@ export default function AttendancePage() {
             return (
               <div
                 key={day}
-                className={`relative flex flex-col items-center justify-center rounded-lg aspect-square text-[11px] font-bold transition-all ${
+                className={`relative flex items-center justify-center rounded-lg aspect-square overflow-hidden transition-all ${
                   stamped
                     ? isWeekEnd
-                      ? weekRewardClaimed
-                        ? "bg-primary/80 text-primary-foreground ring-2 ring-primary/40"
-                        : "bg-primary/80 text-primary-foreground"
-                      : "bg-primary/70 text-primary-foreground"
+                      ? "bg-amber-400/20 ring-1 ring-amber-400/60"
+                      : "bg-primary/15 ring-1 ring-primary/30"
                     : isToday
-                    ? "border-2 border-primary/60 border-dashed bg-primary/5 text-primary animate-pulse"
-                    : "bg-muted/60 text-muted-foreground/50"
+                    ? "border-2 border-primary/60 border-dashed bg-primary/5 animate-pulse"
+                    : "bg-muted/50"
                 }`}
               >
                 {stamped ? (
-                  isWeekEnd ? (
-                    <span className="text-base leading-none">✓</span>
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )
+                  <>
+                    {/* 날짜 숫자 — 희미하게 배경에 남음 */}
+                    <span className="absolute bottom-0.5 right-1 text-[8px] font-semibold leading-none select-none"
+                      style={{ color: isWeekEnd ? "rgba(180,83,9,0.4)" : "color-mix(in srgb, var(--primary) 35%, transparent)" }}
+                    >
+                      {day}
+                    </span>
+                    {/* 발바닥 도장 */}
+                    <PixelPaw
+                      size={isWeekEnd ? 48 : 40}
+                      color={isWeekEnd ? "rgba(217,119,6,0.82)" : "color-mix(in srgb, var(--primary) 75%, #000 10%)"}
+                    />
+                  </>
                 ) : (
-                  <span>{day}</span>
+                  <span className={`text-[11px] font-bold ${isToday ? "text-primary" : "text-muted-foreground/50"}`}>
+                    {day}
+                  </span>
                 )}
                 {isWeekEnd && stamped && weekRewardClaimed && (
                   <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-amber-400 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
