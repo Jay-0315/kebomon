@@ -5,15 +5,16 @@ import { getChatSocket, disconnectChatSocket } from "../lib/socket";
 import { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS } from "../data/characters";
 import { useLang } from "../context/LangContext";
+import { Building, Building2, Coffee, Tent } from "lucide-react";
 
 const CHANNELS = [1, 2, 3, 4] as const;
 const BUBBLE_TTL = 5000;
 
-const CHANNEL_EMOJIS: Record<number, string> = {
-  1: "🏙️",
-  2: "🏢",
-  3: "☕",
-  4: "🏕️",
+const CHANNEL_ICONS: Record<number, React.ReactNode> = {
+  1: <Building2 size={18} color="#4A5568" />,
+  2: <Building size={18} color="#4A5568" />,
+  3: <Coffee size={18} color="#8B4513" />,
+  4: <Tent size={18} color="#2F855A" />,
 };
 
 function ChannelBackground() {
@@ -34,16 +35,22 @@ type ChatMsg = {
   y: number;
 };
 
-const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTERS[0];
+const charById = (id: number) =>
+  CHARACTERS.find((c) => c.id === id) ?? CHARACTERS[0];
 
 export default function LiveChatPage() {
   const { rewardSummary } = useAppData();
   const { t } = useLang();
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
 
-const [view, setView] = useState<"lobby" | "room">("lobby");
+  const [view, setView] = useState<"lobby" | "room">("lobby");
   const [channelId, setChannelId] = useState<number>(1);
-  const [counts, setCounts] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 });
+  const [counts, setCounts] = useState<Record<number, number>>({
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+  });
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [self, setSelf] = useState<SelfInfo | null>(null);
   const [bubbles, setBubbles] = useState<ChatMsg[]>([]);
@@ -56,8 +63,12 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
   useEffect(() => {
     const socket = getChatSocket();
 
-    const onCounts = (data: Record<number, number>) => setCounts((prev) => ({ ...prev, ...data }));
-    const onRoster = (data: { channelId: number; participants: RosterEntry[] }) => {
+    const onCounts = (data: Record<number, number>) =>
+      setCounts((prev) => ({ ...prev, ...data }));
+    const onRoster = (data: {
+      channelId: number;
+      participants: RosterEntry[];
+    }) => {
       setRoster(data.participants);
     };
     const onSelf = (data: SelfInfo) => setSelf(data);
@@ -120,7 +131,10 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
     setBubbles([]);
     setRoster([]);
     setSelf(null);
-    getChatSocket().emit("chat:join", { channelId: id, characterId: myCharacterId });
+    getChatSocket().emit("chat:join", {
+      channelId: id,
+      characterId: myCharacterId,
+    });
     setView("room");
   };
 
@@ -164,12 +178,15 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
             >
               <div>
                 <div className="flex items-center gap-2 text-lg font-bold">
-                  <span>{CHANNEL_EMOJIS[id]}</span>
+                  <span>{CHANNEL_ICONS[id]}</span>
                   ch.{id}
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  <span>{counts[id] ?? 0}{t("live.participants_suffix")}</span>
+                  <span>
+                    {counts[id] ?? 0}
+                    {t("live.participants_suffix")}
+                  </span>
                 </div>
               </div>
               <div className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
@@ -200,12 +217,15 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
       <ChannelBackground />
 
       <div className="relative z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
-        <button onClick={leaveChannel} className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-200">
+        <button
+          onClick={leaveChannel}
+          className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-200"
+        >
           <ArrowLeft className="h-4 w-4" /> {t("live.leave")}
         </button>
         <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100">
           <Radio className="h-4 w-4 text-primary" />
-          {CHANNEL_EMOJIS[channelId]} ch.{channelId}
+          {CHANNEL_ICONS[channelId]} ch.{channelId}
         </div>
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
           <Users className="h-4 w-4" /> {roster.length}
@@ -220,7 +240,11 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
             <div
               key={b.id}
               className="absolute"
-              style={{ left: `${b.x}%`, top: `${b.y}%`, animation: `chat-bubble-in ${BUBBLE_TTL}ms ease-out forwards` }}
+              style={{
+                left: `${b.x}%`,
+                top: `${b.y}%`,
+                animation: `chat-bubble-in ${BUBBLE_TTL}ms ease-out forwards`,
+              }}
             >
               <div
                 className={`flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-md ${
@@ -228,10 +252,22 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
                 }`}
               >
                 <span className="shrink-0">
-                  <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={22} />
+                  <PixelSprite
+                    type={def.type}
+                    colors={def.colors}
+                    characterId={def.id}
+                    rarity={def.rarity}
+                    size={22}
+                  />
                 </span>
-                <span className={`whitespace-nowrap text-[11px] font-bold ${isMine ? "text-primary" : "text-gray-500"}`}>{b.nickname}</span>
-                <span className="whitespace-nowrap text-sm font-medium text-gray-900">{b.text}</span>
+                <span
+                  className={`whitespace-nowrap text-[11px] font-bold ${isMine ? "text-primary" : "text-gray-500"}`}
+                >
+                  {b.nickname}
+                </span>
+                <span className="whitespace-nowrap text-sm font-medium text-gray-900">
+                  {b.text}
+                </span>
               </div>
             </div>
           );
@@ -242,8 +278,19 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
         {others.map((p) => {
           const def = charById(p.characterId);
           return (
-            <div key={p.socketId} title={p.nickname} className="opacity-90" style={{ filter: "saturate(0.9)" }}>
-              <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={42} />
+            <div
+              key={p.socketId}
+              title={p.nickname}
+              className="opacity-90"
+              style={{ filter: "saturate(0.9)" }}
+            >
+              <PixelSprite
+                type={def.type}
+                colors={def.colors}
+                characterId={def.id}
+                rarity={def.rarity}
+                size={42}
+              />
             </div>
           );
         })}
@@ -254,7 +301,8 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
           <div
             className="pointer-events-none absolute -top-4 h-28 w-28"
             style={{
-              background: "radial-gradient(circle at 50% 45%, rgba(255,241,170,0.9), rgba(255,241,170,0) 70%)",
+              background:
+                "radial-gradient(circle at 50% 45%, rgba(255,241,170,0.9), rgba(255,241,170,0) 70%)",
               animation: "spotlight-pulse 2.5s ease-in-out infinite",
             }}
           />
@@ -262,8 +310,17 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
             <div className="relative z-20 mb-4 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow">
               <Sparkles className="h-3 w-3" /> {self.nickname}
             </div>
-            <div style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.9))" }}>
-              <PixelSprite type={charById(self.characterId).type} colors={charById(self.characterId).colors} characterId={self.characterId} rarity={charById(self.characterId).rarity} size={64} float />
+            <div
+              style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.9))" }}
+            >
+              <PixelSprite
+                type={charById(self.characterId).type}
+                colors={charById(self.characterId).colors}
+                characterId={self.characterId}
+                rarity={charById(self.characterId).rarity}
+                size={64}
+                float
+              />
             </div>
           </div>
         </div>
@@ -293,10 +350,13 @@ const [view, setView] = useState<"lobby" | "room">("lobby");
           onClick={send}
           disabled={isMuted}
           className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform ${
-            isMuted ? "cursor-not-allowed bg-gray-300 dark:bg-gray-700" : "bg-primary hover:scale-105"
+            isMuted
+              ? "cursor-not-allowed bg-gray-300 dark:bg-gray-700"
+              : "bg-primary hover:scale-105"
           }`}
         >
-          <Send className="h-4 w-4" /> {isMuted ? `${muteLeft}s` : t("live.send")}
+          <Send className="h-4 w-4" />{" "}
+          {isMuted ? `${muteLeft}s` : t("live.send")}
         </button>
       </div>
     </div>
