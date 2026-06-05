@@ -61,10 +61,11 @@ export default function AttendancePage() {
       const result = await claimAttendance();
       if (!result.alreadyClaimed) {
         setLastPoints(result.points);
-        if (result.eggReward) {
-          setEggPopup(result.eggReward);
-          setTimeout(() => setEggPopup(null), 3000);
-        }
+        if (result.eggReward) setEggPopup(result.eggReward);
+        setTimeout(() => {
+          setLastPoints(null);
+          setEggPopup(null);
+        }, 3000);
       }
     } finally {
       setClaiming(false);
@@ -98,40 +99,42 @@ export default function AttendancePage() {
       </div>
 
       {/* 출석 버튼 */}
-      <div className="relative">
-        {eggPopup && (
-          <div className="absolute inset-x-0 -top-12 flex justify-center pointer-events-none z-10">
-            <div className="flex items-center gap-2 bg-card border border-border rounded-full px-4 py-2 shadow-lg animate-bounce">
-              <PixelEggMini type={eggPopup} />
-              <span className="text-sm font-extrabold text-primary">
-                {t(eggPopup === "big" ? "egg.big" : "egg.golden")}
-              </span>
-            </div>
+      <button
+        onClick={handleClaim}
+        disabled={claiming || attendanceClaimedToday}
+        className={`w-full py-3.5 rounded-xl text-base font-extrabold tracking-wide transition-all ${
+          attendanceClaimedToday
+            ? "bg-muted text-muted-foreground cursor-not-allowed"
+            : "bg-primary text-primary-foreground hover:brightness-105 active:scale-[0.98] shadow-md"
+        }`}
+      >
+        {claiming
+          ? t("attendance.btn_processing")
+          : attendanceClaimedToday
+          ? `✓ ${t("attendance.btn_done")}`
+          : t("attendance.btn_check")}
+      </button>
+
+      {/* 출석 보상 팝업 — 화면 중앙 고정 */}
+      {(lastPoints !== null || eggPopup) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-card border border-border rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-3 pointer-events-auto">
+            <p className="text-lg font-extrabold text-foreground">출석 완료!</p>
+            {lastPoints !== null && (
+              <p className="text-3xl font-extrabold text-primary">+{lastPoints}P</p>
+            )}
+            {eggPopup && (
+              <div className="flex items-center gap-2">
+                <PixelEggMini type={eggPopup} />
+                <span className="text-base font-bold text-primary">
+                  {t(eggPopup === "big" ? "egg.big" : "egg.golden")} 획득!
+                </span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">3초 후 자동으로 닫힙니다</p>
           </div>
-        )}
-        {lastPoints !== null && !eggPopup && (
-          <div className="absolute inset-x-0 -top-10 flex justify-center pointer-events-none">
-            <span className="bg-primary text-primary-foreground text-sm font-extrabold px-4 py-1.5 rounded-full shadow-lg animate-bounce">
-              +{lastPoints}P
-            </span>
-          </div>
-        )}
-        <button
-          onClick={handleClaim}
-          disabled={claiming || attendanceClaimedToday}
-          className={`w-full py-3.5 rounded-xl text-base font-extrabold tracking-wide transition-all ${
-            attendanceClaimedToday
-              ? "bg-muted text-muted-foreground cursor-not-allowed"
-              : "bg-primary text-primary-foreground hover:brightness-105 active:scale-[0.98] shadow-md"
-          }`}
-        >
-          {claiming
-            ? t("attendance.btn_processing")
-            : attendanceClaimedToday
-            ? `✓ ${t("attendance.btn_done")}`
-            : t("attendance.btn_check")}
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* 주차별 알 보상 */}
       <div className="bg-card border border-border rounded-2xl p-4">
