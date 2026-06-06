@@ -113,6 +113,7 @@ export default function LiveChatPage() {
   const [mutedUntil, setMutedUntil] = useState(0);
   const [muteLeft, setMuteLeft] = useState(0);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const selfIdRef = useRef<string | null>(null);
   const ownPosRef = useRef<Pos>({ x: 50, y: 78 });
   const allPosRef = useRef<Record<string, Pos>>({});
@@ -216,6 +217,27 @@ export default function LiveChatPage() {
       disconnectChatSocket();
     };
   }, []);
+
+  // 모바일 키보드 등장 시 풀화면 유지 (visualViewport API)
+  useEffect(() => {
+    if (view !== "room") return;
+    const el = containerRef.current;
+    const vv = window.visualViewport;
+    if (!el || !vv) return;
+    const update = () => {
+      el.style.height = `${vv.height}px`;
+      el.style.top = `${vv.offsetTop}px`;
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      el.style.height = "";
+      el.style.top = "";
+    };
+  }, [view]);
 
   useEffect(() => {
     if (view !== "room") return;
@@ -359,7 +381,7 @@ export default function LiveChatPage() {
                       <span>{counts[id] ?? 0}{t("live.participants_suffix")}</span>
                     </div>
                   </div>
-                  <div className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
+                  <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
                     {t("live.enter")}
                   </div>
                 </div>
@@ -372,7 +394,7 @@ export default function LiveChatPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden">
+    <div ref={containerRef} className="fixed inset-x-0 top-0 z-40 flex flex-col overflow-hidden" style={{ height: "100svh" }}>
       <ChannelBackground channelId={channelId} />
 
       <div className="relative z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
@@ -389,7 +411,7 @@ export default function LiveChatPage() {
           <span className="text-sm font-normal text-muted-foreground">{CHANNEL_NAMES[channelId]}</span>
         </div>
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
-          <Users className="h-4 w-4" /> {roster.length + (self ? 1 : 0)}
+          <Users className="h-4 w-4" /> {roster.length}
         </div>
       </div>
 
@@ -473,7 +495,8 @@ export default function LiveChatPage() {
           maxLength={100}
           disabled={isMuted}
           placeholder={isMuted ? `${t("live.muted_prefix")}${muteLeft}${t("live.muted_suffix")}` : t("live.placeholder")}
-          className={`flex-1 rounded-full border px-4 py-2 text-sm outline-none ${
+          style={{ fontSize: "16px" }}
+          className={`flex-1 rounded-full border px-4 py-2 outline-none ${
             isMuted
               ? "border-gray-200 bg-gray-100 text-gray-400 placeholder:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500"
               : "border-gray-300 bg-white text-gray-900 focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
