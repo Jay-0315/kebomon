@@ -218,25 +218,13 @@ export default function LiveChatPage() {
     };
   }, []);
 
-  // 모바일 키보드 등장 시 풀화면 유지 (visualViewport API)
+  // 입장 시 높이를 현재 innerHeight로 고정 — 키보드가 올라와도 레이아웃 불변
   useEffect(() => {
     if (view !== "room") return;
     const el = containerRef.current;
-    const vv = window.visualViewport;
-    if (!el || !vv) return;
-    const update = () => {
-      el.style.height = `${vv.height}px`;
-      el.style.top = `${vv.offsetTop}px`;
-    };
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-      el.style.height = "";
-      el.style.top = "";
-    };
+    if (!el) return;
+    el.style.height = `${window.innerHeight}px`;
+    return () => { el.style.height = ""; };
   }, [view]);
 
   useEffect(() => {
@@ -394,7 +382,7 @@ export default function LiveChatPage() {
   }
 
   return (
-    <div ref={containerRef} className="fixed inset-x-0 top-0 z-40 flex flex-col overflow-hidden" style={{ height: "100svh" }}>
+    <div ref={containerRef} className="fixed inset-x-0 top-0 z-40 flex flex-col overflow-hidden">
       <ChannelBackground channelId={channelId} />
 
       <div className="relative z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
@@ -483,7 +471,7 @@ export default function LiveChatPage() {
         )}
       </div>
 
-      <div className="relative z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-3 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
+      <div className="relative z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
         <input
           ref={inputRef}
           value={input}
@@ -496,7 +484,7 @@ export default function LiveChatPage() {
           disabled={isMuted}
           placeholder={isMuted ? `${t("live.muted_prefix")}${muteLeft}${t("live.muted_suffix")}` : t("live.placeholder")}
           style={{ fontSize: "16px" }}
-          className={`flex-1 rounded-full border px-4 py-2 outline-none ${
+          className={`min-w-0 flex-1 rounded-full border px-3 py-1.5 outline-none ${
             isMuted
               ? "border-gray-200 bg-gray-100 text-gray-400 placeholder:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500"
               : "border-gray-300 bg-white text-gray-900 focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
@@ -505,11 +493,15 @@ export default function LiveChatPage() {
         <button
           onClick={send}
           disabled={isMuted}
-          className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform ${
+          className={`shrink-0 flex items-center justify-center rounded-full p-2 text-primary-foreground transition-transform ${
             isMuted ? "cursor-not-allowed bg-gray-300 dark:bg-gray-700" : "bg-primary hover:scale-105"
           }`}
         >
-          <Send className="h-4 w-4" /> {isMuted ? `${muteLeft}s` : t("live.send")}
+          {isMuted ? (
+            <span className="text-xs font-bold w-6 text-center">{muteLeft}s</span>
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </button>
       </div>
     </div>

@@ -133,7 +133,7 @@ export default function HomePage() {
                     <span>{t("live.enter")}</span>
                   </div>
                 </div>
-                <div className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
+                <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
                   {t("live.enter")}
                 </div>
               </div>
