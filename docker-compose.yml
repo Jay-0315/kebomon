@@ -3,16 +3,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:4000}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     container_name: kebo-app
     ports:
-      - "${FRONTEND_PORT:-5173}:5173"
-    volumes:
-      - .:/app
-      - app-node-modules:/app/node_modules
-      - app-web-node-modules:/app/apps/user-web/node_modules
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:4000}
-      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       api:
         condition: service_started
@@ -62,7 +58,5 @@ services:
 
 volumes:
   mysql-data:
-  app-node-modules:
-  app-web-node-modules:
   api-node-modules:
   api-app-node-modules:

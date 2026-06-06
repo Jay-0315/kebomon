@@ -18,6 +18,8 @@ interface Participant {
   channelId: number;
   recentMessageTimes: number[];
   mutedUntil: number;
+  x: number;
+  y: number;
 }
 
 // rate limit: 10초 내 3회 초과 시 30초 채팅 금지
@@ -90,10 +92,12 @@ export class ChatGateway implements OnGatewayDisconnect {
       channelId,
       recentMessageTimes: [],
       mutedUntil: 0,
+      x: 50,
+      y: 78,
     });
     client.join(room(channelId));
 
-    client.emit("chat:self", { socketId: client.id, nickname, characterId, channelId });
+    client.emit("chat:self", { socketId: client.id, nickname, characterId, channelId, x: 50, y: 78 });
     this.broadcastRoster(channelId);
     this.broadcastCounts();
   }
@@ -142,7 +146,22 @@ export class ChatGateway implements OnGatewayDisconnect {
       nickname: participant.nickname,
       characterId: participant.characterId,
       text,
-      ts: Date.now(),
+    });
+  }
+
+  @SubscribeMessage("chat:move")
+  handleMove(
+    @MessageBody() data: { x: number; y: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const participant = this.participants.get(client.id);
+    if (!participant) return;
+    participant.x = Math.max(0, Math.min(100, Number(data?.x) || 50));
+    participant.y = Math.max(0, Math.min(100, Number(data?.y) || 78));
+    this.server.to(room(participant.channelId)).emit("chat:move", {
+      socketId: client.id,
+      x: participant.x,
+      y: participant.y,
     });
   }
 
@@ -167,16 +186,12 @@ export class ChatGateway implements OnGatewayDisconnect {
   private rosterFor(channelId: number) {
     return [...this.participants.values()]
       .filter((p) => p.channelId === channelId)
-      .map((p) => ({ socketId: p.socketId, characterId: p.characterId, nickname: p.nickname }));
+      .map((p) => ({ socketId: p.socketId, characterId: p.characterId, nickname: p.nickname, x: p.x, y: p.y }));
   }
 
   private broadcastRoster(channelId: number) {
     const participants = this.rosterFor(channelId);
-    this.server.to(room(channelId)).emit("chat:roster", {
-      channelId,
-      participants,
-      count: participants.length,
-    });
+    this.server.to(room(channelId)).emit("chat:roster", { channelId, participants });
   }
 
   private channelCounts(): Record<number, number> {

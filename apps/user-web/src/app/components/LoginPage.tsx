@@ -119,43 +119,54 @@ export default function LoginPage() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (
-      !googleClientId ||
-      !googleButtonRef.current ||
-      !window.google?.accounts?.id
-    )
-      return;
-    window.google.accounts.id.initialize({
-      client_id: googleClientId,
-      callback: async (response) => {
-        if (!response.credential) {
-          setErrorMessage("Google 로그인 토큰을 받지 못했습니다.");
-          return;
-        }
-        setIsSubmitting(true);
-        setErrorMessage("");
-        try {
-          const authResponse = await api.post<AuthResponse>("/auth/social", {
-            provider: "GOOGLE",
-            identityToken: response.credential,
-          });
-          setAuthSession(authResponse.accessToken, authResponse.user);
-          window.location.assign(authResponse.needsStarter ? "/starter" : "/");
-        } catch {
-          setErrorMessage("Google 로그인에 실패했습니다.");
-        } finally {
-          setIsSubmitting(false);
-        }
-      },
-    });
-    googleButtonRef.current.innerHTML = "";
-    window.google.accounts.id.renderButton(googleButtonRef.current, {
-      theme: "outline",
-      size: "large",
-      shape: "pill",
-      width: 320,
-      text: "continue_with",
-    });
+    if (!googleClientId) return;
+
+    const initGoogle = () => {
+      if (!googleButtonRef.current || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          if (!response.credential) {
+            setErrorMessage("Google 로그인 토큰을 받지 못했습니다.");
+            return;
+          }
+          setIsSubmitting(true);
+          setErrorMessage("");
+          try {
+            const authResponse = await api.post<AuthResponse>("/auth/social", {
+              provider: "GOOGLE",
+              identityToken: response.credential,
+            });
+            setAuthSession(authResponse.accessToken, authResponse.user);
+            window.location.assign(authResponse.needsStarter ? "/starter" : "/");
+          } catch {
+            setErrorMessage("Google 로그인에 실패했습니다.");
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+      });
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        shape: "pill",
+        width: 320,
+        text: "continue_with",
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+    } else {
+      const script = document.querySelector<HTMLScriptElement>(
+        'script[src*="accounts.google.com/gsi/client"]',
+      );
+      if (script) {
+        script.addEventListener("load", initGoogle);
+        return () => script.removeEventListener("load", initGoogle);
+      }
+    }
   }, [googleClientId]);
 
   const handleSocialLogin = (providerLabel: string) => {

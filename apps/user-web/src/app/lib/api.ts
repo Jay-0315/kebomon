@@ -20,7 +20,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       const json = JSON.parse(text);
       if (json.message) message = json.message;
     } catch {}
-    throw new Error(message);
+    const err = new Error(message) as Error & { status: number };
+    err.status = response.status;
+    throw err;
   }
 
   if (response.status === 204) {

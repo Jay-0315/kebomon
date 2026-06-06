@@ -53,7 +53,6 @@ export const TITLES: TitleDef[] = [
   // ── Rare ──
   { id: 4,  name: "레이드 헌터",     grade: "rare",      conditionType: "raid_count",  conditionValue: 5,     description: "레이드 5회 클리어" },
   { id: 5,  name: "발걸음의 탐험가", grade: "rare",      conditionType: "attendance",  conditionValue: 20,    description: "20일 출석 달성" },
-  { id: 6,  name: "수다쟁이",        grade: "rare",      conditionType: "live_count",  conditionValue: 10,    description: "라이브 채널 10회 참여" },
   { id: 7,  name: "커뮤니티 멤버",   grade: "rare",      conditionType: "post_count",  conditionValue: 7,     description: "커뮤니티 글 7개 작성" },
   { id: 24, name: "포인트 입문",     grade: "rare",      conditionType: "points",      conditionValue: 300,   description: "포인트 300P 돌파" },
   { id: 25, name: "습관의 시작",     grade: "rare",      conditionType: "streak",      conditionValue: 7,     description: "7일 연속 출석" },
@@ -61,7 +60,6 @@ export const TITLES: TitleDef[] = [
   { id: 8,  name: "레이드 베테랑",   grade: "epic",      conditionType: "raid_count",  conditionValue: 20,    description: "레이드 20회 클리어" },
   { id: 9,  name: "강철 의지",       grade: "epic",      conditionType: "streak",      conditionValue: 20,    description: "20일 연속 출석" },
   { id: 10, name: "포인트 수집가",   grade: "epic",      conditionType: "points",      conditionValue: 1000,  description: "포인트 1000P 돌파" },
-  { id: 11, name: "라이브 단골",     grade: "epic",      conditionType: "live_count",  conditionValue: 30,    description: "라이브 채널 30회 참여" },
   { id: 26, name: "필력가",          grade: "epic",      conditionType: "post_count",  conditionValue: 20,    description: "커뮤니티 글 20개 작성" },
   { id: 27, name: "꾸준한 탐험가",   grade: "epic",      conditionType: "attendance",  conditionValue: 60,    description: "60일 출석 달성" },
   // ── Legendary ──
@@ -70,7 +68,6 @@ export const TITLES: TitleDef[] = [
   { id: 14, name: "포인트 영주",     grade: "legendary", conditionType: "points",      conditionValue: 5000,  description: "포인트 5000P 돌파" },
   { id: 15, name: "커뮤니티 스타",   grade: "legendary", conditionType: "post_count",  conditionValue: 50,    description: "커뮤니티 글 50개 작성" },
   { id: 28, name: "연속의 달인",     grade: "legendary", conditionType: "streak",      conditionValue: 45,    description: "45일 연속 출석" },
-  { id: 29, name: "라이브 전도사",   grade: "legendary", conditionType: "live_count",  conditionValue: 60,    description: "라이브 채널 60회 참여" },
   // ── Mythic ──
   { id: 16, name: "레이드의 신",     grade: "mythic",    conditionType: "raid_count",  conditionValue: 100,   description: "레이드 100회 클리어" },
   { id: 17, name: "일년의 기억",     grade: "mythic",    conditionType: "attendance",  conditionValue: 200,   description: "200일 출석 달성" },

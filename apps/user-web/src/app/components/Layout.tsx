@@ -200,7 +200,7 @@ export default function Layout() {
             </div>
             <h1 className="font-bold text-foreground">Kebo</h1>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             <NotificationBell />
             <button
               onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}

@@ -8,12 +8,10 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   { titleId: 3,  type: "points",      value: 50 },
   { titleId: 4,  type: "raid_count",  value: 5 },
   { titleId: 5,  type: "attendance",  value: 20 },
-  { titleId: 6,  type: "live_count",  value: 10 },
   { titleId: 7,  type: "post_count",  value: 7 },
   { titleId: 8,  type: "raid_count",  value: 20 },
   { titleId: 9,  type: "streak",      value: 20 },
   { titleId: 10, type: "points",      value: 1000 },
-  { titleId: 11, type: "live_count",  value: 30 },
   { titleId: 12, type: "raid_count",  value: 50 },
   { titleId: 13, type: "attendance",  value: 90 },
   { titleId: 14, type: "points",      value: 5000 },
@@ -31,7 +29,6 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   { titleId: 26, type: "post_count",  value: 20 },
   { titleId: 27, type: "attendance",  value: 60 },
   { titleId: 28, type: "streak",      value: 45 },
-  { titleId: 29, type: "live_count",  value: 60 },
   { titleId: 30, type: "post_count",  value: 150 },
 ];
 
@@ -386,6 +383,10 @@ export class RewardsService {
       where: { userId },
       data: { liveCount: { increment: 1 } },
     });
+    await Promise.all([
+      this.checkAndGrantAchievements(userId),
+      this.checkAndGrantTitles(userId),
+    ]).catch(() => undefined);
   }
 
   /** 출석 버튼 클릭 — 하루 1회, 월 단위 출석판, 7일마다 알 지급 */
@@ -556,6 +557,10 @@ export class RewardsService {
         data: { ...eggDelta(reward.egg, 1), raidCount: { increment: 1 } },
       });
     }
+    await Promise.all([
+      this.checkAndGrantAchievements(userId),
+      this.checkAndGrantTitles(userId),
+    ]).catch(() => undefined);
   }
 
   /** 알 까기: 알 1개 소비 → 등급별 가챠로 캐릭터 1개 (중복이면 포인트 환급) */

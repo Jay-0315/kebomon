@@ -28,7 +28,7 @@ const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
 import { initialAppData } from "../data/seed";
 import { applyThemePreset } from "../lib/theme-presets";
 import { api } from "../lib/api";
-import { getStoredUser } from "../lib/auth";
+import { clearAuthSession, getStoredUser } from "../lib/auth";
 import type {
   AppSettings,
   CommunityPost,
@@ -209,6 +209,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         api.get<{ posts: Record<string, unknown>[] }>(`/community/posts?userId=${currentUser.id}`),
         api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`),
       ]);
+
+    if (profileResult.status === "rejected") {
+      const err = profileResult.reason as { status?: number };
+      if (err?.status === 404 || err?.status === 401 || err?.status === 403) {
+        clearAuthSession();
+        window.location.href = "/login";
+        return;
+      }
+    }
 
     if (profileResult.status === "fulfilled") {
       const p = profileResult.value;
