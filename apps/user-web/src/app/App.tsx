@@ -11,6 +11,7 @@ import KabemonPage from "./components/KabemonPage";
 import LiveChatPage from "./components/LiveChatPage";
 import RaidPage from "./components/RaidPage";
 import ColosseumPage from "./components/ColosseumPage";
+import ShopPage from "./components/ShopPage";
 import SettingsPage from "./components/SettingsPage";
 import StarterSelectionPage from "./components/StarterSelectionPage";
 import AttendancePage from "./components/AttendancePage";
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="live" element={<LiveChatPage />} />
           <Route path="raid" element={<RaidPage />} />
           <Route path="colosseum" element={<ColosseumPage />} />
+          <Route path="shop" element={<ShopPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="mypage/character" element={<Navigate to="/kabemon" replace />} />
         </Route>

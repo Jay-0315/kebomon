@@ -57,8 +57,31 @@ const CHAR_RARITY: Record<number, string> = {
   393:"rare",
 };
 
-function rollDice(faces: number, count: number): { rolls: number[]; total: number } {
-  const rolls = Array.from({ length: count }, () => Math.ceil(Math.random() * faces));
+/** 강화 레벨 → 최소 주사위 값 */
+function enhanceMinRoll(level: number): number {
+  if (level >= 4) return 5;
+  if (level >= 3) return 4;
+  if (level >= 2) return 3;
+  if (level >= 1) return 2;
+  return 1;
+}
+
+/** 강화 레벨 → 보너스 주사위 면 수 (0=없음) */
+function enhanceBonusFaces(level: number): number {
+  if (level >= 6) return 8;
+  if (level >= 5) return 6;
+  return 0;
+}
+
+function rollDice(faces: number, count: number, enhLevel = 0): { rolls: number[]; total: number } {
+  const minRoll = enhanceMinRoll(enhLevel);
+  const rolls: number[] = Array.from({ length: count }, () =>
+    Math.max(minRoll, Math.ceil(Math.random() * faces)),
+  );
+  const bonusFaces = enhanceBonusFaces(enhLevel);
+  if (bonusFaces > 0) {
+    rolls.push(Math.max(minRoll, Math.ceil(Math.random() * bonusFaces)));
+  }
   return { rolls, total: rolls.reduce((a, b) => a + b, 0) };
 }
 
@@ -71,6 +94,7 @@ interface Fighter {
   rarity: string;
   hp: number;
   isPlayer: boolean; // true = real user, false = clone opponent
+  enhancementLevel: number;
 }
 
 interface BattleRoom {
@@ -117,6 +141,16 @@ export class BattleGateway implements OnGatewayDisconnect {
     const { userId, characterId, nickname } = data;
     const rarity = CHAR_RARITY[characterId] ?? "common";
 
+    // 플레이어 강화 레벨 조회
+    let enhancementLevel = 0;
+    try {
+      const charRecord = await this.prisma.userCharacter.findUnique({
+        where: { userId_characterId: { userId, characterId } },
+        select: { enhancementLevel: true },
+      });
+      enhancementLevel = charRecord?.enhancementLevel ?? 0;
+    } catch { /* silent */ }
+
     // 랜덤 클론 상대 선택
     const opponent = await this.pickOpponent(userId);
 
@@ -133,6 +167,7 @@ export class BattleGateway implements OnGatewayDisconnect {
         rarity,
         hp: MAX_HP,
         isPlayer: true,
+        enhancementLevel,
       },
       opponent,
       turn: playerGoesFirst ? "player" : "opponent",
@@ -163,7 +198,7 @@ export class BattleGateway implements OnGatewayDisconnect {
     if (!room || room.turn !== "player") return;
 
     const dice = RARITY_DICE[room.player.rarity] ?? RARITY_DICE.common;
-    const { rolls, total } = rollDice(dice.faces, dice.count);
+    const { rolls, total } = rollDice(dice.faces, dice.count, room.player.enhancementLevel);
 
     room.opponent.hp = Math.max(0, room.opponent.hp - total);
     room.log.push(`플레이어: ${rolls.join("+")} = ${total} 데미지`);
@@ -258,7 +293,6 @@ export class BattleGateway implements OnGatewayDisconnect {
     });
 
     if (rows.length === 0) {
-      // 상대가 없을 경우 기본 클론
       return {
         userId: "clone",
         nickname: "케보몬 클론",
@@ -266,6 +300,7 @@ export class BattleGateway implements OnGatewayDisconnect {
         rarity: "common",
         hp: MAX_HP,
         isPlayer: false,
+        enhancementLevel: 0,
       };
     }
 
@@ -278,6 +313,7 @@ export class BattleGateway implements OnGatewayDisconnect {
       rarity: CHAR_RARITY[charId] ?? "common",
       hp: MAX_HP,
       isPlayer: false,
+      enhancementLevel: 0,
     };
   }
 }

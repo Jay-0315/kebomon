@@ -217,6 +217,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   private rooms = new Map<number, RaidRoom>();
   private cooldowns = new Map<number, number>();
+  private lastRankings = new Map<number, { rank: number; nickname: string; damage: number }[]>();
   /** 현재 레이드 슬롯에서 입장 제한된 userId 목록 (레이드 타입 → 금지 userId Set) */
   private entryBans = new Map<number, Set<string>>();
 
@@ -397,6 +398,8 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     // 데미지 내림차순 정렬
     entries.sort((a, b) => b.damage - a.damage);
 
+    this.lastRankings.set(type, entries.map((en, idx) => ({ rank: idx + 1, nickname: en.nickname, damage: en.damage })));
+
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i];
       const rank = i + 1;
@@ -430,6 +433,12 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         },
       });
     } catch { /* ignore */ }
+  }
+
+  @SubscribeMessage("raid:request-rankings")
+  onRequestRankings(@MessageBody() data: { raidType: number }, @ConnectedSocket() client: Socket) {
+    const rankings = this.lastRankings.get(Number(data.raidType)) ?? [];
+    client.emit("raid:rankings", { raidType: Number(data.raidType), rankings });
   }
 
   @SubscribeMessage("raid:input")

@@ -477,7 +477,7 @@ export class RewardsService {
 
     const ownedChars = await this.prisma.userCharacter.findMany({
       where: { userId },
-      select: { characterId: true },
+      select: { characterId: true, enhancementLevel: true },
     });
 
     const ownedTitles = await this.prisma.userTitle.findMany({
@@ -500,11 +500,98 @@ export class RewardsService {
       normalEggs: reward.normalEggs,
       bigEggs: reward.bigEggs,
       goldenEggs: reward.goldenEggs,
+      enhancementStones: reward.enhancementStones,
       raidCount: reward.raidCount,
       liveCount: reward.liveCount,
       attendanceClaimedToday: reward.lastAttendanceDate === todayKTC,
       monthDays: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthDays : 0,
       monthWeekRewards: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthWeekRewards : 0,
+      characterEnhancements: Object.fromEntries(ownedChars.map((c) => [c.characterId, c.enhancementLevel])),
+    };
+  }
+
+  // ─── 포인트 상점 ─────────────────────────────────────────────────────────────
+  private static readonly SHOP_ITEMS: Record<string, { price: number; label: string }> = {
+    enhancement_stone: { price: 600, label: "강화석" },
+  };
+
+  async buyShopItem(userId: string, itemId: string) {
+    const item = RewardsService.SHOP_ITEMS[itemId];
+    if (!item) throw new BadRequestException("유효하지 않은 상품입니다.");
+
+    const reward = await this.getOrCreateReward(userId);
+    if (reward.missionPoints < item.price) throw new BadRequestException("포인트가 부족합니다.");
+
+    const updated = await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        missionPoints:     { decrement: item.price },
+        totalPointsUsed:   { increment: item.price },
+        enhancementStones: { increment: 1 },
+      },
+    });
+
+    return { enhancementStones: updated.enhancementStones, missionPoints: updated.missionPoints };
+  }
+
+  // ─── 케보몬 강화 ─────────────────────────────────────────────────────────────
+  private static readonly MAX_ENHANCE: Record<string, number> = {
+    common: 3, uncommon: 3, rare: 4, epic: 4, legendary: 5, mythic: 6,
+  };
+  private static readonly ENHANCE_RATES = [1.0, 0.9, 0.8, 0.6, 0.4, 0.2]; // +1 ~ +6
+
+  private getCharRarity(characterId: number): string {
+    const g = GACHA_POOL.find((c) => c.id === characterId);
+    if (g) return g.rarity;
+    // 스타터 + 업적 캐릭터 최소 커버
+    const special: Record<number, string> = {
+      4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
+      11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
+      17:"uncommon",18:"uncommon",19:"uncommon",20:"uncommon",21:"uncommon",
+      22:"uncommon",26:"rare",28:"rare",29:"rare",30:"rare",31:"rare",
+      32:"rare",33:"rare",34:"rare",35:"rare",36:"rare",37:"epic",38:"epic",
+      39:"epic",40:"epic",51:"legendary",52:"legendary",53:"legendary",
+      54:"legendary",55:"legendary",56:"legendary",57:"legendary",58:"legendary",
+      59:"legendary",60:"legendary",61:"legendary",141:"common",
+    };
+    return special[characterId] ?? "common";
+  }
+
+  async enhanceCharacter(userId: string, characterId: number) {
+    const reward = await this.getOrCreateReward(userId);
+    const charRecord = await this.prisma.userCharacter.findUnique({
+      where: { userId_characterId: { userId, characterId } },
+    });
+    if (!charRecord) throw new BadRequestException("해당 캐릭터를 보유하고 있지 않습니다.");
+
+    const rarity   = this.getCharRarity(characterId);
+    const maxLevel = RewardsService.MAX_ENHANCE[rarity] ?? 3;
+    if (charRecord.enhancementLevel >= maxLevel) throw new BadRequestException("최대 강화 단계입니다.");
+
+    const nextLevel = charRecord.enhancementLevel + 1;
+    const cost      = nextLevel;
+    if (reward.enhancementStones < cost) throw new BadRequestException("강화석이 부족합니다.");
+
+    const rate    = RewardsService.ENHANCE_RATES[nextLevel - 1] ?? 0.1;
+    const success = Math.random() < rate;
+
+    const [updatedReward, updatedChar] = await this.prisma.$transaction([
+      this.prisma.userReward.update({
+        where: { userId },
+        data:  { enhancementStones: { decrement: cost } },
+      }),
+      this.prisma.userCharacter.update({
+        where: { userId_characterId: { userId, characterId } },
+        data:  { enhancementLevel: success ? nextLevel : charRecord.enhancementLevel },
+      }),
+    ]);
+
+    return {
+      success,
+      enhancementLevel: updatedChar.enhancementLevel,
+      enhancementStones: updatedReward.enhancementStones,
+      nextLevel,
+      rate,
     };
   }
 

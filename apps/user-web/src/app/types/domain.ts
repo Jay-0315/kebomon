@@ -121,6 +121,8 @@ export interface RewardSummary {
   normalEggs: number;
   bigEggs: number;
   goldenEggs: number;
+  enhancementStones: number;
+  characterEnhancements: Record<number, number>;
   raidCount: number;
   liveCount: number;
   attendanceClaimedToday: boolean;

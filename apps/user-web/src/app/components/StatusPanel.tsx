@@ -233,6 +233,11 @@ export default function StatusPanel() {
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-sm leading-tight truncate">
                     {getCharName(charDef, lang)}
+                    {(rewardSummary.characterEnhancements[charDef.id] ?? 0) > 0 && (
+                      <span className="text-amber-400 ml-1">
+                        +{rewardSummary.characterEnhancements[charDef.id]}
+                      </span>
+                    )}
                   </p>
                   <p
                     className="text-xs font-semibold mt-0.5"

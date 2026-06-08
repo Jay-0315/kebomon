@@ -69,4 +69,14 @@ export class RewardsController {
   getBattleStats(@Query("userId") userId: string) {
     return this.rewardsService.getBattleStats(userId);
   }
+
+  @Post("shop/buy")
+  buyShopItem(@Body() body: { userId: string; itemId: string }) {
+    return this.rewardsService.buyShopItem(body.userId, body.itemId);
+  }
+
+  @Post("enhance")
+  enhanceCharacter(@Body() body: { userId: string; characterId: number }) {
+    return this.rewardsService.enhanceCharacter(body.userId, body.characterId);
+  }
 }

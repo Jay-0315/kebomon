@@ -64,6 +64,8 @@ interface AppDataContextValue {
   unequipTitle: () => Promise<void>;
   checkTitles: () => Promise<number[]>;
   claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
+  buyShopItem: (itemId: string) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
+  enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
   refreshData: () => Promise<void>;
   profilePhoto: string | null;
   updateProfilePhoto: (photo: string | null) => void;
@@ -87,6 +89,8 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     normalEggs: summary?.normalEggs ?? 0,
     bigEggs: summary?.bigEggs ?? 0,
     goldenEggs: summary?.goldenEggs ?? 0,
+    enhancementStones: summary?.enhancementStones ?? 0,
+    characterEnhancements: summary?.characterEnhancements ?? {},
     raidCount: summary?.raidCount ?? 0,
     liveCount: summary?.liveCount ?? 0,
     attendanceClaimedToday: summary?.attendanceClaimedToday ?? false,
@@ -466,6 +470,39 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result.newlyUnlocked;
   };
 
+  const buyShopItem = async (itemId: string): Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
+    const result = await api.post<{ success: boolean; remainingPoints: number; enhancementStones: number }>("/rewards/shop/buy", {
+      userId: currentUser.id,
+      itemId,
+    });
+    setRewardSummary((prev) => ({
+      ...prev,
+      missionPoints: result.remainingPoints,
+      enhancementStones: result.enhancementStones,
+    }));
+    return result;
+  };
+
+  const enhanceCharacter = async (characterId: number): Promise<{ success: boolean; newLevel: number; remainingStones: number }> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
+    const result = await api.post<{ success: boolean; newLevel: number; remainingStones: number }>("/rewards/enhance", {
+      userId: currentUser.id,
+      characterId,
+    });
+    setRewardSummary((prev) => ({
+      ...prev,
+      enhancementStones: result.remainingStones,
+      characterEnhancements: {
+        ...prev.characterEnhancements,
+        [characterId]: result.newLevel,
+      },
+    }));
+    return result;
+  };
+
   const updateSettings = async (nextSettings: Partial<AppSettings>) => {
     const currentUser = getStoredUser();
     setSettings((current) => ({ ...current, ...nextSettings }));
@@ -501,6 +538,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     unequipTitle,
     checkTitles,
     claimAttendance,
+    buyShopItem,
+    enhanceCharacter,
     refreshData,
     profilePhoto,
     updateProfilePhoto,

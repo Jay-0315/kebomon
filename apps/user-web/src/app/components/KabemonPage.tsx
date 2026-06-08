@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import {
   Trophy, Lock, BookOpen, User, Sparkles, Shield, Gamepad2,
   CheckCircle2, Flame, Star, Zap, Gift, RotateCcw, ChevronDown,
@@ -34,7 +34,6 @@ const RARITY_HEX: Record<CharacterRarity, string> = {
 const RARITY_REVEAL: Partial<Record<CharacterRarity, { glow: string; bg: string }>> = {
   epic:      { glow: "#a855f7", bg: "radial-gradient(circle at 50% 45%, #a855f750 0%, transparent 68%)" },
   legendary: { glow: "#f97316", bg: "radial-gradient(circle at 50% 45%, #f9731650 0%, transparent 68%)" },
-  mythic:    { glow: "#eab308", bg: "radial-gradient(circle at 50% 45%, #eab30850 0%, transparent 68%)" },
 };
 
 const RARITY_BG: Record<CharacterRarity, string> = {
@@ -112,6 +111,113 @@ function PixelCapsuleSVG({ color, size = 80 }: { color: string; size?: number })
   );
 }
 
+// ─── Mythic Character Background ─────────────────────────────────────────────
+function MythicBackground() {
+  const raw = useId();
+  const uid = raw.replace(/:/g, "");
+  return (
+    <svg
+      viewBox="0 0 240 220"
+      preserveAspectRatio="xMidYMid slice"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+    >
+      <defs>
+        <radialGradient id={`${uid}h`} cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="#6040c0" stopOpacity="0.45"/>
+          <stop offset="45%" stopColor="#3020a0" stopOpacity="0.22"/>
+          <stop offset="100%" stopColor="#1a1060" stopOpacity="0"/>
+        </radialGradient>
+        <radialGradient id={`${uid}c`} cx="50%" cy="50%" r="36%">
+          <stop offset="0%" stopColor="#1c0d40"/>
+          <stop offset="65%" stopColor="#100825" stopOpacity="0.92"/>
+          <stop offset="100%" stopColor="#07030f" stopOpacity="0"/>
+        </radialGradient>
+        <linearGradient id={`${uid}wl`} gradientUnits="userSpaceOnUse" x1="110" y1="110" x2="0" y2="60">
+          <stop offset="0%" stopColor="#1e1438" stopOpacity="0.82"/>
+          <stop offset="100%" stopColor="#07040e" stopOpacity="0.52"/>
+        </linearGradient>
+        <linearGradient id={`${uid}wr`} gradientUnits="userSpaceOnUse" x1="130" y1="110" x2="240" y2="60">
+          <stop offset="0%" stopColor="#1e1438" stopOpacity="0.82"/>
+          <stop offset="100%" stopColor="#07040e" stopOpacity="0.52"/>
+        </linearGradient>
+      </defs>
+
+      {/* ── Left wing ── */}
+      <polygon points="110,112 96,88 76,58 52,30 24,12 4,26 0,56 0,102 8,142 30,168 58,154 82,130 108,112" fill={`url(#${uid}wl)`}/>
+      <line x1="108" y1="112" x2="44" y2="44" stroke="#2a2060" strokeWidth="1.5" opacity="0.4"/>
+      <line x1="104" y1="116" x2="18" y2="92" stroke="#2a2060" strokeWidth="1.5" opacity="0.3"/>
+      <line x1="108" y1="118" x2="34" y2="162" stroke="#2a2060" strokeWidth="1.5" opacity="0.3"/>
+      <rect x="22" y="12" width="8" height="4" fill="#30288a" opacity="0.7"/>
+      <rect x="4" y="26" width="4" height="6" fill="#28208a" opacity="0.6"/>
+      <rect x="0" y="58" width="4" height="8" fill="#201880" opacity="0.55"/>
+      <rect x="8" y="142" width="4" height="4" fill="#181470" opacity="0.45"/>
+      <rect x="30" y="166" width="8" height="4" fill="#181470" opacity="0.4"/>
+
+      {/* ── Right wing ── */}
+      <polygon points="130,112 144,88 164,58 188,30 216,12 236,26 240,56 240,102 232,142 210,168 182,154 158,130 132,112" fill={`url(#${uid}wr)`}/>
+      <line x1="132" y1="112" x2="196" y2="44" stroke="#2a2060" strokeWidth="1.5" opacity="0.4"/>
+      <line x1="136" y1="116" x2="222" y2="92" stroke="#2a2060" strokeWidth="1.5" opacity="0.3"/>
+      <line x1="132" y1="118" x2="206" y2="162" stroke="#2a2060" strokeWidth="1.5" opacity="0.3"/>
+      <rect x="210" y="12" width="8" height="4" fill="#30288a" opacity="0.7"/>
+      <rect x="232" y="26" width="4" height="6" fill="#28208a" opacity="0.6"/>
+      <rect x="236" y="58" width="4" height="8" fill="#201880" opacity="0.55"/>
+      <rect x="228" y="142" width="4" height="4" fill="#181470" opacity="0.45"/>
+      <rect x="202" y="166" width="8" height="4" fill="#181470" opacity="0.4"/>
+
+      {/* ── Background haze + dark orb ── */}
+      <ellipse cx="120" cy="110" rx="108" ry="90" fill={`url(#${uid}h)`}/>
+      <ellipse cx="120" cy="108" rx="72" ry="66" fill={`url(#${uid}c)`}/>
+
+      {/* ── Crystal blades (glow halos) ── */}
+      <polygon points="120,10 113,90 120,102 127,90" fill="#c0c8f0" opacity="0.1"/>
+      <polygon points="58,28 106,90 114,100 110,88" fill="#e0b030" opacity="0.1"/>
+      <polygon points="182,28 134,90 126,100 130,88" fill="#30a0c8" opacity="0.1"/>
+
+      {/* BLADE UP: white/silver */}
+      <polygon points="120,10 116,88 120,100 124,88" fill="#c8d8ff" opacity="0.8"/>
+      <polygon points="120,10 118.5,88 120,100 121.5,88" fill="#eef5ff" opacity="0.92"/>
+      <rect x="119" y="10" width="2" height="78" fill="#ffffff" opacity="0.7"/>
+
+      {/* BLADE upper-left: gold */}
+      <polygon points="58,28 106,90 114,100 110,87" fill="#dda820" opacity="0.78"/>
+      <polygon points="58,28 107.5,90.5 114,100 111,87.5" fill="#ffe870" opacity="0.88"/>
+      <line x1="58" y1="28" x2="112" y2="93" stroke="#fff0a0" strokeWidth="0.8" opacity="0.65"/>
+
+      {/* BLADE upper-right: cyan */}
+      <polygon points="182,28 134,90 126,100 130,87" fill="#2090c0" opacity="0.78"/>
+      <polygon points="182,28 132.5,90.5 126,100 129,87.5" fill="#80e0ff" opacity="0.88"/>
+      <line x1="182" y1="28" x2="128" y2="93" stroke="#c0f0ff" strokeWidth="0.8" opacity="0.65"/>
+
+      {/* Accent blades: green + blue */}
+      <polygon points="36,180 107,102 111,108 109,101" fill="#40d880" opacity="0.28"/>
+      <polygon points="204,180 133,102 129,108 131,101" fill="#4060e8" opacity="0.28"/>
+
+      {/* ── Magic circle ring (8 tick marks) ── */}
+      <rect x="116" y="42" width="8" height="4" fill="#5040a8" opacity="0.6"/>
+      <rect x="163" y="60" width="4" height="6" fill="#4838a8" opacity="0.5"/>
+      <rect x="180" y="105" width="4" height="6" fill="#4030a0" opacity="0.45"/>
+      <rect x="163" y="150" width="4" height="6" fill="#3828a0" opacity="0.4"/>
+      <rect x="116" y="168" width="8" height="4" fill="#2820a0" opacity="0.35"/>
+      <rect x="73" y="150" width="4" height="6" fill="#3828a0" opacity="0.4"/>
+      <rect x="56" y="105" width="4" height="6" fill="#4030a0" opacity="0.45"/>
+      <rect x="73" y="60" width="4" height="6" fill="#4838a8" opacity="0.5"/>
+      <rect x="60" y="107" width="120" height="2" fill="#3030a0" opacity="0.35"/>
+      <rect x="119" y="46" width="2" height="126" fill="#3030a0" opacity="0.35"/>
+
+      {/* ── Center glow point ── */}
+      <ellipse cx="120" cy="100" rx="12" ry="12" fill="#8060d8" opacity="0.4"/>
+      <ellipse cx="120" cy="100" rx="7" ry="7" fill="#c0a0ff" opacity="0.58"/>
+      <rect x="116" y="96" width="8" height="8" fill="#d8c8ff" opacity="0.8"/>
+      <rect x="118" y="98" width="4" height="4" fill="#f0e8ff" opacity="0.92"/>
+      <rect x="119" y="99" width="2" height="2" fill="#ffffff" opacity="1"/>
+
+      {/* ── Ground mist ── */}
+      <rect x="20" y="190" width="200" height="8" fill="#0c0620" opacity="0.5" rx="4"/>
+      <rect x="55" y="196" width="130" height="6" fill="#0c0620" opacity="0.32" rx="3"/>
+    </svg>
+  );
+}
+
 // ─── Individual Capsule Slot ──────────────────────────────────────────────
 function CapsuleSlot({
   idx, r, isOpen, isPopping, size, onOpen,
@@ -143,21 +249,27 @@ function CapsuleSlot({
           style={{ animation: "charBurst 0.42s ease-out both" }}
         >
           {/* 에픽+ 휘광 레이어 */}
-          {reveal && !r.isDuplicate && (
-            <div
-              className="absolute inset-0 rounded-xl pointer-events-none"
-              style={{
-                background: reveal.bg,
-                animation: "revealGlow 1s ease-in-out 5 alternate",
-                animationDelay: "0.4s",
-              }}
-            />
+          {!r.isDuplicate && (
+            char.rarity === "mythic" ? (
+              <MythicBackground />
+            ) : reveal ? (
+              <div
+                className="absolute inset-0 rounded-xl pointer-events-none"
+                style={{
+                  background: reveal.bg,
+                  animation: "revealGlow 1s ease-in-out 5 alternate",
+                  animationDelay: "0.4s",
+                }}
+              />
+            ) : null
           )}
           <div
             className={`relative p-1 rounded-lg ${RARITY_BG[char.rarity]} ${r.isDuplicate ? "grayscale opacity-50" : ""}`}
             style={
               reveal && !r.isDuplicate
                 ? { boxShadow: `0 0 14px 4px ${reveal.glow}80, 0 0 5px 2px ${reveal.glow}50` }
+                : char.rarity === "mythic" && !r.isDuplicate
+                ? { boxShadow: "0 0 14px 4px #9060e080, 0 0 5px 2px #9060e050" }
                 : undefined
             }
           >
@@ -408,7 +520,11 @@ export default function KabemonPage() {
               <div className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]}`}>
                 <div className="flex flex-col items-center gap-4">
                   <div className={`rounded-2xl ${RARITY_BG[equippedChar.rarity]} relative overflow-hidden`} style={{ width: "100%", minHeight: 220 }}>
-                    <div className={`absolute inset-0 rounded-2xl blur-md opacity-30 ${RARITY_BG[equippedChar.rarity]}`} style={{ transform: "scale(1.1)" }} />
+                    {equippedChar.rarity === "mythic" ? (
+                      <MythicBackground />
+                    ) : (
+                      <div className={`absolute inset-0 rounded-2xl blur-md opacity-30 ${RARITY_BG[equippedChar.rarity]}`} style={{ transform: "scale(1.1)" }} />
+                    )}
                     <div className="relative z-10 flex items-center justify-center py-6">
                       <PixelCharacter characterId={equippedChar.id} size={140} float />
                     </div>
@@ -420,7 +536,12 @@ export default function KabemonPage() {
                       </span>
                       <span className="text-xs text-muted-foreground">#{charNum(equippedChar.id)}</span>
                     </div>
-                    <p className={`text-2xl font-bold ${RARITY_COLOR[equippedChar.rarity]}`}>{getCharName(equippedChar, lang)}</p>
+                    <p className={`text-2xl font-bold ${RARITY_COLOR[equippedChar.rarity]}`}>
+                      {getCharName(equippedChar, lang)}
+                      {(rewardSummary.characterEnhancements[equippedChar.id] ?? 0) > 0 && (
+                        <span className="text-amber-400 ml-1.5">+{rewardSummary.characterEnhancements[equippedChar.id]}</span>
+                      )}
+                    </p>
                     <p className="text-sm text-muted-foreground mt-1">{getCharDesc(equippedChar, lang)}</p>
                     <p className="text-[11px] text-muted-foreground/60 mt-2">{t("kabemon.mouse_hint")}</p>
                   </div>
@@ -523,6 +644,7 @@ export default function KabemonPage() {
             t={t}
           />
         )}
+
 
       </div>
 
@@ -1124,7 +1246,7 @@ function AchievementRevealModal({
                 <div
                   key={cId}
                   className={`flex flex-col items-center gap-2 p-3 rounded-2xl ${RARITY_BG[c.rarity]}`}
-                  style={rv ? { boxShadow: `0 0 18px 4px ${rv.glow}55` } : undefined}
+                  style={c.rarity === "mythic" ? { boxShadow: "0 0 18px 4px #9060e055" } : rv ? { boxShadow: `0 0 18px 4px ${rv.glow}55` } : undefined}
                 >
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 ${RARITY_COLOR[c.rarity]}`}>NEW 획득!</span>
                   <PixelSprite type={c.type} colors={c.colors} characterId={c.id} rarity={c.rarity} size={80} />
@@ -1260,10 +1382,15 @@ function AchievementRevealModal({
             className={`relative rounded-2xl ${RARITY_BG[safeChar.rarity]} overflow-hidden`}
             style={{
               minHeight: 200,
-              ...(reveal ? { boxShadow: `0 0 44px 14px ${reveal.glow}50, 0 0 14px 4px ${reveal.glow}40` } : {}),
+              ...(safeChar.rarity === "mythic"
+                ? { boxShadow: "0 0 44px 14px #9060e050, 0 0 14px 4px #9060e040" }
+                : reveal
+                ? { boxShadow: `0 0 44px 14px ${reveal.glow}50, 0 0 14px 4px ${reveal.glow}40` }
+                : {}),
             }}
           >
-            <div className="flex items-center justify-center py-6">
+            {safeChar.rarity === "mythic" && <MythicBackground />}
+            <div className="relative z-10 flex items-center justify-center py-6">
               <PixelCharacter characterId={safeChar.id} size={128} float />
             </div>
           </div>

@@ -1028,6 +1028,7 @@ export default function RaidPage() {
   const [banned, setBanned] = useState(false);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [rankings, setRankings] = useState<RankEntry[]>([]);
+  const [rankingsModal, setRankingsModal] = useState<{ raidType: number; rankings: RankEntry[] } | null>(null);
   const [contributed, setContributed] = useState(false);
   const [contribText, setContribText] = useState("");
   const [contribAnswer, setContribAnswer] = useState("");
@@ -1068,7 +1069,7 @@ export default function RaidPage() {
       setFeedback(d.text);
       setTimeout(() => setFeedback(""), 1500);
     };
-    const onCleared = (d: { reward: Reward; rank?: number; rankings?: RankEntry[] }) => {
+    const onCleared = (d: { reward: Reward; rank?: number; rankings?: RankEntry[]; raidType?: number }) => {
       setReward(d.reward);
       setMyRank(d.rank ?? null);
       setRankings(d.rankings ?? []);
@@ -1100,6 +1101,10 @@ export default function RaidPage() {
     const onChatLives = (d: { lives: number }) => setChatLives(d.lives);
     const onEliminated = () => { setEliminated(true); setView("lobby"); };
 
+    const onRankings = (d: { raidType: number; rankings: RankEntry[] }) => {
+      setRankingsModal({ raidType: d.raidType, rankings: d.rankings });
+    };
+
     s.on("raid:lobby", onLobby);
     s.on("raid:state", onState);
     s.on("raid:self", onSelf);
@@ -1113,6 +1118,7 @@ export default function RaidPage() {
     s.on("raid:jump_lives", onJumpLives);
     s.on("raid:lives", onChatLives);
     s.on("raid:eliminated", onEliminated);
+    s.on("raid:rankings", onRankings);
     s.emit("raid:counts");
     return () => {
       s.off("raid:lobby", onLobby); s.off("raid:state", onState); s.off("raid:self", onSelf);
@@ -1120,6 +1126,7 @@ export default function RaidPage() {
       s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown); s.off("raid:banned", onBanned);
       s.off("raid:bossHit", onBossHit); s.off("raid:jump_lives", onJumpLives);
       s.off("raid:lives", onChatLives); s.off("raid:eliminated", onEliminated);
+      s.off("raid:rankings", onRankings);
       Object.values(timers.current).forEach(clearTimeout);
     };
   }, []);
@@ -1224,15 +1231,11 @@ export default function RaidPage() {
             const full5 = info.count >= MAX_PLAYERS;
             const disabled = onCooldown || full5;
             const bossDef = charById(info.bossCharId ?? getBossChar(id).id);
-            return (
-              <button
-                key={id}
-                onClick={() => !disabled && enter(id)}
-                disabled={disabled}
-                className={`group flex flex-col rounded-2xl border p-4 text-left transition-all ${
-                  disabled ? "cursor-not-allowed border-border opacity-60" : "border-border bg-card hover:border-primary hover:shadow-lg"
-                }`}
-              >
+            const cardClass = `group flex flex-col rounded-2xl border p-4 text-left transition-all ${
+              disabled ? "border-border opacity-60" : "border-border bg-card hover:border-primary hover:shadow-lg cursor-pointer"
+            }`;
+            const cardContent = (
+              <>
                 {/* ── 상단: 인원 + 상태 뱃지 ── */}
                 <div className="mb-2 flex items-center justify-between">
                   <span className="flex shrink-0 items-center gap-1 text-sm font-bold">
@@ -1267,11 +1270,25 @@ export default function RaidPage() {
                     />
                   </div>
                 </div>
-                {/* ── 보스 스프라이트 ── */}
-                <div className="flex justify-center mb-3">
+                {/* ── 보스 스프라이트 + 쿨타임 시 랭킹보기 ── */}
+                <div className="flex justify-center mb-3 relative">
                   <div className={`rounded-2xl bg-black/5 px-6 py-4 dark:bg-white/5 ${onCooldown ? "grayscale" : ""}`}>
                     <PixelCharacter characterId={bossDef.id} size={64} float={!onCooldown} />
                   </div>
+                  {onCooldown && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        getRaidSocket().emit("raid:request-rankings", { raidType: id });
+                      }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <span className="flex items-center gap-1.5 rounded-lg bg-black/60 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm hover:bg-black/75 transition-colors">
+                        <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                        {t("raid.ranking_title")}
+                      </span>
+                    </button>
+                  )}
                 </div>
                 {/* ── 텍스트 정보 ── */}
                 <div className="min-w-0">
@@ -1279,10 +1296,67 @@ export default function RaidPage() {
                   <p className="truncate text-xs text-muted-foreground">BOSS · {getCharName(bossDef, lang)}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">{RAIDS[id].desc}</p>
                 </div>
+              </>
+            );
+            return onCooldown ? (
+              <div key={id} className={cardClass}>{cardContent}</div>
+            ) : (
+              <button key={id} onClick={() => !disabled && enter(id)} disabled={disabled} className={cardClass}>
+                {cardContent}
               </button>
             );
           })}
         </div>
+
+        {/* ── 랭킹 모달 ── */}
+        {rankingsModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setRankingsModal(null)}
+          >
+            <div
+              className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-400" />
+                <h2 className="font-bold text-lg">{t("raid.ranking_title")}</h2>
+                <span className="ml-auto text-xs text-muted-foreground">{RAIDS[rankingsModal.raidType]?.name}</span>
+              </div>
+
+              {rankingsModal.rankings.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm py-4">{t("col.no_records")}</p>
+              ) : (
+                <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                  {rankingsModal.rankings.map((entry) => {
+                    const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : null;
+                    return (
+                      <div
+                        key={entry.rank}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+                          entry.rank <= 3 ? "bg-amber-500/10 border border-amber-500/20" : "bg-muted/50"
+                        }`}
+                      >
+                        <span className="w-6 shrink-0 text-center font-bold text-muted-foreground">
+                          {medal ?? entry.rank}
+                        </span>
+                        <span className="flex-1 truncate font-medium">{entry.nickname}</span>
+                        <span className="shrink-0 font-bold text-red-400">{entry.damage.toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                onClick={() => setRankingsModal(null)}
+                className="mt-4 w-full rounded-lg bg-muted py-2 text-sm font-semibold hover:bg-muted/70 transition-colors"
+              >
+                {lang === "ko" ? "닫기" : "閉じる"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 알 부화 연출 */}
         {eggResult && (

@@ -77,6 +77,78 @@ const nextHourStartMs=(now=Date.now())=>{
 };
 const BATTLE_EXIT_WARNING="지금 나가시면 자동으로 패배처리 됩니다. 정말로 나가시겠습니까?";
 
+// ─── 입장권 시스템 ────────────────────────────────────────────────────────────
+const MAX_TICKETS=5;
+const REGEN_MS=2*60*60*1000; // 2h
+const TK_KEY="col_tickets";
+const TK_REGEN_KEY="col_regen_base_ts";
+const TK_DATE_KEY="col_reset_date";
+
+function getTodayStr(){return new Date().toISOString().slice(0,10);}
+
+function syncTickets():{tickets:number;regenBase:number|null}{
+  const today=getTodayStr();
+  if(localStorage.getItem(TK_DATE_KEY)!==today){
+    localStorage.setItem(TK_DATE_KEY,today);
+    localStorage.setItem(TK_KEY,"5");
+    localStorage.removeItem(TK_REGEN_KEY);
+    return{tickets:5,regenBase:null};
+  }
+  let tickets=parseInt(localStorage.getItem(TK_KEY)??"5",10);
+  if(isNaN(tickets)||tickets>5)tickets=5;
+  const raw=localStorage.getItem(TK_REGEN_KEY);
+  let regenBase=raw?parseInt(raw,10):null;
+  if(regenBase&&tickets<MAX_TICKETS){
+    const earned=Math.floor((Date.now()-regenBase)/REGEN_MS);
+    if(earned>0){
+      tickets=Math.min(MAX_TICKETS,tickets+earned);
+      regenBase=regenBase+earned*REGEN_MS;
+      localStorage.setItem(TK_KEY,String(tickets));
+      if(tickets>=MAX_TICKETS){regenBase=null;localStorage.removeItem(TK_REGEN_KEY);}
+      else localStorage.setItem(TK_REGEN_KEY,String(regenBase));
+    }
+  }
+  return{tickets,regenBase};
+}
+
+function useTickets(){
+  const[state,setState]=useState<{tickets:number;regenBase:number|null}>(()=>syncTickets());
+  const[msToNext,setMsToNext]=useState<number|null>(null);
+
+  useEffect(()=>{
+    if(!state.regenBase||state.tickets>=MAX_TICKETS){setMsToNext(null);return;}
+    const update=()=>{
+      const nextTs=state.regenBase!+REGEN_MS;
+      const remaining=nextTs-Date.now();
+      if(remaining<=0){setState(syncTickets());}
+      else setMsToNext(remaining);
+    };
+    update();
+    const id=setInterval(update,1000);
+    return()=>clearInterval(id);
+  },[state.regenBase,state.tickets]);
+
+  const consume=()=>{
+    const cur=syncTickets();
+    if(cur.tickets<=0)return false;
+    const newTk=cur.tickets-1;
+    const newBase=cur.regenBase??Date.now();
+    localStorage.setItem(TK_KEY,String(newTk));
+    if(newTk<MAX_TICKETS)localStorage.setItem(TK_REGEN_KEY,String(newBase));
+    setState({tickets:newTk,regenBase:newBase});
+    return true;
+  };
+
+  const fmtMs=(ms:number)=>{
+    const h=Math.floor(ms/3600000);
+    const m=Math.floor((ms%3600000)/60000);
+    const s=Math.floor((ms%60000)/1000);
+    return h>0?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;
+  };
+
+  return{...state,msToNext,fmtMs,consume};
+}
+
 
 // ─── 픽셀 도트 주사위 SVG ────────────────────────────────────────────────────
 // 7×7 그리드, 핍 좌표 (col,row)
@@ -482,6 +554,8 @@ export default function ColosseumPage(){
     };
   },[fetchRankings]);
 
+  const{tickets,msToNext,fmtMs,consume}=useTickets();
+
   // ── 배틀 상태 ──
   const[phase,setPhase]=useState<Phase>("lobby");
   const[coinResult,setCoinResult]=useState<"heads"|"tails"|null>(null);
@@ -507,6 +581,25 @@ export default function ColosseumPage(){
   const battleRef=useRef<BattleState|null>(null);
   useEffect(()=>{battleRef.current=battle;},[battle]);
   useEffect(()=>{phaseRef.current=phase;},[phase]);
+
+  const rankScrollRef=useRef<HTMLDivElement>(null);
+  const rankDragRef=useRef({active:false,startY:0,scrollTop:0});
+  const onRankDown=(e:React.MouseEvent)=>{
+    rankDragRef.current={active:true,startY:e.clientY,scrollTop:rankScrollRef.current?.scrollTop??0};
+  };
+  const onRankMove=(e:React.MouseEvent)=>{
+    if(!rankDragRef.current.active||!rankScrollRef.current)return;
+    e.preventDefault();
+    rankScrollRef.current.scrollTop=rankDragRef.current.scrollTop-(e.clientY-rankDragRef.current.startY);
+  };
+  const onRankUp=()=>{rankDragRef.current.active=false;};
+  const onRankTouchStart=(e:React.TouchEvent)=>{
+    rankDragRef.current={active:true,startY:e.touches[0].clientY,scrollTop:rankScrollRef.current?.scrollTop??0};
+  };
+  const onRankTouchMove=(e:React.TouchEvent)=>{
+    if(!rankDragRef.current.active||!rankScrollRef.current)return;
+    rankScrollRef.current.scrollTop=rankDragRef.current.scrollTop-(e.touches[0].clientY-rankDragRef.current.startY);
+  };
 
   const fetchBattleStats=useCallback(async()=>{
     if(!user?.id)return;
@@ -588,11 +681,12 @@ export default function ColosseumPage(){
   },[]);
 
   const startBattle=useCallback(()=>{
+    if(!consume())return;
     setPhase("coin");setCoinResult(null);setBattle(null);
     setRollAnimRolls([]);setRollAnimActive(false);setResult(null);
     setBattleHistory([]);setLogText("");setWaitForNext(false);
     getBattleSocket().emit("battle:start",{userId:user?.id,characterId:myCharacterId,nickname:user?.name??(ko?"플레이어":"プレイヤー")});
-  },[user,myCharacterId,ko]);
+  },[user,myCharacterId,ko,consume]);
 
   const rollDice=useCallback(()=>{
     if(rolling||battle?.turn!=="player")return;
@@ -695,8 +789,20 @@ export default function ColosseumPage(){
     @keyframes col-active-glow{0%,100%{filter:drop-shadow(0 0 6px #c8a44a)}50%{filter:drop-shadow(0 0 18px #c8a44a)}}
     @keyframes col-stone-glow {0%,100%{opacity:0.55}50%{opacity:0.9}}
     @keyframes col-hp-flash   {0%{opacity:0.7}100%{opacity:0}}
+    @keyframes col-tier-up-bg {0%,100%{opacity:0.6}50%{opacity:1}}
+    @keyframes col-tier-up-banner {0%{opacity:0;transform:scale(0.5) translateY(-30px)}60%{transform:scale(1.08) translateY(0)}100%{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes col-tier-up-badge {0%{opacity:0;transform:scale(0.3) rotate(-20deg)}55%{transform:scale(1.18) rotate(4deg)}80%{transform:scale(0.96) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+    @keyframes col-tier-up-shine {0%{opacity:0;transform:translateX(-120%) skewX(-20deg)}50%{opacity:0.7}100%{opacity:0;transform:translateX(120%) skewX(-20deg)}}
+    @keyframes col-tier-up-sparkle {0%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-90px) scale(0)}}
+    @keyframes col-tier-up-ring {0%{transform:scale(0.6);opacity:0.9}100%{transform:scale(2.4);opacity:0}}
+    @keyframes col-scrollhide-drag {0%,100%{cursor:grab}50%{cursor:grabbing}}
     .col-grid-top   {display:grid;grid-template-columns:1fr;gap:14px}
     .col-grid-bottom{display:grid;grid-template-columns:1fr;gap:14px}
+    .col-rank-scroll::-webkit-scrollbar{display:none}
+    .col-rank-scroll{-ms-overflow-style:none;scrollbar-width:none;cursor:grab;user-select:none}
+    .col-rank-scroll:active{cursor:grabbing}
+    .col-no-scroll::-webkit-scrollbar{display:none}
+    .col-no-scroll{-ms-overflow-style:none;scrollbar-width:none}
     @media(min-width:640px){
       .col-grid-top   {grid-template-columns:1fr 1fr}
       .col-grid-bottom{grid-template-columns:3fr 2fr}
@@ -797,10 +903,45 @@ export default function ColosseumPage(){
             </div>
           </div>
 
+          {/* ── 입장권 ── */}
+          <div style={{background:C.panelDark,border:`2px solid ${tickets===0?"#7f1d1d":tickets<MAX_TICKETS?C.borderFaint:C.border}`,
+            borderRadius:5,padding:"10px 16px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontFamily:FONT,fontSize:11,color:C.stone,fontWeight:700}}>{t("col.ticket")}</span>
+              <div style={{display:"flex",gap:4}}>
+                {Array.from({length:MAX_TICKETS},(_,i)=>(
+                  <div key={i} style={{
+                    width:12,height:16,borderRadius:2,
+                    background:i<tickets
+                      ?"linear-gradient(180deg,#fde68a,#c8a44a)"
+                      :"#2a1f06",
+                    border:`1px solid ${i<tickets?C.gold:C.borderFaint}`,
+                    boxShadow:i<tickets?`0 0 6px ${C.goldGlow}55`:"none",
+                    transition:"all 0.3s",
+                  }}/>
+                ))}
+              </div>
+              <span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,
+                color:tickets===0?"#f87171":tickets<MAX_TICKETS?C.stone:C.gold}}>
+                {tickets}/{MAX_TICKETS}
+              </span>
+            </div>
+            {tickets<MAX_TICKETS&&(
+              <span style={{fontFamily:FONT,fontSize:10,color:C.stoneFaint,marginLeft:"auto"}}>
+                {msToNext!=null&&msToNext>0
+                  ?`${t("col.ticket_next")} ${fmtMs(msToNext)}`
+                  :t("col.ticket_full")}
+              </span>
+            )}
+            {tickets>=MAX_TICKETS&&(
+              <span style={{fontFamily:FONT,fontSize:10,color:C.gold,marginLeft:"auto"}}>{t("col.ticket_full")}</span>
+            )}
+          </div>
+
           {/* 입장 버튼 */}
-          <PixelBtn onClick={startBattle}>
+          <PixelBtn onClick={startBattle} disabled={tickets===0}>
             <Swords size={18} strokeWidth={2.5}/>
-            {t("col.enter")}
+            {tickets===0?t("col.no_ticket"):t("col.enter")}
           </PixelBtn>
 
           {/* 규칙 */}
@@ -844,19 +985,28 @@ export default function ColosseumPage(){
                 <p style={{fontFamily:FONT,fontSize:11,color:C.stoneFaint,textAlign:"center",padding:"24px 0",margin:0}}>
                   {rankLoading?t("col.loading"):t("col.no_records")}
                 </p>
-              ):(
-                <div style={{maxHeight:340,overflowY:"auto"}}>
-                  {rankings.map(entry=>{
-                    const eIdx=getTierIdx(entry.tierPoints);
-                    const eTier=TIERS[eIdx];
-                    const isMe=entry.userId===user?.id;
-                    const entryChar=entry.characterId!=null?(CHARACTERS.find(c=>c.id===entry.characterId)??CHARACTERS[0]):null;
-                    const RankIcon=entry.rank===1?Crown:Medal;
-                    const rankColor=entry.rank===1?"#ffd700":entry.rank===2?"#c0c0c0":entry.rank===3?"#cd7f32":C.stoneFaint;
-                    return(
-                      <div key={entry.userId} style={{
+              ):(()=>{
+                const top10=rankings.slice(0,10);
+                const myEntry=rankings.find(e=>e.userId===user?.id);
+                const myInTop10=myEntry&&myEntry.rank<=10;
+                const renderRow=(entry:RankingEntry,divider?:boolean)=>{
+                  const eIdx=getTierIdx(entry.tierPoints);
+                  const eTier=TIERS[eIdx];
+                  const isMe=entry.userId===user?.id;
+                  const entryChar=entry.characterId!=null?(CHARACTERS.find(c=>c.id===entry.characterId)??CHARACTERS[0]):null;
+                  const RankIcon=entry.rank===1?Crown:Medal;
+                  const rankColor=entry.rank===1?"#ffd700":entry.rank===2?"#c0c0c0":entry.rank===3?"#cd7f32":C.stoneFaint;
+                  return(
+                    <div key={entry.userId}>
+                      {divider&&(
+                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"4px 14px",background:"#0c0803",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.borderFaint}`}}>
+                          <span style={{fontSize:9,color:C.stoneFaint,fontFamily:"monospace",letterSpacing:"0.1em"}}>• • •</span>
+                          <span style={{fontSize:9,color:C.stone,fontFamily:FONT}}>{ko?"내 순위":"自分の順位"}</span>
+                        </div>
+                      )}
+                      <div style={{
                         display:"flex",alignItems:"center",gap:10,padding:"7px 14px",
-                        background:isMe?"#1e3a5f14":"transparent",
+                        background:isMe?"#1e3a5f18":"transparent",
                         borderBottom:`1px solid ${C.borderFaint}`,
                         borderLeft:isMe?`3px solid #60a5fa`:`3px solid transparent`,
                       }}>
@@ -865,11 +1015,7 @@ export default function ColosseumPage(){
                             ?<RankIcon size={16} color={rankColor} strokeWidth={2}/>
                             :<span style={{fontFamily:"monospace",fontSize:12,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
                         </div>
-                        <div style={{width:32,height:32,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                          {entryChar
-                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={32}/>
-                            :<div style={{width:28,height:28,background:C.borderFaint,borderRadius:2}}/>}
-                        </div>
+                        {/* 이름 + 승률 (캐릭터보다 먼저 배치) */}
                         <div style={{flex:1,minWidth:0}}>
                           <p style={{fontFamily:FONT,fontSize:12,fontWeight:900,
                             color:isMe?"#93c5fd":C.parchment,margin:0,
@@ -884,6 +1030,7 @@ export default function ColosseumPage(){
                             {t("col.wins_summary").replace("{w}",String(entry.wins)).replace("{s}",String(entry.winStreak))}
                           </p>
                         </div>
+                        {/* 티어 */}
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:3}}>
                             <TierBadgeSvg idx={eIdx} size={14}/>
@@ -891,11 +1038,26 @@ export default function ColosseumPage(){
                           </div>
                           <span style={{fontFamily:"monospace",fontSize:10,color:C.stone}}>{entry.tierPoints} pts</span>
                         </div>
+                        {/* 캐릭터 (맨 오른쪽) */}
+                        <div style={{width:32,height:32,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                          {entryChar
+                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={32}/>
+                            :<div style={{width:28,height:28,background:C.borderFaint,borderRadius:2}}/>}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                  );
+                };
+                return(
+                  <div ref={rankScrollRef} className="col-rank-scroll"
+                    style={{maxHeight:340,overflowY:"auto"}}
+                    onMouseDown={onRankDown} onMouseMove={onRankMove} onMouseUp={onRankUp} onMouseLeave={onRankUp}
+                    onTouchStart={onRankTouchStart} onTouchMove={onRankTouchMove} onTouchEnd={onRankUp}>
+                    {top10.map(entry=>renderRow(entry))}
+                    {myEntry&&!myInTop10&&renderRow(myEntry,true)}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* ── 티어 목록 패널 ── */}
@@ -959,28 +1121,126 @@ export default function ColosseumPage(){
   // ══════════════════════════════════════════════════════════════════════════
   if(phase==="result"&&result){
     const newIdx=getTierIdx(result.tierPoints);
+    const prevIdx=getTierIdx(result.tierPoints-result.pointsDelta);
     const newTier=TIERS[newIdx];
     const newLabel=ko?newTier.ko:newTier.ja;
-    const tierChanged=newIdx!==getTierIdx(result.tierPoints-result.pointsDelta);
+    const tierUp=newIdx>prevIdx;
+    const tierDown=newIdx<prevIdx;
+
+    if(tierUp){
+      // ── 티어 승급 연출 ──
+      return(
+        <div style={{position:"fixed",inset:0,zIndex:50,fontFamily:FONT,overflow:"hidden",
+          background:`linear-gradient(180deg,#0a0600 0%,${newTier.glow}33 50%,#0a0600 100%)`}}>
+          <style>{cssStyles}</style>
+          {/* 배경 파티클 */}
+          {Array.from({length:12},(_,i)=>(
+            <div key={i} style={{
+              position:"absolute",
+              left:`${8+i*7.5}%`,top:`${30+Math.sin(i*1.3)*20}%`,
+              width:6,height:6,borderRadius:"50%",
+              background:i%2===0?newTier.color:C.gold,
+              animation:`col-tier-up-sparkle ${1.2+i*0.15}s ease-out ${i*0.08}s both`,
+              pointerEvents:"none",
+            }}/>
+          ))}
+          {/* 링 파급 효과 */}
+          {[0,0.3,0.6].map((d,i)=>(
+            <div key={i} style={{
+              position:"absolute",top:"50%",left:"50%",
+              width:120,height:120,borderRadius:"50%",
+              border:`3px solid ${newTier.color}`,
+              transform:"translate(-50%,-50%)",
+              animation:`col-tier-up-ring 1.4s ease-out ${d}s both`,
+              pointerEvents:"none",
+            }}/>
+          ))}
+          {/* 메인 컨텐츠 */}
+          <div style={{position:"relative",zIndex:1,height:"100%",display:"flex",flexDirection:"column",
+            alignItems:"center",justifyContent:"center",gap:12,padding:"0 24px"}}>
+            {/* TIER UP 배너 */}
+            <div style={{
+              background:`linear-gradient(135deg,${newTier.glow}55,${newTier.color}22)`,
+              border:`2px solid ${newTier.color}`,borderRadius:6,
+              padding:"6px 28px",marginBottom:4,
+              animation:"col-tier-up-banner 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.1s both",
+              overflow:"hidden",position:"relative",
+            }}>
+              <div style={{position:"absolute",inset:0,animation:"col-tier-up-shine 1.5s ease-in-out 0.8s both",
+                background:`linear-gradient(90deg,transparent,${newTier.color}44,transparent)`,
+                pointerEvents:"none"}}/>
+              <p style={{fontFamily:FONT,fontWeight:900,fontSize:18,letterSpacing:"0.3em",textIndent:"0.3em",
+                color:newTier.color,textShadow:`0 0 20px ${newTier.glow}`,margin:0}}>
+                {t("col.tier_up")}
+              </p>
+            </div>
+            {/* 승리 텍스트 */}
+            <p style={{fontFamily:FONT,fontWeight:900,fontSize:42,letterSpacing:"0.14em",
+              color:"#4ade80",textShadow:"0 0 30px #22c55e",
+              margin:0,animation:"col-win-in 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s both",
+              textAlign:"center",width:"100%"}}>
+              {t("col.win")}
+            </p>
+            {/* 새 티어 배지 */}
+            <div style={{animation:"col-tier-up-badge 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.5s both",position:"relative"}}>
+              <TierBadgeSvg idx={newIdx} size={80}/>
+            </div>
+            <p style={{fontFamily:FONT,fontSize:24,fontWeight:900,
+              color:newTier.color,textShadow:`0 0 16px ${newTier.glow}`,margin:0,
+              animation:"col-tier-up-banner 0.6s ease-out 0.8s both"}}>
+              {newLabel}
+            </p>
+            {/* 포인트 */}
+            <div style={{background:C.panelDark,border:`2px solid ${newTier.glow}`,borderRadius:4,
+              padding:"10px 24px",textAlign:"center",animation:"col-log-in 0.4s ease-out 1s both"}}>
+              <p style={{fontFamily:FONT,fontSize:22,fontWeight:900,margin:0,color:"#4ade80"}}>
+                +{result.pointsDelta} pts
+              </p>
+              <p style={{fontFamily:FONT,fontSize:12,color:C.stone,margin:"4px 0 0"}}>
+                {t("col.total_pts")} {result.tierPoints} pts
+              </p>
+            </div>
+            {/* 통계 */}
+            <div style={{display:"flex",gap:24,textAlign:"center",animation:"col-log-in 0.4s ease-out 1.1s both"}}>
+              {[
+                {label:t("battle.wins"),val:result.wins,color:"#4ade80"},
+                {label:t("battle.losses"),val:result.losses,color:"#f87171"},
+                {label:t("battle.streak"),val:result.winStreak,color:C.gold},
+              ].map(s=>(
+                <div key={s.label}>
+                  <p style={{fontFamily:FONT,fontSize:22,fontWeight:900,color:s.color,margin:0}}>{s.val}</p>
+                  <p style={{fontFamily:FONT,fontSize:11,color:C.stone,margin:0}}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:12,width:"100%",maxWidth:320,marginTop:4,animation:"col-log-in 0.4s ease-out 1.2s both"}}>
+              <div style={{flex:1}}><PixelBtn onClick={reset} color="gray">{t("col.exit")}</PixelBtn></div>
+              <div style={{flex:1}}><PixelBtn onClick={startBattle} disabled={tickets===0}>{t("col.rematch")}</PixelBtn></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return(
       <div style={{position:"fixed",inset:0,zIndex:50,
-        background:`linear-gradient(180deg,${result.won?"#0a1f06":"#1a0505"} 0%,#0c0905 100%)`,
+        background:`linear-gradient(180deg,${result.won?"#0a1f06":tierDown?"#1a0a1f":"#1a0505"} 0%,#0c0905 100%)`,
         display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
         gap:16,padding:"0 24px",fontFamily:FONT}}>
         <style>{cssStyles}</style>
-        <p style={{fontFamily:FONT,fontWeight:900,fontSize:38,letterSpacing:"0.14em",textIndent:"0.14em",
-          width:"100%",textAlign:"center",
+        <p style={{fontFamily:FONT,fontWeight:900,fontSize:42,letterSpacing:"0.14em",
           color:result.won?"#4ade80":"#f87171",
           textShadow:result.won?"0 0 30px #22c55e":"0 0 30px #ef4444",
-          margin:0,animation:"col-win-in 0.5s cubic-bezier(0.34,1.56,0.64,1) both"}}>
+          margin:0,animation:"col-win-in 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
+          textAlign:"center",width:"100%"}}>
           {result.won?t("col.win"):t("col.lose")}
         </p>
         <TierBadgeSvg idx={newIdx} size={64}/>
         <p style={{fontFamily:FONT,fontSize:20,fontWeight:900,color:newTier.color,textShadow:`0 0 12px ${newTier.glow}`,margin:0}}>
           {newLabel}
         </p>
-        {tierChanged&&(
-          <p style={{fontFamily:FONT,fontSize:12,color:C.gold,margin:"-8px 0 0"}}>{t("col.tier_changed")}</p>
+        {tierDown&&(
+          <p style={{fontFamily:FONT,fontSize:12,color:"#a78bfa",margin:"-8px 0 0"}}>{t("col.tier_changed")}</p>
         )}
         <div style={{background:C.panelDark,border:`2px solid ${C.border}`,borderRadius:4,padding:"10px 24px",textAlign:"center"}}>
           <p style={{fontFamily:FONT,fontSize:22,fontWeight:900,margin:0,
@@ -1005,7 +1265,7 @@ export default function ColosseumPage(){
         </div>
         <div style={{display:"flex",gap:12,width:"100%",maxWidth:320,marginTop:8}}>
           <div style={{flex:1}}><PixelBtn onClick={reset} color="gray">{t("col.exit")}</PixelBtn></div>
-          <div style={{flex:1}}><PixelBtn onClick={startBattle}>{t("col.rematch")}</PixelBtn></div>
+          <div style={{flex:1}}><PixelBtn onClick={startBattle} disabled={tickets===0}>{t("col.rematch")}</PixelBtn></div>
         </div>
       </div>
     );
@@ -1149,7 +1409,7 @@ export default function ColosseumPage(){
 
         {/* 배틀 히스토리 (아래에서 위로 쌓임) */}
         {battleHistory.length>0&&(
-          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",
+          <div className="col-no-scroll" style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",
             justifyContent:"flex-end",gap:4,padding:"8px 12px 10px",minHeight:0}}>
             {[...battleHistory].slice(-6).map((entry,i,arr)=>(
               <BattleHistoryRow key={entry.id} entry={entry}

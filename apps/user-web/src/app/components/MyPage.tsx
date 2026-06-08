@@ -210,6 +210,9 @@ export default function MyPage() {
             className={`text-sm font-medium ${RARITY_COLOR[displayChar.rarity]}`}
           >
             {getCharName(displayChar, lang)}
+            {(rewardSummary.characterEnhancements[displayChar.id] ?? 0) > 0 && (
+              <span className="text-amber-400 ml-1">+{rewardSummary.characterEnhancements[displayChar.id]}</span>
+            )}
           </p>
           <p className="text-xs text-muted-foreground">
             {getRarityLabel(displayChar.rarity, lang)} ·{" "}

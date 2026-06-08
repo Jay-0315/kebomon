@@ -41,3 +41,13 @@ CREATE TABLE IF NOT EXISTS battle_stats (
   updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_battle_stats_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- ============================================================
+-- Migration: Add enhancement_stones and enhancement_level columns
+-- Applied: 2026-06-08
+-- ============================================================
+ALTER TABLE user_rewards
+  ADD COLUMN enhancement_stones INT NOT NULL DEFAULT 0 AFTER golden_eggs;
+
+ALTER TABLE user_characters
+  ADD COLUMN enhancement_level INT NOT NULL DEFAULT 0 AFTER obtained_at;
