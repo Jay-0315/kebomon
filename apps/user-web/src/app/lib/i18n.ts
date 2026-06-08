@@ -138,7 +138,8 @@ const dict = {
     "attendance.btn_done": "오늘 출석 완료!",
     "attendance.week_rewards": "주차별 보상",
     "attendance.stamp_title": "출석 스탬프",
-    "attendance.stamp_desc": "7일 출석마다 자동 지급 — 1·2주차 큰 알 / 3·4주차 황금 알",
+    "attendance.stamp_desc":
+      "7일 출석마다 자동 지급 — 1·2주차 큰 알 / 3·4주차 황금 알",
     "attendance.week_label": "일 —",
     // MyPage
     "mypage.title": "마이페이지",
@@ -298,7 +299,8 @@ const dict = {
     "notification.empty": "알림이 없어요",
     "notification.clear_all": "전체 삭제",
     "notification.attendance_reminder": "출석 체크 미완료",
-    "notification.attendance_reminder_body": "오늘 출석 체크를 아직 하지 않았어요!",
+    "notification.attendance_reminder_body":
+      "오늘 출석 체크를 아직 하지 않았어요!",
     // Egg
     "egg.normal": "일반 알",
     "egg.big": "큰 알",
@@ -321,7 +323,8 @@ const dict = {
     "egg.inventory": "내 알 인벤토리",
     // Live chat
     "live.title": "라이브 채널",
-    "live.desc": "채널에 입장해 익명으로 실시간 수다를 떨어보세요. 채팅은 저장되지 않고 5초 뒤 사라집니다.",
+    "live.desc":
+      "채널에 입장해 익명으로 실시간 수다를 떨어보세요. 채팅은 저장되지 않고 5초 뒤 사라집니다.",
     "live.channel.1": "폐허",
     "live.channel.2": "광장",
     "live.channel.3": "해변",
@@ -336,7 +339,8 @@ const dict = {
     "live.muted_suffix": "초 후 다시 채팅할 수 있어요",
     // Raid
     "raid.title": "미션 레이드",
-    "raid.desc": "최대 5명이 모여 채팅으로 미션을 클리어하세요. 성공하면 알과 포인트를 획득합니다.",
+    "raid.desc":
+      "최대 5명이 모여 채팅으로 미션을 클리어하세요. 성공하면 알과 포인트를 획득합니다.",
     "raid.leave": "나가기",
     "raid.available": "지금 도전 가능",
     "raid.full": "정원 가득 참",
@@ -367,7 +371,8 @@ const dict = {
     "raid.type.3.desc": "보스의 깐깐한 퀴즈를 정답으로 한 방 먹여라!",
     "raid.type.4.name": "받아쓰기 레이드",
     "raid.type.4.boss": "오메가 코어",
-    "raid.type.4.desc": "보스가 읊는 명언, 한 글자도 틀리지 말고 받아써 코를 납작하게!",
+    "raid.type.4.desc":
+      "보스가 읊는 명언, 한 글자도 틀리지 말고 받아써 코를 납작하게!",
     "raid.contrib.3.title": "퀴즈 레이드에 쓰일 문제를 출제해주세요",
     "raid.contrib.3.field": "문제",
     "raid.contrib.3.placeholder": "예: 대한민국 최고봉은?",
@@ -376,7 +381,8 @@ const dict = {
     "raid.contrib.4.field": "명언",
     "raid.contrib.4.placeholder": "예: 시작이 반이다",
     "raid.type.1.mission_label": "장애물을 점프로 넘어 보스를 공격!",
-    "raid.type.1.mission_hint": "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지",
+    "raid.type.1.mission_hint":
+      "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지",
     "raid.type.3.mission_label": "보스의 퀴즈에 정답을 입력하라!",
     "raid.type.4.mission_label": "보스의 명언을 정확하게 받아써라!",
     "raid.type.5.name": "탄막 레이드",
@@ -388,7 +394,8 @@ const dict = {
     "raid.bullet_dead": "쓰러졌다!",
     "raid.bullet_revive": "부활까지 {s}초",
     "raid.eliminated": "탈락",
-    "raid.banned_msg": "이미 이번 타임에 참여한 레이드입니다. 다음 타임에 참여해주세요.",
+    "raid.banned_msg":
+      "이미 이번 타임에 참여한 레이드입니다. 다음 타임에 참여해주세요.",
     "raid.ranking_title": "이번 타임 랭킹",
     "raid.my_rank": "내 순위: {r}위",
     // Colosseum
@@ -404,7 +411,7 @@ const dict = {
     "battle.opponent_turn": "상대 턴…",
     "battle.roll": "주사위 굴리기",
     "battle.rolled": "{rolls} = {total} 데미지!",
-    "battle.win": "승리!",
+    "battle.win": "승리",
     "battle.lose": "패배",
     "battle.points_delta": "티어 포인트 {delta:+}",
     "battle.tier": "티어",
@@ -618,7 +625,8 @@ const dict = {
     "attendance.btn_done": "本日出席済み！",
     "attendance.week_rewards": "週別報酬",
     "attendance.stamp_title": "出席スタンプ",
-    "attendance.stamp_desc": "7日出席ごとに自動付与 — 1·2週目：大きな卵 / 3·4週目：黄金の卵",
+    "attendance.stamp_desc":
+      "7日出席ごとに自動付与 — 1·2週目：大きな卵 / 3·4週目：黄金の卵",
     "attendance.week_label": "日 —",
     // MyPage
     "mypage.title": "マイページ",
@@ -764,7 +772,8 @@ const dict = {
     "notification.empty": "通知がありません",
     "notification.clear_all": "全て削除",
     "notification.attendance_reminder": "出席チェック未完了",
-    "notification.attendance_reminder_body": "今日の出席チェックがまだ済んでいません！",
+    "notification.attendance_reminder_body":
+      "今日の出席チェックがまだ済んでいません！",
     // Egg
     "egg.normal": "普通の卵",
     "egg.big": "大きな卵",
@@ -787,7 +796,8 @@ const dict = {
     "egg.inventory": "卵インベントリ",
     // Live chat
     "live.title": "ライブチャンネル",
-    "live.desc": "チャンネルに入室して匿名でリアルタイムトークができます。チャットは保存されず5秒後に消えます。",
+    "live.desc":
+      "チャンネルに入室して匿名でリアルタイムトークができます。チャットは保存されず5秒後に消えます。",
     "live.channel.1": "廃墟",
     "live.channel.2": "広場",
     "live.channel.3": "ビーチ",
@@ -802,7 +812,8 @@ const dict = {
     "live.muted_suffix": "秒後にチャットできます",
     // Raid
     "raid.title": "ミッションレイド",
-    "raid.desc": "最大5人が集まりチャットでミッションをクリアしましょう。成功すると卵とポイントを獲得します。",
+    "raid.desc":
+      "最大5人が集まりチャットでミッションをクリアしましょう。成功すると卵とポイントを獲得します。",
     "raid.leave": "退出",
     "raid.available": "今すぐ挑戦可能",
     "raid.full": "満員",
@@ -842,7 +853,8 @@ const dict = {
     "raid.contrib.4.field": "名言",
     "raid.contrib.4.placeholder": "例: 千里の道も一歩から",
     "raid.type.1.mission_label": "障害物をジャンプで越えてボスを攻撃！",
-    "raid.type.1.mission_hint": "スペースキー（またはタップ）でジャンプ・越えるたびにダメージ",
+    "raid.type.1.mission_hint":
+      "スペースキー（またはタップ）でジャンプ・越えるたびにダメージ",
     "raid.type.3.mission_label": "ボスのクイズに正解を入力しろ！",
     "raid.type.4.mission_label": "ボスの名言を一字一句正確に書き取れ！",
     "raid.type.5.name": "弾幕レイド",
@@ -854,14 +866,16 @@ const dict = {
     "raid.bullet_dead": "倒れた！",
     "raid.bullet_revive": "復活まで{s}秒",
     "raid.eliminated": "脱落",
-    "raid.banned_msg": "今タイムにすでに参加したレイドです。次のタイムにご参加ください。",
+    "raid.banned_msg":
+      "今タイムにすでに参加したレイドです。次のタイムにご参加ください。",
     "raid.ranking_title": "今タイムのランキング",
     "raid.my_rank": "自分の順位: {r}位",
     // Colosseum
     "nav.battle": "バトル",
     "nav.colosseum": "コロシアム",
     "battle.title": "ケボモンバトル",
-    "battle.desc": "他のユーザーのクローンデータとバトル！勝利でティアを上げましょう。",
+    "battle.desc":
+      "他のユーザーのクローンデータとバトル！勝利でティアを上げましょう。",
     "battle.start": "バトル開始",
     "battle.waiting": "相手を探しています…",
     "battle.coin_heads": "表！先攻ゲット！",
@@ -870,7 +884,7 @@ const dict = {
     "battle.opponent_turn": "相手のターン…",
     "battle.roll": "ダイスを振る",
     "battle.rolled": "{rolls} = {total} ダメージ！",
-    "battle.win": "勝利！",
+    "battle.win": "勝利",
     "battle.lose": "敗北",
     "battle.points_delta": "ティアポイント {delta:+}",
     "battle.tier": "ティア",
