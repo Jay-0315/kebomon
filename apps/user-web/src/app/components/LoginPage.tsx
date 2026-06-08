@@ -209,7 +209,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="mb-4">
-            <img src="/logo.png" alt="Kebo" className="h-20 w-auto object-contain mx-auto" />
+            <img src="/logo1.png" alt="Kebo" className="h-20 w-auto object-contain mx-auto" />
           </div>
           <h1 className="text-foreground mb-2">{t("login.title")}</h1>
           <p className="text-muted-foreground">{t("login.subtitle")}</p>
