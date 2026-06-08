@@ -13,14 +13,15 @@ import {
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
+import { TranslationKey } from "../lib/i18n";
 import { CHARACTERS } from "../data/characters";
 import TitleBadge from "./TitleBadge";
 
 const CHANNEL_DATA = [
-  { id: 1, name: "폐허",   desktop: "/bg-ruins.png",  mobile: "/bg-ruins.v.png",  fill: "#1f2a14", border: "#57534e", icon: <Castle   size={16} color="#a8a29e" /> },
-  { id: 2, name: "광장",   desktop: "/bg-plaza.png",  mobile: "/bg-plaza-v.png",  fill: "#8a6535", border: "#b45309", icon: <Landmark size={16} color="#b45309" /> },
-  { id: 3, name: "해변",   desktop: "/bg-beach.png",  mobile: "/bg-beach-v.png",  fill: "#1a4a6e", border: "#1e6090", icon: <Waves    size={16} color="#38bdf8" /> },
-  { id: 4, name: "제단",   desktop: "/bg-camp.png",   mobile: "/bg-camp-v.png",   fill: "#2a3a1a", border: "#3a5a2a", icon: <Flame    size={16} color="#f97316" /> },
+  { id: 1, nameKey: "live.channel.1" as TranslationKey, desktop: "/bg-ruins.png",  mobile: "/bg-ruins.v.png",  fill: "#1f2a14", border: "#57534e", icon: <Castle   size={16} color="#a8a29e" /> },
+  { id: 2, nameKey: "live.channel.2" as TranslationKey, desktop: "/bg-plaza.png",  mobile: "/bg-plaza-v.png",  fill: "#8a6535", border: "#b45309", icon: <Landmark size={16} color="#b45309" /> },
+  { id: 3, nameKey: "live.channel.3" as TranslationKey, desktop: "/bg-beach.png",  mobile: "/bg-beach-v.png",  fill: "#1a4a6e", border: "#1e6090", icon: <Waves    size={16} color="#38bdf8" /> },
+  { id: 4, nameKey: "live.channel.4" as TranslationKey, desktop: "/bg-camp.png",   mobile: "/bg-camp-v.png",   fill: "#2a3a1a", border: "#3a5a2a", icon: <Flame    size={16} color="#f97316" /> },
 ];
 
 export default function HomePage() {
@@ -53,7 +54,7 @@ export default function HomePage() {
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} 수집 ·{" "}
+            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} {t("kabemon.collection_count")} ·{" "}
             {rewardSummary.missionPoints}P
           </p>
         </div>
@@ -126,7 +127,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-2 text-lg font-bold text-white drop-shadow">
                     <span>{ch.icon}</span>
                     ch.{ch.id}
-                    <span className="text-sm font-medium text-white/70">{ch.name}</span>
+                    <span className="text-sm font-medium text-white/70">{t(ch.nameKey)}</span>
                   </div>
                   <div className="mt-1 flex items-center gap-1 text-sm text-white/50">
                     <Users className="h-3.5 w-3.5" />

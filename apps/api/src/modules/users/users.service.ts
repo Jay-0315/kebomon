@@ -1,6 +1,4 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { CurrencyCode } from "@prisma/client";
-import { ExchangeRatesService } from "../exchange-rates/exchange-rates.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpdateUserProfileDto } from "./dto/update-user-profile.dto";
 import { UpdateUserSettingsDto } from "./dto/update-user-settings.dto";
@@ -9,7 +7,6 @@ import { UpdateUserSettingsDto } from "./dto/update-user-settings.dto";
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly exchangeRates: ExchangeRatesService,
   ) {}
 
   async getProfile(userId: string) {
@@ -68,40 +65,14 @@ export class UsersService {
       throw new NotFoundException("사용자를 찾을 수 없습니다.");
     }
 
-    const nextBaseCurrency = dto.baseCurrency ?? current.baseCurrency;
-
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(dto.name ? { name: dto.name } : {}),
         ...(dto.baseCountryCode ? { baseCountryCode: dto.baseCountryCode } : {}),
-        ...(dto.baseCurrency ? { baseCurrency: dto.baseCurrency as CurrencyCode } : {}),
+        ...(dto.baseCurrency ? { baseCurrency: dto.baseCurrency } : {}),
       },
     });
-
-    if (dto.baseCurrency && dto.baseCurrency !== current.baseCurrency) {
-      const expenses = await this.prisma.expense.findMany({
-        where: { userId },
-      });
-
-      await Promise.all(
-        expenses.map(async (expense) => {
-          const spentCcy = String(expense.spentCurrency);
-          const [exchangeRate, baseAmount] = await Promise.all([
-            this.exchangeRates.getRate(spentCcy, nextBaseCurrency),
-            this.exchangeRates.convert(Number(expense.spentAmount), spentCcy, nextBaseCurrency),
-          ]);
-          return this.prisma.expense.update({
-            where: { id: expense.id },
-            data: {
-              baseCurrency: nextBaseCurrency as CurrencyCode,
-              exchangeRate,
-              baseAmount,
-            },
-          });
-        }),
-      );
-    }
 
     return {
       id: user.id,

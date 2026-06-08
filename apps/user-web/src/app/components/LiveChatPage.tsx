@@ -471,7 +471,7 @@ export default function LiveChatPage() {
 
         {!isTouchDevice && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-3 py-1 text-[11px] text-white/70 backdrop-blur-sm">
-            WASD / 방향키로 이동
+            {t("live.movement_hint")}
           </div>
         )}
       </div>

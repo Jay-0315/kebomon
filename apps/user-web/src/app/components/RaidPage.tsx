@@ -7,6 +7,7 @@ import PixelCharacter, { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS, getCharName } from "../data/characters";
 import EggHatchModal from "./EggHatchModal";
 import { useLang } from "../context/LangContext";
+import { TranslationKey } from "../lib/i18n";
 
 const MAX_PLAYERS = 5;
 
@@ -549,7 +550,7 @@ function JumpGame({
 }
 
 // ─── 탄막 피하기 게임 (탄막 레이드 / 타입5) ──────────────────────────────────
-type BulletT = { id: number; x: number; y: number; vx: number; vy: number; r: number };
+type BulletT = { id: number; x: number; y: number; vx: number; vy: number; r: number; side?: boolean };
 type GemT    = { id: number; x: number; y: number; born: number; life: number };
 
 function BulletHellGame({
@@ -587,6 +588,8 @@ function BulletHellGame({
     nextId: 0,
     bulletPhase: 0,
     lastBullet: 0,
+    lastSideBullet: 0,
+    sideBulletPhase: 0,
     lastGem: 0,
     elapsed: 0,
     hits: 0,
@@ -693,6 +696,54 @@ function BulletHellGame({
       st.bulletPhase++;
     };
 
+    const fireSideBullets = (W: number, H: number) => {
+      const st = g.current;
+      const phase = st.sideBulletPhase % 6;
+      const spd = Math.min(3.2, 1.8 + st.elapsed / 80000);
+      const addL = (sy: number, vx: number, vy: number, r = 5) =>
+        st.bullets.push({ id: st.nextId++, x: -8, y: sy, vx, vy, r, side: true });
+      const addR = (sy: number, vx: number, vy: number, r = 5) =>
+        st.bullets.push({ id: st.nextId++, x: W + 8, y: sy, vx, vy, r, side: true });
+      const yStep = (H - 180) / 2;
+
+      if (phase === 0) {
+        // 왼쪽 3발 균등 간격 수평
+        for (let i = 0; i < 3; i++) addL(100 + i * yStep, spd, 0);
+      } else if (phase === 1) {
+        // 오른쪽 3발 균등 간격 수평
+        for (let i = 0; i < 3; i++) addR(100 + i * yStep, -spd, 0);
+      } else if (phase === 2) {
+        // 양쪽 동시 플레이어 조준탄
+        const ly = 90 + Math.random() * (H - 160);
+        const ldx = st.px + 8, ldy = st.py - ly;
+        const ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
+        addL(ly, (ldx / ld) * spd * 1.1, (ldy / ld) * spd * 1.1, 6);
+        const ry = 90 + Math.random() * (H - 160);
+        const rdx = st.px - (W + 8), rdy = st.py - ry;
+        const rd = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
+        addR(ry, (rdx / rd) * spd * 1.1, (rdy / rd) * spd * 1.1, 6);
+      } else if (phase === 3) {
+        // 왼쪽 5-way 부채꼴
+        for (let i = -2; i <= 2; i++) {
+          const a = (i * 16 * Math.PI) / 180;
+          addL(H / 2 + i * 28, Math.cos(a) * spd, Math.sin(a) * spd);
+        }
+      } else if (phase === 4) {
+        // 오른쪽 5-way 부채꼴
+        for (let i = -2; i <= 2; i++) {
+          const a = (i * 16 * Math.PI) / 180;
+          addR(H / 2 + i * 28, -Math.cos(a) * spd, Math.sin(a) * spd);
+        }
+      } else {
+        // 양쪽 동시 2발씩 랜덤 y + 미세 각도
+        for (let i = 0; i < 2; i++) {
+          addL(100 + Math.random() * (H - 180), spd * 1.05, (Math.random() - 0.5) * 1.4);
+          addR(100 + Math.random() * (H - 180), -spd * 1.05, (Math.random() - 0.5) * 1.4);
+        }
+      }
+      st.sideBulletPhase++;
+    };
+
     const spawnGem = (W: number, H: number) => {
       const st = g.current;
       st.gems.push({
@@ -737,9 +788,12 @@ function BulletHellGame({
         st.px = Math.max(P_HIT_R + 4, Math.min(W - P_HIT_R - 4, st.px + mx * spd));
         st.py = Math.max(82, Math.min(H - P_HIT_R - 4, st.py + my * spd));
 
-        // 탄막 발사
+        // 탄막 발사 (상단)
         const interval = Math.max(650, 1500 - st.elapsed / 50);
         if (realNow - st.lastBullet > interval) { st.lastBullet = realNow; fireBullets(W, H, now); }
+        // 탄막 발사 (사이드)
+        const sideInterval = Math.max(500, 1100 - st.elapsed / 60);
+        if (realNow - st.lastSideBullet > sideInterval) { st.lastSideBullet = realNow; fireSideBullets(W, H); }
 
         // 탄막 이동 + 충돌
         const inv = realNow < st.invUntil;
@@ -825,10 +879,17 @@ function BulletHellGame({
       // 탄막
       for (const b of g.current.bullets) {
         const bg3 = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 2.6);
-        bg3.addColorStop(0, "rgba(255,55,80,0.9)"); bg3.addColorStop(0.5, "rgba(200,0,60,0.5)"); bg3.addColorStop(1, "rgba(140,0,50,0)");
-        ctx.fillStyle = bg3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 2.6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#ff5577"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#ffaacc"; ctx.beginPath(); ctx.arc(b.x - b.r * 0.32, b.y - b.r * 0.32, b.r * 0.38, 0, Math.PI * 2); ctx.fill();
+        if (b.side) {
+          bg3.addColorStop(0, "rgba(0,210,255,0.9)"); bg3.addColorStop(0.5, "rgba(0,120,230,0.5)"); bg3.addColorStop(1, "rgba(0,60,160,0)");
+          ctx.fillStyle = bg3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 2.6, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#00d2ff"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#aaefff"; ctx.beginPath(); ctx.arc(b.x - b.r * 0.32, b.y - b.r * 0.32, b.r * 0.38, 0, Math.PI * 2); ctx.fill();
+        } else {
+          bg3.addColorStop(0, "rgba(255,55,80,0.9)"); bg3.addColorStop(0.5, "rgba(200,0,60,0.5)"); bg3.addColorStop(1, "rgba(140,0,50,0)");
+          ctx.fillStyle = bg3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 2.6, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#ff5577"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#ffaacc"; ctx.beginPath(); ctx.arc(b.x - b.r * 0.32, b.y - b.r * 0.32, b.r * 0.38, 0, Math.PI * 2); ctx.fill();
+        }
       }
 
       // 플레이어 발광
@@ -914,6 +975,16 @@ export default function RaidPage() {
     3: { name: t("raid.type.3.name"), bossName: t("raid.type.3.boss"), desc: t("raid.type.3.desc") },
     4: { name: t("raid.type.4.name"), bossName: t("raid.type.4.boss"), desc: t("raid.type.4.desc") },
     5: { name: t("raid.type.5.name"), bossName: t("raid.type.5.boss"), desc: t("raid.type.5.desc") },
+  };
+  const RAID_MISSION_LABELS: Record<number, TranslationKey> = {
+    1: "raid.type.1.mission_label",
+    3: "raid.type.3.mission_label",
+    4: "raid.type.4.mission_label",
+    5: "raid.type.5.mission_label",
+  };
+  const RAID_MISSION_HINTS: Partial<Record<number, TranslationKey>> = {
+    1: "raid.type.1.mission_hint",
+    5: "raid.type.5.mission_hint",
   };
 
   const CONTRIBUTE_META: Record<number, { title: string; field: string; placeholder: string; hasAnswer: boolean; answerPlaceholder?: string }> = {
@@ -1281,7 +1352,7 @@ export default function RaidPage() {
         </div>
         {/* boss-issued mission */}
         <div className="mt-2 rounded-lg bg-primary/10 px-3 py-2">
-          <p className="text-xs font-semibold text-primary">「{bossName(state?.boss.characterId)}」 {state?.mission.label}</p>
+          <p className="text-xs font-semibold text-primary">「{bossName(state?.boss.characterId)}」 {t(RAID_MISSION_LABELS[raidType])}</p>
           <p
             className={`mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-50 ${raidType === 4 ? "select-none" : ""}`}
             style={raidType === 4 ? { WebkitUserSelect: "none", userSelect: "none" } : undefined}
@@ -1290,7 +1361,7 @@ export default function RaidPage() {
           >
             {state?.mission.target}
           </p>
-          {state?.mission.hint ? <p className="text-xs text-muted-foreground">{state.mission.hint}</p> : null}
+          {RAID_MISSION_HINTS[raidType] ? <p className="text-xs text-muted-foreground">{t(RAID_MISSION_HINTS[raidType]!)}</p> : null}
         </div>
       </div>
 

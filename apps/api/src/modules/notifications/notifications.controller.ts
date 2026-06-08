@@ -5,6 +5,21 @@ import { NotificationsService } from "./notifications.service";
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
+  @Post("push/subscribe")
+  subscribe(@Body() body: { userId: string; subscription: { endpoint: string; keys: { p256dh: string; auth: string } } }) {
+    return this.notifications.subscribe(body.userId, body.subscription);
+  }
+
+  @Post("push/unsubscribe")
+  unsubscribe(@Body() body: { userId: string; endpoint: string }) {
+    return this.notifications.unsubscribe(body.userId, body.endpoint);
+  }
+
+  @Get("vapid-public-key")
+  vapidPublicKey() {
+    return { key: process.env.VAPID_PUBLIC_KEY };
+  }
+
   @Get()
   list(@Query("userId") userId: string) {
     return this.notifications.list(userId);

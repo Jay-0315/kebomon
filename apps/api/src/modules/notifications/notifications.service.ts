@@ -1,17 +1,50 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationGateway } from "../gateway/notification.gateway";
+import * as webpush from "web-push";
 
 export type NotificationType = "comment" | "achievement";
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gateway: NotificationGateway,
   ) {}
 
-  /** 알림 생성 + 실시간 푸시 */
+  onModuleInit() {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL!,
+      process.env.VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!,
+    );
+  }
+
+  /** 푸시 구독 저장 (기존 endpoint 중복 방지) */
+  async subscribe(userId: string, sub: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE p256dh = VALUES(p256dh), auth = VALUES(auth)`,
+      userId,
+      sub.endpoint,
+      sub.keys.p256dh,
+      sub.keys.auth,
+    );
+    return { ok: true };
+  }
+
+  /** 푸시 구독 해제 */
+  async unsubscribe(userId: string, endpoint: string) {
+    await this.prisma.$executeRawUnsafe(
+      `DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?`,
+      userId,
+      endpoint,
+    );
+    return { ok: true };
+  }
+
+  /** 알림 생성 + 실시간 소켓 + Web Push */
   async create(input: {
     userId: string;
     type: NotificationType;
@@ -30,7 +63,33 @@ export class NotificationsService {
     });
     const payload = this.serialize(notif);
     this.gateway.emitToUser(input.userId, "notification", payload);
+    // Web Push (실패해도 메인 플로우 중단 안 함)
+    void this.sendPush(input.userId, input.title, input.body, input.link ?? undefined);
     return payload;
+  }
+
+  private async sendPush(userId: string, title: string, body: string, url?: string) {
+    const subs = await this.prisma.$queryRawUnsafe<{ endpoint: string; p256dh: string; auth: string }[]>(
+      `SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?`,
+      userId,
+    );
+    const payload = JSON.stringify({ title, body, url: url ?? "/" });
+    await Promise.allSettled(
+      subs.map((s) =>
+        webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          payload,
+        ).catch((err: { statusCode?: number }) => {
+          // 만료된 구독 자동 삭제
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            return this.prisma.$executeRawUnsafe(
+              `DELETE FROM push_subscriptions WHERE endpoint = ?`,
+              s.endpoint,
+            );
+          }
+        }),
+      ),
+    );
   }
 
   async list(userId: string, limit = 30) {

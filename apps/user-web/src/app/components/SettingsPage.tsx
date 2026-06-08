@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { registerPush, unregisterPush } from "../lib/push";
 import PrivacyModal from "./PrivacyModal";
 import { useNavigate } from "react-router";
 import { api } from "../lib/api";
@@ -273,9 +274,16 @@ export default function SettingsPage() {
               </div>
             </div>
             <button
-              onClick={() =>
-                updateSettings({ notifications: !settings.notifications })
-              }
+              onClick={async () => {
+                const next = !settings.notifications;
+                if (next) {
+                  const ok = await registerPush();
+                  if (!ok) return;
+                } else {
+                  await unregisterPush();
+                }
+                updateSettings({ notifications: next });
+              }}
               className="relative w-12 h-6 rounded-full transition-colors bg-gray-300 dark:bg-zinc-600"
             >
               <div

@@ -9,7 +9,7 @@ import { Resend } from "resend";
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly resend: Resend | null;
-  private readonly from = "Kebo <onboarding@resend.dev>";
+  private readonly from = "Kebo <noreply@kebomon.store>";
 
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;

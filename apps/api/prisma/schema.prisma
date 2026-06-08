@@ -19,12 +19,6 @@ enum AuthProvider {
   APPLE
 }
 
-enum GroupJoinStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 model User {
   id              String          @id @default(uuid())
   name            String
@@ -38,21 +32,31 @@ model User {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
   lastLoginAt     DateTime?       @map("last_login_at")
-  settings         AppSetting?
-  expenses         Expense[]
-  posts            CommunityPost[]
-  comments         Comment[]
-  reward           UserReward?
-  characters       UserCharacter[]
-  titles           UserTitle[]
-  identities       UserIdentity[]
-  postLikes        PostLike[]
-  hostedGroups        Group[]               @relation("GroupHost")
-  groupMemberships    GroupMember[]
-  groupJoinRequests   GroupJoinRequest[]
+  settings              AppSetting?
+  posts                 CommunityPost[]
+  comments              Comment[]
+  reward                UserReward?
+  characters            UserCharacter[]
+  titles                UserTitle[]
+  identities            UserIdentity[]
+  postLikes             PostLike[]
   passwordChangeHistory PasswordChangeHistory?
-  notifications    Notification[]
+  notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
   @@map("users")
+}
+
+model PushSubscription {
+  id        BigInt   @id @default(autoincrement())
+  userId    String   @map("user_id")
+  endpoint  String   @db.Text
+  p256dh    String   @map("p256dh") @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 model Notification {
@@ -167,32 +171,6 @@ model AppSetting {
   @@map("app_settings")
 }
 
-model Expense {
-  id                String       @id @default(uuid())
-  userId            String       @map("user_id")
-  expenseDate       DateTime     @map("expense_date")
-  category          String
-  spentAmount       Decimal      @map("spent_amount") @db.Decimal(12, 2)
-  spentCurrency     CurrencyCode @map("spent_currency")
-  baseAmount        Decimal      @map("base_amount") @db.Decimal(12, 2)
-  baseCurrency      CurrencyCode @map("base_currency")
-  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(12, 6)
-  countryCode       String       @map("country_code") @db.Char(2)
-  memo              String
-  groupName         String?      @map("group_name")
-  groupId           String?      @map("group_id")
-  participants      Int?
-  receiptUrl        String?      @map("receipt_url") @db.LongText
-  sharedToCommunity Boolean      @default(false) @map("shared_to_community")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group             Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
-
-  @@index([groupId])
-  @@map("expenses")
-}
-
 enum PostCategory {
   brag
   tip
@@ -249,38 +227,6 @@ model Comment {
   @@map("comments")
 }
 
-model Group {
-  id            String             @id @default(uuid())
-  name          String
-  inviteCode    String             @unique @map("invite_code") @db.VarChar(8)
-  hostUserId    String             @map("host_user_id")
-  isPublic      Boolean            @default(false) @map("is_public")
-  codeExpiresAt DateTime?          @map("code_expires_at")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
-  host          User               @relation("GroupHost", fields: [hostUserId], references: [id], onDelete: Cascade)
-  members       GroupMember[]
-  joinRequests  GroupJoinRequest[]
-  expenses      Expense[]
-
-  @@index([hostUserId])
-  @@map("groups")
-}
-
-model GroupMember {
-  id       BigInt   @id @default(autoincrement())
-  groupId  String   @map("group_id")
-  userId   String   @map("user_id")
-  joinedAt DateTime @default(now()) @map("joined_at")
-  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, userId])
-  @@index([groupId])
-  @@index([userId])
-  @@map("group_members")
-}
-
 model PasswordChangeHistory {
   id        BigInt   @id @default(autoincrement())
   userId    String   @unique @map("user_id")
@@ -308,17 +254,4 @@ model EmailVerificationCode {
   @@map("email_verification_codes")
 }
 
-model GroupJoinRequest {
-  id        BigInt          @id @default(autoincrement())
-  groupId   String          @map("group_id")
-  userId    String          @map("user_id")
-  status    GroupJoinStatus @default(PENDING)
-  createdAt DateTime        @default(now()) @map("created_at")
-  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([groupId])
-  @@index([userId])
-  @@map("group_join_requests")
-}
 

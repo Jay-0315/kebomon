@@ -186,8 +186,7 @@ export default function MyPage() {
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-0.5">
-            {country.flag} {country.name} · {profile.baseCurrency}{" "}
-            {t("mypage.currency_basis")}
+            {country.flag} {country.name}
           </p>
         </div>
       </div>

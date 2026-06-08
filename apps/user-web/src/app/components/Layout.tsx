@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Home, User, Settings, Globe, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck } from "lucide-react";
+import { Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck } from "lucide-react";
 import Footer from "./Footer";
 import { useState, useEffect } from "react";
 import { useAppData } from "../context/AppDataContext";
@@ -128,8 +128,8 @@ export default function Layout() {
             to="/"
             className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
           >
-            <img src="/logo(light).png" alt="Kebo" className="h-14 w-auto shrink-0 object-contain dark:hidden" />
-            <img src="/logo(dark).png"  alt="Kebo" className="h-14 w-auto shrink-0 object-contain hidden dark:block" />
+            <img src="/logo(light).png" alt="Kebo" className="h-16 w-auto shrink-0 object-contain dark:hidden" />
+            <img src="/logo(dark).png"  alt="Kebo" className="h-16 w-auto shrink-0 object-contain hidden dark:block" />
           </Link>
           <button
             onClick={toggleSidebarCollapsed}

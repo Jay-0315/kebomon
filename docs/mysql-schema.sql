@@ -13,19 +13,6 @@ CREATE TABLE users (
   updated_at       DATETIME                       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE `groups` (
-  id              VARCHAR(36)   NOT NULL PRIMARY KEY,
-  name            VARCHAR(100)  NOT NULL,
-  invite_code     VARCHAR(8)    NOT NULL UNIQUE,
-  host_user_id    VARCHAR(36)   NOT NULL,
-  is_public       TINYINT(1)    NOT NULL DEFAULT 0,
-  code_expires_at DATETIME      NULL,
-  created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_groups_host_user_id (host_user_id),
-  CONSTRAINT fk_groups_host FOREIGN KEY (host_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE user_identities (
   id               BIGINT        AUTO_INCREMENT PRIMARY KEY,
   user_id          VARCHAR(36)   NOT NULL,
@@ -50,30 +37,6 @@ CREATE TABLE app_settings (
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_settings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE expenses (
-  id                   VARCHAR(36)                    NOT NULL PRIMARY KEY,
-  user_id              VARCHAR(36)                    NOT NULL,
-  expense_date         DATETIME                       NOT NULL,
-  category             VARCHAR(50)                    NOT NULL,
-  spent_amount         DECIMAL(12,2)                  NOT NULL,
-  spent_currency       ENUM('KRW','JPY','USD','EUR')  NOT NULL,
-  base_amount          DECIMAL(12,2)                  NOT NULL,
-  base_currency        ENUM('KRW','JPY','USD','EUR')  NOT NULL,
-  exchange_rate        DECIMAL(12,6)                  NOT NULL,
-  country_code         CHAR(2)                        NOT NULL,
-  memo                 VARCHAR(255)                   NOT NULL,
-  group_name           VARCHAR(100)                   NULL,
-  group_id             VARCHAR(36)                    NULL,
-  participants         INT                            NULL,
-  receipt_url          TEXT                           NULL,
-  shared_to_community  TINYINT(1)                     NOT NULL DEFAULT 0,
-  created_at           DATETIME                       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at           DATETIME                       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_expenses_group_id (group_id),
-  CONSTRAINT fk_expenses_user  FOREIGN KEY (user_id)  REFERENCES users(id)     ON DELETE CASCADE,
-  CONSTRAINT fk_expenses_group FOREIGN KEY (group_id) REFERENCES `groups`(id)  ON DELETE SET NULL
 );
 
 CREATE TABLE community_posts (
@@ -142,7 +105,6 @@ CREATE TABLE user_rewards (
   CONSTRAINT fk_rewards_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 유저 알림 (댓글·업적)
 CREATE TABLE notifications (
   id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
   user_id    VARCHAR(36)  NOT NULL,
@@ -157,7 +119,17 @@ CREATE TABLE notifications (
   CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 레이드 기여 콘텐츠 (3=퀴즈, 4=받아쓰기) — 영구 저장 후 출제 풀로 재활용
+CREATE TABLE push_subscriptions (
+  id         BIGINT        AUTO_INCREMENT PRIMARY KEY,
+  user_id    VARCHAR(36)   NOT NULL,
+  endpoint   TEXT          NOT NULL,
+  p256dh     TEXT          NOT NULL,
+  auth       TEXT          NOT NULL,
+  created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_push_user_id (user_id),
+  CONSTRAINT fk_push_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE raid_contents (
   id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
   raid_type  INT          NOT NULL,
@@ -187,30 +159,6 @@ CREATE TABLE user_characters (
   CONSTRAINT fk_characters_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT uq_user_character UNIQUE (user_id, character_id),
   INDEX idx_user_characters_user_id (user_id)
-);
-
-CREATE TABLE group_members (
-  id        BIGINT       AUTO_INCREMENT PRIMARY KEY,
-  group_id  VARCHAR(36)  NOT NULL,
-  user_id   VARCHAR(36)  NOT NULL,
-  joined_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT uq_group_member UNIQUE (group_id, user_id),
-  INDEX idx_group_members_group_id (group_id),
-  INDEX idx_group_members_user_id  (user_id),
-  CONSTRAINT fk_group_members_group FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
-  CONSTRAINT fk_group_members_user  FOREIGN KEY (user_id)  REFERENCES users(id)    ON DELETE CASCADE
-);
-
-CREATE TABLE group_join_requests (
-  id         BIGINT                                    AUTO_INCREMENT PRIMARY KEY,
-  group_id   VARCHAR(36)                               NOT NULL,
-  user_id    VARCHAR(36)                               NOT NULL,
-  status     ENUM('PENDING','APPROVED','REJECTED')     NOT NULL DEFAULT 'PENDING',
-  created_at DATETIME                                  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_group_join_requests_group_id (group_id),
-  INDEX idx_group_join_requests_user_id  (user_id),
-  CONSTRAINT fk_join_requests_group FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
-  CONSTRAINT fk_join_requests_user  FOREIGN KEY (user_id)  REFERENCES users(id)    ON DELETE CASCADE
 );
 
 CREATE TABLE email_verification_codes (
