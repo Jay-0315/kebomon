@@ -193,6 +193,13 @@ export class BattleGateway implements OnGatewayDisconnect {
     await this.runOpponentTurn(client, room);
   }
 
+  @SubscribeMessage("battle:forfeit")
+  async onForfeit(@ConnectedSocket() client: Socket) {
+    const room = battles.get(client.id);
+    if (!room) return;
+    await this.endBattle(client, room, false);
+  }
+
   private async runOpponentTurn(client: Socket, room: BattleRoom) {
     if (!battles.has(client.id)) return;
 

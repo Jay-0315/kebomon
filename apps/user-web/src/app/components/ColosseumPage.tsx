@@ -7,7 +7,7 @@ import { getBattleSocket, disconnectBattleSocket } from "../lib/socket";
 import { getStoredUser } from "../lib/auth";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
-import { CHARACTERS, getCharName } from "../data/characters";
+import { CHARACTERS, getCharName, type CharacterRarity } from "../data/characters";
 import { useLang } from "../context/LangContext";
 import { api } from "../lib/api";
 
@@ -49,6 +49,15 @@ const RARITY_DICE_CONFIG: Record<string,{faces:number;count:number}> = {
   legendary:{faces:6,count:2}, mythic:{faces:8,count:2},
 };
 
+const RARITY_THEME: Record<CharacterRarity,{color:string;glow:string;border:string;bg:string}> = {
+  common:    {color:"#94a3b8",glow:"#64748b",border:"#475569",bg:"#0f172a"},
+  uncommon:  {color:"#4ade80",glow:"#22c55e",border:"#15803d",bg:"#052e16"},
+  rare:      {color:"#60a5fa",glow:"#3b82f6",border:"#1d4ed8",bg:"#082f49"},
+  epic:      {color:"#c084fc",glow:"#a855f7",border:"#7e22ce",bg:"#2e1065"},
+  legendary: {color:"#fbbf24",glow:"#f59e0b",border:"#b45309",bg:"#451a03"},
+  mythic:    {color:"#f472b6",glow:"#ec4899",border:"#be185d",bg:"#500724"},
+};
+
 const RARITY_KO: Record<string,string> = {
   common:"커먼",uncommon:"언커먼",rare:"레어",epic:"에픽",legendary:"레전더리",mythic:"신화",
 };
@@ -61,17 +70,23 @@ function getTierIdx(pts:number){
   return 0;
 }
 const charById=(id:number)=>CHARACTERS.find(c=>c.id===id)??CHARACTERS[0];
+const nextHourStartMs=(now=Date.now())=>{
+  const next=new Date(now);
+  next.setHours(next.getHours()+1,0,0,0);
+  return next.getTime();
+};
+const BATTLE_EXIT_WARNING="지금 나가시면 자동으로 패배처리 됩니다. 정말로 나가시겠습니까?";
 
 
 // ─── 픽셀 도트 주사위 SVG ────────────────────────────────────────────────────
 // 7×7 그리드, 핍 좌표 (col,row)
 const PIP_POSITIONS: Record<number,[number,number][]> = {
-  1: [[3,3]],
-  2: [[5,1],[1,5]],
-  3: [[5,1],[3,3],[1,5]],
-  4: [[1,1],[5,1],[1,5],[5,5]],
-  5: [[1,1],[5,1],[3,3],[1,5],[5,5]],
-  6: [[1,1],[1,3],[1,5],[5,1],[5,3],[5,5]],
+  1: [[4.5,4.5]],
+  2: [[6.5,2.5],[2.5,6.5]],
+  3: [[6.5,2.5],[4.5,4.5],[2.5,6.5]],
+  4: [[2.5,2.5],[6.5,2.5],[2.5,6.5],[6.5,6.5]],
+  5: [[2.5,2.5],[6.5,2.5],[4.5,4.5],[2.5,6.5],[6.5,6.5]],
+  6: [[2.5,2.5],[2.5,4.5],[2.5,6.5],[6.5,2.5],[6.5,4.5],[6.5,6.5]],
 };
 
 function PixelDiceSvg({
@@ -108,8 +123,10 @@ function PixelDiceSvg({
       {/* d8/d12 등 숫자 표시 */}
       {showNumber&&(
         <div style={{
-          position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
-          fontFamily:"monospace",fontWeight:900,fontSize:size*0.38,color:pipColor,lineHeight:1,
+          position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-54%)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontFamily:"'Courier New',monospace",fontWeight:900,fontSize:size*0.38,color:pipColor,lineHeight:1,
+          width:"100%",height:"100%",textAlign:"center",
         }}>
           {value}
         </div>
@@ -416,6 +433,7 @@ interface RankingEntry{rank:number;userId:string;nickname:string;tierPoints:numb
 interface Fighter{userId:string;nickname:string;characterId:number;rarity:string;hp:number;}
 interface BattleState{player:Fighter;opponent:Fighter;turn:"player"|"opponent";maxHp:number;playerGoesFirst:boolean;}
 interface BattleResult{won:boolean;pointsDelta:number;tierPoints:number;wins:number;losses:number;winStreak:number;}
+interface BattleStats{tierPoints:number;wins:number;losses:number;winStreak:number;}
 interface BattleLogEntry{id:number;round:number;attacker:"player"|"opponent";rolls:number[];total:number;playerHp:number;opponentHp:number;}
 type Phase="lobby"|"coin"|"battle"|"result";
 
@@ -432,6 +450,7 @@ export default function ColosseumPage(){
   const[rankings,setRankings]=useState<RankingEntry[]>([]);
   const[rankUpdatedAt,setRankUpdatedAt]=useState<number|null>(null);
   const[rankLoading,setRankLoading]=useState(false);
+  const[rankClock,setRankClock]=useState(Date.now());
 
   const fetchRankings=useCallback(async()=>{
     setRankLoading(true);
@@ -443,6 +462,25 @@ export default function ColosseumPage(){
     setRankLoading(false);
   },[]);
   useEffect(()=>{fetchRankings();},[fetchRankings]);
+  useEffect(()=>{
+    const tick=()=>setRankClock(Date.now());
+    const minuteId=setInterval(tick,60000);
+    let hourlyId:ReturnType<typeof setInterval>|null=null;
+    const delay=Math.max(1000,nextHourStartMs()-Date.now()+500);
+    const hourId=setTimeout(()=>{
+      tick();
+      fetchRankings();
+      hourlyId=setInterval(()=>{
+        tick();
+        fetchRankings();
+      },3600000);
+    },delay);
+    return()=>{
+      clearInterval(minuteId);
+      clearTimeout(hourId);
+      if(hourlyId)clearInterval(hourlyId);
+    };
+  },[fetchRankings]);
 
   // ── 배틀 상태 ──
   const[phase,setPhase]=useState<Phase>("lobby");
@@ -456,6 +494,9 @@ export default function ColosseumPage(){
   const[waitForNext,setWaitForNext]=useState(false);
   const[dmgNums,setDmgNums]=useState<{id:number;val:number;side:"player"|"opponent"}[]>([]);
   const[battleHistory,setBattleHistory]=useState<BattleLogEntry[]>([]);
+  const phaseRef=useRef<Phase>("lobby");
+  const forfeitingRef=useRef(false);
+  const historyGuardRef=useRef(false);
 
   // ── 주사위 애니메이션 ──
   const[rollAnimRolls,setRollAnimRolls]=useState<number[]>([]);
@@ -465,6 +506,18 @@ export default function ColosseumPage(){
   const rollIntervalRef=useRef<ReturnType<typeof setInterval>|null>(null);
   const battleRef=useRef<BattleState|null>(null);
   useEffect(()=>{battleRef.current=battle;},[battle]);
+  useEffect(()=>{phaseRef.current=phase;},[phase]);
+
+  const fetchBattleStats=useCallback(async()=>{
+    if(!user?.id)return;
+    try{
+      const res=await api.get<BattleStats>(`/rewards/battle-stats?userId=${encodeURIComponent(user.id)}`);
+      setTierPts(res.tierPoints);
+      setStats({wins:res.wins,losses:res.losses,winStreak:res.winStreak});
+    }catch{/* silent */}
+  },[user?.id]);
+
+  useEffect(()=>{fetchBattleStats();},[fetchBattleStats]);
 
   const startRollAnim=useCallback((side:"player"|"opponent",faces:number,count:number)=>{
     if(rollIntervalRef.current)clearInterval(rollIntervalRef.current);
@@ -556,12 +609,61 @@ export default function ColosseumPage(){
     getBattleSocket().emit("battle:ack");
   },[startRollAnim]);
 
-  const reset=useCallback(()=>{
+  const resetBattleUi=useCallback(()=>{
     if(rollIntervalRef.current){clearInterval(rollIntervalRef.current);rollIntervalRef.current=null;}
+    battleRef.current=null;phaseRef.current="lobby";historyGuardRef.current=false;
     setBattle(null);setCoinResult(null);setRollAnimRolls([]);setRollAnimActive(false);setResult(null);
-    setBattleHistory([]);setLogText("");setWaitForNext(false);
+    setRollAnimTotal(0);setRolling(false);
+    setBattleHistory([]);setLogText("");setWaitForNext(false);setDmgNums([]);
     setPhase("lobby");
   },[]);
+
+  const reset=useCallback(()=>{
+    resetBattleUi();
+  },[resetBattleUi]);
+
+  const forfeitBattle=useCallback(()=>{
+    if(forfeitingRef.current)return;
+    forfeitingRef.current=true;
+    getBattleSocket().emit("battle:forfeit");
+    resetBattleUi();
+    setTimeout(()=>{forfeitingRef.current=false;},300);
+  },[resetBattleUi]);
+
+  const confirmForfeitAndExit=useCallback(()=>{
+    if(!battleRef.current||!["coin","battle"].includes(phaseRef.current)){
+      resetBattleUi();
+      return true;
+    }
+    if(!window.confirm(BATTLE_EXIT_WARNING))return false;
+    forfeitBattle();
+    return true;
+  },[forfeitBattle,resetBattleUi]);
+
+  useEffect(()=>{
+    const inProgress=!!battle&&["coin","battle"].includes(phase);
+    if(!inProgress)return;
+    if(!historyGuardRef.current){
+      window.history.pushState({colosseumBattleGuard:true},"",window.location.href);
+      historyGuardRef.current=true;
+    }
+    const onPopState=()=>{
+      if(!battleRef.current||!["coin","battle"].includes(phaseRef.current)){
+        historyGuardRef.current=false;
+        return;
+      }
+      if(window.confirm(BATTLE_EXIT_WARNING)){
+        forfeitBattle();
+        historyGuardRef.current=false;
+        window.history.back();
+      }else{
+        window.history.pushState({colosseumBattleGuard:true},"",window.location.href);
+        historyGuardRef.current=true;
+      }
+    };
+    window.addEventListener("popstate",onPopState);
+    return()=>window.removeEventListener("popstate",onPopState);
+  },[battle,phase,forfeitBattle]);
 
   const tierIdx=getTierIdx(tierPts);
   const tier=TIERS[tierIdx];
@@ -606,8 +708,9 @@ export default function ColosseumPage(){
   // ══════════════════════════════════════════════════════════════════════════
   if(phase==="lobby"){
     const rarityLabel=ko?(RARITY_KO[myChar.rarity]??myChar.rarity):(RARITY_JA[myChar.rarity]??myChar.rarity);
+    const rarityTheme=RARITY_THEME[myChar.rarity];
     // 다음 갱신 계산
-    const nextUpdateMs=rankUpdatedAt?Math.max(0,rankUpdatedAt+3600000-Date.now()):null;
+    const nextUpdateMs=rankUpdatedAt?Math.max(0,nextHourStartMs(rankClock)-rankClock):null;
     const nextUpdateMin=nextUpdateMs!=null?Math.ceil(nextUpdateMs/60000):null;
 
     return(
@@ -643,17 +746,19 @@ export default function ColosseumPage(){
           {/* ── 상단 2열: 티어 카드 + 파이터 카드 ── */}
           <div className="col-grid-top">
             {/* 티어 카드 */}
-            <div style={{background:C.panel,border:`2px solid ${C.border}`,
-              boxShadow:`0 0 20px ${tier.glow}44, 0 0 0 1px #000`,borderRadius:6,padding:"16px 18px"}}>
+            <div style={{background:C.panel,border:`2px solid ${tier.color}`,
+              boxShadow:`0 0 20px ${tier.glow}66, inset 0 0 24px ${tier.glow}18, 0 0 0 1px #000`,borderRadius:6,padding:"16px 18px"}}>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
                 <TierBadgeSvg idx={tierIdx} size={52}/>
                 <div style={{flex:1}}>
                   <p style={{fontFamily:FONT,fontSize:18,fontWeight:900,color:tier.color,
                     textShadow:`0 0 8px ${tier.glow}`,margin:0}}>{tierLabel}</p>
                   <p style={{fontFamily:FONT,fontSize:12,color:C.stone,margin:"2px 0 8px"}}>{tierPts} pts</p>
-                  <div style={{height:8,background:"#0a0703",border:`1px solid ${C.borderFaint}`,borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:8,background:"#0a0703",border:`1px solid ${tier.glow}`,borderRadius:2,overflow:"hidden",
+                    boxShadow:`0 0 10px ${tier.glow}44`}}>
                     <div style={{height:"100%",width:`${tierProgress*100}%`,
-                      background:`linear-gradient(90deg,${tier.color}88,${tier.color})`,transition:"width 0.4s"}}/>
+                      background:`linear-gradient(90deg,${tier.glow}88,${tier.color})`,
+                      boxShadow:`0 0 12px ${tier.color}`,transition:"width 0.4s"}}/>
                   </div>
                 </div>
               </div>
@@ -672,18 +777,19 @@ export default function ColosseumPage(){
             </div>
 
             {/* 파이터 카드 */}
-            <div style={{background:C.panel,border:`2px solid ${C.playerBorder}`,
-              boxShadow:"0 0 0 1px #000",borderRadius:6,padding:16,
+            <div style={{background:C.panel,border:`2px solid ${rarityTheme.border}`,
+              boxShadow:`0 0 22px ${rarityTheme.glow}55, inset 0 0 24px ${rarityTheme.glow}12, 0 0 0 1px #000`,borderRadius:6,padding:16,
               display:"flex",alignItems:"center",gap:14}}>
               <div style={{animation:"col-idle-bob 2.4s ease-in-out infinite",display:"inline-block",
-                filter:"drop-shadow(0 0 10px #60a5fa44)"}}>
-                <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} size={72}/>
+                filter:`drop-shadow(0 0 10px ${rarityTheme.glow}) drop-shadow(0 0 22px ${rarityTheme.glow}66)`}}>
+                <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} rarity={myChar.rarity} size={72}/>
               </div>
               <div style={{flex:1}}>
                 <p style={{fontFamily:FONT,fontSize:15,fontWeight:900,color:C.parchment,margin:0}}>
                   {user?.name??(ko?"플레이어":"プレイヤー")}
                 </p>
-                <p style={{fontFamily:FONT,fontSize:11,color:"#60a5fa",margin:"2px 0 8px"}}>
+                <p style={{fontFamily:FONT,fontSize:11,color:rarityTheme.color,
+                  textShadow:`0 0 8px ${rarityTheme.glow}`,margin:"2px 0 8px"}}>
                   {getCharName(myChar,lang)} · {rarityLabel}
                 </p>
                 <DiceLabelChip rarity={myChar.rarity}/>
@@ -761,7 +867,7 @@ export default function ColosseumPage(){
                         </div>
                         <div style={{width:32,height:32,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
                           {entryChar
-                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} size={32}/>
+                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={32}/>
                             :<div style={{width:28,height:28,background:C.borderFaint,borderRadius:2}}/>}
                         </div>
                         <div style={{flex:1,minWidth:0}}>
@@ -862,7 +968,8 @@ export default function ColosseumPage(){
         display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
         gap:16,padding:"0 24px",fontFamily:FONT}}>
         <style>{cssStyles}</style>
-        <p style={{fontFamily:FONT,fontWeight:900,fontSize:38,letterSpacing:"0.14em",
+        <p style={{fontFamily:FONT,fontWeight:900,fontSize:38,letterSpacing:"0.14em",textIndent:"0.14em",
+          width:"100%",textAlign:"center",
           color:result.won?"#4ade80":"#f87171",
           textShadow:result.won?"0 0 30px #22c55e":"0 0 30px #ef4444",
           margin:0,animation:"col-win-in 0.5s cubic-bezier(0.34,1.56,0.64,1) both"}}>
@@ -912,9 +1019,13 @@ export default function ColosseumPage(){
   const myTurn=turn==="player";
   const oppChar=charById(opponent.characterId);
   const plrChar=charById(player.characterId);
+  const oppTheme=RARITY_THEME[oppChar.rarity];
+  const plrTheme=RARITY_THEME[plrChar.rarity];
 
   const turnGlowStyle=(side:"player"|"opponent",baseAnim:string)=>({
-    filter:turn===side?`drop-shadow(0 0 12px ${side==="player"?C.gold:"#ef4444"})`:"brightness(0.55)",
+    filter:turn===side
+      ?`drop-shadow(0 0 12px ${side==="player"?plrTheme.glow:oppTheme.glow}) drop-shadow(0 0 24px ${side==="player"?plrTheme.glow:oppTheme.glow}88)`
+      :"brightness(0.55)",
     animation:turn===side?`${baseAnim} 0.8s ease-in-out infinite,col-active-glow 1s ease-in-out infinite`:`${baseAnim} 2s ease-in-out infinite`,
     display:"inline-block" as const,
     transition:"filter 0.3s",
@@ -929,7 +1040,7 @@ export default function ColosseumPage(){
       <div style={{background:"linear-gradient(180deg,#1a1208 0%,#0c0905 100%)",
         borderBottom:`2px solid ${C.border}`,padding:"8px 14px",
         display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-        <button onClick={reset} style={{background:"none",border:"none",color:C.stone,cursor:"pointer",
+        <button onClick={confirmForfeitAndExit} style={{background:"none",border:"none",color:C.stone,cursor:"pointer",
           fontFamily:FONT,fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:3}}>
           <ChevronLeft size={14}/>{t("col.exit")}
         </button>
@@ -940,7 +1051,8 @@ export default function ColosseumPage(){
       </div>
 
       {/* ── 적 존 (가로 레이아웃) ── */}
-      <div style={{background:C.enemyBg,borderBottom:`3px solid ${C.enemyBorder}`,
+      <div style={{background:C.enemyBg,borderBottom:`3px solid ${oppTheme.border}`,
+        boxShadow:`0 10px 24px ${oppTheme.glow}22`,
         padding:"10px 52px 10px 52px",flexShrink:0,position:"relative",minHeight:0}}>
         <div style={{position:"absolute",inset:0,opacity:0.06,
           backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 7px,#fff 7px,#fff 8px)",pointerEvents:"none"}}/>
@@ -958,7 +1070,7 @@ export default function ColosseumPage(){
           {/* 적 스프라이트 (오른쪽) */}
           <div style={{position:"relative",flexShrink:0,width:72,display:"flex",justifyContent:"center"}}>
             <div style={{...turnGlowStyle("opponent","col-enemy-bob"),transform:"scaleX(-1)"}}>
-              <PixelSprite type={oppChar.type} colors={oppChar.colors} characterId={oppChar.id} size={64}/>
+              <PixelSprite type={oppChar.type} colors={oppChar.colors} characterId={oppChar.id} rarity={oppChar.rarity} size={64}/>
             </div>
             {dmgNums.filter(n=>n.side==="opponent").map(n=>(
               <span key={n.id} style={{position:"absolute",top:-6,left:"50%",transform:"translateX(-50%)",
@@ -981,7 +1093,8 @@ export default function ColosseumPage(){
       </div>
 
       {/* ── 플레이어 존 (가로 레이아웃) ── */}
-      <div style={{background:C.playerBg,borderTop:`3px solid ${C.playerBorder}`,
+      <div style={{background:C.playerBg,borderTop:`3px solid ${plrTheme.border}`,
+        boxShadow:`0 -10px 24px ${plrTheme.glow}22`,
         padding:"10px 52px 10px 52px",flexShrink:0,position:"relative",minHeight:0}}>
         <div style={{position:"absolute",inset:0,opacity:0.06,
           backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 7px,#fff 7px,#fff 8px)",pointerEvents:"none"}}/>
@@ -992,7 +1105,7 @@ export default function ColosseumPage(){
           {/* 플레이어 스프라이트 (왼쪽) */}
           <div style={{position:"relative",flexShrink:0,width:72,display:"flex",justifyContent:"center"}}>
             <div style={turnGlowStyle("player","col-idle-bob")}>
-              <PixelSprite type={plrChar.type} colors={plrChar.colors} characterId={plrChar.id} size={64}/>
+              <PixelSprite type={plrChar.type} colors={plrChar.colors} characterId={plrChar.id} rarity={plrChar.rarity} size={64}/>
             </div>
             {dmgNums.filter(n=>n.side==="player").map(n=>(
               <span key={n.id} style={{position:"absolute",top:-6,left:"50%",transform:"translateX(-50%)",

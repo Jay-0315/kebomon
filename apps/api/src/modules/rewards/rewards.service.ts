@@ -902,11 +902,16 @@ export class RewardsService {
 
   // ─── 콜로세움 랭킹 (1시간 서버캐시) ────────────────────────────────────
   private rankingsCache: { data: RankingRow[]; updatedAt: number } | null = null;
-  private readonly RANKINGS_TTL_MS = 60 * 60 * 1000;
+  private getCurrentHourStartMs(now = Date.now()) {
+    const hour = new Date(now);
+    hour.setMinutes(0, 0, 0);
+    return hour.getTime();
+  }
 
   async getColosseumRankings() {
     const now = Date.now();
-    if (this.rankingsCache && now - this.rankingsCache.updatedAt < this.RANKINGS_TTL_MS) {
+    const currentHourStart = this.getCurrentHourStartMs(now);
+    if (this.rankingsCache && this.rankingsCache.updatedAt >= currentHourStart) {
       return { rankings: this.rankingsCache.data, updatedAt: this.rankingsCache.updatedAt };
     }
     const rows = await this.prisma.battleStats.findMany({
@@ -929,8 +934,8 @@ export class RewardsService {
       winStreak: r.winStreak,
       characterId: r.user.reward?.equippedCharacterId ?? null,
     }));
-    this.rankingsCache = { data, updatedAt: now };
-    return { rankings: data, updatedAt: now };
+    this.rankingsCache = { data, updatedAt: currentHourStart };
+    return { rankings: data, updatedAt: currentHourStart };
   }
 
   async getBattleStats(userId: string) {
