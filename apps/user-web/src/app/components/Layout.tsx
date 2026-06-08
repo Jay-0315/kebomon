@@ -128,10 +128,7 @@ export default function Layout() {
             to="/"
             className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
           >
-            <div className="w-10 h-10 bg-primary rounded flex items-center justify-center shrink-0">
-              <Globe className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <h1 className="font-bold text-foreground">Kebo</h1>
+            <img src="/logo.png" alt="Kebo" className="h-10 w-auto shrink-0 object-contain" />
           </Link>
           <button
             onClick={toggleSidebarCollapsed}
@@ -195,10 +192,7 @@ export default function Layout() {
             to="/"
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-              <Globe className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <h1 className="font-bold text-foreground">Kebo</h1>
+            <img src="/logo.png" alt="Kebo" className="h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-3">
             <NotificationBell />

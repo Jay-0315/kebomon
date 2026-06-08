@@ -11,7 +11,12 @@ const CHANNELS = [1, 2, 3, 4] as const;
 const BUBBLE_TTL = 5000;
 const isTouchDevice = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
-const CHANNEL_NAMES: Record<number, string> = { 1: "폐허", 2: "광장", 3: "해변", 4: "제단" };
+const CHANNEL_NAME_KEYS = {
+  1: "live.channel.1",
+  2: "live.channel.2",
+  3: "live.channel.3",
+  4: "live.channel.4",
+} as const;
 
 const CHANNEL_ICONS: Record<number, React.ReactNode> = {
   1: <Castle size={18} color="#a8a29e" />,
@@ -362,7 +367,7 @@ export default function LiveChatPage() {
                     <div className="flex items-center gap-2 text-lg font-bold text-white drop-shadow">
                       <span>{CHANNEL_ICONS[id]}</span>
                       ch.{id}
-                      <span className="text-sm font-medium text-white/70">{CHANNEL_NAMES[id]}</span>
+                      <span className="text-sm font-medium text-white/70">{t(CHANNEL_NAME_KEYS[id])}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-1 text-sm text-white/60">
                       <Users className="h-4 w-4" />
@@ -396,7 +401,7 @@ export default function LiveChatPage() {
           <Radio className="h-4 w-4 text-primary" />
           {CHANNEL_ICONS[channelId]}
           <span>ch.{channelId}</span>
-          <span className="text-sm font-normal text-muted-foreground">{CHANNEL_NAMES[channelId]}</span>
+          <span className="text-sm font-normal text-muted-foreground">{t(CHANNEL_NAME_KEYS[channelId as keyof typeof CHANNEL_NAME_KEYS])}</span>
         </div>
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
           <Users className="h-4 w-4" /> {roster.length}

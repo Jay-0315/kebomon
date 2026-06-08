@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import {
   Trophy, Lock, BookOpen, User, Sparkles, Shield, Gamepad2,
-  CheckCircle2, Flame, Star, Zap, Gift, RotateCcw, ChevronDown, Egg,
+  CheckCircle2, Flame, Star, Zap, Gift, RotateCcw, ChevronDown,
 } from "lucide-react";
-import { useAppData, type GachaResult, type EggType, type EggOpenResult } from "../context/AppDataContext";
-import EggHatchModal from "./EggHatchModal";
+import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { type TranslationKey } from "../lib/i18n";
 import PixelCharacter, { PixelSprite } from "./PixelCharacter";
@@ -66,43 +65,6 @@ function getMissions(t: TFunc) {
 
 type Tab = "character" | "collection" | "gacha" | "achievement";
 type Filter = "all" | CharacterRarity;
-
-// ─── Pixel Egg SVG ────────────────────────────────────────────────────────
-function PixelEggSVG({ type, size = 48 }: { type: "normal" | "big" | "golden"; size?: number }) {
-  const C = {
-    normal: { body: "#ede8dd", hi: "#f8f4ee", lo: "#c4b49a" },
-    big:    { body: "#7dd3fc", hi: "#dbeafe", lo: "#1d4ed8", spot: "#0369a1" },
-    golden: { body: "#fbbf24", hi: "#fef9c3", lo: "#b45309" },
-  }[type] as { body: string; hi: string; lo: string; spot?: string };
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 20" style={{ imageRendering: "pixelated", display: "block", margin: "auto" }}>
-      <rect x="5"  y="0"  width="6"  height="2" fill={C.body} />
-      <rect x="3"  y="2"  width="10" height="2" fill={C.body} />
-      <rect x="2"  y="4"  width="12" height="2" fill={C.body} />
-      <rect x="1"  y="6"  width="14" height="2" fill={C.body} />
-      <rect x="0"  y="8"  width="16" height="4" fill={C.body} />
-      <rect x="1"  y="12" width="14" height="2" fill={C.body} />
-      <rect x="2"  y="14" width="12" height="2" fill={C.body} />
-      <rect x="4"  y="16" width="8"  height="2" fill={C.body} />
-      <rect x="6"  y="18" width="4"  height="2" fill={C.body} />
-      {/* highlight */}
-      <rect x="4"  y="2"  width="3"  height="2" fill={C.hi} />
-      <rect x="3"  y="4"  width="2"  height="2" fill={C.hi} />
-      <rect x="2"  y="6"  width="2"  height="2" fill={C.hi} />
-      {/* shadow */}
-      <rect x="4"  y="14" width="4"  height="2" fill={C.lo} />
-      <rect x="6"  y="16" width="3"  height="2" fill={C.lo} />
-      {type === "big" && <>
-        <rect x="9"  y="6"  width="2" height="2" fill={C.spot} />
-        <rect x="11" y="10" width="2" height="2" fill={C.spot} />
-      </>}
-      {type === "golden" && <>
-        <rect x="11" y="2" width="2" height="1" fill="#fff" />
-        <rect x="12" y="1" width="1" height="3" fill="#fff" />
-      </>}
-    </svg>
-  );
-}
 
 // ─── Pixel Gacha Ball SVG ─────────────────────────────────────────────────
 // viewBox 40×40 (정사각형) → 계단식 픽셀 원, 위 절반 컬러/아래 절반 흰색
@@ -345,26 +307,8 @@ function GachaCapsuleModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function KabemonPage() {
-  const { rewardSummary, equipCharacter, checkAchievements, performGacha, openEgg, refreshRewards } = useAppData();
+  const { rewardSummary, equipCharacter, checkAchievements, performGacha, refreshRewards } = useAppData();
   const { t, lang } = useLang();
-  const [opening, setOpening] = useState<EggType | null>(null);
-  const [eggResult, setEggResult] = useState<EggOpenResult | null>(null);
-  const eggCounts: Record<EggType, number> = {
-    normal: rewardSummary.normalEggs,
-    big: rewardSummary.bigEggs,
-    golden: rewardSummary.goldenEggs,
-  };
-  const handleOpenEgg = async (type: EggType) => {
-    if (eggCounts[type] <= 0 || opening) return;
-    setOpening(type);
-    try {
-      setEggResult(await openEgg(type));
-    } catch {
-      /* ignore */
-    } finally {
-      setOpening(null);
-    }
-  };
   const [tab, setTab] = useState<Tab>("character");
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<number | null>(null);
@@ -564,41 +508,6 @@ export default function KabemonPage() {
         {/* ══════════════ GACHA TAB ══════════════ */}
         {tab === "gacha" && (
           <>
-            {/* ── 알 부화기 ── */}
-            <div className="rounded-2xl border border-border bg-card p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Egg className="h-5 w-5 text-primary" />
-                <h3 className="font-bold">알 부화기</h3>
-                <span className="text-xs text-muted-foreground">미션 레이드 보상으로 획득</span>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  { type: "normal", name: "일반 알", range: "커먼~레어", tint: "from-gray-200 to-gray-300" },
-                  { type: "big", name: "큰 알", range: "커먼~에픽", tint: "from-sky-200 to-blue-300" },
-                  { type: "golden", name: "황금 알", range: "커먼~레전더리", tint: "from-amber-200 to-yellow-400" },
-                ] as { type: EggType; name: string; range: string; tint: string }[]).map((e) => {
-                  const cnt = eggCounts[e.type];
-                  return (
-                    <div key={e.type} className={`rounded-xl bg-gradient-to-b ${e.tint} p-3 text-center`}>
-                      <PixelEggSVG type={e.type} size={48} />
-                      <div className="mt-1 text-xs font-bold text-gray-800">{e.name}</div>
-                      <div className="text-[10px] text-gray-700">{e.range}</div>
-                      <div className="text-lg font-extrabold text-gray-900">×{cnt}</div>
-                      <button
-                        onClick={() => handleOpenEgg(e.type)}
-                        disabled={cnt <= 0 || !!opening}
-                        className={`mt-1 w-full rounded-full py-1 text-[11px] font-bold transition-all ${
-                          cnt > 0 && !opening ? "bg-gray-900/85 text-white hover:bg-gray-900" : "cursor-not-allowed bg-gray-400/50 text-gray-600"
-                        }`}
-                      >
-                        {opening === e.type ? "부화 중…" : "부화"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             <GachaTab
               missionPoints={missionPoints}
               gachaPityCount={gachaPityCount}
@@ -626,11 +535,6 @@ export default function KabemonPage() {
         )}
 
       </div>
-
-      {/* ── 알 부화 연출 ── */}
-      {eggResult && (
-        <EggHatchModal eggType={eggResult.eggType} result={eggResult} onClose={() => setEggResult(null)} />
-      )}
 
       {/* ── Achievement reveal modal ── */}
       {newAchievements.length > 0 && (

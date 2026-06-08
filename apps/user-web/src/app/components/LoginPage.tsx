@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Wallet, Mail, Lock, X } from "lucide-react";
+import { Mail, Lock, X } from "lucide-react";
 import { api } from "../lib/api";
 import { setAuthSession } from "../lib/auth";
 import { useLang } from "../context/LangContext";
@@ -208,8 +208,8 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/80 rounded mb-4">
-            <Wallet className="w-8 h-8 text-white" />
+          <div className="mb-4">
+            <img src="/logo.png" alt="Kebo" className="h-20 w-auto object-contain mx-auto" />
           </div>
           <h1 className="text-foreground mb-2">{t("login.title")}</h1>
           <p className="text-muted-foreground">{t("login.subtitle")}</p>
