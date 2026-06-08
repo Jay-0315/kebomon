@@ -43,6 +43,7 @@ model User {
   passwordChangeHistory PasswordChangeHistory?
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
+  battleStats           BattleStats?
   @@map("users")
 }
 
@@ -140,6 +141,22 @@ model UserCharacter {
   @@unique([userId, characterId])
   @@index([userId])
   @@map("user_characters")
+}
+
+/** 배틀 티어/전적 */
+model BattleStats {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  tierPoints    Int      @default(0) @map("tier_points")
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  winStreak     Int      @default(0) @map("win_streak")
+  bestStreak    Int      @default(0) @map("best_streak")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("battle_stats")
 }
 
 /** 레이드 기여 콘텐츠 (3=퀴즈 문제, 4=받아쓰기 문장) — 영구 저장 후 출제 풀로 재활용 */

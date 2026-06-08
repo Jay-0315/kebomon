@@ -56,3 +56,21 @@ export function disconnectRaidSocket() {
   _raidSocket?.disconnect();
   _raidSocket = null;
 }
+
+let _battleSocket: Socket | null = null;
+
+export function getBattleSocket(): Socket {
+  if (!_battleSocket) {
+    _battleSocket = io(`${socketBase()}/battle`, {
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+      autoConnect: true,
+    });
+  }
+  return _battleSocket;
+}
+
+export function disconnectBattleSocket() {
+  _battleSocket?.disconnect();
+  _battleSocket = null;
+}

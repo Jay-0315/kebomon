@@ -8,7 +8,7 @@ import {
 } from "@nestjs/websockets";
 import { OnModuleInit } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
-import { RewardsService, EggType as RewardEggType } from "../rewards/rewards.service";
+import { RewardsService } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
 
 export const RAID_TYPES = [1, 3, 4, 5] as const;
@@ -17,14 +17,60 @@ export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
 type EggType = "normal" | "big" | "golden";
 
-const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
-  1: { name: "점프 레이드", points: 30, goal: 40, cry: "내 장애물을 피할 수 있겠나?!" },
-  3: { name: "퀴즈 레이드", points: 50, goal: 25, cry: "내 물음에 답하라!" },
-  4: { name: "받아쓰기 레이드", points: 80, goal: 25, cry: "정확히 받아써라. 오차는 없다." },
-  5: { name: "탄막 레이드", points: 60, goal: 30, cry: "내 탄막을 피할 수 있겠나?!" },
+/** 캐릭터 ID → 레어리티 맵 (가챠+업적+스타터 전체) */
+const CHAR_RARITY: Record<number, string> = {
+  4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
+  11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
+  17:"uncommon",18:"uncommon",19:"uncommon",20:"uncommon",21:"uncommon",
+  22:"uncommon",26:"rare",28:"rare",29:"rare",30:"rare",31:"rare",
+  32:"rare",33:"rare",34:"rare",35:"rare",36:"rare",37:"epic",38:"epic",
+  39:"epic",40:"epic",41:"epic",42:"epic",43:"epic",44:"epic",
+  51:"legendary",52:"legendary",53:"legendary",54:"legendary",55:"legendary",
+  56:"legendary",57:"legendary",58:"legendary",59:"legendary",60:"legendary",
+  61:"legendary",64:"mythic",65:"mythic",66:"mythic",67:"mythic",69:"mythic",
+  71:"mythic",72:"mythic",73:"mythic",74:"common",75:"common",76:"common",
+  83:"mythic",84:"uncommon",90:"uncommon",91:"uncommon",96:"rare",99:"epic",
+  104:"rare",105:"uncommon",116:"common",117:"rare",120:"epic",121:"epic",
+  125:"common",127:"common",128:"uncommon",129:"rare",131:"epic",132:"uncommon",
+  135:"legendary",136:"epic",137:"legendary",139:"common",140:"common",
+  141:"common",144:"uncommon",150:"mythic",152:"common",153:"uncommon",
+  154:"legendary",155:"common",156:"common",158:"mythic",159:"common",
+  160:"uncommon",161:"uncommon",163:"rare",169:"rare",172:"mythic",
+  173:"rare",174:"common",176:"common",177:"uncommon",178:"rare",179:"rare",
+  180:"epic",191:"legendary",193:"mythic",194:"rare",204:"mythic",205:"common",
+  206:"epic",208:"mythic",216:"legendary",220:"epic",221:"uncommon",
+  232:"legendary",233:"legendary",235:"mythic",238:"epic",239:"mythic",
+  240:"rare",241:"epic",242:"legendary",243:"mythic",252:"epic",
+  253:"legendary",254:"epic",255:"mythic",258:"common",259:"uncommon",
+  260:"rare",267:"legendary",268:"mythic",271:"rare",272:"epic",
+  273:"legendary",274:"mythic",275:"common",276:"uncommon",277:"rare",
+  278:"epic",287:"rare",288:"epic",290:"legendary",291:"mythic",292:"common",
+  293:"epic",294:"uncommon",304:"uncommon",305:"rare",306:"epic",
+  307:"legendary",308:"legendary",309:"mythic",313:"epic",322:"uncommon",
+  323:"rare",324:"epic",331:"legendary",332:"mythic",333:"common",335:"rare",
+  336:"mythic",337:"epic",338:"legendary",339:"mythic",344:"mythic",
+  349:"legendary",350:"mythic",351:"common",352:"uncommon",355:"uncommon",
+  372:"epic",373:"legendary",375:"mythic",377:"uncommon",378:"rare",
+  388:"epic",389:"legendary",390:"mythic",391:"common",392:"uncommon",
+  393:"rare",
 };
 
-// 도감 전체 180개 캐릭터 ID
+/** 레어리티 → 레이드 데미지 */
+function rarityDamage(charId: number): number {
+  const r = CHAR_RARITY[charId] ?? "common";
+  if (r === "mythic") return 4;
+  if (r === "legendary") return 3;
+  if (r === "rare" || r === "epic") return 2;
+  return 1; // common, uncommon
+}
+
+const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
+  1: { name: "점프 레이드",      points: 30, goal: 40, cry: "내 장애물을 피할 수 있겠나?!" },
+  3: { name: "퀴즈 레이드",      points: 50, goal: 25, cry: "내 물음에 답하라!" },
+  4: { name: "받아쓰기 레이드",  points: 80, goal: 25, cry: "정확히 받아써라. 오차는 없다." },
+  5: { name: "탄막 레이드",      points: 60, goal: 30, cry: "내 탄막을 피할 수 있겠나?!" },
+};
+
 const BOSS_POOL = [
   75,76,116,125,127,139,140,152,155,156,159,174,176,205,258,275,292,333,351,391,
   13,14,84,90,91,105,128,132,144,153,160,161,177,221,259,276,294,304,322,352,355,377,392,
@@ -41,24 +87,25 @@ const BOSS_LINES = [
   (nick: string) => `엄청나군… ${nick}.`,
   (nick: string) => `흥, 운이 좋았을 뿐이야, ${nick}!`,
   (nick: string) => `${nick}… 아직 끝나지 않았다!`,
-  (nick: string) => `이 정도로 날 막을 순 없어!`,
-  (nick: string) => `크윽… ${nick}, 제법이군.`,
-  (nick: string) => `방심했다! 다음엔 그러지 않겠어!`,
-  (nick: string) => `${nick}! 각오해라!`,
-  (nick: string) => `한 방 먹었구나… 기억해 둬.`,
-  (nick: string) => `아프군… 하지만 이 정도야!`,
-  (nick: string) => `${nick}이여… 강하구나. 하지만!`,
+  (_n: string) => `이 정도로 날 막을 순 없어!`,
+  (n: string) => `크윽… ${n}, 제법이군.`,
+  (_n: string) => `방심했다! 다음엔 그러지 않겠어!`,
+  (n: string) => `${n}! 각오해라!`,
+  (_n: string) => `한 방 먹었구나… 기억해 둬.`,
+  (_n: string) => `아프군… 하지만 이 정도야!`,
+  (n: string) => `${n}이여… 강하구나. 하지만!`,
+  (n: string) => `큰 데미지다! ${n}, 두렵지 않느냐?`,
+  (n: string) => `...놀랍군. ${n}, 그 힘 어디서 왔나?`,
+  (n: string) => `${n}! 이 상처 잊지 않겠다!`,
+  (_n: string) => `흔들리지 않아! 아직이야!`,
+  (n: string) => `${n}, 그 공격… 나름 아팠다.`,
+  (_n: string) => `내 방어를 뚫다니… 실력이 있군!`,
+  (_n: string) => `크윽! 예상치 못했어!`,
+  (_n: string) => `재밌군. 더 덤벼봐!`,
+  (n: string) => `${n}, 이 기세 언제까지 갈까?`,
+  (_n: string) => `이번엔 내가 한 발 물러선다. 다음은 없다!`,
 ];
 const randomBossLine = (nick: string) => BOSS_LINES[(Math.random() * BOSS_LINES.length) | 0](nick);
-
-type RaidReward = { kind: "points"; points: number } | { kind: "egg"; egg: RewardEggType };
-
-function rollReward(points: number): RaidReward {
-  if (Math.random() < 0.8) return { kind: "points", points };
-  const r = Math.random() * 100;
-  const egg: RewardEggType = r < 60 ? "normal" : r < 95 ? "big" : "golden";
-  return { kind: "egg", egg };
-}
 
 // ─── 퀴즈 뱅크 ──────────────────────────────────────────────────
 const QUIZ_BANK: { q: string; a: string[] }[] = [
@@ -113,17 +160,29 @@ interface Player {
   nickname: string;
   raidType: number;
   userId: string | null;
+  damage: number; // 이 세션에서 가한 총 데미지
 }
 
 interface RaidRoom {
   type: number;
   players: Map<string, Player>;
+  /** 연결 끊긴 뒤에도 랭킹에 포함되도록 기록 유지 */
+  departed: { userId: string; damage: number; nickname: string }[];
   progress: number;
   cleared: boolean;
-  bossCharId: number; // 이 방의 랜덤 보스 케보몬
-  // mission-specific
+  bossCharId: number;
   quizIndex: number;
   typingSentence: string;
+}
+
+/** 랭킹 보상 결정 */
+type RaidRankReward = { kind: "egg"; egg: EggType; count: number } | { kind: "points"; points: number };
+function rankReward(rank: number): RaidRankReward {
+  if (rank === 1) return { kind: "egg", egg: "golden", count: 1 };
+  if (rank === 2) return { kind: "egg", egg: "big", count: 2 };
+  if (rank === 3) return { kind: "egg", egg: "big", count: 1 };
+  if (rank <= 10) return { kind: "egg", egg: "normal", count: 1 };
+  return { kind: "points", points: 100 };
 }
 
 const room = (type: number) => `raid:${type}`;
@@ -132,6 +191,7 @@ function newRoom(type: number): RaidRoom {
   return {
     type,
     players: new Map(),
+    departed: [],
     progress: 0,
     cleared: false,
     bossCharId: randomBoss(),
@@ -156,8 +216,9 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   private rooms = new Map<number, RaidRoom>();
   private cooldowns = new Map<number, number>();
+  /** 현재 레이드 슬롯에서 입장 제한된 userId 목록 (레이드 타입 → 금지 userId Set) */
+  private entryBans = new Map<number, Set<string>>();
 
-  /** 서버 시작 시 DB에 저장된 기여 콘텐츠를 출제 풀에 로드 */
   async onModuleInit() {
     try {
       const rows = await this.prisma.raidContent.findMany({ where: { active: true } });
@@ -168,14 +229,17 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
           TYPING_SENTENCES.push(row.text);
         }
       }
-    } catch {
-      // DB 미연결 등은 무시하고 기본 풀로 동작
-    }
+    } catch { /* ignore */ }
   }
 
   private getRoom(type: number): RaidRoom {
     if (!this.rooms.has(type)) this.rooms.set(type, newRoom(type));
     return this.rooms.get(type)!;
+  }
+
+  private getBans(type: number): Set<string> {
+    if (!this.entryBans.has(type)) this.entryBans.set(type, new Set());
+    return this.entryBans.get(type)!;
   }
 
   @SubscribeMessage("raid:join")
@@ -184,7 +248,9 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     @ConnectedSocket() client: Socket,
   ) {
     const type = RAID_TYPES.includes(data?.raidType as 1 | 3 | 4) ? data.raidType : 1;
+    const userId = data?.userId ?? null;
 
+    // 쿨다운 체크
     const until = this.cooldowns.get(type) ?? 0;
     if (until > Date.now()) {
       client.emit("raid:cooldown", { raidType: type, until });
@@ -195,6 +261,13 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (r.cleared) {
       r = newRoom(type);
       this.rooms.set(type, r);
+      this.entryBans.delete(type); // 새 슬롯 → 금지 목록 초기화
+    }
+
+    // 입장 제한 체크 (로그인 유저만)
+    if (userId && this.getBans(type).has(userId)) {
+      client.emit("raid:banned", { raidType: type });
+      return;
     }
 
     if (r.players.size >= MAX_PLAYERS) {
@@ -202,13 +275,17 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       return;
     }
 
+    // 입장 시 바로 금지 목록에 추가 (1회 입장 보장)
+    if (userId) this.getBans(type).add(userId);
+
     const nickname = nick();
     r.players.set(client.id, {
       socketId: client.id,
       characterId: Number(data?.characterId) || 1,
       nickname,
       raidType: type,
-      userId: data?.userId ?? null,
+      userId,
+      damage: 0,
     });
     client.join(room(type));
     client.emit("raid:self", { socketId: client.id, nickname, characterId: Number(data?.characterId) || 1 });
@@ -218,7 +295,17 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   @SubscribeMessage("raid:leave")
   leave(@ConnectedSocket() client: Socket) {
-    this.removePlayer(client);
+    this.removePlayer(client, true);
+  }
+
+  /** 프론트에서 라이프 전부 소진 시 호출 */
+  @SubscribeMessage("raid:died")
+  died(@ConnectedSocket() client: Socket) {
+    const player = this.findPlayer(client.id);
+    if (!player) return;
+    // 라이프 소진 → 데미지 기록 보존하고 강제 퇴장
+    this.removePlayer(client, true);
+    // 화면은 프론트에서 게임오버로 전환됨
   }
 
   @SubscribeMessage("raid:contribute")
@@ -244,53 +331,103 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     }
   }
 
-  /** 탄막 레이드(타입5): 보석 수집 시 보스에게 데미지 1 */
   @SubscribeMessage("raid:gem")
   gem(@ConnectedSocket() client: Socket) {
     const player = this.findPlayer(client.id);
     if (!player || player.raidType !== 5) return;
     const r = this.getRoom(5);
     if (r.cleared) return;
-    r.progress += 1;
-    this.applyProgress(r, 5, player.nickname);
+    const dmg = rarityDamage(player.characterId);
+    r.progress += dmg;
+    player.damage += dmg;
+    this.applyProgress(r, 5, player.nickname, dmg);
   }
 
-  /** 점프 레이드(타입1): 장애물을 넘을 때마다 보스에게 데미지 1 */
   @SubscribeMessage("raid:jump")
   jump(@ConnectedSocket() client: Socket) {
     const player = this.findPlayer(client.id);
     if (!player || player.raidType !== 1) return;
     const r = this.getRoom(1);
     if (r.cleared) return;
-    r.progress += 1;
-    this.applyProgress(r, 1, player.nickname);
+    const dmg = rarityDamage(player.characterId);
+    r.progress += dmg;
+    player.damage += dmg;
+    this.applyProgress(r, 1, player.nickname, dmg);
   }
 
-  /** 진행도 증가 후 클리어 판정 + 상태 브로드캐스트 (점프/입력 공용) */
-  private applyProgress(r: RaidRoom, type: number, attackerNickname?: string) {
+  private applyProgress(r: RaidRoom, type: number, attackerNickname: string, dmg: number) {
     const meta = RAID_META[type];
 
-    // 보스 대사 + 데미지 이펙트
-    if (attackerNickname && !r.cleared) {
+    if (!r.cleared) {
       const line = randomBossLine(attackerNickname);
       const hp = Math.max(0, meta.goal - r.progress);
-      this.server.to(room(type)).emit("raid:bossHit", { line, hp, maxHp: meta.goal });
+      this.server.to(room(type)).emit("raid:bossHit", { line, hp, maxHp: meta.goal, dmg });
     }
 
     if (r.progress >= meta.goal) {
       r.cleared = true;
       r.progress = meta.goal;
       this.cooldowns.set(type, Date.now() + RAID_COOLDOWN_MS);
-      for (const p of r.players.values()) {
-        const reward = rollReward(meta.points);
-        if (p.userId) {
-          this.rewards.grantRaidReward(p.userId, reward).catch(() => undefined);
-        }
-        this.server.to(p.socketId).emit("raid:cleared", { reward });
-      }
+      this.distributeRankingRewards(r, type).catch(() => undefined);
     }
     this.broadcastState(type);
     this.broadcastLobby();
+  }
+
+  /** 클리어 시 랭킹 산정 → 보상 지급 + 알림 */
+  private async distributeRankingRewards(r: RaidRoom, type: number) {
+    // 활성 + 이탈 플레이어 합산
+    const entries: { userId: string | null; socketId: string | null; damage: number; nickname: string }[] = [
+      ...[...r.players.values()].map((p) => ({
+        userId: p.userId,
+        socketId: p.socketId,
+        damage: p.damage,
+        nickname: p.nickname,
+      })),
+      ...r.departed.map((d) => ({
+        userId: d.userId,
+        socketId: null,
+        damage: d.damage,
+        nickname: d.nickname,
+      })),
+    ];
+
+    // 데미지 내림차순 정렬
+    entries.sort((a, b) => b.damage - a.damage);
+
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const rank = i + 1;
+      const reward = rankReward(rank);
+
+      // 소켓이 연결된 경우 즉시 전송
+      if (e.socketId) {
+        const rankings = entries.map((en, idx) => ({ rank: idx + 1, nickname: en.nickname, damage: en.damage }));
+        this.server.to(e.socketId).emit("raid:cleared", { reward, rank, raidType: type, rankings });
+      }
+
+      // DB 보상 지급
+      if (e.userId) {
+        this.rewards.grantRaidRankingReward(e.userId, reward).catch(() => undefined);
+        // 푸시 알림
+        this.sendRaidClearedNotification(e.userId, rank).catch(() => undefined);
+      }
+    }
+  }
+
+  private async sendRaidClearedNotification(userId: string, rank: number) {
+    try {
+      const rewardText = rank === 1 ? "황금알 1개" : rank === 2 ? "큰알 2개" : rank === 3 ? "큰알 1개" : rank <= 10 ? "일반알 1개" : "100P";
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          type: "achievement",
+          title: "레이드 클리어!",
+          body: `${rank}위 달성! 보상: ${rewardText}`,
+          link: "/raid",
+        },
+      });
+    } catch { /* ignore */ }
   }
 
   @SubscribeMessage("raid:input")
@@ -314,22 +451,25 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
     let progressed = false;
     let feedback: string | null = null;
+    let dmg = 0;
 
-    if (player.raidType === 1) {
-      // 점프 레이드는 액션 게임(raid:jump)으로 진행 — 채팅 입력은 데미지 없음
-    } else if (player.raidType === 3) {
+    if (player.raidType === 3) {
       const cur = QUIZ_BANK[r.quizIndex % QUIZ_BANK.length];
       if (cur.a.some((ans) =>
         text.replace(/\s/g, "").toLowerCase() === ans.replace(/\s/g, "").toLowerCase()
       )) {
-        r.progress += 1;
+        dmg = rarityDamage(player.characterId);
+        r.progress += dmg;
+        player.damage += dmg;
         progressed = true;
         r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
         feedback = "정답!";
       }
     } else if (player.raidType === 4) {
       if (text === r.typingSentence) {
-        r.progress += 1;
+        dmg = rarityDamage(player.characterId);
+        r.progress += dmg;
+        player.damage += dmg;
         progressed = true;
         r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
       }
@@ -340,12 +480,12 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     }
 
     if (progressed) {
-      this.applyProgress(r, player.raidType, player.nickname);
+      this.applyProgress(r, player.raidType, player.nickname, dmg);
     }
   }
 
   handleDisconnect(client: Socket) {
-    this.removePlayer(client);
+    this.removePlayer(client, false);
   }
 
   private findPlayer(socketId: string): Player | undefined {
@@ -356,12 +496,22 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     return undefined;
   }
 
-  private removePlayer(client: Socket) {
+  private removePlayer(client: Socket, voluntary: boolean) {
     for (const r of this.rooms.values()) {
-      if (r.players.delete(client.id)) {
+      const p = r.players.get(socketId(client));
+      if (p) {
+        // 데미지 기록 보존 (랭킹에 포함)
+        if (p.userId && p.damage > 0) {
+          r.departed.push({ userId: p.userId, damage: p.damage, nickname: p.nickname });
+        }
+        r.players.delete(socketId(client));
         client.leave(room(r.type));
         this.broadcastState(r.type);
         this.broadcastCounts();
+        // 자발적 퇴장이면 금지 목록에 이미 있으므로 추가 불필요
+        if (voluntary && p.userId) {
+          this.getBans(r.type).add(p.userId);
+        }
         return;
       }
     }
@@ -370,13 +520,19 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   private missionView(r: RaidRoom) {
     if (r.type === 1) return { label: "장애물을 점프로 넘어라!", target: "SPACE ↑", hint: "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지" };
     if (r.type === 3) return { label: "퀴즈를 맞혀라!", target: QUIZ_BANK[r.quizIndex % QUIZ_BANK.length].q, hint: "" };
-    if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −1" };
+    if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −데미지" };
     return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence, hint: "" };
   }
 
   private broadcastState(type: number) {
     const r = this.getRoom(type);
     const meta = RAID_META[type];
+    const participants = [...r.players.values()].map((p) => ({
+      socketId: p.socketId,
+      characterId: p.characterId,
+      nickname: p.nickname,
+      damage: p.damage,
+    }));
     this.server.to(room(type)).emit("raid:state", {
       raidType: type,
       name: meta.name,
@@ -385,7 +541,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       maxHp: meta.goal,
       cleared: r.cleared,
       mission: this.missionView(r),
-      participants: [...r.players.values()].map((p) => ({ socketId: p.socketId, characterId: p.characterId, nickname: p.nickname })),
+      participants,
       count: r.players.size,
       maxPlayers: MAX_PLAYERS,
     });
@@ -415,3 +571,5 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   private broadcastCounts() { this.broadcastLobby(); }
   private broadcastLobby() { this.server.emit("raid:lobby", this.lobby()); }
 }
+
+function socketId(client: Socket): string { return client.id; }

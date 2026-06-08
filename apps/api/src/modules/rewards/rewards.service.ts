@@ -563,6 +563,29 @@ export class RewardsService {
     ]).catch(() => undefined);
   }
 
+  /** 레이드 랭킹 보상 지급 (알 여러 개 또는 포인트) */
+  async grantRaidRankingReward(
+    userId: string,
+    reward: { kind: "egg"; egg: EggType; count: number } | { kind: "points"; points: number },
+  ) {
+    await this.getOrCreateReward(userId);
+    if (reward.kind === "points") {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { missionPoints: { increment: Math.max(0, reward.points) }, raidCount: { increment: 1 } },
+      });
+    } else {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { ...eggDelta(reward.egg, reward.count), raidCount: { increment: 1 } },
+      });
+    }
+    await Promise.all([
+      this.checkAndGrantAchievements(userId),
+      this.checkAndGrantTitles(userId),
+    ]).catch(() => undefined);
+  }
+
   /** 알 까기: 알 1개 소비 → 등급별 가챠로 캐릭터 1개 (중복이면 포인트 환급) */
   async openEgg(userId: string, eggType: EggType) {
     const reward = await this.getOrCreateReward(userId);
@@ -601,6 +624,51 @@ export class RewardsService {
       isDuplicate,
       points: dupPoints,
     };
+  }
+
+  /** 알 여러 개 한번에 까기 */
+  async openEggBatch(userId: string, eggType: EggType, count: number) {
+    if (count < 2 || count > 10) throw new BadRequestException("한번에 2~10개만 가능합니다.");
+    const reward = await this.getOrCreateReward(userId);
+    if (eggCount(reward, eggType) < count) {
+      throw new BadRequestException("보유한 알이 부족합니다.");
+    }
+
+    const owned = await this.prisma.userCharacter.findMany({
+      where: { userId },
+      select: { characterId: true },
+    });
+    const ownedSet = new Set(owned.map((c) => c.characterId));
+
+    const results: { eggType: EggType; characterId: number; rarity: string; isDuplicate: boolean; points: number }[] = [];
+    const newCharIds: number[] = [];
+    let totalDupPoints = 0;
+
+    for (let i = 0; i < count; i++) {
+      const rarity = weightedRandom(EGG_RATES[eggType]);
+      const pick = pickFromPool(rarity);
+      const isDuplicate = ownedSet.has(pick.id);
+      const dupPoints = isDuplicate ? (RARITY_DUPLICATE_POINTS[pick.rarity] ?? 0) : 0;
+
+      if (!isDuplicate) {
+        ownedSet.add(pick.id);
+        newCharIds.push(pick.id);
+      }
+      totalDupPoints += dupPoints;
+      results.push({ eggType, characterId: pick.id, rarity: pick.rarity, isDuplicate, points: dupPoints });
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.userReward.update({
+        where: { userId },
+        data: { ...eggDelta(eggType, -count), missionPoints: { increment: totalDupPoints } },
+      }),
+      ...newCharIds.map((characterId) =>
+        this.prisma.userCharacter.create({ data: { userId, characterId } }),
+      ),
+    ]);
+
+    return results;
   }
 
   async performGacha(userId: string, count: 1 | 10) {
@@ -820,5 +888,46 @@ export class RewardsService {
     }
 
     return { newlyUnlocked };
+  }
+
+  async getBattleStats(userId: string) {
+    const stats = await this.prisma.battleStats.findUnique({ where: { userId } });
+    if (!stats) {
+      return { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
+    }
+    return {
+      tierPoints: stats.tierPoints,
+      wins: stats.wins,
+      losses: stats.losses,
+      winStreak: stats.winStreak,
+      bestStreak: stats.bestStreak,
+    };
+  }
+
+  async updateBattleStats(userId: string, won: boolean) {
+    const existing = await this.prisma.battleStats.findUnique({ where: { userId } });
+    const prev = existing ?? { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
+
+    const newWinStreak = won ? prev.winStreak + 1 : 0;
+    const streakBonus = won && newWinStreak > 1 ? 20 : 0;
+    const pointsDelta = won ? 100 + streakBonus : -50;
+    const newPoints = Math.max(0, prev.tierPoints + pointsDelta);
+    const newBestStreak = Math.max(prev.bestStreak, newWinStreak);
+
+    const data = {
+      tierPoints: newPoints,
+      wins: won ? prev.wins + 1 : prev.wins,
+      losses: won ? prev.losses : prev.losses + 1,
+      winStreak: newWinStreak,
+      bestStreak: newBestStreak,
+    };
+
+    await this.prisma.battleStats.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+    });
+
+    return { ...data, pointsDelta };
   }
 }

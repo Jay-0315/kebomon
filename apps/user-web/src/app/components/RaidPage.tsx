@@ -5,7 +5,7 @@ import { getRaidSocket, disconnectRaidSocket } from "../lib/socket";
 import { getStoredUser } from "../lib/auth";
 import PixelCharacter, { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS, getCharName } from "../data/characters";
-import EggHatchModal from "./EggHatchModal";
+import EggHatchModal, { EggBatchModal } from "./EggHatchModal";
 import { useLang } from "../context/LangContext";
 import { TranslationKey } from "../lib/i18n";
 
@@ -69,7 +69,8 @@ type RaidState = {
   cleared: boolean; mission: Mission; participants: RosterEntry[]; count: number; maxPlayers: number;
 };
 type ChatMsg = { id: string; socketId: string; nickname: string; characterId: number; text: string };
-type Reward = { kind: "points"; points: number } | { kind: "egg"; egg: EggType };
+type Reward = { kind: "points"; points: number } | { kind: "egg"; egg: EggType; count?: number };
+type RankEntry = { userId: string; nickname: string; damage: number; rank: number };
 
 const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTERS[0];
 
@@ -81,12 +82,14 @@ function JumpGame({
   charDef,
   cleared,
   onClear,
+  onDied,
   playerLives = {},
   mySocketId,
 }: {
   charDef: ReturnType<typeof charById>;
   cleared: boolean;
   onClear: () => void;
+  onDied?: () => void;
   playerLives?: PlayerLiveMap;
   mySocketId?: string;
 }) {
@@ -96,15 +99,15 @@ function JumpGame({
   const playerRef = useRef<HTMLDivElement>(null);
   const onClearRef = useRef(onClear);
   onClearRef.current = onClear;
+  const onDiedRef = useRef(onDied);
+  onDiedRef.current = onDied;
   const clearedRef = useRef(cleared);
   clearedRef.current = cleared;
   const [stunned, setStunned] = useState(false);
-  const [lives, setLives] = useState(5); // 남은 목숨 (5번 맞으면 사망)
-  const [deadUntil, setDeadUntil] = useState(0); // 부활 시각(Date.now 기준), 0=생존
-  const [deadRemain, setDeadRemain] = useState(0); // 부활까지 남은 초
+  const [lives, setLives] = useState(5);
+  const [deadUntil, setDeadUntil] = useState(0);
 
   const MAX_HITS = 5;
-  const REVIVE_MS = 30000; // 30초 쿨타임
 
   const g = useRef({
     jy: 0,
@@ -136,18 +139,6 @@ function JumpGame({
   const releaseJump = useCallback(() => {
     g.current.isJumpHeld = false;
   }, []);
-
-  // 부활 카운트다운 표시
-  useEffect(() => {
-    if (!deadUntil) {
-      setDeadRemain(0);
-      return;
-    }
-    const tick = () => setDeadRemain(Math.max(0, Math.ceil((deadUntil - Date.now()) / 1000)));
-    tick();
-    const id = setInterval(tick, 250);
-    return () => clearInterval(id);
-  }, [deadUntil]);
 
   // 키보드(스페이스/↑) — 페이지 스크롤 방지
   useEffect(() => {
@@ -207,19 +198,6 @@ function JumpGame({
       if (!clearedRef.current && dead) {
         // 사망 중 — 부활 대기 (게임 정지)
       } else if (!clearedRef.current) {
-        // 부활 처리
-        if (st.deadUntil !== 0 && realNow >= st.deadUntil) {
-          st.deadUntil = 0;
-          st.hits = 0;
-          st.obstacles = [];
-          st.spawnAcc = 0;
-          st.jy = 0;
-          st.vy = 0;
-          st.grounded = true;
-          setDeadUntil(0);
-          setLives(MAX_HITS);
-        }
-
         st.elapsed += dt;
 
         // 점프 물리 — 홀드 중(상승)이면 중력 감소, 키 떼면 즉시 빠르게 낙하
@@ -264,14 +242,13 @@ function JumpGame({
             st.hits += 1;
             setLives(Math.max(0, MAX_HITS - st.hits));
             if (st.hits >= MAX_HITS) {
-              // 사망 → 30초 후 부활
-              st.deadUntil = Date.now() + REVIVE_MS;
+              // 사망 → 재입장 불가
+              st.deadUntil = Date.now() + 1;
               st.obstacles = [];
-              st.jy = 0;
-              st.vy = 0;
-              st.grounded = true;
+              st.jy = 0; st.vy = 0; st.grounded = true;
               setDeadUntil(st.deadUntil);
               setStunned(false);
+              onDiedRef.current?.();
               break;
             } else {
               st.stunUntil = now + 650;
@@ -537,8 +514,7 @@ function JumpGame({
       )}
       {deadUntil > 0 ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 text-white">
-          <div className="text-lg font-extrabold">{t("raid.jump_dead")}</div>
-          <div className="mt-1 text-sm">{t("raid.jump_revive").replace("{s}", String(deadRemain))}</div>
+          <div className="text-lg font-extrabold">{t("raid.eliminated")}</div>
         </div>
       ) : stunned ? (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600/85 px-4 py-1.5 text-sm font-extrabold text-white">
@@ -554,11 +530,12 @@ type BulletT = { id: number; x: number; y: number; vx: number; vy: number; r: nu
 type GemT    = { id: number; x: number; y: number; born: number; life: number };
 
 function BulletHellGame({
-  charDef, cleared, onGemCollect,
+  charDef, cleared, onGemCollect, onDied,
 }: {
   charDef: ReturnType<typeof charById>;
   cleared: boolean;
   onGemCollect: () => void;
+  onDied?: () => void;
 }) {
   const { t } = useLang();
   const wrapRef   = useRef<HTMLDivElement>(null);
@@ -566,15 +543,15 @@ function BulletHellGame({
   const playerRef = useRef<HTMLDivElement>(null);
   const onGemRef  = useRef(onGemCollect);
   onGemRef.current = onGemCollect;
+  const onDiedRef = useRef(onDied);
+  onDiedRef.current = onDied;
   const clearedRef = useRef(cleared);
   clearedRef.current = cleared;
 
   const [lives, setLives]       = useState(5);
   const [deadUntil, setDeadUntil]     = useState(0);
-  const [deadRemain, setDeadRemain]   = useState(0);
 
   const MAX_HITS  = 5;
-  const REVIVE_MS = 20_000;
   const P_SPEED   = 3.2;
   const P_HIT_R   = 7;
   const GEM_R     = 16;
@@ -596,14 +573,6 @@ function BulletHellGame({
     deadUntil: 0,
     invUntil: 0,
   });
-
-  useEffect(() => {
-    if (!deadUntil) { setDeadRemain(0); return; }
-    const tick = () => setDeadRemain(Math.max(0, Math.ceil((deadUntil - Date.now()) / 1000)));
-    tick();
-    const id = setInterval(tick, 250);
-    return () => clearInterval(id);
-  }, [deadUntil]);
 
   useEffect(() => {
     const KEYS = new Set(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","a","A","w","W","s","S","d","D"]);
@@ -807,9 +776,10 @@ function BulletHellGame({
               setLives(Math.max(0, MAX_HITS - st.hits));
               st.invUntil = realNow + 1500;
               if (st.hits >= MAX_HITS) {
-                st.deadUntil = realNow + REVIVE_MS;
+                st.deadUntil = realNow + 1;
                 st.bullets = []; st.px = W / 2; st.py = H - 70;
                 setDeadUntil(st.deadUntil);
+                onDiedRef.current?.();
               }
               return false;
             }
@@ -956,8 +926,7 @@ function BulletHellGame({
       {/* 사망 오버레이 */}
       {isDead && (
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/72 text-white">
-          <div className="text-lg font-extrabold">{t("raid.bullet_dead")}</div>
-          <div className="mt-1 text-sm">{t("raid.bullet_revive").replace("{s}", String(deadRemain))}</div>
+          <div className="text-lg font-extrabold">{t("raid.eliminated")}</div>
         </div>
       )}
     </div>
@@ -965,7 +934,7 @@ function BulletHellGame({
 }
 
 export default function RaidPage() {
-  const { rewardSummary, openEgg, refreshRewards } = useAppData();
+  const { rewardSummary, openEgg, openEggs, refreshRewards } = useAppData();
   const { t, lang } = useLang();
   const bossName = (id: number | undefined) => (id ? getCharName(charById(id), lang) : "");
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
@@ -1011,6 +980,7 @@ export default function RaidPage() {
   };
   const [opening, setOpening] = useState<EggType | null>(null);
   const [eggResult, setEggResult] = useState<EggOpenResult | null>(null);
+  const [eggBatchResults, setEggBatchResults] = useState<{ type: EggType; results: EggOpenResult[] } | null>(null);
 
   const handleOpenEgg = async (type: EggType) => {
     if (eggCounts[type] <= 0 || opening) return;
@@ -1018,6 +988,19 @@ export default function RaidPage() {
     try {
       const result = await openEgg(type);
       setEggResult(result);
+    } catch {
+      /* ignore */
+    } finally {
+      setOpening(null);
+    }
+  };
+
+  const handleOpenEgg10 = async (type: EggType) => {
+    if (eggCounts[type] < 10 || opening) return;
+    setOpening(type);
+    try {
+      const results = await openEggs(type, 10);
+      setEggBatchResults({ type, results });
     } catch {
       /* ignore */
     } finally {
@@ -1041,7 +1024,10 @@ export default function RaidPage() {
   const [input, setInput] = useState("");
   const [hit, setHit] = useState(false);
   const [bossLine, setBossLine] = useState<string>("");
-  const [damageNums, setDamageNums] = useState<{ id: number; x: number }[]>([]);
+  const [damageNums, setDamageNums] = useState<{ id: number; x: number; dmg: number }[]>([]);
+  const [banned, setBanned] = useState(false);
+  const [myRank, setMyRank] = useState<number | null>(null);
+  const [rankings, setRankings] = useState<RankEntry[]>([]);
   const [contributed, setContributed] = useState(false);
   const [contribText, setContribText] = useState("");
   const [contribAnswer, setContribAnswer] = useState("");
@@ -1080,11 +1066,12 @@ export default function RaidPage() {
       setFeedback(d.text);
       setTimeout(() => setFeedback(""), 1500);
     };
-    const onCleared = (d: { reward: Reward }) => {
+    const onCleared = (d: { reward: Reward; rank?: number; rankings?: RankEntry[] }) => {
       setReward(d.reward);
+      setMyRank(d.rank ?? null);
+      setRankings(d.rankings ?? []);
       setContributed(false);
       setContribText(""); setContribAnswer("");
-      // 서버가 알/포인트를 적립했으니 요약 갱신
       refreshRewards().catch(() => undefined);
     };
     const onFull = () => { setFull(true); setTimeout(() => setFull(false), 2500); };
@@ -1092,7 +1079,8 @@ export default function RaidPage() {
       setLobby((p) => ({ ...p, [d.raidType]: { count: p[d.raidType]?.count ?? 0, cooldownUntil: d.until } }));
       setView("lobby");
     };
-    const onBossHit = (d: { line: string; hp?: number; maxHp?: number }) => {
+    const onBanned = () => { setBanned(true); setView("lobby"); };
+    const onBossHit = (d: { line: string; hp?: number; maxHp?: number; dmg?: number }) => {
       setBossLine(d.line);
       setTimeout(() => setBossLine(""), 2200);
       if (d.hp !== undefined) {
@@ -1100,7 +1088,8 @@ export default function RaidPage() {
       }
       const id = Date.now();
       const x = 30 + Math.random() * 40;
-      setDamageNums((p) => [...p.slice(-4), { id, x }]);
+      const dmg = d.dmg ?? 1;
+      setDamageNums((p) => [...p.slice(-4), { id, x, dmg }]);
       setTimeout(() => setDamageNums((p) => p.filter((n) => n.id !== id)), 900);
     };
     const onJumpLives = (d: { socketId: string; lives: number; characterId: number; nickname: string }) => {
@@ -1115,14 +1104,15 @@ export default function RaidPage() {
     s.on("raid:cleared", onCleared);
     s.on("raid:full", onFull);
     s.on("raid:cooldown", onCooldown);
+    s.on("raid:banned", onBanned);
     s.on("raid:bossHit", onBossHit);
     s.on("raid:jump_lives", onJumpLives);
     s.emit("raid:counts");
     return () => {
       s.off("raid:lobby", onLobby); s.off("raid:state", onState); s.off("raid:self", onSelf);
       s.off("raid:message", onMsg); s.off("raid:feedback", onFeedback); s.off("raid:cleared", onCleared);
-      s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown); s.off("raid:bossHit", onBossHit);
-      s.off("raid:jump_lives", onJumpLives);
+      s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown); s.off("raid:banned", onBanned);
+      s.off("raid:bossHit", onBossHit); s.off("raid:jump_lives", onJumpLives);
       Object.values(timers.current).forEach(clearTimeout);
     };
   }, []);
@@ -1147,6 +1137,7 @@ export default function RaidPage() {
   };
   const emitJump = useCallback(() => { getRaidSocket().emit("raid:jump"); }, []);
   const emitGem  = useCallback(() => { getRaidSocket().emit("raid:gem");  }, []);
+  const emitDied = useCallback(() => { getRaidSocket().emit("raid:died"); }, []);
   const submitContribution = () => {
     const meta = CONTRIBUTE_META[raidType];
     const text = contribText.trim();
@@ -1193,12 +1184,24 @@ export default function RaidPage() {
                   >
                     {opening === e.type ? t("egg.opening") : t("egg.open")}
                   </button>
+                  <button
+                    onClick={() => handleOpenEgg10(e.type)}
+                    disabled={cnt < 10 || !!opening}
+                    className={`mt-1 w-full rounded-full py-1.5 text-xs font-bold transition-all ${
+                      cnt >= 10 && !opening
+                        ? "bg-amber-600/90 text-white hover:bg-amber-600"
+                        : "cursor-not-allowed bg-gray-400/50 text-gray-600"
+                    }`}
+                  >
+                    {t("egg.open_10")}
+                  </button>
                 </div>
               );
             })}
           </div>
         </div>
 
+        {banned && <div className="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive font-semibold">{t("raid.banned_msg")}</div>}
         {full && <div className="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{t("raid.full_msg")}</div>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {RAID_IDS.map((id) => {
@@ -1271,6 +1274,9 @@ export default function RaidPage() {
         {eggResult && (
           <EggHatchModal eggType={eggResult.eggType} result={eggResult} onClose={() => setEggResult(null)} />
         )}
+        {eggBatchResults && (
+          <EggBatchModal eggType={eggBatchResults.type} results={eggBatchResults.results} onClose={() => setEggBatchResults(null)} />
+        )}
       </div>
     );
   }
@@ -1321,7 +1327,7 @@ export default function RaidPage() {
                 className="pointer-events-none absolute -top-4 font-extrabold text-red-500 text-base"
                 style={{ left: `${n.x}%`, animation: "damage-float 0.9s ease-out forwards" }}
               >
-                -1
+                -{n.dmg}
               </span>
             ))}
           </div>
@@ -1387,6 +1393,7 @@ export default function RaidPage() {
             charDef={charById(self?.characterId ?? myCharacterId)}
             cleared={state?.cleared ?? false}
             onClear={emitJump}
+            onDied={emitDied}
             playerLives={jumpPlayerLives}
             mySocketId={self?.socketId}
           />
@@ -1406,6 +1413,7 @@ export default function RaidPage() {
             charDef={charById(self?.characterId ?? myCharacterId)}
             cleared={state?.cleared ?? false}
             onGemCollect={emitGem}
+            onDied={emitDied}
           />
         </div>
       ) : (
@@ -1514,32 +1522,48 @@ export default function RaidPage() {
               );
             })()
           ) : (
-            /* ── 2단계: 보상 ── */
-            <>
-              <Trophy className="h-16 w-16 text-yellow-400" />
-              <h2 className="mt-3 text-3xl font-extrabold text-white">{t("raid.reward_title")}</h2>
-              <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/10 px-6 py-4">
+            /* ── 2단계: 보상 + 랭킹 ── */
+            <div className="w-full max-w-md">
+              <div className="flex flex-col items-center">
+                <Trophy className="h-14 w-14 text-yellow-400" />
+                <h2 className="mt-2 text-2xl font-extrabold text-white">{t("raid.reward_title")}</h2>
+                {myRank && <p className="mt-1 text-sm font-bold text-yellow-300">{t("raid.my_rank").replace("{r}", String(myRank))}</p>}
+              </div>
+              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-white/10 px-5 py-3">
                 {reward.kind === "egg" ? (
                   <>
-                    <PixelEggSVG type={reward.egg} size={40} />
+                    <PixelEggSVG type={reward.egg} size={36} />
                     <div className="text-left">
-                      <p className="text-lg font-bold text-white">{EGG_LABEL[reward.egg]}{t("raid.reward_egg_suffix")}</p>
-                      <p className="text-sm text-yellow-200">{t("raid.reward_go_inventory")}</p>
+                      <p className="font-bold text-white">{reward.count && reward.count > 1 ? `×${reward.count} ` : ""}{EGG_LABEL[reward.egg]}{t("raid.reward_egg_suffix")}</p>
+                      <p className="text-xs text-yellow-200">{t("raid.reward_go_inventory")}</p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-8 w-8 text-yellow-300" />
+                    <Sparkles className="h-7 w-7 text-yellow-300" />
                     <div className="text-left">
-                      <p className="text-lg font-bold text-white">+{reward.points}{t("raid.reward_points_suffix")}</p>
-                      <p className="text-sm text-yellow-200">{t("raid.reward_maybe_egg")}</p>
+                      <p className="font-bold text-white">+{reward.points}{t("raid.reward_points_suffix")}</p>
+                      <p className="text-xs text-yellow-200">{t("raid.reward_maybe_egg")}</p>
                     </div>
                   </>
                 )}
               </div>
-              <p className="mt-4 text-sm text-white/70">{t("raid.cooldown_hint")}</p>
-              <button onClick={leave} className="mt-6 rounded-full bg-primary px-6 py-2 font-semibold text-primary-foreground">{t("raid.to_lobby")}</button>
-            </>
+              {rankings.length > 0 && (
+                <div className="mt-3 rounded-2xl bg-white/10 p-3">
+                  <p className="mb-2 text-xs font-bold text-white/70 text-center">{t("raid.ranking_title")}</p>
+                  <div className="space-y-1.5">
+                    {rankings.slice(0, 10).map((r) => (
+                      <div key={r.userId} className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${r.rank <= 3 ? "bg-yellow-400/20" : "bg-white/5"}`}>
+                        <span className={`w-5 text-center text-sm font-extrabold ${r.rank === 1 ? "text-yellow-300" : r.rank === 2 ? "text-gray-300" : r.rank === 3 ? "text-amber-500" : "text-white/60"}`}>{r.rank}</span>
+                        <span className="flex-1 truncate text-sm text-white">{r.nickname}</span>
+                        <span className="text-xs font-bold text-red-300">{r.damage} dmg</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <button onClick={leave} className="mt-4 w-full rounded-full bg-primary py-2 font-semibold text-primary-foreground">{t("raid.to_lobby")}</button>
+            </div>
           )}
         </div>
       )}

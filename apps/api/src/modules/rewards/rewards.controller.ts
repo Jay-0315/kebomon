@@ -30,6 +30,11 @@ export class RewardsController {
     return this.rewardsService.openEgg(body.userId, body.eggType);
   }
 
+  @Post("egg/open-batch")
+  openEggBatch(@Body() body: { userId: string; eggType: "normal" | "big" | "golden"; count: number }) {
+    return this.rewardsService.openEggBatch(body.userId, body.eggType, body.count);
+  }
+
   @Post("achievements/check")
   checkAchievements(@Body() body: { userId: string }) {
     return this.rewardsService.checkAndGrantAchievements(body.userId);

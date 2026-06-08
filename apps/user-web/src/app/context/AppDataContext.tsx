@@ -57,6 +57,7 @@ interface AppDataContextValue {
   selectStarter: (characterId: number) => Promise<void>;
   performGacha: (count: 1 | 10) => Promise<GachaResult>;
   openEgg: (eggType: EggType) => Promise<EggOpenResult>;
+  openEggs: (eggType: EggType, count: number) => Promise<EggOpenResult[]>;
   refreshRewards: () => Promise<void>;
   checkAchievements: () => Promise<number[]>;
   equipTitle: (titleId: number) => Promise<void>;
@@ -360,6 +361,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const openEggs = async (eggType: EggType, count: number): Promise<EggOpenResult[]> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
+    const results = await api.post<EggOpenResult[]>("/rewards/egg/open-batch", {
+      userId: currentUser.id,
+      eggType,
+      count,
+    });
+    const newCharIds = results.filter((r) => !r.isDuplicate).map((r) => r.characterId);
+    const totalDupPoints = results.reduce((sum, r) => sum + (r.isDuplicate ? r.points : 0), 0);
+    setRewardSummary((prev) => ({
+      ...prev,
+      normalEggs: prev.normalEggs - (eggType === "normal" ? count : 0),
+      bigEggs: prev.bigEggs - (eggType === "big" ? count : 0),
+      goldenEggs: prev.goldenEggs - (eggType === "golden" ? count : 0),
+      missionPoints: prev.missionPoints + totalDupPoints,
+      ownedCharacterIds: [...prev.ownedCharacterIds, ...newCharIds],
+    }));
+    return results;
+  };
+
   const refreshRewards = async () => {
     const currentUser = getStoredUser();
     if (!currentUser) return;
@@ -472,6 +494,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     selectStarter,
     performGacha,
     openEgg,
+    openEggs,
     refreshRewards,
     checkAchievements,
     equipTitle,

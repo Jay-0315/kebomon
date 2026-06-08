@@ -227,16 +227,6 @@ function GachaCapsuleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 p-6 bg-gradient-to-b from-slate-900/96 to-black/98">
-      {/* Skip */}
-      {!allOpened && (
-        <button
-          onClick={openAll}
-          className="absolute top-5 right-5 text-white/60 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors"
-        >
-          {t("kabemon.gacha_skip")} ⏭
-        </button>
-      )}
-
       {/* Hint / title */}
       <p className="text-white/80 text-sm font-semibold tracking-wide">
         {allOpened ? t("kabemon.gacha_result_title") : t("kabemon.gacha_capsule_hint")}
@@ -1111,21 +1101,21 @@ function AchievementRevealModal({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-slate-950/98">
-      {/* Skip */}
+      {/* 결과 보기 버튼 */}
       {!showSummary && phase === "medal" && newlyUnlocked.length > 1 && (
         <button
           onClick={skipAll}
           className="absolute top-5 right-5 text-white/50 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors z-20"
         >
-          {t("kabemon.gacha_skip")} ⏭
+          {t("kabemon.ach_view_all")} ▶
         </button>
       )}
 
-      {/* 스킵 요약 화면 */}
+      {/* 결과 요약 화면 */}
       {showSummary && (
-        <div className="relative z-10 flex flex-col items-center gap-5 px-4 w-full max-w-sm">
-          <p className="text-white font-bold text-lg tracking-wide">{t("kabemon.ach_skip_summary")}</p>
-          <div className="flex flex-wrap gap-3 justify-center">
+        <div className="relative z-10 flex flex-col items-center gap-5 px-4 w-full max-w-lg overflow-y-auto max-h-screen py-10">
+          <p className="text-white font-bold text-xl tracking-wide">{t("kabemon.ach_skip_summary")}</p>
+          <div className={`grid gap-4 justify-center w-full ${newlyUnlocked.length === 1 ? "grid-cols-1" : newlyUnlocked.length <= 4 ? "grid-cols-2" : "grid-cols-3"}`}>
             {newlyUnlocked.map((cId) => {
               const c = CHARACTERS.find((ch) => ch.id === cId);
               if (!c) return null;
@@ -1133,12 +1123,13 @@ function AchievementRevealModal({
               return (
                 <div
                   key={cId}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl ${RARITY_BG[c.rarity]}`}
-                  style={rv ? { boxShadow: `0 0 12px 3px ${rv.glow}50` } : undefined}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl ${RARITY_BG[c.rarity]}`}
+                  style={rv ? { boxShadow: `0 0 18px 4px ${rv.glow}55` } : undefined}
                 >
-                  <PixelSprite type={c.type} colors={c.colors} characterId={c.id} rarity={c.rarity} size={48} />
-                  <p className={`text-xs font-semibold text-center leading-tight ${RARITY_COLOR[c.rarity]}`}>{getCharName(c, lang)}</p>
-                  <p className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${RARITY_BG[c.rarity]} ${RARITY_COLOR[c.rarity]}`}>{getRarityLabel(c.rarity, lang)}</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 ${RARITY_COLOR[c.rarity]}`}>NEW 획득!</span>
+                  <PixelSprite type={c.type} colors={c.colors} characterId={c.id} rarity={c.rarity} size={80} />
+                  <p className={`text-sm font-bold text-center leading-tight ${RARITY_COLOR[c.rarity]}`}>{getCharName(c, lang)}</p>
+                  <p className={`text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/10 ${RARITY_COLOR[c.rarity]}`}>{getRarityLabel(c.rarity, lang)}</p>
                 </div>
               );
             })}
