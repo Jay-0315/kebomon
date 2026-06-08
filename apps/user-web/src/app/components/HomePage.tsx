@@ -16,6 +16,7 @@ import { useLang } from "../context/LangContext";
 import { TranslationKey } from "../lib/i18n";
 import { CHARACTERS } from "../data/characters";
 import TitleBadge from "./TitleBadge";
+import StatusPanel from "./StatusPanel";
 
 const CHANNEL_DATA = [
   { id: 1, nameKey: "live.channel.1" as TranslationKey, desktop: "/bg-ruins.png",  mobile: "/bg-ruins.v.png",  fill: "#1f2a14", border: "#57534e", icon: <Castle   size={16} color="#a8a29e" /> },
@@ -142,6 +143,9 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* ── Status panel ── */}
+      <StatusPanel />
     </div>
   );
 }

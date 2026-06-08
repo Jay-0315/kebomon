@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { Radio, Users, Send, ArrowLeft, Castle, Landmark, Waves, Flame } from "lucide-react";
+import { Radio, Users, Send, ArrowLeft, Castle, Landmark, Waves, Flame, Star } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { getChatSocket, disconnectChatSocket } from "../lib/socket";
 import { PixelSprite } from "./PixelCharacter";
@@ -430,7 +430,7 @@ export default function LiveChatPage() {
               >
                 <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={isSelf ? 58 : 42} float={isSelf} />
                 <span className="mt-0.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white/90 backdrop-blur-sm whitespace-nowrap">
-                  {isSelf ? "★ " : ""}{p.nickname}
+                  {isSelf && <Star className="w-2.5 h-2.5 fill-yellow-300 text-yellow-300 inline-block mr-0.5 shrink-0" />}{p.nickname}
                 </span>
               </div>
             );

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck, Shield } from "lucide-react";
+import { Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck, Trophy } from "lucide-react";
 import Footer from "./Footer";
 import { useState, useEffect } from "react";
 import { useAppData } from "../context/AppDataContext";
@@ -32,7 +32,7 @@ export default function Layout() {
     { path: "/attendance", icon: CalendarCheck, label: t("nav.attendance") },
     { path: "/live", icon: Radio, label: t("nav.live") },
     { path: "/raid", icon: Swords, label: t("nav.raid") },
-    { path: "/battle", icon: Shield, label: t("nav.battle") },
+    { path: "/colosseum", icon: Trophy, label: t("nav.colosseum") },
   ];
 
   const settingsItems = [

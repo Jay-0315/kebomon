@@ -1,0 +1,326 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { Swords, Clock, Shield, Zap, ChevronRight, Flame } from "lucide-react";
+import { useAppData } from "../context/AppDataContext";
+import { useLang } from "../context/LangContext";
+import { getStoredUser } from "../lib/auth";
+import { api } from "../lib/api";
+import { CHARACTERS, getCharName } from "../data/characters";
+import { PixelSprite } from "./PixelCharacter";
+import type { TranslationKey } from "../lib/i18n";
+
+// ─── 상수 ─────────────────────────────────────────────────────────────────────
+const TIERS = [
+  { ko:"브론즈",    ja:"ブロンズ",     min:0,    color:"#cd7f32", glow:"#8B4513" },
+  { ko:"실버",      ja:"シルバー",     min:1000, color:"#c0c0c0", glow:"#708090" },
+  { ko:"골드",      ja:"ゴールド",     min:2000, color:"#ffd700", glow:"#b8860b" },
+  { ko:"플레티넘",  ja:"プラチナ",     min:3000, color:"#40e0d0", glow:"#008b8b" },
+  { ko:"다이아",    ja:"ダイヤ",       min:4000, color:"#b9f2ff", glow:"#4169e1" },
+  { ko:"마스터",    ja:"マスター",     min:5000, color:"#da70d6", glow:"#800080" },
+  { ko:"챌린저",    ja:"チャレンジャー",min:6000, color:"#ff4500", glow:"#8b0000" },
+] as const;
+
+const RARITY_COLOR: Record<string, string> = {
+  common: "#94a3b8", uncommon: "#4ade80", rare: "#60a5fa",
+  epic: "#c084fc", legendary: "#fbbf24", mythic: "#f472b6",
+};
+const RARITY_KO: Record<string, string> = {
+  common:"커먼", uncommon:"언커먼", rare:"레어",
+  epic:"에픽", legendary:"레전더리", mythic:"신화",
+};
+const RARITY_JA: Record<string, string> = {
+  common:"コモン", uncommon:"アンコモン", rare:"レア",
+  epic:"エピック", legendary:"レジェンダリー", mythic:"ミシック",
+};
+
+const RAID_IDS = [1, 3, 4, 5] as const;
+
+function getTierIdx(pts: number) {
+  for (let i = TIERS.length - 1; i >= 0; i--) if (pts >= TIERS[i].min) return i;
+  return 0;
+}
+
+function fmtTimer(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+// ─── 레이드 보스 행 ────────────────────────────────────────────────────────────
+function BossRow({
+  id, info, now, t, onClick,
+}: {
+  id: number;
+  info: { count: number; cooldownUntil: number; bossCharId: number; currentHp: number; maxHp: number } | undefined;
+  now: number;
+  t: (k: TranslationKey) => string;
+  onClick: () => void;
+}) {
+  const onCooldown = !!info && info.cooldownUntil > now;
+  const isFighting = !!info && !onCooldown && info.count > 0;
+  const hpPct = info ? info.currentHp / info.maxHp : 1;
+  const bossDef = info
+    ? (CHARACTERS.find(c => c.id === info.bossCharId) ?? CHARACTERS[0])
+    : CHARACTERS[(id * 43) % CHARACTERS.length];
+
+  return (
+    <div
+      onClick={onClick}
+      className="flex items-center gap-2.5 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-muted/40"
+      style={{
+        background: onCooldown
+          ? "rgba(239,68,68,0.04)"
+          : isFighting
+          ? "rgba(251,191,36,0.04)"
+          : "rgba(34,197,94,0.04)",
+        borderLeft: `3px solid ${onCooldown ? "#ef4444" : isFighting ? "#fbbf24" : "var(--primary)"}`,
+      }}
+    >
+      <div className="shrink-0 w-8 h-8 flex items-center justify-center overflow-hidden">
+        <PixelSprite type={bossDef.type} colors={bossDef.colors} characterId={bossDef.id} size={30} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold truncate leading-tight">
+          {t(`raid.type.${id}.name` as TranslationKey)}
+        </p>
+        {onCooldown ? (
+          <div className="flex items-center gap-1 mt-0.5">
+            <Clock className="w-2.5 h-2.5 text-red-400 shrink-0" />
+            <span className="text-xs font-mono text-red-400">{fmtTimer(info!.cooldownUntil - now)}</span>
+          </div>
+        ) : isFighting ? (
+          <div className="mt-0.5 space-y-0.5">
+            <div className="flex items-center gap-1">
+              <Zap className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+              <span className="text-xs text-amber-400 font-semibold">{t("status.fighting")}</span>
+              <span className="text-xs text-muted-foreground ml-auto font-mono">
+                {info!.count}{t("status.players")}
+              </span>
+            </div>
+            <div className="h-1 bg-muted rounded-full overflow-hidden w-full">
+              <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${hpPct * 100}%` }} />
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs text-primary font-semibold">{t("raid.available")}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── 티어 픽셀 배지 ────────────────────────────────────────────────────────────
+function TierPixelBadge({ idx, size = 32 }: { idx: number; size?: number }) {
+  const tier = TIERS[idx];
+  const patterns = [
+    [[1,1],[5,1],[2,2],[4,2],[1,3],[5,3],[2,4],[4,4],[3,5]],
+    [[3,0],[2,1],[4,1],[1,2],[5,2],[2,3],[4,3],[3,4]],
+    [[0,2],[2,0],[4,0],[6,2],[1,3],[2,3],[3,3],[4,3],[5,3],[1,4],[5,4]],
+    [[3,0],[2,1],[4,1],[1,2],[5,2],[2,3],[4,3],[3,4],[2,5],[4,5]],
+    [[2,0],[4,0],[1,1],[5,1],[0,2],[6,2],[1,3],[5,3],[2,4],[4,4],[3,5]],
+    [[3,0],[1,1],[5,1],[0,2],[2,2],[4,2],[6,2],[1,3],[5,3],[2,4],[4,4],[3,5]],
+    [[2,0],[4,0],[0,1],[6,1],[1,2],[3,2],[5,2],[0,3],[2,3],[4,3],[6,3],[1,5],[5,5]],
+  ];
+  const dots = patterns[idx] ?? patterns[0];
+  const px = size / 7;
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 7 7"
+      style={{ imageRendering: "pixelated", filter: `drop-shadow(0 0 ${px * 0.6}px ${tier.glow})` }}
+    >
+      {dots.map(([x, y], i) => (
+        <rect key={i} x={x} y={y} width={1} height={1} fill={tier.color} />
+      ))}
+    </svg>
+  );
+}
+
+// ─── 타입 ─────────────────────────────────────────────────────────────────────
+type RaidInfo = { count: number; cooldownUntil: number; bossCharId: number; currentHp: number; maxHp: number };
+type BattleStats = { tierPoints: number; wins: number; losses: number; winStreak: number };
+
+// ─── 메인 ─────────────────────────────────────────────────────────────────────
+export default function StatusPanel() {
+  const { rewardSummary } = useAppData();
+  const { lang, t } = useLang();
+  const navigate = useNavigate();
+  const ko = lang === "ko";
+  const user = getStoredUser();
+
+  const charId = rewardSummary.equippedCharacterId;
+  const charDef = charId ? (CHARACTERS.find(c => c.id === charId) ?? null) : null;
+
+  const [battleStats, setBattleStats] = useState<BattleStats>({ tierPoints: 0, wins: 0, losses: 0, winStreak: 0 });
+  const [raidLobby, setRaidLobby] = useState<Record<number, RaidInfo>>({});
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<BattleStats>(`/rewards/battle-stats?userId=${user.id}`)
+      .then(setBattleStats).catch(() => {});
+    api.get<Record<string, RaidInfo>>("/raid/lobby")
+      .then(raw => {
+        const result: Record<number, RaidInfo> = {};
+        for (const [k, v] of Object.entries(raw)) result[Number(k)] = v;
+        setRaidLobby(result);
+      }).catch(() => {});
+  }, [user?.id]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const tierIdx = getTierIdx(battleStats.tierPoints);
+  const tier = TIERS[tierIdx];
+  const tierNext = TIERS[tierIdx + 1]?.min ?? tier.min + 1000;
+  const tierProg = Math.min(1, (battleStats.tierPoints - tier.min) / (tierNext - tier.min));
+  const hasPlayed = battleStats.wins + battleStats.losses > 0;
+
+  return (
+    <div className="bg-card border border-border rounded overflow-hidden">
+
+      {/* ── 헤더 ── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/20">
+        <div className="flex items-center gap-2">
+          <Swords className="w-3.5 h-3.5 text-primary" strokeWidth={2.5} />
+          <span className="font-bold text-sm tracking-wide">{t("status.title")}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/colosseum")}
+            className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors"
+          >
+            {t("nav.colosseum")}<ChevronRight className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => navigate("/raid")}
+            className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors"
+          >
+            {t("raid.title")}<ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-3">
+        {/* ── 상단: 캐릭터 + 콜로세움 ── */}
+        <div className="grid grid-cols-2 gap-2.5">
+
+          {/* 장착 캐릭터 카드 */}
+          <div
+            className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => navigate("/kabemon")}
+          >
+            <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+              <Shield className="w-3 h-3" />{t("status.char")}
+            </p>
+            {charDef ? (
+              <div className="flex items-center gap-2.5">
+                <div className="shrink-0">
+                  <PixelSprite
+                    type={charDef.type}
+                    colors={charDef.colors}
+                    characterId={charDef.id}
+                    size={44}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-sm leading-tight truncate">
+                    {getCharName(charDef, lang)}
+                  </p>
+                  <p
+                    className="text-xs font-semibold mt-0.5"
+                    style={{ color: RARITY_COLOR[charDef.rarity] ?? "#94a3b8" }}
+                  >
+                    {ko ? (RARITY_KO[charDef.rarity] ?? charDef.rarity) : (RARITY_JA[charDef.rarity] ?? charDef.rarity)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                    {rewardSummary.ownedCharacterIds.length}
+                    <span className="text-muted-foreground/50">/{CHARACTERS.length}</span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">{t("status.no_char")}</p>
+            )}
+          </div>
+
+          {/* 콜로세움 카드 */}
+          <div
+            className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => navigate("/colosseum")}
+          >
+            <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+              <Swords className="w-3 h-3" strokeWidth={2} />{t("nav.colosseum")}
+            </p>
+            <div className="flex items-center gap-2 mb-1.5">
+              <TierPixelBadge idx={tierIdx} size={28} />
+              <div>
+                <p className="font-black text-sm leading-none" style={{ color: tier.color }}>
+                  {ko ? tier.ko : tier.ja}
+                </p>
+                <p className="text-xs font-mono mt-0.5" style={{ color: `${tier.color}bb` }}>
+                  {battleStats.tierPoints.toLocaleString()} pts
+                </p>
+              </div>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${tierProg * 100}%`, background: `linear-gradient(90deg, ${tier.color}88, ${tier.color})` }}
+              />
+            </div>
+            {hasPlayed ? (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-green-400 font-bold">
+                  {battleStats.wins}
+                  <span className="opacity-60 ml-0.5">{t("status.won")}</span>
+                </span>
+                <span className="text-red-400 font-bold">
+                  {battleStats.losses}
+                  <span className="opacity-60 ml-0.5">{t("status.lost")}</span>
+                </span>
+                {battleStats.winStreak >= 2 && (
+                  <span className="text-amber-400 font-bold ml-auto flex items-center gap-0.5">
+                    <Flame className="w-3 h-3" />
+                    {battleStats.winStreak}{t("status.streak")}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t("status.unranked")}</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── 레이드 현황 ── */}
+        <div className="rounded border border-border bg-muted/10 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20">
+            <Swords className="w-3 h-3 text-muted-foreground" strokeWidth={2} />
+            <p className="text-xs font-bold text-muted-foreground tracking-wide">
+              {t("status.raids")}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-y divide-border">
+            {RAID_IDS.map(id => (
+              <BossRow
+                key={id}
+                id={id}
+                info={raidLobby[id]}
+                now={now}
+                t={t}
+                onClick={() => navigate("/raid")}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -62,7 +62,7 @@ function rollDice(faces: number, count: number): { rolls: number[]; total: numbe
   return { rolls, total: rolls.reduce((a, b) => a + b, 0) };
 }
 
-const MAX_HP = 20;
+const MAX_HP = 150;
 
 interface Fighter {
   userId: string;
@@ -151,10 +151,6 @@ export class BattleGateway implements OnGatewayDisconnect {
       maxHp: MAX_HP,
     });
 
-    // 상대 선공이면 자동으로 상대 턴 실행
-    if (!playerGoesFirst) {
-      setTimeout(() => this.runOpponentTurn(client, room), 1200);
-    }
   }
 
   /** 플레이어 턴: 주사위 굴리기 */
@@ -187,8 +183,14 @@ export class BattleGateway implements OnGatewayDisconnect {
 
     room.turn = "opponent";
     client.emit("battle:turn", { turn: "opponent" });
+  }
 
-    setTimeout(() => this.runOpponentTurn(client, room), 1200);
+  /** 플레이어 확인 후 상대 턴 실행 */
+  @SubscribeMessage("battle:ack")
+  async onAck(@ConnectedSocket() client: Socket) {
+    const room = battles.get(client.id);
+    if (!room || room.turn !== "opponent") return;
+    await this.runOpponentTurn(client, room);
   }
 
   private async runOpponentTurn(client: Socket, room: BattleRoom) {

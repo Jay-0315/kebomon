@@ -65,10 +65,10 @@ function rarityDamage(charId: number): number {
 }
 
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
-  1: { name: "점프 레이드",      points: 30, goal: 40, cry: "내 장애물을 피할 수 있겠나?!" },
-  3: { name: "퀴즈 레이드",      points: 50, goal: 25, cry: "내 물음에 답하라!" },
-  4: { name: "받아쓰기 레이드",  points: 80, goal: 25, cry: "정확히 받아써라. 오차는 없다." },
-  5: { name: "탄막 레이드",      points: 60, goal: 30, cry: "내 탄막을 피할 수 있겠나?!" },
+  1: { name: "점프 레이드",      points: 30, goal: 50, cry: "내 장애물을 피할 수 있겠나?!" },
+  3: { name: "퀴즈 레이드",      points: 50, goal: 50, cry: "내 물음에 답하라!" },
+  4: { name: "받아쓰기 레이드",  points: 80, goal: 50, cry: "정확히 받아써라. 오차는 없다." },
+  5: { name: "탄막 레이드",      points: 60, goal: 50, cry: "내 탄막을 피할 수 있겠나?!" },
 };
 
 const BOSS_POOL = [
@@ -160,7 +160,8 @@ interface Player {
   nickname: string;
   raidType: number;
   userId: string | null;
-  damage: number; // 이 세션에서 가한 총 데미지
+  damage: number;
+  lives: number; // 퀴즈·받아쓰기 전용 (5→0 소진 시 퇴장)
 }
 
 interface RaidRoom {
@@ -286,6 +287,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       raidType: type,
       userId,
       damage: 0,
+      lives: (type === 3 || type === 4) ? 5 : 0,
     });
     client.join(room(type));
     client.emit("raid:self", { socketId: client.id, nickname, characterId: Number(data?.characterId) || 1 });
@@ -464,6 +466,15 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         progressed = true;
         r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
         feedback = "정답!";
+      } else {
+        player.lives = Math.max(0, player.lives - 1);
+        client.emit("raid:lives", { lives: player.lives });
+        client.emit("raid:feedback", { text: player.lives > 0 ? `오답! 라이프 ${player.lives}개 남음` : "라이프 소진! 퇴장" });
+        if (player.lives <= 0) {
+          client.emit("raid:eliminated", {});
+          this.removePlayer(client, true);
+          return;
+        }
       }
     } else if (player.raidType === 4) {
       if (text === r.typingSentence) {
@@ -472,6 +483,16 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         player.damage += dmg;
         progressed = true;
         r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
+        feedback = "정확!";
+      } else {
+        player.lives = Math.max(0, player.lives - 1);
+        client.emit("raid:lives", { lives: player.lives });
+        client.emit("raid:feedback", { text: player.lives > 0 ? `틀렸습니다! 라이프 ${player.lives}개 남음` : "라이프 소진! 퇴장" });
+        if (player.lives <= 0) {
+          client.emit("raid:eliminated", {});
+          this.removePlayer(client, true);
+          return;
+        }
       }
     }
 
@@ -549,10 +570,10 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   @SubscribeMessage("raid:counts")
   handleCounts(@ConnectedSocket() client: Socket) {
-    client.emit("raid:lobby", this.lobby());
+    client.emit("raid:lobby", this.getLobbyStatus());
   }
 
-  private lobby() {
+  getLobbyStatus() {
     const info: Record<number, { count: number; cooldownUntil: number; bossCharId: number; currentHp: number; maxHp: number }> = {};
     for (const t of RAID_TYPES) {
       const r = this.rooms.get(t);
@@ -569,7 +590,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   }
 
   private broadcastCounts() { this.broadcastLobby(); }
-  private broadcastLobby() { this.server.emit("raid:lobby", this.lobby()); }
+  private broadcastLobby() { this.server.emit("raid:lobby", this.getLobbyStatus()); }
 }
 
 function socketId(client: Socket): string { return client.id; }

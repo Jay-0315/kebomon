@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarCheck, Flame } from "lucide-react";
+import { CalendarCheck, Flame, Check } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
@@ -126,7 +126,7 @@ export default function AttendancePage() {
         {claiming
           ? t("attendance.btn_processing")
           : attendanceClaimedToday
-          ? `✓ ${t("attendance.btn_done")}`
+          ? <span className="flex items-center justify-center gap-1.5"><Check className="w-4 h-4" />{t("attendance.btn_done")}</span>
           : t("attendance.btn_check")}
       </button>
 

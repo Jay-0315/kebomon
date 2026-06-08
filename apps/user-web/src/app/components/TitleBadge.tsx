@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
 import { TITLES, TITLE_BY_ID, TITLE_GLOW, TITLE_GRADE_BG, TITLE_GRADE_COLOR } from "../data/titles";
 import type { TitleGrade } from "../data/titles";
 import { useLang } from "../context/LangContext";
@@ -190,7 +190,7 @@ export function TitleSelector({
                         </button>
                       )}
                       {isEquipped && (
-                        <span className="shrink-0 text-[10px] font-semibold text-primary">✓ {t("kabemon.equipped")}</span>
+                        <span className="shrink-0 text-[10px] font-semibold text-primary flex items-center gap-0.5"><Check className="w-2.5 h-2.5" />{t("kabemon.equipped")}</span>
                       )}
                     </div>
                   );

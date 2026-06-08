@@ -13,11 +13,10 @@ export class NotificationsService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    webpush.setVapidDetails(
-      process.env.VAPID_EMAIL!,
-      process.env.VAPID_PUBLIC_KEY!,
-      process.env.VAPID_PRIVATE_KEY!,
-    );
+    const { VAPID_EMAIL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = process.env;
+    if (VAPID_EMAIL && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+      webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    }
   }
 
   /** 푸시 구독 저장 (기존 endpoint 중복 방지) */

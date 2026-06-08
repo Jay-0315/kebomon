@@ -178,3 +178,16 @@ CREATE TABLE password_change_history (
   changed_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pwhistory_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS battle_stats (
+  id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+  user_id     VARCHAR(36)   NOT NULL UNIQUE,
+  tier_points INT           NOT NULL DEFAULT 0,
+  wins        INT           NOT NULL DEFAULT 0,
+  losses      INT           NOT NULL DEFAULT 0,
+  win_streak  INT           NOT NULL DEFAULT 0,
+  best_streak INT           NOT NULL DEFAULT 0,
+  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_battle_stats_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

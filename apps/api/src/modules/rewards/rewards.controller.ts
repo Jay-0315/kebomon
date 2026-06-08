@@ -59,4 +59,14 @@ export class RewardsController {
   claimAttendance(@Body() body: { userId: string }) {
     return this.rewardsService.claimAttendance(body.userId);
   }
+
+  @Get("colosseum-rankings")
+  getColosseumRankings() {
+    return this.rewardsService.getColosseumRankings();
+  }
+
+  @Get("battle-stats")
+  getBattleStats(@Query("userId") userId: string) {
+    return this.rewardsService.getBattleStats(userId);
+  }
 }

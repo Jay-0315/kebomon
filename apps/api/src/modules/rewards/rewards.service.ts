@@ -356,6 +356,16 @@ function eggCount(reward: { normalEggs: number; bigEggs: number; goldenEggs: num
   return reward.goldenEggs;
 }
 
+interface RankingRow {
+  rank: number;
+  userId: string;
+  nickname: string;
+  tierPoints: number;
+  wins: number;
+  winStreak: number;
+  characterId: number | null;
+}
+
 @Injectable()
 export class RewardsService {
   constructor(
@@ -888,6 +898,39 @@ export class RewardsService {
     }
 
     return { newlyUnlocked };
+  }
+
+  // ─── 콜로세움 랭킹 (1시간 서버캐시) ────────────────────────────────────
+  private rankingsCache: { data: RankingRow[]; updatedAt: number } | null = null;
+  private readonly RANKINGS_TTL_MS = 60 * 60 * 1000;
+
+  async getColosseumRankings() {
+    const now = Date.now();
+    if (this.rankingsCache && now - this.rankingsCache.updatedAt < this.RANKINGS_TTL_MS) {
+      return { rankings: this.rankingsCache.data, updatedAt: this.rankingsCache.updatedAt };
+    }
+    const rows = await this.prisma.battleStats.findMany({
+      take: 20,
+      orderBy: { tierPoints: "desc" },
+      select: {
+        userId: true,
+        tierPoints: true,
+        wins: true,
+        winStreak: true,
+        user: { select: { name: true, reward: { select: { equippedCharacterId: true } } } },
+      },
+    });
+    const data: RankingRow[] = rows.map((r, i) => ({
+      rank: i + 1,
+      userId: r.userId,
+      nickname: r.user.name,
+      tierPoints: r.tierPoints,
+      wins: r.wins,
+      winStreak: r.winStreak,
+      characterId: r.user.reward?.equippedCharacterId ?? null,
+    }));
+    this.rankingsCache = { data, updatedAt: now };
+    return { rankings: data, updatedAt: now };
   }
 
   async getBattleStats(userId: string) {

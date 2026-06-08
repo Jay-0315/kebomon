@@ -1032,6 +1032,8 @@ export default function RaidPage() {
   const [contribText, setContribText] = useState("");
   const [contribAnswer, setContribAnswer] = useState("");
   const [jumpPlayerLives, setJumpPlayerLives] = useState<PlayerLiveMap>({});
+  const [chatLives, setChatLives] = useState(5);
+  const [eliminated, setEliminated] = useState(false);
   const prevHp = useRef<number | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -1095,6 +1097,8 @@ export default function RaidPage() {
     const onJumpLives = (d: { socketId: string; lives: number; characterId: number; nickname: string }) => {
       setJumpPlayerLives((p) => ({ ...p, [d.socketId]: { lives: d.lives, characterId: d.characterId, nickname: d.nickname } }));
     };
+    const onChatLives = (d: { lives: number }) => setChatLives(d.lives);
+    const onEliminated = () => { setEliminated(true); setView("lobby"); };
 
     s.on("raid:lobby", onLobby);
     s.on("raid:state", onState);
@@ -1107,12 +1111,15 @@ export default function RaidPage() {
     s.on("raid:banned", onBanned);
     s.on("raid:bossHit", onBossHit);
     s.on("raid:jump_lives", onJumpLives);
+    s.on("raid:lives", onChatLives);
+    s.on("raid:eliminated", onEliminated);
     s.emit("raid:counts");
     return () => {
       s.off("raid:lobby", onLobby); s.off("raid:state", onState); s.off("raid:self", onSelf);
       s.off("raid:message", onMsg); s.off("raid:feedback", onFeedback); s.off("raid:cleared", onCleared);
       s.off("raid:full", onFull); s.off("raid:cooldown", onCooldown); s.off("raid:banned", onBanned);
       s.off("raid:bossHit", onBossHit); s.off("raid:jump_lives", onJumpLives);
+      s.off("raid:lives", onChatLives); s.off("raid:eliminated", onEliminated);
       Object.values(timers.current).forEach(clearTimeout);
     };
   }, []);
@@ -1121,6 +1128,7 @@ export default function RaidPage() {
 
   const enter = (id: number) => {
     setRaidType(id); setState(null); setSelf(null); setBubbles([]); setReward(null);
+    setChatLives(5); setEliminated(false);
     const user = getStoredUser();
     getRaidSocket().emit("raid:join", { raidType: id, characterId: myCharacterId, userId: user?.id });
     setView("room");
@@ -1202,6 +1210,12 @@ export default function RaidPage() {
         </div>
 
         {banned && <div className="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive font-semibold">{t("raid.banned_msg")}</div>}
+        {eliminated && !banned && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-500">
+            <Heart className="h-4 w-4 fill-red-500" />
+            {lang === "ko" ? "라이프가 모두 소진되어 퇴장되었습니다. 다음 타임에 재도전하세요." : "ライフが尽きたため退場しました。次のタイムに再挑戦してください。"}
+          </div>
+        )}
         {full && <div className="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{t("raid.full_msg")}</div>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {RAID_IDS.map((id) => {
@@ -1375,6 +1389,15 @@ export default function RaidPage() {
       {feedback && (
         <div className="pointer-events-none absolute left-1/2 top-52 z-40 -translate-x-1/2 rounded-full bg-black/70 px-4 py-1.5 text-sm font-bold text-white">
           {feedback}
+        </div>
+      )}
+
+      {/* 퀴즈·받아쓰기 라이프 표시 */}
+      {(raidType === 3 || raidType === 4) && (
+        <div className="pointer-events-none absolute left-2 top-[220px] z-40 flex items-center gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Heart key={i} className={`h-4 w-4 transition-colors ${i < chatLives ? "fill-red-500 text-red-500" : "text-gray-400/50"}`} />
+          ))}
         </div>
       )}
 
