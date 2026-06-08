@@ -279,30 +279,38 @@ export class BattleGateway implements OnGatewayDisconnect {
 
   /** 비슷한 티어 점수의 유저 클론을 상대로 선택 */
   private async pickOpponent(excludeUserId: string): Promise<Fighter> {
-    const playerReward = await this.prisma.userReward.findUnique({
+    const playerStats = await this.prisma.battleStats.findUnique({
       where: { userId: excludeUserId },
       select: { tierPoints: true },
     });
-    const playerPts = playerReward?.tierPoints ?? 0;
+    const playerPts = playerStats?.tierPoints ?? 0;
 
     // 점수 대역을 점점 넓히며 후보 탐색 (300 → 1000 → 3000 → 무제한)
     const BANDS = [300, 1000, 3000, null] as const;
-    let rows: { userId: string; equippedCharacterId: number | null; tierPoints: number; user: { name: string | null } }[] = [];
+    let rows: {
+      userId: string;
+      tierPoints: number;
+      user: { name: string | null; reward: { equippedCharacterId: number | null } | null };
+    }[] = [];
 
     for (const band of BANDS) {
-      rows = await this.prisma.userReward.findMany({
+      rows = await this.prisma.battleStats.findMany({
         where: {
           userId: { not: excludeUserId },
-          equippedCharacterId: { not: null },
+          user: { reward: { is: { equippedCharacterId: { not: null } } } },
           ...(band !== null && {
             tierPoints: { gte: playerPts - band, lte: playerPts + band },
           }),
         },
         select: {
           userId: true,
-          equippedCharacterId: true,
           tierPoints: true,
-          user: { select: { name: true } },
+          user: {
+            select: {
+              name: true,
+              reward: { select: { equippedCharacterId: true } },
+            },
+          },
         },
         take: 30,
       });
@@ -326,7 +334,7 @@ export class BattleGateway implements OnGatewayDisconnect {
     const pool = rows.slice(0, Math.min(5, rows.length));
     const row = pool[Math.floor(Math.random() * pool.length)];
 
-    const charId = row.equippedCharacterId!;
+    const charId = row.user.reward!.equippedCharacterId!;
 
     // 상대 클론의 실제 강화 레벨 조회
     let enhancementLevel = 0;
