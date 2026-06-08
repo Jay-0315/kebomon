@@ -64,7 +64,7 @@ interface AppDataContextValue {
   unequipTitle: () => Promise<void>;
   checkTitles: () => Promise<number[]>;
   claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
-  buyShopItem: (itemId: string) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
+  buyShopItem: (itemId: string, quantity?: number) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
   refreshData: () => Promise<void>;
   profilePhoto: string | null;
@@ -470,12 +470,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result.newlyUnlocked;
   };
 
-  const buyShopItem = async (itemId: string): Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }> => {
+  const buyShopItem = async (itemId: string, quantity = 1): Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }> => {
     const currentUser = getStoredUser();
     if (!currentUser) throw new Error("로그인이 필요합니다.");
     const result = await api.post<{ success: boolean; remainingPoints: number; enhancementStones: number }>("/rewards/shop/buy", {
       userId: currentUser.id,
       itemId,
+      quantity,
     });
     setRewardSummary((prev) => ({
       ...prev,

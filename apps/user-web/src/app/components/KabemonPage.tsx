@@ -204,16 +204,42 @@ function MythicBackground() {
       <rect x="60" y="107" width="120" height="2" fill="#3030a0" opacity="0.35"/>
       <rect x="119" y="46" width="2" height="126" fill="#3030a0" opacity="0.35"/>
 
-      {/* ── Center glow point ── */}
-      <ellipse cx="120" cy="100" rx="12" ry="12" fill="#8060d8" opacity="0.4"/>
-      <ellipse cx="120" cy="100" rx="7" ry="7" fill="#c0a0ff" opacity="0.58"/>
-      <rect x="116" y="96" width="8" height="8" fill="#d8c8ff" opacity="0.8"/>
-      <rect x="118" y="98" width="4" height="4" fill="#f0e8ff" opacity="0.92"/>
-      <rect x="119" y="99" width="2" height="2" fill="#ffffff" opacity="1"/>
-
       {/* ── Ground mist ── */}
       <rect x="20" y="190" width="200" height="8" fill="#0c0620" opacity="0.5" rx="4"/>
       <rect x="55" y="196" width="130" height="6" fill="#0c0620" opacity="0.32" rx="3"/>
+    </svg>
+  );
+}
+
+// ─── Mythic Magic Circle (발밑 마법진) ────────────────────────────────────────
+function MythicMagicCircle({ size = 220 }: { size?: number }) {
+  return (
+    <svg width={size} height={Math.round(size * 0.44)} viewBox="0 0 220 96"
+      style={{ imageRendering: "pixelated" }}>
+      {/* ground glow */}
+      <ellipse cx="110" cy="48" rx="108" ry="46" fill="#7c3aed" opacity="0.07"/>
+      {/* outer ring */}
+      <ellipse cx="110" cy="48" rx="100" ry="40" fill="none" stroke="#9333ea" strokeWidth="1.5" opacity="0.45"/>
+      <ellipse cx="110" cy="48" rx="93"  ry="33" fill="none" stroke="#c084fc" strokeWidth="1"   opacity="0.25"/>
+      {/* inner ring */}
+      <ellipse cx="110" cy="48" rx="62"  ry="24" fill="none" stroke="#a855f7" strokeWidth="1.5" opacity="0.55"/>
+      {/* center ring */}
+      <ellipse cx="110" cy="48" rx="28"  ry="11" fill="none" stroke="#c084fc" strokeWidth="1"   opacity="0.4"/>
+      {/* 8 tick marks */}
+      <rect x="108" y="7"  width="4" height="5" fill="#e9d5ff" opacity="0.9"/>
+      <rect x="170" y="17" width="4" height="5" fill="#e9d5ff" opacity="0.65"/>
+      <rect x="206" y="45" width="4" height="5" fill="#e9d5ff" opacity="0.9"/>
+      <rect x="170" y="74" width="4" height="5" fill="#e9d5ff" opacity="0.65"/>
+      <rect x="108" y="84" width="4" height="5" fill="#e9d5ff" opacity="0.9"/>
+      <rect x="46"  y="74" width="4" height="5" fill="#e9d5ff" opacity="0.65"/>
+      <rect x="10"  y="45" width="4" height="5" fill="#e9d5ff" opacity="0.9"/>
+      <rect x="46"  y="17" width="4" height="5" fill="#e9d5ff" opacity="0.65"/>
+      {/* cross lines */}
+      <line x1="10"  y1="48" x2="210" y2="48" stroke="#7c3aed" strokeWidth="0.8" opacity="0.2"/>
+      <line x1="110" y1="8"  x2="110" y2="88" stroke="#7c3aed" strokeWidth="0.8" opacity="0.2"/>
+      {/* diagonal */}
+      <line x1="48"  y1="18" x2="172" y2="78" stroke="#7c3aed" strokeWidth="0.6" opacity="0.13"/>
+      <line x1="172" y1="18" x2="48"  y2="78" stroke="#7c3aed" strokeWidth="0.6" opacity="0.13"/>
     </svg>
   );
 }
@@ -519,11 +545,14 @@ export default function KabemonPage() {
             <div className="flex flex-col gap-4 flex-1 min-w-0">
               <div className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]}`}>
                 <div className="flex flex-col items-center gap-4">
-                  <div className={`rounded-2xl ${RARITY_BG[equippedChar.rarity]} relative overflow-hidden`} style={{ width: "100%", minHeight: 220 }}>
-                    {equippedChar.rarity === "mythic" ? (
-                      <MythicBackground />
-                    ) : (
+                  <div className={`rounded-2xl ${equippedChar.rarity === "mythic" ? "" : RARITY_BG[equippedChar.rarity]} relative overflow-hidden`} style={{ width: "100%", minHeight: 220 }}>
+                    {equippedChar.rarity !== "mythic" && (
                       <div className={`absolute inset-0 rounded-2xl blur-md opacity-30 ${RARITY_BG[equippedChar.rarity]}`} style={{ transform: "scale(1.1)" }} />
+                    )}
+                    {equippedChar.rarity === "mythic" && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none z-0">
+                        <MythicMagicCircle size={240} />
+                      </div>
                     )}
                     <div className="relative z-10 flex items-center justify-center py-6">
                       <PixelCharacter characterId={equippedChar.id} size={140} float />

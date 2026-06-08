@@ -239,7 +239,7 @@ export class BattleGateway implements OnGatewayDisconnect {
     if (!battles.has(client.id)) return;
 
     const dice = RARITY_DICE[room.opponent.rarity] ?? RARITY_DICE.common;
-    const { rolls, total } = rollDice(dice.faces, dice.count);
+    const { rolls, total } = rollDice(dice.faces, dice.count, room.opponent.enhancementLevel);
 
     room.player.hp = Math.max(0, room.player.hp - total);
     room.log.push(`상대: ${rolls.join("+")} = ${total} 데미지`);
@@ -277,20 +277,37 @@ export class BattleGateway implements OnGatewayDisconnect {
     });
   }
 
-  /** 현재 등록된 유저 중 랜덤 1명의 장착 캐릭터를 클론으로 반환 */
+  /** 비슷한 티어 점수의 유저 클론을 상대로 선택 */
   private async pickOpponent(excludeUserId: string): Promise<Fighter> {
-    const rows = await this.prisma.userReward.findMany({
-      where: {
-        userId: { not: excludeUserId },
-        equippedCharacterId: { not: null },
-      },
-      select: {
-        userId: true,
-        equippedCharacterId: true,
-        user: { select: { name: true } },
-      },
-      take: 100,
+    const playerReward = await this.prisma.userReward.findUnique({
+      where: { userId: excludeUserId },
+      select: { tierPoints: true },
     });
+    const playerPts = playerReward?.tierPoints ?? 0;
+
+    // 점수 대역을 점점 넓히며 후보 탐색 (300 → 1000 → 3000 → 무제한)
+    const BANDS = [300, 1000, 3000, null] as const;
+    let rows: { userId: string; equippedCharacterId: number | null; tierPoints: number; user: { name: string | null } }[] = [];
+
+    for (const band of BANDS) {
+      rows = await this.prisma.userReward.findMany({
+        where: {
+          userId: { not: excludeUserId },
+          equippedCharacterId: { not: null },
+          ...(band !== null && {
+            tierPoints: { gte: playerPts - band, lte: playerPts + band },
+          }),
+        },
+        select: {
+          userId: true,
+          equippedCharacterId: true,
+          tierPoints: true,
+          user: { select: { name: true } },
+        },
+        take: 30,
+      });
+      if (rows.length > 0) break;
+    }
 
     if (rows.length === 0) {
       return {
@@ -304,16 +321,31 @@ export class BattleGateway implements OnGatewayDisconnect {
       };
     }
 
-    const row = rows[Math.floor(Math.random() * rows.length)];
+    // 점수 차이가 작은 순으로 정렬 후 상위 5명 중 랜덤 선택 (다양성 확보)
+    rows.sort((a, b) => Math.abs(a.tierPoints - playerPts) - Math.abs(b.tierPoints - playerPts));
+    const pool = rows.slice(0, Math.min(5, rows.length));
+    const row = pool[Math.floor(Math.random() * pool.length)];
+
     const charId = row.equippedCharacterId!;
+
+    // 상대 클론의 실제 강화 레벨 조회
+    let enhancementLevel = 0;
+    try {
+      const charRecord = await this.prisma.userCharacter.findUnique({
+        where: { userId_characterId: { userId: row.userId, characterId: charId } },
+        select: { enhancementLevel: true },
+      });
+      enhancementLevel = charRecord?.enhancementLevel ?? 0;
+    } catch { /* silent */ }
+
     return {
       userId: row.userId,
-      nickname: `${row.user.name} (클론)`,
+      nickname: `${row.user.name ?? "유저"} (클론)`,
       characterId: charId,
       rarity: CHAR_RARITY[charId] ?? "common",
       hp: MAX_HP,
       isPlayer: false,
-      enhancementLevel: 0,
+      enhancementLevel,
     };
   }
 }

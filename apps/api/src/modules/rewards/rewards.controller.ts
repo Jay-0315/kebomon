@@ -71,8 +71,8 @@ export class RewardsController {
   }
 
   @Post("shop/buy")
-  buyShopItem(@Body() body: { userId: string; itemId: string }) {
-    return this.rewardsService.buyShopItem(body.userId, body.itemId);
+  buyShopItem(@Body() body: { userId: string; itemId: string; quantity?: number }) {
+    return this.rewardsService.buyShopItem(body.userId, body.itemId, body.quantity ?? 1);
   }
 
   @Post("enhance")

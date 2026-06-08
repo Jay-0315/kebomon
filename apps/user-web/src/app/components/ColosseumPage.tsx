@@ -65,6 +65,15 @@ const RARITY_JA: Record<string,string> = {
   common:"コモン",uncommon:"アンコモン",rare:"レア",epic:"エピック",legendary:"レジェンダリー",mythic:"ミシック",
 };
 
+const ENHANCE_EFFECTS_KO: Record<number,string> = {
+  1:"주사위 최솟값 2",2:"주사위 최솟값 3",3:"주사위 최솟값 4",4:"주사위 최솟값 5",
+  5:"보너스 d6 주사위 추가",6:"보너스 주사위 → d8 업그레이드",
+};
+const ENHANCE_EFFECTS_JA: Record<number,string> = {
+  1:"ダイス最小値2",2:"ダイス最小値3",3:"ダイス最小値4",4:"ダイス最小値5",
+  5:"ボーナスd6ダイス追加",6:"ボーナスダイス→d8アップグレード",
+};
+
 function getTierIdx(pts:number){
   for(let i=TIERS.length-1;i>=0;i--) if(pts>=TIERS[i].min) return i;
   return 0;
@@ -516,6 +525,7 @@ export default function ColosseumPage(){
   const ko=lang==="ko";
   const myCharacterId=rewardSummary.equippedCharacterId??CHARACTERS[0].id;
   const myChar=charById(myCharacterId);
+  const myEnhanceLevel=rewardSummary.characterEnhancements[myCharacterId]??0;
   const user=getStoredUser();
 
   // ── 랭킹 상태 ──
@@ -886,19 +896,32 @@ export default function ColosseumPage(){
             <div style={{background:C.panel,border:`2px solid ${rarityTheme.border}`,
               boxShadow:`0 0 22px ${rarityTheme.glow}55, inset 0 0 24px ${rarityTheme.glow}12, 0 0 0 1px #000`,borderRadius:6,padding:16,
               display:"flex",alignItems:"center",gap:14}}>
-              <div style={{animation:"col-idle-bob 2.4s ease-in-out infinite",display:"inline-block",
-                filter:`drop-shadow(0 0 10px ${rarityTheme.glow}) drop-shadow(0 0 22px ${rarityTheme.glow}66)`}}>
-                <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} rarity={myChar.rarity} size={72}/>
-              </div>
-              <div style={{flex:1}}>
-                <p style={{fontFamily:FONT,fontSize:15,fontWeight:900,color:C.parchment,margin:0}}>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontFamily:FONT,fontSize:15,fontWeight:900,color:C.parchment,margin:0,
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                   {user?.name??(ko?"플레이어":"プレイヤー")}
                 </p>
                 <p style={{fontFamily:FONT,fontSize:11,color:rarityTheme.color,
-                  textShadow:`0 0 8px ${rarityTheme.glow}`,margin:"2px 0 8px"}}>
+                  textShadow:`0 0 8px ${rarityTheme.glow}`,margin:"2px 0 8px",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                   {getCharName(myChar,lang)} · {rarityLabel}
                 </p>
                 <DiceLabelChip rarity={myChar.rarity}/>
+                {myEnhanceLevel>0&&(
+                  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:6}}>
+                    <span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:"#60a5fa",
+                      background:"#1e3a5f",border:"1px solid #2563eb",borderRadius:3,padding:"1px 5px"}}>
+                      +{myEnhanceLevel}
+                    </span>
+                    <span style={{fontFamily:FONT,fontSize:10,color:"#93c5fd"}}>
+                      {ko?ENHANCE_EFFECTS_KO[myEnhanceLevel]:ENHANCE_EFFECTS_JA[myEnhanceLevel]}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div style={{animation:"col-idle-bob 2.4s ease-in-out infinite",display:"inline-block",flexShrink:0,
+                filter:`drop-shadow(0 0 10px ${rarityTheme.glow}) drop-shadow(0 0 22px ${rarityTheme.glow}66)`}}>
+                <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} rarity={myChar.rarity} size={72}/>
               </div>
             </div>
           </div>
@@ -1005,24 +1028,31 @@ export default function ColosseumPage(){
                         </div>
                       )}
                       <div style={{
-                        display:"flex",alignItems:"center",gap:10,padding:"7px 14px",
+                        display:"flex",alignItems:"center",gap:6,padding:"5px 10px",
                         background:isMe?"#1e3a5f18":"transparent",
                         borderBottom:`1px solid ${C.borderFaint}`,
                         borderLeft:isMe?`3px solid #60a5fa`:`3px solid transparent`,
                       }}>
-                        <div style={{width:24,textAlign:"center",flexShrink:0}}>
+                        {/* 등수 */}
+                        <div style={{width:20,textAlign:"center",flexShrink:0}}>
                           {entry.rank<=3
-                            ?<RankIcon size={16} color={rankColor} strokeWidth={2}/>
-                            :<span style={{fontFamily:"monospace",fontSize:12,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
+                            ?<RankIcon size={14} color={rankColor} strokeWidth={2}/>
+                            :<span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
                         </div>
-                        {/* 이름 + 승률 (캐릭터보다 먼저 배치) */}
-                        <div style={{flex:1,minWidth:0}}>
-                          <p style={{fontFamily:FONT,fontSize:12,fontWeight:900,
+                        {/* 캐릭터 전신 (등수 바로 옆) */}
+                        <div style={{width:40,height:46,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
+                          {entryChar
+                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={44}/>
+                            :<div style={{width:36,height:36,background:C.borderFaint,borderRadius:2}}/>}
+                        </div>
+                        {/* 닉네임 + 승/연승 */}
+                        <div style={{flex:1,minWidth:0,marginLeft:2}}>
+                          <p style={{fontFamily:FONT,fontSize:11,fontWeight:900,
                             color:isMe?"#93c5fd":C.parchment,margin:0,
                             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {entry.nickname}
-                            {isMe&&<span style={{marginLeft:4,fontSize:9,color:"#60a5fa",
-                              background:"#1e3a5f",padding:"1px 4px",borderRadius:2,fontWeight:900}}>
+                            {isMe&&<span style={{marginLeft:4,fontSize:8,color:"#60a5fa",
+                              background:"#1e3a5f",padding:"1px 3px",borderRadius:2,fontWeight:900}}>
                               {t("col.me")}
                             </span>}
                           </p>
@@ -1030,19 +1060,13 @@ export default function ColosseumPage(){
                             {t("col.wins_summary").replace("{w}",String(entry.wins)).replace("{s}",String(entry.winStreak))}
                           </p>
                         </div>
-                        {/* 티어 */}
+                        {/* 티어 (우측정렬) */}
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:3}}>
-                            <TierBadgeSvg idx={eIdx} size={14}/>
-                            <span style={{fontFamily:FONT,fontSize:10,fontWeight:900,color:eTier.color}}>{ko?eTier.ko:eTier.ja}</span>
+                            <TierBadgeSvg idx={eIdx} size={13}/>
+                            <span style={{fontFamily:FONT,fontSize:9,fontWeight:900,color:eTier.color}}>{ko?eTier.ko:eTier.ja}</span>
                           </div>
-                          <span style={{fontFamily:"monospace",fontSize:10,color:C.stone}}>{entry.tierPoints} pts</span>
-                        </div>
-                        {/* 캐릭터 (맨 오른쪽) */}
-                        <div style={{width:32,height:32,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-                          {entryChar
-                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={32}/>
-                            :<div style={{width:28,height:28,background:C.borderFaint,borderRadius:2}}/>}
+                          <span style={{fontFamily:"monospace",fontSize:9,color:C.stone}}>{entry.tierPoints} pts</span>
                         </div>
                       </div>
                     </div>

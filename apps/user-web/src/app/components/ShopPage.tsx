@@ -18,6 +18,12 @@ const RARITY_BG: Record<CharacterRarity, string> = {
   mythic:    "bg-pink-500/10",
 };
 
+const RARITY_ORDER: Record<CharacterRarity, number> = {
+  common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5,
+};
+
+type SortMode = "enhancement" | "rarity";
+
 // ─── 강화 상수 ──────────────────────────────────────────────────────────────
 const MAX_ENHANCE: Record<CharacterRarity, number> = {
   common: 3, uncommon: 3, rare: 4, epic: 4, legendary: 5, mythic: 6,
@@ -87,14 +93,28 @@ export default function ShopPage() {
   // 상점
   const [buying, setBuying] = useState(false);
   const [buyFeedback, setBuyFeedback] = useState<"success" | "fail" | null>(null);
+  const [buyQty, setBuyQty] = useState(1);
 
   // 강화
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [enhancing, setEnhancing] = useState(false);
   const [enhResult, setEnhResult] = useState<{ success: boolean; newLevel: number } | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("enhancement");
 
   const { missionPoints, enhancementStones, characterEnhancements, ownedCharacterIds } = rewardSummary;
   const ownedChars = CHARACTERS.filter((c) => ownedCharacterIds.includes(c.id));
+
+  const sortedOwnedChars = [...ownedChars].sort((a, b) => {
+    if (sortMode === "enhancement") {
+      const lvlDiff = (characterEnhancements[b.id] ?? 0) - (characterEnhancements[a.id] ?? 0);
+      if (lvlDiff !== 0) return lvlDiff;
+      return RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity];
+    } else {
+      const rarityDiff = RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity];
+      if (rarityDiff !== 0) return rarityDiff;
+      return (characterEnhancements[b.id] ?? 0) - (characterEnhancements[a.id] ?? 0);
+    }
+  });
 
   const selectedChar = selectedId ? CHARACTERS.find((c) => c.id === selectedId) : null;
   const currentLevel = selectedId ? (characterEnhancements[selectedId] ?? 0) : 0;
@@ -110,7 +130,7 @@ export default function ShopPage() {
     setBuying(true);
     setBuyFeedback(null);
     try {
-      await buyShopItem("enhancement_stone");
+      await buyShopItem("enhancement_stone", buyQty);
       setBuyFeedback("success");
     } catch {
       setBuyFeedback("fail");
@@ -160,19 +180,42 @@ export default function ShopPage() {
         <div className="px-4 py-2.5 border-b border-border bg-muted/30">
           <h2 className="text-sm font-semibold text-muted-foreground">{t("shop.title")}</h2>
         </div>
-        <div className="p-4 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center shrink-0">
-            <EnhancementStoneSVG size={44} />
+        <div className="p-4 space-y-3">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center shrink-0">
+              <EnhancementStoneSVG size={44} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-foreground">{t("shop.stone_name")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("shop.stone_desc")}</p>
+              <p className="text-sm font-semibold text-amber-400 mt-1">{t("shop.stone_price")}</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-foreground">{t("shop.stone_name")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{t("shop.stone_desc")}</p>
-            <p className="text-sm font-semibold text-amber-400 mt-1">{t("shop.stone_price")}</p>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground shrink-0">{t("shop.qty_label")}</span>
+            <div className="flex items-center gap-1">
+              {[1, 5, 10, 20].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setBuyQty(q)}
+                  className={`w-10 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    buyQty === q
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground ml-auto shrink-0">
+              {t("shop.total_cost")} <span className="text-amber-400 font-bold">{(600 * buyQty).toLocaleString()}P</span>
+            </span>
           </div>
           <button
             onClick={() => void handleBuy()}
-            disabled={buying || missionPoints < 600}
-            className="shrink-0 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold
+            disabled={buying || missionPoints < 600 * buyQty}
+            className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold
                        disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
           >
             {buying ? t("shop.buying") : t("shop.buy")}
@@ -194,9 +237,26 @@ export default function ShopPage() {
         {/* 캐릭터 선택 그리드 */}
         {!selectedId && (
           <div className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground text-center">{t("enhance.select_char")}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">{t("enhance.select_char")}</p>
+              <div className="flex gap-1">
+                {(["enhancement", "rarity"] as SortMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setSortMode(mode)}
+                    className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
+                      sortMode === mode
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    }`}
+                  >
+                    {mode === "enhancement" ? t("enhance.sort_level") : t("enhance.sort_rarity")}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
-              {ownedChars.map((char) => {
+              {sortedOwnedChars.map((char) => {
                 const lvl = characterEnhancements[char.id] ?? 0;
                 const maxLvl = MAX_ENHANCE[char.rarity];
                 const atMax = lvl >= maxLvl;

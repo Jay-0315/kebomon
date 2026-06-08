@@ -474,7 +474,9 @@ const dict = {
     "shop.buying": "구매 중…",
     "shop.stone_name": "강화석",
     "shop.stone_desc": "케보몬 강화에 사용하는 특수 아이템",
-    "shop.stone_price": "600P",
+    "shop.stone_price": "600P / 개",
+    "shop.qty_label": "수량",
+    "shop.total_cost": "합계",
     "shop.buy_success": "구매 완료!",
     "shop.buy_fail": "구매 실패. 포인트가 부족합니다.",
     // Enhancement
@@ -492,6 +494,8 @@ const dict = {
     "enhance.no_stones": "강화석 부족",
     "enhance.effect": "강화 효과",
     "enhance.stones_needed": "강화석 {n}개 필요",
+    "enhance.sort_level": "강화순",
+    "enhance.sort_rarity": "등급순",
     // Status Panel
     "status.title": "전투 현황",
     "status.char": "장착 캐릭터",
@@ -979,7 +983,9 @@ const dict = {
     "shop.buying": "購入中…",
     "shop.stone_name": "強化石",
     "shop.stone_desc": "ケボモン強化に使う特殊アイテム",
-    "shop.stone_price": "600P",
+    "shop.stone_price": "600P / 個",
+    "shop.qty_label": "数量",
+    "shop.total_cost": "合計",
     "shop.buy_success": "購入完了！",
     "shop.buy_fail": "購入失敗。ポイントが不足しています。",
     // Enhancement
@@ -997,6 +1003,8 @@ const dict = {
     "enhance.no_stones": "強化石不足",
     "enhance.effect": "強化効果",
     "enhance.stones_needed": "強化石{n}個必要",
+    "enhance.sort_level": "強化順",
+    "enhance.sort_rarity": "等級順",
     // Status Panel
     "status.title": "バトル現況",
     "status.char": "装備キャラ",

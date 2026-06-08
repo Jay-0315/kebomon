@@ -28,12 +28,12 @@ export default function Layout() {
   const navItems = [
     { path: "/", icon: Home, label: t("nav.home") },
     { path: "/community", icon: Newspaper, label: t("nav.community") },
-    { path: "/kabemon", icon: Gamepad2, label: t("nav.kabemon") },
     { path: "/attendance", icon: CalendarCheck, label: t("nav.attendance") },
+    { path: "/kabemon", icon: Gamepad2, label: t("nav.kabemon") },
+    { path: "/shop", icon: Shield, label: t("nav.shop") },
     { path: "/live", icon: Radio, label: t("nav.live") },
     { path: "/raid", icon: Swords, label: t("nav.raid") },
     { path: "/colosseum", icon: Trophy, label: t("nav.colosseum") },
-    { path: "/shop", icon: Shield, label: t("nav.shop") },
   ];
 
   const settingsItems = [

@@ -515,23 +515,25 @@ export class RewardsService {
     enhancement_stone: { price: 600, label: "강화석" },
   };
 
-  async buyShopItem(userId: string, itemId: string) {
+  async buyShopItem(userId: string, itemId: string, quantity = 1) {
     const item = RewardsService.SHOP_ITEMS[itemId];
     if (!item) throw new BadRequestException("유효하지 않은 상품입니다.");
+    if (quantity < 1 || quantity > 99) throw new BadRequestException("구매 수량이 올바르지 않습니다.");
 
+    const totalCost = item.price * quantity;
     const reward = await this.getOrCreateReward(userId);
-    if (reward.missionPoints < item.price) throw new BadRequestException("포인트가 부족합니다.");
+    if (reward.missionPoints < totalCost) throw new BadRequestException("포인트가 부족합니다.");
 
     const updated = await this.prisma.userReward.update({
       where: { userId },
       data: {
-        missionPoints:     { decrement: item.price },
-        totalPointsUsed:   { increment: item.price },
-        enhancementStones: { increment: 1 },
+        missionPoints:     { decrement: totalCost },
+        totalPointsUsed:   { increment: totalCost },
+        enhancementStones: { increment: quantity },
       },
     });
 
-    return { enhancementStones: updated.enhancementStones, missionPoints: updated.missionPoints };
+    return { success: true, enhancementStones: updated.enhancementStones, remainingPoints: updated.missionPoints };
   }
 
   // ─── 케보몬 강화 ─────────────────────────────────────────────────────────────
@@ -588,8 +590,8 @@ export class RewardsService {
 
     return {
       success,
-      enhancementLevel: updatedChar.enhancementLevel,
-      enhancementStones: updatedReward.enhancementStones,
+      newLevel: updatedChar.enhancementLevel,
+      remainingStones: updatedReward.enhancementStones,
       nextLevel,
       rate,
     };
