@@ -39,21 +39,18 @@ export default function UserAvatar({ authorId, authorName, size = "md", photoUrl
   if (!border) return inner;
 
   const pad = BORDER_PAD[size];
-  const sz = SIZE_PX[size];
+  const sz = SIZE_PX[size] + pad * 2;
 
   return (
     <div className="relative shrink-0" style={{ width: sz, height: sz }}>
-      {inner}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {inner}
+      </div>
       <img
         src={border.image}
         alt=""
-        className="absolute pointer-events-none"
-        style={{
-          inset: -pad,
-          width: sz + pad * 2,
-          height: sz + pad * 2,
-          objectFit: "contain",
-        }}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ objectFit: "contain" }}
       />
     </div>
   );
