@@ -63,6 +63,8 @@ interface AppDataContextValue {
   equipTitle: (titleId: number) => Promise<void>;
   unequipTitle: () => Promise<void>;
   checkTitles: () => Promise<number[]>;
+  equipBorder: (borderId: string) => Promise<void>;
+  unequipBorder: () => Promise<void>;
   claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
   buyShopItem: (itemId: string, quantity?: number) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
@@ -82,6 +84,7 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     equippedCharacterId: summary?.equippedCharacterId ?? null,
     equippedTitleId: summary?.equippedTitleId ?? null,
     equippedBorderId: summary?.equippedBorderId ?? null,
+    ownedBorderIds: summary?.ownedBorderIds ?? [],
     ownedCharacterIds: (summary?.ownedCharacterIds ?? []).filter((id) => _VALID_CHAR_IDS.has(id)),
     ownedTitleIds: summary?.ownedTitleIds ?? [],
     gachaPityCount: summary?.gachaPityCount ?? 0,
@@ -408,6 +411,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setRewardSummary((prev) => ({ ...prev, equippedTitleId: null }));
   };
 
+  const equipBorder = async (borderId: string) => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    await api.post("/rewards/borders/equip", { userId: currentUser.id, borderId });
+    setRewardSummary((prev) => ({ ...prev, equippedBorderId: borderId }));
+  };
+
+  const unequipBorder = async () => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    await api.post("/rewards/borders/unequip", { userId: currentUser.id });
+    setRewardSummary((prev) => ({ ...prev, equippedBorderId: null }));
+  };
+
   const checkTitles = async (): Promise<number[]> => {
     const currentUser = getStoredUser();
     if (!currentUser) return [];
@@ -539,6 +556,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     equipTitle,
     unequipTitle,
     checkTitles,
+    equipBorder,
+    unequipBorder,
     claimAttendance,
     buyShopItem,
     enhanceCharacter,

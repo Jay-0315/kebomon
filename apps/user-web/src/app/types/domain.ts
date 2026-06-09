@@ -114,6 +114,7 @@ export interface RewardSummary {
   equippedCharacterId: number | null;
   equippedTitleId: number | null;
   equippedBorderId: string | null;
+  ownedBorderIds: string[];
   ownedCharacterIds: number[];
   ownedTitleIds: number[];
   gachaPityCount: number;

@@ -38,6 +38,7 @@ model User {
   reward                UserReward?
   characters            UserCharacter[]
   titles                UserTitle[]
+  borders               UserBorder[]
   identities            UserIdentity[]
   postLikes             PostLike[]
   passwordChangeHistory PasswordChangeHistory?
@@ -131,6 +132,18 @@ model UserTitle {
   @@unique([userId, titleId])
   @@index([userId])
   @@map("user_titles")
+}
+
+model UserBorder {
+  id         BigInt   @id @default(autoincrement())
+  userId     String   @map("user_id")
+  borderId   String   @map("border_id") @db.VarChar(32)
+  obtainedAt DateTime @default(now()) @map("obtained_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, borderId])
+  @@index([userId])
+  @@map("user_borders")
 }
 
 model UserCharacter {

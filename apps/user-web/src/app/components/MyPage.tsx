@@ -13,6 +13,7 @@ import {
   Award,
   CalendarCheck,
   Zap,
+  Layers,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 import PixelCharacter from "./PixelCharacter";
@@ -27,6 +28,7 @@ import {
 } from "../data/characters";
 import TitleBadge, { TitleSelector } from "./TitleBadge";
 import { MessageCircle } from "lucide-react";
+import { BORDER_STYLES, BORDER_NAMES } from "./ColosseumPage";
 
 export default function MyPage() {
   const navigate = useNavigate();
@@ -40,11 +42,15 @@ export default function MyPage() {
     updateProfileName,
     equipTitle,
     unequipTitle,
+    equipBorder,
+    unequipBorder,
   } = useAppData();
   const [titleLoading, setTitleLoading] = useState(false);
   const [showTitleSelector, setShowTitleSelector] = useState(() =>
     new URLSearchParams(location.search).has("titles"),
   );
+  const [showBorderSelector, setShowBorderSelector] = useState(false);
+  const [borderLoading, setBorderLoading] = useState(false);
   const [titleStats, setTitleStats] = useState<TitleUserStats>({});
 
   useEffect(() => {
@@ -88,6 +94,23 @@ export default function MyPage() {
       setTitleLoading(false);
     }
   };
+
+  const handleEquipBorder = async (borderId: string) => {
+    setBorderLoading(true);
+    try {
+      await equipBorder(borderId);
+    } finally {
+      setBorderLoading(false);
+    }
+  };
+  const handleUnequipBorder = async () => {
+    setBorderLoading(true);
+    try {
+      await unequipBorder();
+    } finally {
+      setBorderLoading(false);
+    }
+  };
   const { t, lang } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingName, setEditingName] = useState(false);
@@ -129,45 +152,57 @@ export default function MyPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       {/* ── Profile header ── */}
       <div className="flex items-center gap-4">
-        <div className="relative shrink-0">
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="w-16 h-16 rounded-full border-2 border-primary/40 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden bg-primary/10"
-          >
-            {profilePhoto ? (
-              <img
-                src={profilePhoto}
-                alt={profile.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-2xl font-bold text-primary">
-                {profile.name[0]}
-              </span>
-            )}
-          </div>
-          {profilePhoto && (
-            <button
-              onClick={() => updateProfilePhoto(null)}
-              className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center hover:bg-destructive/80 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors"
-          >
-            <Camera className="w-3 h-3" />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoChange}
-          />
-        </div>
+        {(() => {
+          const equippedBorder = rewardSummary.equippedBorderId ? BORDER_STYLES[rewardSummary.equippedBorderId] : null;
+          const FRAME_PAD = 10;
+          const PHOTO_SIZE = 64;
+          const containerSize = equippedBorder ? PHOTO_SIZE + FRAME_PAD * 2 : PHOTO_SIZE;
+          return (
+            <div className="relative shrink-0" style={{ width: containerSize, height: containerSize }}>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-full border-2 border-primary/40 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden bg-primary/10"
+                style={{
+                  width: PHOTO_SIZE, height: PHOTO_SIZE,
+                  position: equippedBorder ? "absolute" : "relative",
+                  top: equippedBorder ? FRAME_PAD : undefined,
+                  left: equippedBorder ? FRAME_PAD : undefined,
+                }}
+              >
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-bold text-primary">{profile.name[0]}</span>
+                )}
+              </div>
+              {equippedBorder && (
+                <img
+                  src={equippedBorder.image}
+                  alt=""
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ objectFit: "contain", zIndex: 10 }}
+                />
+              )}
+              {profilePhoto && (
+                <button
+                  onClick={() => updateProfilePhoto(null)}
+                  className="absolute w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                  style={{ top: equippedBorder ? FRAME_PAD - 4 : -4, right: equippedBorder ? FRAME_PAD - 4 : -4, zIndex: 20 }}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors"
+                style={{ bottom: equippedBorder ? FRAME_PAD - 4 : -4, right: equippedBorder ? FRAME_PAD - 4 : -4, zIndex: 20 }}
+              >
+                <Camera className="w-3 h-3" />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+            </div>
+          );
+        })()}
 
         <div className="flex-1 min-w-0">
           <h2>{t("mypage.title")}</h2>
@@ -286,6 +321,76 @@ export default function MyPage() {
               loading={titleLoading}
               userStats={titleStats}
             />
+          </div>
+        )}
+      </div>
+
+      {/* ── 테두리 ── */}
+      <div className="bg-card rounded-md p-4 shadow-sm border border-border">
+        <button
+          onClick={() => setShowBorderSelector((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">
+              {lang === "ko" ? "테두리" : "フレーム"}
+            </span>
+            {rewardSummary.equippedBorderId && BORDER_STYLES[rewardSummary.equippedBorderId] && (
+              <img
+                src={BORDER_STYLES[rewardSummary.equippedBorderId].image}
+                alt=""
+                className="w-6 h-6 object-contain"
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span>
+              {rewardSummary.ownedBorderIds.length}
+              {lang === "ko" ? "개 보유" : "個所持"}
+            </span>
+            <ChevronRight
+              className={`w-4 h-4 transition-transform ${showBorderSelector ? "rotate-90" : ""}`}
+            />
+          </div>
+        </button>
+        {showBorderSelector && (
+          <div className="mt-3 pt-3 border-t border-border">
+            {rewardSummary.ownedBorderIds.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                {lang === "ko" ? "보유한 테두리가 없습니다." : "フレームを所持していません。"}
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {rewardSummary.ownedBorderIds.map((bId) => {
+                  const bs = BORDER_STYLES[bId];
+                  if (!bs) return null;
+                  const name = BORDER_NAMES[bId];
+                  const isEquipped = rewardSummary.equippedBorderId === bId;
+                  const label = name ? (lang === "ko" ? name.ko : name.ja) : bId;
+                  return (
+                    <button
+                      key={bId}
+                      disabled={borderLoading}
+                      onClick={() => isEquipped ? void handleUnequipBorder() : void handleEquipBorder(bId)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded border-2 transition-colors ${
+                        isEquipped
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <img src={bs.image} alt={label} className="w-12 h-12 object-contain" />
+                      <span className="text-xs font-medium truncate w-full text-center">{label}</span>
+                      {isEquipped && (
+                        <span className="text-[10px] text-primary">
+                          {lang === "ko" ? "착용 중" : "装着中"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

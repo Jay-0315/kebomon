@@ -55,6 +55,21 @@ export class RewardsController {
     return this.rewardsService.checkAndGrantTitles(body.userId);
   }
 
+  @Post("borders/equip")
+  equipBorder(@Body() body: { userId: string; borderId: string }) {
+    return this.rewardsService.equipBorder(body.userId, body.borderId);
+  }
+
+  @Post("borders/unequip")
+  unequipBorder(@Body() body: { userId: string }) {
+    return this.rewardsService.unequipBorder(body.userId);
+  }
+
+  @Post("borders/grant")
+  grantBorders(@Body() body: { userId: string; borderIds: string[] }) {
+    return this.rewardsService.grantBorders(body.userId, body.borderIds);
+  }
+
   @Post("attendance/claim")
   claimAttendance(@Body() body: { userId: string }) {
     return this.rewardsService.claimAttendance(body.userId);

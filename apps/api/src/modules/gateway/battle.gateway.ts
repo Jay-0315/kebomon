@@ -277,69 +277,78 @@ export class BattleGateway implements OnGatewayDisconnect {
     });
   }
 
-  /** 비슷한 티어 점수의 유저 클론을 상대로 선택 */
+  /** 유저 클론 상대 선택: 0~2999점은 전체 랜덤, 3000점 이상은 유사 점수대 */
   private async pickOpponent(excludeUserId: string): Promise<Fighter> {
-    const [playerStats, playerReward] = await Promise.all([
-      this.prisma.battleStats.findUnique({
-        where: { userId: excludeUserId },
-        select: { tierPoints: true },
-      }),
-      this.prisma.userReward.findUnique({
-        where: { userId: excludeUserId },
-        select: { equippedCharacterId: true },
-      }),
-    ]);
+    const playerStats = await this.prisma.battleStats.findUnique({
+      where: { userId: excludeUserId },
+      select: { tierPoints: true },
+    });
     const playerPts = playerStats?.tierPoints ?? 0;
 
-    // ±1000점 범위 내 유저 클론 탐색
-    const rows = await this.prisma.battleStats.findMany({
-      where: {
-        userId: { not: excludeUserId },
-        user: { reward: { is: { equippedCharacterId: { not: null } } } },
-        tierPoints: { gte: playerPts - 1000, lte: playerPts + 1000 },
-      },
-      select: {
-        userId: true,
-        tierPoints: true,
-        user: {
-          select: {
-            name: true,
-            reward: { select: { equippedCharacterId: true } },
-          },
+    const userSelect = {
+      userId: true,
+      tierPoints: true,
+      user: {
+        select: {
+          name: true,
+          reward: { select: { equippedCharacterId: true } },
         },
       },
-      take: 30,
-    });
+    } as const;
 
-    // ±1000점 내 유저 없으면 도감 캐릭터(같은 등급, 강화 미적용) 반환
+    let rows: { userId: string; tierPoints: number; user: { name: string | null; reward: { equippedCharacterId: number | null } | null } }[] = [];
+
+    if (playerPts < 3000) {
+      // 0~2999점: DB 전체 유저 중 랜덤 (최대 100명 풀)
+      rows = await this.prisma.battleStats.findMany({
+        where: {
+          userId: { not: excludeUserId },
+          user: { reward: { is: { equippedCharacterId: { not: null } } } },
+        },
+        select: userSelect,
+        take: 100,
+      });
+      // 랜덤 셔플 후 1명 선택
+      if (rows.length > 0) {
+        const idx = Math.floor(Math.random() * rows.length);
+        rows = [rows[idx]];
+      }
+    } else {
+      // 3000점 이상: ±1000점 범위 내 유사 점수대 탐색, 점수 차 작은 순 상위 5명 중 랜덤
+      rows = await this.prisma.battleStats.findMany({
+        where: {
+          userId: { not: excludeUserId },
+          user: { reward: { is: { equippedCharacterId: { not: null } } } },
+          tierPoints: { gte: playerPts - 1000, lte: playerPts + 1000 },
+        },
+        select: userSelect,
+        take: 30,
+      });
+      if (rows.length > 0) {
+        rows.sort((a, b) => Math.abs(a.tierPoints - playerPts) - Math.abs(b.tierPoints - playerPts));
+        rows = rows.slice(0, Math.min(5, rows.length));
+        rows = [rows[Math.floor(Math.random() * rows.length)]];
+      }
+    }
+
+    // 매칭 유저 없으면 도감 캐릭터 클론으로 폴백
     if (rows.length === 0) {
-      const playerCharId = playerReward?.equippedCharacterId ?? 4;
-      const playerRarity = CHAR_RARITY[playerCharId] ?? "common";
-      const sameRarityCharIds = Object.entries(CHAR_RARITY)
-        .filter(([, r]) => r === playerRarity)
-        .map(([id]) => Number(id));
-      const fallbackCharId =
-        sameRarityCharIds[Math.floor(Math.random() * sameRarityCharIds.length)] ?? playerCharId;
-
+      const allCharIds = Object.keys(CHAR_RARITY).map(Number);
+      const fallbackCharId = allCharIds[Math.floor(Math.random() * allCharIds.length)];
       return {
         userId: "clone",
         nickname: "케보몬 클론",
         characterId: fallbackCharId,
-        rarity: playerRarity,
+        rarity: CHAR_RARITY[fallbackCharId] ?? "common",
         hp: MAX_HP,
         isPlayer: false,
         enhancementLevel: 0,
       };
     }
 
-    // 점수 차이가 작은 순으로 정렬 후 상위 5명 중 랜덤 선택 (다양성 확보)
-    rows.sort((a, b) => Math.abs(a.tierPoints - playerPts) - Math.abs(b.tierPoints - playerPts));
-    const pool = rows.slice(0, Math.min(5, rows.length));
-    const row = pool[Math.floor(Math.random() * pool.length)];
-
+    const row = rows[0];
     const charId = row.user.reward!.equippedCharacterId!;
 
-    // 상대 클론의 실제 강화 레벨 조회
     let enhancementLevel = 0;
     try {
       const charRecord = await this.prisma.userCharacter.findUnique({

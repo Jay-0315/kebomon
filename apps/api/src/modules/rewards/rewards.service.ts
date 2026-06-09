@@ -498,6 +498,11 @@ export class RewardsService {
       select: { titleId: true },
     });
 
+    const ownedBorders = await this.prisma.userBorder.findMany({
+      where: { userId },
+      select: { borderId: true },
+    });
+
     const todayKTC = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
     return {
       attendanceDays: reward.attendanceDays,
@@ -508,6 +513,7 @@ export class RewardsService {
       equippedBorderId: reward.equippedBorderId,
       ownedCharacterIds: ownedChars.map((c) => c.characterId),
       ownedTitleIds: ownedTitles.map((t) => t.titleId),
+      ownedBorderIds: ownedBorders.map((b) => b.borderId),
       gachaPityCount: reward.gachaPityCount,
       legendaryPityCount: reward.legendaryPityCount,
       totalPointsUsed: reward.totalPointsUsed,
@@ -897,6 +903,36 @@ export class RewardsService {
       data: { equippedTitleId: null },
     });
     return { equippedTitleId: updated.equippedTitleId };
+  }
+
+  async equipBorder(userId: string, borderId: string) {
+    const owned = await this.prisma.userBorder.findUnique({
+      where: { userId_borderId: { userId, borderId } },
+    });
+    if (!owned) throw new BadRequestException(`테두리 ${borderId}를 보유하고 있지 않습니다.`);
+    const updated = await this.prisma.userReward.upsert({
+      where: { userId },
+      create: { userId, equippedBorderId: borderId },
+      update: { equippedBorderId: borderId },
+    });
+    return { equippedBorderId: updated.equippedBorderId };
+  }
+
+  async unequipBorder(userId: string) {
+    const updated = await this.prisma.userReward.upsert({
+      where: { userId },
+      create: { userId, equippedBorderId: null },
+      update: { equippedBorderId: null },
+    });
+    return { equippedBorderId: updated.equippedBorderId };
+  }
+
+  async grantBorders(userId: string, borderIds: string[]) {
+    if (borderIds.length === 0) return;
+    await this.prisma.userBorder.createMany({
+      data: borderIds.map((borderId) => ({ userId, borderId })),
+      skipDuplicates: true,
+    });
   }
 
   async checkAndGrantTitles(userId: string) {

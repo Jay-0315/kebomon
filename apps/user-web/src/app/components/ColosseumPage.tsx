@@ -34,13 +34,13 @@ const C = {
 };
 
 const TIERS = [
-  { key:"bronze",    ko:"브론즈",    ja:"ブロンズ",      min:0,    color:"#cd7f32",glow:"#8B4513" },
-  { key:"silver",    ko:"실버",      ja:"シルバー",      min:1000, color:"#c0c0c0",glow:"#708090" },
-  { key:"gold",      ko:"골드",      ja:"ゴールド",      min:2000, color:"#ffd700",glow:"#b8860b" },
-  { key:"platinum",  ko:"플레티넘",  ja:"プラチナ",      min:3000, color:"#40e0d0",glow:"#008b8b" },
-  { key:"diamond",   ko:"다이아몬드",ja:"ダイヤモンド",  min:4000, color:"#b9f2ff",glow:"#4169e1" },
-  { key:"master",    ko:"마스터",    ja:"マスター",      min:5000, color:"#da70d6",glow:"#800080" },
-  { key:"challenger",ko:"챌린저",   ja:"チャレンジャー",min:6000, color:"#ff4500",glow:"#8b0000" },
+  { key:"bronze",    ko:"브론즈",    ja:"ブロンズ",      min:0,     color:"#cd7f32",glow:"#8B4513" },
+  { key:"silver",    ko:"실버",      ja:"シルバー",      min:3000,  color:"#c0c0c0",glow:"#708090" },
+  { key:"gold",      ko:"골드",      ja:"ゴールド",      min:6000,  color:"#ffd700",glow:"#b8860b" },
+  { key:"platinum",  ko:"플레티넘",  ja:"プラチナ",      min:9000,  color:"#40e0d0",glow:"#008b8b" },
+  { key:"diamond",   ko:"다이아몬드",ja:"ダイヤモンド",  min:12000, color:"#b9f2ff",glow:"#4169e1" },
+  { key:"master",    ko:"마스터",    ja:"マスター",      min:15000, color:"#da70d6",glow:"#800080" },
+  { key:"challenger",ko:"챌린저",   ja:"チャレンジャー",min:18000, color:"#ff4500",glow:"#8b0000" },
 ] as const;
 
 // ─── 시즌 ────────────────────────────────────────────────────────────────────
@@ -51,25 +51,31 @@ const SEASON = {
 };
 
 const SEASON_REWARDS = [
-  { tierKey:"challenger", ko:"챌린저",    ja:"チャレンジャー", minPts:6000, bonusPoints:2000, borderColor:"url(#grad-challenger)", borderGlow:"#ff4500" },
-  { tierKey:"master",     ko:"마스터",    ja:"マスター",       minPts:5000, bonusPoints:1500, borderColor:"#da70d6",              borderGlow:"#9400d3" },
-  { tierKey:"diamond",    ko:"다이아몬드",ja:"ダイヤモンド",   minPts:4000, bonusPoints:1000, borderColor:"#b9f2ff",              borderGlow:"#4169e1" },
-  { tierKey:"platinum",   ko:"플레티넘",  ja:"プラチナ",       minPts:3000, bonusPoints:700,  borderColor:"#40e0d0",              borderGlow:"#008b8b" },
-  { tierKey:"gold",       ko:"골드",      ja:"ゴールド",       minPts:2000, bonusPoints:500,  borderColor:"#ffd700",              borderGlow:"#b8860b" },
-  { tierKey:"silver",     ko:"실버",      ja:"シルバー",       minPts:1000, bonusPoints:300,  borderColor:"#c0c0c0",              borderGlow:"#708090" },
-  { tierKey:"bronze",     ko:"브론즈",    ja:"ブロンズ",       minPts:1,    bonusPoints:100,  borderColor:"#cd7f32",              borderGlow:"#8B4513" },
+  { tierKey:"challenger", ko:"챌린저",    ja:"チャレンジャー", minPts:18000, bonusPoints:6000, color:"#ff4500", glow:"#8b0000" },
+  { tierKey:"master",     ko:"마스터",    ja:"マスター",       minPts:15000, bonusPoints:4500, color:"#da70d6", glow:"#9400d3" },
+  { tierKey:"diamond",    ko:"다이아몬드",ja:"ダイヤモンド",   minPts:12000, bonusPoints:3000, color:"#b9f2ff", glow:"#4169e1" },
+  { tierKey:"platinum",   ko:"플레티넘",  ja:"プラチナ",       minPts:9000,  bonusPoints:2100, color:"#40e0d0", glow:"#008b8b" },
+  { tierKey:"gold",       ko:"골드",      ja:"ゴールド",       minPts:6000,  bonusPoints:1500, color:"#ffd700", glow:"#b8860b" },
+  { tierKey:"silver",     ko:"실버",      ja:"シルバー",       minPts:3000,  bonusPoints:900,  color:"#c0c0c0", glow:"#708090" },
 ] as const;
 
 // 프로필 테두리 id (tierKey → borderId)
 export const SEASON_BORDER_ID = (tierKey: string) => `s1_${tierKey}`;
-export const BORDER_STYLES: Record<string,{color:string;glow:string;animated?:boolean}> = {
-  s1_bronze:     { color:"#cd7f32", glow:"#8B4513" },
-  s1_silver:     { color:"#c0c0c0", glow:"#708090" },
-  s1_gold:       { color:"#ffd700", glow:"#b8860b" },
-  s1_platinum:   { color:"#40e0d0", glow:"#008b8b" },
-  s1_diamond:    { color:"#b9f2ff", glow:"#4169e1" },
-  s1_master:     { color:"#da70d6", glow:"#9400d3" },
-  s1_challenger: { color:"#ff4500", glow:"#8b0000", animated:true },
+export const BORDER_STYLES: Record<string,{image:string}> = {
+  s1_silver:     { image:"/silver.png" },
+  s1_gold:       { image:"/gold.png" },
+  s1_platinum:   { image:"/platinum.png" },
+  s1_diamond:    { image:"/diamond.png" },
+  s1_master:     { image:"/master.png" },
+  s1_challenger: { image:"/challenger.png" },
+};
+export const BORDER_NAMES: Record<string,{ko:string;ja:string}> = {
+  s1_silver:     { ko:"S1 실버",      ja:"S1シルバー" },
+  s1_gold:       { ko:"S1 골드",      ja:"S1ゴールド" },
+  s1_platinum:   { ko:"S1 플레티넘",  ja:"S1プラチナ" },
+  s1_diamond:    { ko:"S1 다이아몬드",ja:"S1ダイヤ" },
+  s1_master:     { ko:"S1 마스터",    ja:"S1マスター" },
+  s1_challenger: { ko:"S1 챌린저",    ja:"S1チャレンジャー" },
 };
 
 const RARITY_DICE_CONFIG: Record<string,{faces:number;count:number}> = {
@@ -579,8 +585,8 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
         {/* 설명 */}
         <p style={{fontSize:11,color:"#8b6f3a",margin:"0 0 14px",lineHeight:1.6}}>
           {ko
-            ? "시즌 종료 시 달성한 최고 티어 기준으로 보상이 지급됩니다. 프로필 테두리는 다음 시즌에도 유지됩니다."
-            : "シーズン終了時の最高ティアに基づいて報酬が付与されます。プロフィール枠は次シーズンも維持されます。"}
+            ? "시즌 종료 시 달성 티어와 그 아래 모든 티어의 프로필 테두리가 함께 지급됩니다. 테두리는 다음 시즌에도 유지됩니다."
+            : "シーズン終了時、達成ティアとそれ以下の全ティアのプロフィール枠が付与されます。枠は次シーズンも維持されます。"}
         </p>
 
         {/* 보상 테이블 */}
@@ -588,6 +594,7 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
           {SEASON_REWARDS.map((r, i) => {
             const isMine = i === myRewardIdx;
             const isAbove = myPts > 0 && myPts >= r.minPts;
+            const borCount = SEASON_REWARDS.length - i;
             return (
               <div key={r.tierKey} style={{
                 display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
@@ -595,105 +602,20 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
                 background:isMine?"rgba(200,164,74,0.08)":isAbove?"rgba(255,255,255,0.02)":"transparent",
                 opacity:isAbove?1:0.6,
               }}>
-                {/* 테두리 미리보기 — 픽셀 도트 링 스타일 */}
-                {(()=>{
-                  const SZ=44, C=22, RR=13, SW=isMine?2.2:1.6;
-                  const P=2; // 픽셀 단위
-                  const DA=`${P} ${P*0.55}`;
-                  const FC=r.borderColor as string;
-                  const FG=r.borderGlow;
-                  const filt=`drop-shadow(0 0 ${SW+2}px ${FG})`;
-                  const baseRing=(stroke:string)=>(
-                    <circle cx={C} cy={C} r={RR} fill="none" stroke={stroke}
-                      strokeWidth={SW} strokeDasharray={DA} strokeLinecap="square"
-                      style={{filter:filt}}/>
-                  );
-                  const pr=(x:number,y:number,w:number,h:number,fill=FC)=>(
-                    <rect x={Math.round(x)} y={Math.round(y)}
-                      width={Math.max(1,Math.round(w))} height={Math.max(1,Math.round(h))}
-                      fill={fill} shapeRendering="crispEdges"/>
-                  );
-                  let inner:React.ReactNode=null;
-                  if(r.tierKey==="bronze"){
-                    const ea=38*Math.PI/180, er=RR+P*2;
-                    const lx=C-Math.sin(ea)*er, ly=C-Math.cos(ea)*er;
-                    const rx=C+Math.sin(ea)*er;
-                    inner=<>{pr(lx-P,ly-P*2,P,P*2)}{pr(lx,ly-P,P,P)}{pr(rx,ly-P*2,P,P*2)}{pr(rx-P,ly-P,P,P)}</>;
-                  } else if(r.tierKey==="silver"){
-                    inner=<>{[0,90,180,270].map(d=>{
-                      const a=(d-90)*Math.PI/180;
-                      const ox=C+(RR+P*2)*Math.cos(a), oy=C+(RR+P*2)*Math.sin(a);
-                      return <g key={d}>{pr(ox-P*.5,oy-P*1.5,P,P)}{pr(ox-P,oy-P*.5,P*2,P)}{pr(ox-P*.5,oy+P*.5,P,P)}</g>;
-                    })}</>;
-                  } else if(r.tierKey==="gold"){
-                    const wa=45*Math.PI/180, wr=RR+P*1.5;
-                    const lx=C-Math.sin(wa)*wr, ly=C-Math.cos(wa)*wr, rx=C+Math.sin(wa)*wr;
-                    inner=<>{pr(lx-P*2.5,ly-P*.5,P*2,P)}{pr(lx-P*2.5,ly-P*1.5,P,P)}{pr(rx+P*.5,ly-P*.5,P*2,P)}{pr(rx+P*1.5,ly-P*1.5,P,P)}</>;
-                  } else if(r.tierKey==="platinum"){
-                    inner=<>{Array.from({length:8},(_,k)=>{
-                      const a=(k*45-90)*Math.PI/180;
-                      const ox=C+(RR+P*1.8)*Math.cos(a), oy=C+(RR+P*1.8)*Math.sin(a);
-                      return <rect key={k} x={Math.round(ox-P*.5)} y={Math.round(oy-P*.5)} width={P} height={P} fill={FC} shapeRendering="crispEdges"/>;
-                    })}</>;
-                  } else if(r.tierKey==="diamond"){
-                    inner=<>{[0,90,180,270].map(d=>{
-                      const a=(d-90)*Math.PI/180;
-                      const bx=C+(RR+P)*Math.cos(a), by=C+(RR+P)*Math.sin(a);
-                      const tx=C+(RR+P*3.5)*Math.cos(a), ty=C+(RR+P*3.5)*Math.sin(a);
-                      const isV=d===0||d===180;
-                      return isV
-                        ?<rect key={d} x={Math.round(bx-P*.5)} y={Math.round(Math.min(by,ty))} width={P} height={Math.round(Math.abs(ty-by))} fill={FC} shapeRendering="crispEdges"/>
-                        :<rect key={d} x={Math.round(Math.min(bx,tx))} y={Math.round(by-P*.5)} width={Math.round(Math.abs(tx-bx))} height={P} fill={FC} shapeRendering="crispEdges"/>;
-                    })}</>;
-                  } else if(r.tierKey==="master"){
-                    inner=<>{Array.from({length:6},(_,k)=>{
-                      const a=(k*60-90)*Math.PI/180;
-                      const ox=C+(RR+P*2)*Math.cos(a), oy=C+(RR+P*2)*Math.sin(a);
-                      const ip=P*1.5;
-                      return <rect key={k} x={Math.round(ox-ip*.5)} y={Math.round(oy-ip*.5)} width={Math.round(ip)} height={Math.round(ip)} fill={FC} shapeRendering="crispEdges"/>;
-                    })}</>;
-                  } else if(r.tierKey==="challenger"){
-                    inner=<>{Array.from({length:8},(_,k)=>{
-                      const a=(k*45-90)*Math.PI/180;
-                      const bx=C+(RR+P)*Math.cos(a), by=C+(RR+P)*Math.sin(a);
-                      const tx=C+(RR+P*3)*Math.cos(a), ty=C+(RR+P*3)*Math.sin(a);
-                      const isV=Math.abs(Math.cos(a))<0.15, isH=Math.abs(Math.sin(a))<0.15;
-                      const sc=k%4===0?"#ff4500":k%2===0?"#da70d6":"#ffd700";
-                      if(isV) return <rect key={k} x={Math.round(bx-P*.5)} y={Math.round(Math.min(by,ty))} width={P} height={Math.round(Math.abs(ty-by))} fill={sc} shapeRendering="crispEdges"/>;
-                      if(isH) return <rect key={k} x={Math.round(Math.min(bx,tx))} y={Math.round(by-P*.5)} width={Math.round(Math.abs(tx-bx))} height={P} fill={sc} shapeRendering="crispEdges"/>;
-                      return <rect key={k} x={Math.round(tx-P*.5)} y={Math.round(ty-P*.5)} width={P} height={P} fill={sc} shapeRendering="crispEdges"/>;
-                    })}</>;
-                  }
-                  return (
-                    <div style={{width:SZ,height:SZ,flexShrink:0,position:"relative"}}>
-                      <svg width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
-                        {r.tierKey==="challenger"?(
-                          <defs>
-                            <linearGradient id="ch-modal-gr2" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#ff4500"/>
-                              <stop offset="33%" stopColor="#ffd700"/>
-                              <stop offset="66%" stopColor="#da70d6"/>
-                              <stop offset="100%" stopColor="#ff4500"/>
-                            </linearGradient>
-                          </defs>
-                        ):null}
-                        {r.tierKey==="challenger"
-                          ? <circle cx={C} cy={C} r={RR} fill="none" stroke="url(#ch-modal-gr2)" strokeWidth={SW} strokeDasharray={DA} strokeLinecap="square" style={{filter:`drop-shadow(0 0 5px #ff4500)`}}/>
-                          : baseRing(FC)
-                        }
-                        {inner}
-                      </svg>
-                      {isMine&&(
-                        <div style={{position:"absolute",top:-2,right:-2,width:10,height:10,
-                          background:"#4ade80",borderRadius:"50%",border:"1px solid #1e1508"}}/>
-                      )}
-                    </div>
-                  );
-                })()}
+                {/* 테두리 미리보기 — PNG 이미지 */}
+                <div style={{width:44,height:44,flexShrink:0,position:"relative"}}>
+                  <img src={`/${r.tierKey}.png`} alt={ko?r.ko:r.ja}
+                    style={{width:44,height:44,objectFit:"contain"}}
+                  />
+                  {isMine&&(
+                    <div style={{position:"absolute",top:-2,right:-2,width:10,height:10,
+                      background:"#4ade80",borderRadius:"50%",border:"1px solid #1e1508"}}/>
+                  )}
+                </div>
                 {/* 티어명 */}
                 <div style={{flex:1,minWidth:0}}>
-                  <p style={{margin:0,fontSize:13,fontWeight:900,color:r.borderColor as string,
-                    filter:`drop-shadow(0 0 4px ${r.borderGlow})`}}>
+                  <p style={{margin:0,fontSize:13,fontWeight:900,color:r.color,
+                    filter:`drop-shadow(0 0 4px ${r.glow})`}}>
                     {ko ? r.ko : r.ja}
                   </p>
                   <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>{r.minPts.toLocaleString()} pts {ko?"이상":"以上"}</p>
@@ -702,7 +624,7 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <p style={{margin:0,fontSize:12,fontWeight:900,color:"#4ade80"}}>+{r.bonusPoints.toLocaleString()}P</p>
                   <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>
-                    {ko?"프로필 테두리":"プロフィール枠"}
+                    {ko?`테두리 ${borCount}종`:`枠${borCount}種`}
                   </p>
                 </div>
               </div>
@@ -741,6 +663,8 @@ export default function ColosseumPage(){
   const[rankUpdatedAt,setRankUpdatedAt]=useState<number|null>(null);
   const[rankLoading,setRankLoading]=useState(false);
   const[rankClock,setRankClock]=useState(Date.now());
+  const[rankTab,setRankTab]=useState("current");
+  const[rankPage,setRankPage]=useState(0);
 
   const fetchRankings=useCallback(async()=>{
     setRankLoading(true);
@@ -1224,166 +1148,205 @@ export default function ColosseumPage(){
 
             {/* ── 랭킹 패널 ── */}
             <div style={{background:C.panel,border:`2px solid ${C.border}`,borderRadius:6,overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                padding:"10px 14px",borderBottom:`1px solid ${C.borderFaint}`,background:"#130e05"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <Trophy size={15} color={C.gold} strokeWidth={2}/>
-                  <span style={{fontFamily:FONT,fontSize:13,fontWeight:900,color:C.gold}}>{t("col.rankings")}</span>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  {rankUpdatedAt&&(
-                    <span style={{fontFamily:FONT,fontSize:10,color:C.stoneFaint}}>
-                      {t("col.last_updated")} {new Date(rankUpdatedAt).toLocaleTimeString(ko?"ko-KR":"ja-JP",{hour:"2-digit",minute:"2-digit"})}
-                      {nextUpdateMin!=null&&nextUpdateMin>0&&` · ${t("col.next_update")} ${nextUpdateMin}${ko?"분":"分"}`}
-                    </span>
-                  )}
-                  <span
-                    style={{background:"none",border:`1px solid ${C.borderFaint}`,borderRadius:3,
-                      color:C.stoneFaint,cursor:"default",
-                      display:"flex",alignItems:"center",gap:4,padding:"3px 8px",fontFamily:FONT,fontSize:10,fontWeight:700}}>
-                    <RefreshCw size={11} strokeWidth={2.5}/>
-                    {t("col.refresh")}
-                  </span>
-                </div>
+
+              {/* 탭 바 */}
+              <div style={{display:"flex",borderBottom:`2px solid ${C.border}`,background:"#0f0a04"}}>
+                {([
+                  {id:"current",ko:"현재 랭킹",ja:"現在ランキング"},
+                  {id:"top",    ko:"상위 랭킹",ja:"上位ランキング"},
+                  {id:"friend", ko:"친구 랭킹",ja:"フレンド"},
+                  {id:"hall",   ko:"명예의 전당",ja:"名誉の殿堂"},
+                ] as {id:string;ko:string;ja:string}[]).map(tab=>{
+                  const active=rankTab===tab.id;
+                  return(
+                    <button key={tab.id} onClick={()=>{setRankTab(tab.id);setRankPage(0);}}
+                      style={{flex:1,padding:"9px 2px",fontFamily:FONT,
+                        fontSize:9,fontWeight:active?900:700,
+                        color:active?C.gold:C.stoneFaint,
+                        background:active?"#1c1308":"transparent",
+                        border:"none",cursor:"pointer",
+                        borderBottom:active?`2px solid ${C.gold}`:`2px solid transparent`,
+                        marginBottom:-2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                      {ko?tab.ko:tab.ja}
+                    </button>
+                  );
+                })}
               </div>
 
-              {rankings.length===0?(
-                <p style={{fontFamily:FONT,fontSize:11,color:C.stoneFaint,textAlign:"center",padding:"24px 0",margin:0}}>
+              {rankTab!=="current"?(
+                <div style={{padding:"32px 16px",textAlign:"center",color:C.stoneFaint,fontFamily:FONT,fontSize:11}}>
+                  {ko?"준비 중입니다":"準備中です"}
+                </div>
+              ):rankings.length===0?(
+                <p style={{fontFamily:FONT,fontSize:11,color:C.stoneFaint,textAlign:"center",padding:"28px 0",margin:0}}>
                   {rankLoading?t("col.loading"):t("col.no_records")}
                 </p>
               ):(()=>{
-                const top10=rankings.slice(0,10);
+                const PAGE_SIZE=5;
+                const pageEntries=rankings.slice(rankPage*PAGE_SIZE,(rankPage+1)*PAGE_SIZE);
+                const totalPages=Math.ceil(rankings.length/PAGE_SIZE);
                 const myEntry=rankings.find(e=>e.userId===user?.id);
-                const myInTop10=myEntry&&myEntry.rank<=10;
-                const renderRow=(entry:RankingEntry,divider?:boolean)=>{
+                const myOnPage=pageEntries.some(e=>e.userId===user?.id);
+
+                const renderRankRow=(entry:RankingEntry)=>{
                   const eIdx=getTierIdx(entry.tierPoints);
                   const eTier=TIERS[eIdx];
                   const isMe=entry.userId===user?.id;
                   const entryChar=entry.characterId!=null?(CHARACTERS.find(c=>c.id===entry.characterId)??CHARACTERS[0]):null;
-                  const RankIcon=entry.rank===1?Crown:Medal;
-                  const rankColor=entry.rank===1?"#ffd700":entry.rank===2?"#c0c0c0":entry.rank===3?"#cd7f32":C.stoneFaint;
+                  const rankColor=entry.rank===1?"#ffd700":entry.rank===2?"#c0c0c0":entry.rank===3?"#cd7f32":C.stone;
                   return(
-                    <div key={entry.userId}>
-                      {divider&&(
-                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"4px 14px",background:"#0c0803",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.borderFaint}`}}>
-                          <span style={{fontSize:9,color:C.stoneFaint,fontFamily:"monospace",letterSpacing:"0.1em"}}>• • •</span>
-                          <span style={{fontSize:9,color:C.stone,fontFamily:FONT}}>{ko?"내 순위":"自分の順位"}</span>
-                        </div>
-                      )}
+                    <div key={entry.userId} style={{
+                      display:"flex",alignItems:"center",gap:8,
+                      padding:"6px 12px 6px 8px",
+                      background:isMe?"linear-gradient(90deg,#1e3a5f28,transparent)":"transparent",
+                      borderBottom:`1px solid ${C.borderFaint}`,
+                      borderLeft:isMe?`3px solid #60a5fa`:entry.rank<=3?`3px solid ${rankColor}`:`3px solid transparent`,
+                    }}>
+                      {/* 순위 번호 */}
+                      <div style={{width:28,flexShrink:0,display:"flex",flexDirection:"column",
+                        alignItems:"center",justifyContent:"center",gap:1}}>
+                        {entry.rank<=3&&(
+                          entry.rank===1?<Crown size={13} color={rankColor} strokeWidth={2.5}/>
+                          :<Medal size={13} color={rankColor} strokeWidth={2.5}/>
+                        )}
+                        <span style={{fontFamily:"monospace",
+                          fontSize:entry.rank<=3?10:14,fontWeight:900,
+                          color:rankColor,lineHeight:1,
+                          textShadow:entry.rank<=3?`0 0 8px ${rankColor}88`:"none"}}>
+                          {entry.rank}
+                        </span>
+                      </div>
+
+                      {/* 아바타 박스 */}
                       <div style={{
-                        display:"flex",alignItems:"center",gap:8,padding:"5px 12px",
-                        background:isMe?"#1e3a5f18":"transparent",
-                        borderBottom:`1px solid ${C.borderFaint}`,
-                        borderLeft:isMe?`3px solid #60a5fa`:`3px solid transparent`,
+                        width:36,height:44,flexShrink:0,
+                        background:isMe?"#132440":`${eTier.glow}18`,
+                        border:`1px solid ${isMe?"#2563eb55":eTier.color+"44"}`,
+                        borderRadius:4,
+                        display:"flex",alignItems:"flex-end",justifyContent:"center",
+                        overflow:"hidden",position:"relative",
                       }}>
-                        {/* 등수 */}
-                        <div style={{width:24,textAlign:"center",flexShrink:0}}>
-                          {entry.rank<=3
-                            ?<RankIcon size={16} color={rankColor} strokeWidth={2}/>
-                            :<span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
-                        </div>
-                        {/* 캐릭터 전신 (등수 바로 옆) */}
-                        <div style={{width:36,height:42,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
-                          {entryChar
-                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={36}/>
-                            :<div style={{width:28,height:28,background:C.borderFaint,borderRadius:2}}/>}
-                        </div>
-                        {/* 닉네임 + 승/연승 */}
-                        <div style={{flex:1,minWidth:0,marginLeft:8}}>
+                        {entryChar
+                          ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={34}/>
+                          :<div style={{width:26,height:26,background:C.borderFaint,borderRadius:2,marginBottom:2}}/>}
+                      </div>
+
+                      {/* 이름 + 티어 */}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:4}}>
                           <p style={{fontFamily:FONT,fontSize:13,fontWeight:900,
                             color:isMe?"#93c5fd":C.parchment,margin:0,
                             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {entry.nickname}
-                            {isMe&&<span style={{marginLeft:4,fontSize:10,color:"#60a5fa",
-                              background:"#1e3a5f",padding:"1px 4px",borderRadius:2,fontWeight:900}}>
-                              {t("col.me")}
-                            </span>}
                           </p>
-                          <p style={{fontFamily:FONT,fontSize:11,color:C.stone,margin:"2px 0 0"}}>
-                            {t("col.wins_summary").replace("{w}",String(entry.wins)).replace("{s}",String(entry.winStreak))}
-                          </p>
+                          {isMe&&(
+                            <span style={{flexShrink:0,fontSize:8,color:"#60a5fa",
+                              background:"#1e3a5f",padding:"1px 4px",borderRadius:2,fontWeight:900,
+                              border:"1px solid #2563eb55"}}>
+                              ME
+                            </span>
+                          )}
                         </div>
-                        {/* 티어 (우측정렬) */}
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <TierBadgeSvg idx={eIdx} size={14}/>
-                            <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,color:eTier.color}}>{ko?eTier.ko:eTier.ja}</span>
-                          </div>
-                          <span style={{fontFamily:"monospace",fontSize:12,color:C.stone}}>{entry.tierPoints} pts</span>
+                        <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+                          <TierBadgeSvg idx={eIdx} size={11}/>
+                          <span style={{fontFamily:FONT,fontSize:10,fontWeight:900,color:eTier.color,
+                            textShadow:`0 0 6px ${eTier.glow}88`}}>
+                            {ko?eTier.ko:eTier.ja}
+                          </span>
+                          {entry.winStreak>1&&(
+                            <span style={{fontSize:9,color:C.gold,fontFamily:FONT,
+                              background:"#c8a44a18",border:`1px solid ${C.gold}44`,
+                              borderRadius:2,padding:"0 3px"}}>
+                              {entry.winStreak}{ko?"연승":"連勝"}
+                            </span>
+                          )}
                         </div>
+                      </div>
+
+                      {/* 점수 + 승 */}
+                      <div style={{flexShrink:0,textAlign:"right"}}>
+                        <p style={{fontFamily:"monospace",fontSize:13,fontWeight:900,
+                          margin:0,color:entry.rank<=3?rankColor:C.parchment,
+                          textShadow:entry.rank<=3?`0 0 8px ${rankColor}66`:"none"}}>
+                          {entry.tierPoints.toLocaleString()}
+                        </p>
+                        <p style={{fontFamily:FONT,fontSize:9,color:C.stoneFaint,margin:"1px 0 0"}}>
+                          {entry.wins}{ko?"승":"勝"} · pts
+                        </p>
                       </div>
                     </div>
                   );
                 };
+
                 return(
                   <div>
-                    {/* 스크롤 가능한 TOP 10 */}
+                    {/* 업데이트 정보 바 */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                      padding:"4px 12px",background:"#0d0904",borderBottom:`1px solid ${C.borderFaint}`}}>
+                      <span style={{fontFamily:FONT,fontSize:9,color:C.stoneFaint}}>
+                        {rankUpdatedAt
+                          ?`${t("col.last_updated")} ${new Date(rankUpdatedAt).toLocaleTimeString(ko?"ko-KR":"ja-JP",{hour:"2-digit",minute:"2-digit"})}${nextUpdateMin&&nextUpdateMin>0?` · ${nextUpdateMin}${ko?"분 후 갱신":"分後に更新"}`:""}`
+                          :(ko?"갱신 대기 중":"更新待ち")}
+                      </span>
+                      <span style={{display:"flex",alignItems:"center",gap:3,
+                        fontFamily:FONT,fontSize:9,color:C.stoneFaint}}>
+                        <RefreshCw size={8} strokeWidth={2}/>
+                        {ko?"자동갱신":"自動更新"}
+                      </span>
+                    </div>
+
+                    {/* 랭킹 행 목록 */}
                     <div ref={rankScrollRef} className="col-rank-scroll"
-                      style={{maxHeight:320,overflowY:"auto"}}
                       onMouseDown={onRankDown} onMouseMove={onRankMove} onMouseUp={onRankUp} onMouseLeave={onRankUp}
                       onTouchStart={onRankTouchStart} onTouchMove={onRankTouchMove} onTouchEnd={onRankUp}>
-                      {top10.map(entry=>renderRow(entry))}
+                      {pageEntries.map(entry=>renderRankRow(entry))}
                     </div>
-                    {/* 내 순위 고정 하단 */}
-                    {user&&(()=>{
-                      const myRank=myEntry;
-                      const myEIdx=myRank?getTierIdx(myRank.tierPoints):tierIdx;
-                      const myETier=TIERS[myEIdx];
-                      const myChar2=myRank?.characterId!=null?(CHARACTERS.find(c=>c.id===myRank.characterId)??CHARACTERS[0]):myChar;
-                      return(
-                        <div style={{borderTop:`2px solid ${C.border}`,background:"#0e0b04"}}>
-                          <div style={{padding:"3px 12px 2px",display:"flex",alignItems:"center",gap:6}}>
-                            <span style={{fontSize:9,color:C.stoneFaint,fontFamily:"monospace",letterSpacing:"0.08em"}}>— {ko?"내 순위":"自分の順位"} —</span>
-                            {!myRank&&<span style={{fontSize:9,color:C.stoneFaint,fontFamily:FONT}}>{ko?"(미참전)":"(未参戦)"}</span>}
-                          </div>
-                          <div style={{
-                            display:"flex",alignItems:"center",gap:8,padding:"5px 12px 7px",
-                            background:"linear-gradient(90deg,#1e3a5f22,transparent)",
-                            borderLeft:`3px solid #60a5fa`,
-                          }}>
-                            {/* 등수 */}
-                            <div style={{width:24,textAlign:"center",flexShrink:0}}>
-                              {!myRank
-                                ?<span style={{fontFamily:"monospace",fontSize:11,color:C.stoneFaint}}>-</span>
-                                :myRank.rank===1?<Crown size={16} color="#ffd700" strokeWidth={2}/>
-                                :myRank.rank===2?<Medal size={16} color="#c0c0c0" strokeWidth={2}/>
-                                :myRank.rank===3?<Medal size={16} color="#cd7f32" strokeWidth={2}/>
-                                :<span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,color:"#93c5fd"}}>{myRank.rank}</span>}
-                            </div>
-                            {/* 캐릭터 */}
-                            <div style={{width:36,height:42,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
-                              <PixelSprite type={myChar2.type} colors={myChar2.colors} characterId={myChar2.id} rarity={myChar2.rarity} size={36}/>
-                            </div>
-                            {/* 닉네임 */}
-                            <div style={{flex:1,minWidth:0,marginLeft:8}}>
-                              <p style={{fontFamily:FONT,fontSize:13,fontWeight:900,color:"#93c5fd",margin:0,
-                                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                                {user.name??(ko?"나":"自分")}
-                                <span style={{marginLeft:4,fontSize:10,color:"#60a5fa",
-                                  background:"#1e3a5f",padding:"1px 4px",borderRadius:2,fontWeight:900}}>
-                                  {t("col.me")}
-                                </span>
-                              </p>
-                              <p style={{fontFamily:FONT,fontSize:11,color:C.stone,margin:"2px 0 0"}}>
-                                {myRank
-                                  ?t("col.wins_summary").replace("{w}",String(myRank.wins)).replace("{s}",String(myRank.winStreak))
-                                  :(ko?"전적 없음":"戦績なし")}
-                              </p>
-                            </div>
-                            {/* 티어 */}
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}}>
-                              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                                <TierBadgeSvg idx={myEIdx} size={14}/>
-                                <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,color:myETier.color}}>{ko?myETier.ko:myETier.ja}</span>
-                              </div>
-                              <span style={{fontFamily:"monospace",fontSize:12,color:"#93c5fd",fontWeight:700}}>
-                                {myRank?myRank.tierPoints:tierPts} pts
-                              </span>
-                            </div>
-                          </div>
+
+                    {/* 내 순위 고정 하단 (현재 페이지에 없을 때) */}
+                    {user&&myEntry&&!myOnPage&&(
+                      <div style={{borderTop:`1px solid ${C.border}`,background:"#0d0a04"}}>
+                        <div style={{padding:"2px 12px 1px"}}>
+                          <span style={{fontFamily:"monospace",fontSize:8,color:C.stoneFaint,letterSpacing:"0.08em"}}>
+                            ─── {ko?"내 순위":"自分の順位"} ───
+                          </span>
                         </div>
-                      );
-                    })()}
+                        {renderRankRow(myEntry)}
+                      </div>
+                    )}
+                    {user&&!myEntry&&(
+                      <div style={{borderTop:`1px solid ${C.border}`,
+                        padding:"8px 12px",background:"#0d0a04"}}>
+                        <span style={{fontFamily:FONT,fontSize:10,color:C.stoneFaint}}>
+                          {ko?"아직 전적이 없습니다":"まだ戦績がありません"}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 페이지네이션 */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                      padding:"7px 10px",borderTop:`1px solid ${C.border}`,background:"#0f0a04"}}>
+                      <button
+                        onClick={()=>setRankPage(p=>Math.max(0,p-1))}
+                        disabled={rankPage===0}
+                        style={{display:"flex",alignItems:"center",gap:3,fontFamily:FONT,fontSize:10,
+                          color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
+                          cursor:rankPage===0?"not-allowed":"pointer",padding:"2px 4px",
+                          opacity:rankPage===0?0.4:1}}>
+                        ◀ {ko?"상위 보기":"上位を見る"}
+                      </button>
+                      <span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:C.stone}}>
+                        {rankPage+1} / {totalPages}
+                      </span>
+                      <button
+                        onClick={()=>setRankPage(p=>Math.min(totalPages-1,p+1))}
+                        disabled={rankPage===totalPages-1}
+                        style={{display:"flex",alignItems:"center",gap:3,fontFamily:FONT,fontSize:10,
+                          color:rankPage===totalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
+                          cursor:rankPage===totalPages-1?"not-allowed":"pointer",padding:"2px 4px",
+                          opacity:rankPage===totalPages-1?0.4:1}}>
+                        {ko?"하위 보기":"下位を見る"} ▶
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
