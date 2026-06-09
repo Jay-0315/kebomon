@@ -68,7 +68,7 @@ export const BORDER_STYLES: Record<string,{image:string}> = {
   s1_diamond:    { image:"/diamond.png" },
   s1_master:     { image:"/master.png" },
   s1_challenger: { image:"/challenger.png" },
-  gm:            { image:"/gm.png" },
+  gm:            { image:"/GM.png" },
 };
 export const BORDER_NAMES: Record<string,{ko:string;ja:string}> = {
   s1_silver:     { ko:"S1 실버",      ja:"S1シルバー" },
