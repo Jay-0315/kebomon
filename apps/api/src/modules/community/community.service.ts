@@ -17,7 +17,7 @@ const COMMENT_PAGE_SIZE = 10;
 const RECENT_COMMENTS = 3;
 
 // NOTE: prisma generate 실행 후 타입 오류 해소됨
-const userSelect = { id: true, name: true, profilePhoto: true, reward: { select: { equippedTitleId: true } } };
+const userSelect = { id: true, name: true, profilePhoto: true, reward: { select: { equippedTitleId: true, equippedBorderId: true } } };
 
 const postInclude = {
   user: { select: userSelect },
@@ -48,6 +48,7 @@ export class CommunityService {
       authorName: c.user?.name ?? "사용자",
       authorPhotoUrl: c.user?.profilePhoto ?? null,
       authorEquippedTitleId: c.user?.reward?.equippedTitleId ?? null,
+      authorEquippedBorderId: c.user?.reward?.equippedBorderId ?? null,
       parentId: c.parentId != null ? String(c.parentId) : null,
       content: c.content,
       imageUrl: c.imageUrl ?? null,
@@ -64,6 +65,7 @@ export class CommunityService {
       authorName: post.user?.name ?? "사용자",
       authorPhotoUrl: post.user?.profilePhoto ?? null,
       authorEquippedTitleId: post.user?.reward?.equippedTitleId ?? null,
+      authorEquippedBorderId: post.user?.reward?.equippedBorderId ?? null,
       content: post.content,
       category: post.category,
       imageUrl: post.imageUrl ?? null,

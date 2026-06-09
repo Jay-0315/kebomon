@@ -34,6 +34,8 @@ function mapComment(c: Record<string, unknown>): Comment {
       null,
     authorEquippedTitleId:
       (c.authorEquippedTitleId as number | null | undefined) ?? null,
+    authorEquippedBorderId:
+      (c.authorEquippedBorderId as string | null | undefined) ?? null,
     parentId: null,
     content: String(c.content ?? ""),
     imageUrl: (c.imageUrl as string | null) ?? null,
@@ -55,6 +57,8 @@ function mapPost(raw: Record<string, unknown>): CommunityPost {
       null,
     authorEquippedTitleId:
       (raw.authorEquippedTitleId as number | null | undefined) ?? null,
+    authorEquippedBorderId:
+      (raw.authorEquippedBorderId as string | null | undefined) ?? null,
     content: String(raw.content),
     category: (raw.category as PostCategory) ?? "chat",
     imageUrl: (raw.imageUrl as string | null) ?? null,
@@ -237,6 +241,7 @@ export default function CommunityPage() {
                         authorId={post.authorId}
                         authorName={post.authorName}
                         photoUrl={post.authorPhotoUrl}
+                        borderId={post.authorEquippedBorderId ?? null}
                       />
                       <div>
                         <div className="flex items-center gap-2">

@@ -55,6 +55,7 @@ export interface Comment {
   authorName: string;
   authorPhotoUrl?: string | null;
   authorEquippedTitleId?: number | null;
+  authorEquippedBorderId?: string | null;
   parentId: string | null;
   content: string;
   imageUrl: string | null;
@@ -75,6 +76,7 @@ export interface CommunityPost {
   authorName: string;
   authorPhotoUrl?: string | null;
   authorEquippedTitleId?: number | null;
+  authorEquippedBorderId?: string | null;
   content: string;
   category: PostCategory;
   imageUrl: string | null;

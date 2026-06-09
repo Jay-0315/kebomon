@@ -43,6 +43,8 @@ function mapComment(c: Record<string, unknown>): Comment {
     authorPhotoUrl: (c.authorPhotoUrl as string | null | undefined) ?? null,
     authorEquippedTitleId:
       (c.authorEquippedTitleId as number | null | undefined) ?? null,
+    authorEquippedBorderId:
+      (c.authorEquippedBorderId as string | null | undefined) ?? null,
     parentId: c.parentId != null ? String(c.parentId) : null,
     content: String(c.content),
     imageUrl: (c.imageUrl as string | null) ?? null,
@@ -87,6 +89,7 @@ function CommentCard({
               authorName={comment.authorName}
               size="xs"
               photoUrl={comment.authorPhotoUrl}
+              borderId={comment.authorEquippedBorderId ?? null}
             />
             <span className="text-xs font-medium">{comment.authorName}</span>
             {comment.authorEquippedTitleId && (
@@ -199,6 +202,8 @@ export default function PostDetailPage() {
           (data.authorPhotoUrl as string | null | undefined) ?? null,
         authorEquippedTitleId:
           (data.authorEquippedTitleId as number | null | undefined) ?? null,
+        authorEquippedBorderId:
+          (data.authorEquippedBorderId as string | null | undefined) ?? null,
         content: String(data.content),
         category: (data.category as PostCategory) ?? "chat",
         imageUrl: (data.imageUrl as string | null) ?? null,
@@ -373,6 +378,7 @@ export default function PostDetailPage() {
               authorId={post.authorId}
               authorName={post.authorName}
               photoUrl={post.authorPhotoUrl}
+              borderId={post.authorEquippedBorderId ?? null}
             />
             <div>
               <div className="flex items-center gap-2">

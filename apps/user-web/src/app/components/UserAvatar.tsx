@@ -10,7 +10,7 @@ interface UserAvatarProps {
 }
 
 const SIZE_PX: Record<string, number> = { xs: 24, sm: 32, md: 36, lg: 56 };
-const BORDER_PAD: Record<string, number> = { xs: 8, sm: 10, md: 12, lg: 16 };
+const BORDER_PAD: Record<string, number> = { xs: 12, sm: 16, md: 20, lg: 32 };
 
 export default function UserAvatar({ authorId, authorName, size = "md", photoUrl, borderId }: UserAvatarProps) {
   const { profile, profilePhoto } = useAppData();

@@ -1326,7 +1326,31 @@ export default function ColosseumPage(){
                         </span>
                       </div>
                     )}
-                    <div style={{height:44}}/>
+                    {/* 페이지네이션 */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                      padding:"7px 10px",borderTop:`1px solid ${C.border}`,background:"#0f0a04"}}>
+                      <button
+                        onClick={()=>setRankPage(p=>Math.max(0,p-1))}
+                        disabled={rankPage===0}
+                        style={{display:"flex",alignItems:"center",gap:3,fontFamily:FONT,fontSize:10,
+                          color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
+                          cursor:rankPage===0?"not-allowed":"pointer",padding:"2px 4px",
+                          opacity:rankPage===0?0.4:1}}>
+                        ◀ {ko?"상위 보기":"上位を見る"}
+                      </button>
+                      <span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:C.stone}}>
+                        {rankPage+1} / {rankTotalPages}
+                      </span>
+                      <button
+                        onClick={()=>setRankPage(p=>Math.min(rankTotalPages-1,p+1))}
+                        disabled={rankPage===rankTotalPages-1}
+                        style={{display:"flex",alignItems:"center",gap:3,fontFamily:FONT,fontSize:10,
+                          color:rankPage===rankTotalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
+                          cursor:rankPage===rankTotalPages-1?"not-allowed":"pointer",padding:"2px 4px",
+                          opacity:rankPage===rankTotalPages-1?0.4:1}}>
+                        {ko?"하위 보기":"下位を見る"} ▶
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
@@ -1375,35 +1399,6 @@ export default function ColosseumPage(){
 
         </div>
 
-        {/* 페이지네이션 고정 하단 */}
-        {rankTab==="current"&&rankings.length>0&&(
-          <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,
-            display:"flex",alignItems:"center",justifyContent:"space-between",
-            padding:"10px 20px",background:"#0f0a04",borderTop:`2px solid ${C.border}`,
-            boxShadow:"0 -4px 20px rgba(0,0,0,0.7)"}}>
-            <button
-              onClick={()=>setRankPage(p=>Math.max(0,p-1))}
-              disabled={rankPage===0}
-              style={{display:"flex",alignItems:"center",gap:4,fontFamily:FONT,fontSize:11,
-                color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
-                cursor:rankPage===0?"not-allowed":"pointer",padding:"4px 8px",
-                opacity:rankPage===0?0.4:1}}>
-              ◀ {ko?"상위 보기":"上位を見る"}
-            </button>
-            <span style={{fontFamily:"monospace",fontSize:12,fontWeight:900,color:C.stone}}>
-              {rankPage+1} / {rankTotalPages}
-            </span>
-            <button
-              onClick={()=>setRankPage(p=>Math.min(rankTotalPages-1,p+1))}
-              disabled={rankPage===rankTotalPages-1}
-              style={{display:"flex",alignItems:"center",gap:4,fontFamily:FONT,fontSize:11,
-                color:rankPage===rankTotalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
-                cursor:rankPage===rankTotalPages-1?"not-allowed":"pointer",padding:"4px 8px",
-                opacity:rankPage===rankTotalPages-1?0.4:1}}>
-              {ko?"하위 보기":"下位を見る"} ▶
-            </button>
-          </div>
-        )}
       </div>
     );
   }
