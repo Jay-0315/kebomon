@@ -7,6 +7,7 @@ import { useLang } from "../context/LangContext";
 import { clearAuthSession } from "../lib/auth";
 import TitleBadge from "./TitleBadge";
 import NotificationBell from "./NotificationBell";
+import UserAvatar from "./UserAvatar";
 
 export default function Layout() {
   const location = useLocation();
@@ -158,17 +159,13 @@ export default function Layout() {
             to="/mypage"
             className="flex items-center gap-3 p-2 rounded bg-sidebar-accent hover:bg-primary/10 transition-colors"
           >
-            {profilePhoto ? (
-              <img
-                src={profilePhoto}
-                alt={profile.name}
-                className="w-10 h-10 rounded-full object-cover shrink-0"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-medium shrink-0">
-                {profile.name[0]}
-              </div>
-            )}
+            <UserAvatar
+              authorId={profile.id}
+              authorName={profile.name}
+              size="md"
+              photoUrl={profilePhoto}
+              borderId={rewardSummary.equippedBorderId ?? null}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{profile.name}</p>
               {rewardSummary.equippedTitleId ? (
@@ -234,17 +231,13 @@ export default function Layout() {
                 onClick={() => setIsMobileSidebarOpen(false)}
                 className="flex items-center gap-3 p-2 rounded bg-sidebar-accent hover:bg-primary/10 transition-colors"
               >
-                {profilePhoto ? (
-                  <img
-                    src={profilePhoto}
-                    alt={profile.name}
-                    className="w-10 h-10 rounded-full object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-medium shrink-0">
-                    {profile.name[0]}
-                  </div>
-                )}
+                <UserAvatar
+                  authorId={profile.id}
+                  authorName={profile.name}
+                  size="md"
+                  photoUrl={profilePhoto}
+                  borderId={rewardSummary.equippedBorderId ?? null}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{profile.name}</p>
                   {rewardSummary.equippedTitleId ? (

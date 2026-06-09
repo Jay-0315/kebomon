@@ -8,6 +8,7 @@ export interface TitleDef {
   conditionType: TitleConditionType;
   conditionValue: number;
   description: string;
+  hidden?: boolean; // 보유 시에만 목록에 표시 (업적 획득방법 비공개)
 }
 
 export const TITLE_GRADE_LABEL: Record<TitleGrade, string> = {
@@ -91,6 +92,8 @@ export const TITLES: TitleDef[] = [
   { id: 44, name: "시즌1 기사장",     grade: "legendary", conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성" },
   { id: 45, name: "시즌1 용사",       grade: "legendary", conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성" },
   { id: 46, name: "시즌1 투사",       grade: "epic",      conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성" },
+  // ── GM 전용 ──
+  { id: 47, name: "GM",              grade: "mythic",    conditionType: "raid_count",  conditionValue: 0,     description: "케보 운영진", hidden: true },
 ];
 
 export const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

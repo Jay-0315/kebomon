@@ -149,7 +149,7 @@ export default function MyPage() {
     : (CHARACTERS.find((c) => ownedSet.has(c.id)) ?? CHARACTERS[0]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* ── Profile header ── */}
       <div className="flex items-center gap-4">
         {(() => {

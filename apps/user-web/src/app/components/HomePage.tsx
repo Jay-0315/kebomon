@@ -17,6 +17,7 @@ import { TranslationKey } from "../lib/i18n";
 import { CHARACTERS } from "../data/characters";
 import TitleBadge from "./TitleBadge";
 import StatusPanel from "./StatusPanel";
+import UserAvatar from "./UserAvatar";
 
 const CHANNEL_DATA = [
   { id: 1, nameKey: "live.channel.1" as TranslationKey, desktop: "/bg-ruins.png",  mobile: "/bg-ruins.v.png",  fill: "#1f2a14", border: "#57534e", icon: <Castle   size={16} color="#a8a29e" /> },
@@ -31,21 +32,17 @@ export default function HomePage() {
   const { t } = useLang();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-4xl space-y-5">
       {/* ── Profile banner ── */}
       <div className="bg-card rounded border border-border p-5 flex items-center gap-4">
         <div onClick={() => navigate("/mypage")} className="shrink-0 cursor-pointer">
-          {profilePhoto ? (
-            <img
-              src={profilePhoto}
-              alt={profile.name}
-              className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/40"
-            />
-          ) : (
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/70 to-accent/80 flex items-center justify-center text-white font-bold text-xl">
-              {profile.name[0]}
-            </div>
-          )}
+          <UserAvatar
+            authorId={profile.id}
+            authorName={profile.name}
+            size="lg"
+            photoUrl={profilePhoto}
+            borderId={rewardSummary.equippedBorderId ?? null}
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold truncate">{profile.name}</p>

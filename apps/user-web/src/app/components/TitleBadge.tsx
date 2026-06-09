@@ -136,7 +136,7 @@ export function TitleSelector({
   const gradeOrder: TitleGrade[] = ["common", "rare", "epic", "legendary", "mythic"];
   const byGrade = gradeOrder.map((grade) => ({
     grade,
-    titles: TITLES.filter((tt) => tt.grade === grade),
+    titles: TITLES.filter((tt) => tt.grade === grade && (!tt.hidden || ownedSet.has(tt.id))),
   }));
 
   const [openGrades, setOpenGrades] = useState<Set<TitleGrade>>(new Set(gradeOrder));

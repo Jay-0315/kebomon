@@ -326,6 +326,8 @@ const dict = {
     "title.45.desc": "시즌 1 최종 3위 달성",
     "title.46.name": "시즌1 투사",
     "title.46.desc": "시즌 1 최종 TOP 10 달성",
+    "title.47.name": "GM",
+    "title.47.desc": "케보 운영진",
     // Notification
     "notification.title": "알림",
     "notification.empty": "알림이 없어요",
@@ -867,6 +869,8 @@ const dict = {
     "title.45.desc": "シーズン1最終3位達成",
     "title.46.name": "シーズン1闘士",
     "title.46.desc": "シーズン1最終TOP10達成",
+    "title.47.name": "GM",
+    "title.47.desc": "ケボ運営",
     // Notification
     "notification.title": "通知",
     "notification.empty": "通知がありません",
