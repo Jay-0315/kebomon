@@ -277,13 +277,66 @@ export class BattleGateway implements OnGatewayDisconnect {
     });
   }
 
-  /** 유저 클론 상대 선택: 0~2999점은 전체 랜덤, 3000점 이상은 유사 점수대 */
+  /** 유저 클론 상대 선택: 0~2999점은 전체 유저 랜덤, 3000점 이상은 유사 점수대 */
   private async pickOpponent(excludeUserId: string): Promise<Fighter> {
     const playerStats = await this.prisma.battleStats.findUnique({
       where: { userId: excludeUserId },
       select: { tierPoints: true },
     });
     const playerPts = playerStats?.tierPoints ?? 0;
+
+    if (playerPts < 3000) {
+      // 0~2999점: 콜로세움 참가 여부 관계없이 DB 등록 전체 유저 중 랜덤
+      const allUsers = await this.prisma.user.findMany({
+        where: {
+          id: { not: excludeUserId },
+          reward: { is: { equippedCharacterId: { not: null } } },
+        },
+        select: {
+          id: true,
+          name: true,
+          reward: { select: { equippedCharacterId: true } },
+        },
+        take: 200,
+      });
+
+      if (allUsers.length > 0) {
+        const picked = allUsers[Math.floor(Math.random() * allUsers.length)];
+        const charId = picked.reward!.equippedCharacterId!;
+
+        let enhancementLevel = 0;
+        try {
+          const charRecord = await this.prisma.userCharacter.findUnique({
+            where: { userId_characterId: { userId: picked.id, characterId: charId } },
+            select: { enhancementLevel: true },
+          });
+          enhancementLevel = charRecord?.enhancementLevel ?? 0;
+        } catch { /* silent */ }
+
+        return {
+          userId: picked.id,
+          nickname: `${picked.name ?? "유저"} (클론)`,
+          characterId: charId,
+          rarity: CHAR_RARITY[charId] ?? "common",
+          hp: MAX_HP,
+          isPlayer: false,
+          enhancementLevel,
+        };
+      }
+
+      // 장착 캐릭터가 있는 유저 없으면 폴백
+      const allCharIds = Object.keys(CHAR_RARITY).map(Number);
+      const fallbackCharId = allCharIds[Math.floor(Math.random() * allCharIds.length)];
+      return {
+        userId: "clone",
+        nickname: "케보몬 클론",
+        characterId: fallbackCharId,
+        rarity: CHAR_RARITY[fallbackCharId] ?? "common",
+        hp: MAX_HP,
+        isPlayer: false,
+        enhancementLevel: 0,
+      };
+    }
 
     const userSelect = {
       userId: true,
@@ -296,39 +349,21 @@ export class BattleGateway implements OnGatewayDisconnect {
       },
     } as const;
 
+    // 3000점 이상: ±1000점 범위 내 유사 점수대 탐색, 점수 차 작은 순 상위 5명 중 랜덤
     let rows: { userId: string; tierPoints: number; user: { name: string | null; reward: { equippedCharacterId: number | null } | null } }[] = [];
-
-    if (playerPts < 3000) {
-      // 0~2999점: DB 전체 유저 중 랜덤 (최대 100명 풀)
-      rows = await this.prisma.battleStats.findMany({
-        where: {
-          userId: { not: excludeUserId },
-          user: { reward: { is: { equippedCharacterId: { not: null } } } },
-        },
-        select: userSelect,
-        take: 100,
-      });
-      // 랜덤 셔플 후 1명 선택
-      if (rows.length > 0) {
-        const idx = Math.floor(Math.random() * rows.length);
-        rows = [rows[idx]];
-      }
-    } else {
-      // 3000점 이상: ±1000점 범위 내 유사 점수대 탐색, 점수 차 작은 순 상위 5명 중 랜덤
-      rows = await this.prisma.battleStats.findMany({
-        where: {
-          userId: { not: excludeUserId },
-          user: { reward: { is: { equippedCharacterId: { not: null } } } },
-          tierPoints: { gte: playerPts - 1000, lte: playerPts + 1000 },
-        },
-        select: userSelect,
-        take: 30,
-      });
-      if (rows.length > 0) {
-        rows.sort((a, b) => Math.abs(a.tierPoints - playerPts) - Math.abs(b.tierPoints - playerPts));
-        rows = rows.slice(0, Math.min(5, rows.length));
-        rows = [rows[Math.floor(Math.random() * rows.length)]];
-      }
+    rows = await this.prisma.battleStats.findMany({
+      where: {
+        userId: { not: excludeUserId },
+        user: { reward: { is: { equippedCharacterId: { not: null } } } },
+        tierPoints: { gte: playerPts - 1000, lte: playerPts + 1000 },
+      },
+      select: userSelect,
+      take: 30,
+    });
+    if (rows.length > 0) {
+      rows.sort((a, b) => Math.abs(a.tierPoints - playerPts) - Math.abs(b.tierPoints - playerPts));
+      rows = rows.slice(0, Math.min(5, rows.length));
+      rows = [rows[Math.floor(Math.random() * rows.length)]];
     }
 
     // 매칭 유저 없으면 도감 캐릭터 클론으로 폴백

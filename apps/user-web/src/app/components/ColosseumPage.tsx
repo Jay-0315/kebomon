@@ -68,6 +68,7 @@ export const BORDER_STYLES: Record<string,{image:string}> = {
   s1_diamond:    { image:"/diamond.png" },
   s1_master:     { image:"/master.png" },
   s1_challenger: { image:"/challenger.png" },
+  gm:            { image:"/gm.png" },
 };
 export const BORDER_NAMES: Record<string,{ko:string;ja:string}> = {
   s1_silver:     { ko:"S1 실버",      ja:"S1シルバー" },
@@ -76,6 +77,7 @@ export const BORDER_NAMES: Record<string,{ko:string;ja:string}> = {
   s1_diamond:    { ko:"S1 다이아몬드",ja:"S1ダイヤ" },
   s1_master:     { ko:"S1 마스터",    ja:"S1マスター" },
   s1_challenger: { ko:"S1 챌린저",    ja:"S1チャレンジャー" },
+  gm:            { ko:"GM",           ja:"GM" },
 };
 
 const RARITY_DICE_CONFIG: Record<string,{faces:number;count:number}> = {
@@ -960,6 +962,12 @@ export default function ColosseumPage(){
     // 다음 갱신 계산
     const nextUpdateMs=rankUpdatedAt?Math.max(0,nextHourStartMs(rankClock)-rankClock):null;
     const nextUpdateMin=nextUpdateMs!=null?Math.ceil(nextUpdateMs/60000):null;
+    const RANK_PAGE_SIZE=5;
+    const rankTotalPages=Math.ceil(rankings.length/RANK_PAGE_SIZE);
+    const currentPageEntries=rankings.slice(rankPage*RANK_PAGE_SIZE,(rankPage+1)*RANK_PAGE_SIZE);
+    const topEntries=rankings.slice(0,10);
+    const myRankEntry=rankings.find(e=>e.userId===user?.id);
+    const myOnCurrentPage=currentPageEntries.some(e=>e.userId===user?.id);
 
     return(
       <div style={{minHeight:"100vh",background:C.bg,padding:"0 0 40px",fontFamily:FONT}}>
@@ -1154,8 +1162,6 @@ export default function ColosseumPage(){
                 {([
                   {id:"current",ko:"현재 랭킹",ja:"現在ランキング"},
                   {id:"top",    ko:"상위 랭킹",ja:"上位ランキング"},
-                  {id:"friend", ko:"친구 랭킹",ja:"フレンド"},
-                  {id:"hall",   ko:"명예의 전당",ja:"名誉の殿堂"},
                 ] as {id:string;ko:string;ja:string}[]).map(tab=>{
                   const active=rankTab===tab.id;
                   return(
@@ -1173,20 +1179,11 @@ export default function ColosseumPage(){
                 })}
               </div>
 
-              {rankTab!=="current"?(
-                <div style={{padding:"32px 16px",textAlign:"center",color:C.stoneFaint,fontFamily:FONT,fontSize:11}}>
-                  {ko?"준비 중입니다":"準備中です"}
-                </div>
-              ):rankings.length===0?(
+              {rankings.length===0?(
                 <p style={{fontFamily:FONT,fontSize:11,color:C.stoneFaint,textAlign:"center",padding:"28px 0",margin:0}}>
                   {rankLoading?t("col.loading"):t("col.no_records")}
                 </p>
               ):(()=>{
-                const PAGE_SIZE=5;
-                const pageEntries=rankings.slice(rankPage*PAGE_SIZE,(rankPage+1)*PAGE_SIZE);
-                const totalPages=Math.ceil(rankings.length/PAGE_SIZE);
-                const myEntry=rankings.find(e=>e.userId===user?.id);
-                const myOnPage=pageEntries.some(e=>e.userId===user?.id);
 
                 const renderRankRow=(entry:RankingEntry)=>{
                   const eIdx=getTierIdx(entry.tierPoints);
@@ -1278,6 +1275,14 @@ export default function ColosseumPage(){
                   );
                 };
 
+                if(rankTab==="top"){
+                  return(
+                    <div>
+                      {topEntries.map(entry=>renderRankRow(entry))}
+                    </div>
+                  );
+                }
+
                 return(
                   <div>
                     {/* 업데이트 정보 바 */}
@@ -1299,21 +1304,21 @@ export default function ColosseumPage(){
                     <div ref={rankScrollRef} className="col-rank-scroll"
                       onMouseDown={onRankDown} onMouseMove={onRankMove} onMouseUp={onRankUp} onMouseLeave={onRankUp}
                       onTouchStart={onRankTouchStart} onTouchMove={onRankTouchMove} onTouchEnd={onRankUp}>
-                      {pageEntries.map(entry=>renderRankRow(entry))}
+                      {currentPageEntries.map(entry=>renderRankRow(entry))}
                     </div>
 
                     {/* 내 순위 고정 하단 (현재 페이지에 없을 때) */}
-                    {user&&myEntry&&!myOnPage&&(
+                    {user&&myRankEntry&&!myOnCurrentPage&&(
                       <div style={{borderTop:`1px solid ${C.border}`,background:"#0d0a04"}}>
                         <div style={{padding:"2px 12px 1px"}}>
                           <span style={{fontFamily:"monospace",fontSize:8,color:C.stoneFaint,letterSpacing:"0.08em"}}>
                             ─── {ko?"내 순위":"自分の順位"} ───
                           </span>
                         </div>
-                        {renderRankRow(myEntry)}
+                        {renderRankRow(myRankEntry)}
                       </div>
                     )}
-                    {user&&!myEntry&&(
+                    {user&&!myRankEntry&&(
                       <div style={{borderTop:`1px solid ${C.border}`,
                         padding:"8px 12px",background:"#0d0a04"}}>
                         <span style={{fontFamily:FONT,fontSize:10,color:C.stoneFaint}}>
@@ -1321,32 +1326,7 @@ export default function ColosseumPage(){
                         </span>
                       </div>
                     )}
-
-                    {/* 페이지네이션 */}
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                      padding:"7px 10px",borderTop:`1px solid ${C.border}`,background:"#0f0a04"}}>
-                      <button
-                        onClick={()=>setRankPage(p=>Math.max(0,p-1))}
-                        disabled={rankPage===0}
-                        style={{display:"flex",alignItems:"center",gap:3,fontFamily:FONT,fontSize:10,
-                          color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
-                          cursor:rankPage===0?"not-allowed":"pointer",padding:"2px 4px",
-                          opacity:rankPage===0?0.4:1}}>
-                        ◀ {ko?"상위 보기":"上位を見る"}
-                      </button>
-                      <span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:C.stone}}>
-                        {rankPage+1} / {totalPages}
-                      </span>
-                      <button
-                        onClick={()=>setRankPage(p=>Math.min(totalPages-1,p+1))}
-                        disabled={rankPage===totalPages-1}
-                        style={{display:"flex",alignItems:"center",gap:3,fontFamily:FONT,fontSize:10,
-                          color:rankPage===totalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
-                          cursor:rankPage===totalPages-1?"not-allowed":"pointer",padding:"2px 4px",
-                          opacity:rankPage===totalPages-1?0.4:1}}>
-                        {ko?"하위 보기":"下位を見る"} ▶
-                      </button>
-                    </div>
+                    <div style={{height:44}}/>
                   </div>
                 );
               })()}
@@ -1394,6 +1374,36 @@ export default function ColosseumPage(){
           </div>
 
         </div>
+
+        {/* 페이지네이션 고정 하단 */}
+        {rankTab==="current"&&rankings.length>0&&(
+          <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,
+            display:"flex",alignItems:"center",justifyContent:"space-between",
+            padding:"10px 20px",background:"#0f0a04",borderTop:`2px solid ${C.border}`,
+            boxShadow:"0 -4px 20px rgba(0,0,0,0.7)"}}>
+            <button
+              onClick={()=>setRankPage(p=>Math.max(0,p-1))}
+              disabled={rankPage===0}
+              style={{display:"flex",alignItems:"center",gap:4,fontFamily:FONT,fontSize:11,
+                color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
+                cursor:rankPage===0?"not-allowed":"pointer",padding:"4px 8px",
+                opacity:rankPage===0?0.4:1}}>
+              ◀ {ko?"상위 보기":"上位を見る"}
+            </button>
+            <span style={{fontFamily:"monospace",fontSize:12,fontWeight:900,color:C.stone}}>
+              {rankPage+1} / {rankTotalPages}
+            </span>
+            <button
+              onClick={()=>setRankPage(p=>Math.min(rankTotalPages-1,p+1))}
+              disabled={rankPage===rankTotalPages-1}
+              style={{display:"flex",alignItems:"center",gap:4,fontFamily:FONT,fontSize:11,
+                color:rankPage===rankTotalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
+                cursor:rankPage===rankTotalPages-1?"not-allowed":"pointer",padding:"4px 8px",
+                opacity:rankPage===rankTotalPages-1?0.4:1}}>
+              {ko?"하위 보기":"下位を見る"} ▶
+            </button>
+          </div>
+        )}
       </div>
     );
   }
