@@ -10,7 +10,6 @@ import { formatRelativeTime } from "../lib/date-utils";
 import { extractFirstImage } from "../lib/image-utils";
 import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
-import { BORDER_STYLES } from "./ColosseumPage";
 import type { CommunityPost, PostCategory, Comment } from "../types/domain";
 import { MessageCircle } from "lucide-react";
 
@@ -275,13 +274,6 @@ export default function CommunityPage() {
                       src={thumb}
                       alt=""
                       className="w-20 h-20 object-cover rounded-md border border-border shrink-0 self-center"
-                    />
-                  ) : post.authorEquippedBorderId && BORDER_STYLES[post.authorEquippedBorderId] ? (
-                    <img
-                      src={BORDER_STYLES[post.authorEquippedBorderId].image}
-                      alt=""
-                      className="w-16 h-16 shrink-0 self-start opacity-90 pointer-events-none"
-                      style={{ objectFit: "contain" }}
                     />
                   ) : null}
                 </div>
