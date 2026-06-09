@@ -949,7 +949,7 @@ export default function ColosseumPage(){
     .col-no-scroll{-ms-overflow-style:none;scrollbar-width:none}
     @media(min-width:640px){
       .col-grid-top   {grid-template-columns:1fr 1fr}
-      .col-grid-bottom{grid-template-columns:3fr 2fr}
+      .col-grid-bottom{grid-template-columns:3fr 2fr;align-items:start}
     }
   `;
 

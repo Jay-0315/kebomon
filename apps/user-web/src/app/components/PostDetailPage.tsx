@@ -89,7 +89,7 @@ function CommentCard({
               authorName={comment.authorName}
               size="xs"
               photoUrl={comment.authorPhotoUrl}
-              borderId={comment.authorEquippedBorderId ?? null}
+              borderId={null}
             />
             <span className="text-xs font-medium">{comment.authorName}</span>
             {comment.authorEquippedTitleId && (
@@ -378,7 +378,7 @@ export default function PostDetailPage() {
               authorId={post.authorId}
               authorName={post.authorName}
               photoUrl={post.authorPhotoUrl}
-              borderId={post.authorEquippedBorderId ?? null}
+              borderId={null}
             />
             <div>
               <div className="flex items-center gap-2">
