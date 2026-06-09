@@ -236,33 +236,37 @@ export default function CommunityPage() {
                   onClick={() => navigate(`/community/${post.id}`)}
                 >
                   <div className="flex-1 min-w-0 space-y-1.5">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-start gap-2.5">
                       <UserAvatar
                         authorId={post.authorId}
                         authorName={post.authorName}
                         photoUrl={post.authorPhotoUrl}
                         borderId={null}
                       />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">
-                            {post.authorName}
-                          </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-sm">
+                                {post.authorName}
+                              </p>
+                              {post.authorEquippedTitleId && (
+                                <TitleBadge
+                                  titleId={post.authorEquippedTitleId}
+                                  size="xs"
+                                />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {formatRelativeTime(post.createdAt, lang)}
+                            </p>
+                          </div>
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${CAT_STYLE[post.category]}`}
                           >
                             {catLabel(post.category)}
                           </span>
                         </div>
-                        {post.authorEquippedTitleId && (
-                          <TitleBadge
-                            titleId={post.authorEquippedTitleId}
-                            size="xs"
-                          />
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {formatRelativeTime(post.createdAt, lang)}
-                        </p>
                       </div>
                     </div>
                     <p className="text-sm leading-relaxed line-clamp-3 text-foreground/90">

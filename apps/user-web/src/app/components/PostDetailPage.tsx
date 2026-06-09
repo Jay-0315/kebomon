@@ -385,38 +385,40 @@ export default function PostDetailPage() {
               borderId={null}
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <p className="font-medium text-sm">{post.authorName}</p>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}
-                >
-                  {catLabel(post.category)}
-                </span>
+                {post.authorEquippedTitleId && (
+                  <TitleBadge titleId={post.authorEquippedTitleId} size="xs" />
+                )}
               </div>
-              {post.authorEquippedTitleId && (
-                <TitleBadge titleId={post.authorEquippedTitleId} size="xs" />
-              )}
               <p className="text-xs text-muted-foreground">
                 {formatRelativeTime(post.createdAt, lang)}
               </p>
             </div>
           </div>
-          {post.authorId === currentUser?.id && (
-            <div className="flex gap-1.5 shrink-0">
-              <button
-                onClick={openPostEdit}
-                className="p-1.5 rounded bg-muted hover:bg-accent/20 transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={handleDeletePost}
-                className="p-1.5 rounded bg-muted text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CAT_STYLE[post.category]}`}
+            >
+              {catLabel(post.category)}
+            </span>
+            {post.authorId === currentUser?.id && (
+              <div className="flex gap-1.5">
+                <button
+                  onClick={openPostEdit}
+                  className="p-1.5 rounded bg-muted hover:bg-accent/20 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleDeletePost}
+                  className="p-1.5 rounded bg-muted text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
