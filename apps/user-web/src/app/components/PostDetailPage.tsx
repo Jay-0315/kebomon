@@ -83,21 +83,25 @@ function CommentCard({
       )}
       <div className="flex-1 bg-muted/40 rounded-lg p-3">
         <div className="flex items-start justify-between gap-2 mb-1.5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <UserAvatar
               authorId={comment.authorId}
               authorName={comment.authorName}
-              size="xs"
+              size="sm"
               photoUrl={comment.authorPhotoUrl}
               borderId={null}
             />
-            <span className="text-xs font-medium">{comment.authorName}</span>
-            {comment.authorEquippedTitleId && (
-              <TitleBadge titleId={comment.authorEquippedTitleId} size="xs" />
-            )}
-            <span className="text-[10px] text-muted-foreground">
-              {formatRelativeTime(comment.createdAt, lang)}
-            </span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium">{comment.authorName}</span>
+                {comment.authorEquippedTitleId && (
+                  <TitleBadge titleId={comment.authorEquippedTitleId} size="xs" />
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {formatRelativeTime(comment.createdAt, lang)}
+              </p>
+            </div>
           </div>
           <div className="flex gap-1 shrink-0">
             {!isReply && (
@@ -373,7 +377,7 @@ export default function PostDetailPage() {
       {/* 게시글 본문 */}
       <div className="bg-card rounded border border-border p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <UserAvatar
               authorId={post.authorId}
               authorName={post.authorName}
