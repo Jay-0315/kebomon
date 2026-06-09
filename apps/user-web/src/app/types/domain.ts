@@ -113,6 +113,7 @@ export interface RewardSummary {
   streakDays: number;
   equippedCharacterId: number | null;
   equippedTitleId: number | null;
+  equippedBorderId: string | null;
   ownedCharacterIds: number[];
   ownedTitleIds: number[];
   gachaPityCount: number;

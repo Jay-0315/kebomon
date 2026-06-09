@@ -81,6 +81,7 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     streakDays: summary?.streakDays ?? 0,
     equippedCharacterId: summary?.equippedCharacterId ?? null,
     equippedTitleId: summary?.equippedTitleId ?? null,
+    equippedBorderId: summary?.equippedBorderId ?? null,
     ownedCharacterIds: (summary?.ownedCharacterIds ?? []).filter((id) => _VALID_CHAR_IDS.has(id)),
     ownedTitleIds: summary?.ownedTitleIds ?? [],
     gachaPityCount: summary?.gachaPityCount ?? 0,

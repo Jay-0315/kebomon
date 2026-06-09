@@ -1137,7 +1137,7 @@ export default function RaidPage() {
     setRaidType(id); setState(null); setSelf(null); setBubbles([]); setReward(null);
     setChatLives(5); setEliminated(false);
     const user = getStoredUser();
-    getRaidSocket().emit("raid:join", { raidType: id, characterId: myCharacterId, userId: user?.id });
+    getRaidSocket().emit("raid:join", { raidType: id, characterId: myCharacterId, userId: user?.id, nickname: user?.name });
     setView("room");
   };
   const leave = () => {

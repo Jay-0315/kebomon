@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Swords, Trophy, Shield, RefreshCw, ChevronLeft,
-  Dices, Crown, Medal, Dice6, Zap,
+  Dices, Crown, Medal, Dice6, Zap, Gift, X,
 } from "lucide-react";
 import { getBattleSocket, disconnectBattleSocket } from "../lib/socket";
 import { getStoredUser } from "../lib/auth";
@@ -42,6 +42,35 @@ const TIERS = [
   { key:"master",    ko:"마스터",    ja:"マスター",      min:5000, color:"#da70d6",glow:"#800080" },
   { key:"challenger",ko:"챌린저",   ja:"チャレンジャー",min:6000, color:"#ff4500",glow:"#8b0000" },
 ] as const;
+
+// ─── 시즌 ────────────────────────────────────────────────────────────────────
+const SEASON = {
+  number: 1,
+  startDate: "2026-06-09",
+  endDate:   "2026-06-30",
+};
+
+const SEASON_REWARDS = [
+  { tierKey:"challenger", ko:"챌린저",    ja:"チャレンジャー", minPts:6000, bonusPoints:2000, borderColor:"url(#grad-challenger)", borderGlow:"#ff4500" },
+  { tierKey:"master",     ko:"마스터",    ja:"マスター",       minPts:5000, bonusPoints:1500, borderColor:"#da70d6",              borderGlow:"#9400d3" },
+  { tierKey:"diamond",    ko:"다이아몬드",ja:"ダイヤモンド",   minPts:4000, bonusPoints:1000, borderColor:"#b9f2ff",              borderGlow:"#4169e1" },
+  { tierKey:"platinum",   ko:"플레티넘",  ja:"プラチナ",       minPts:3000, bonusPoints:700,  borderColor:"#40e0d0",              borderGlow:"#008b8b" },
+  { tierKey:"gold",       ko:"골드",      ja:"ゴールド",       minPts:2000, bonusPoints:500,  borderColor:"#ffd700",              borderGlow:"#b8860b" },
+  { tierKey:"silver",     ko:"실버",      ja:"シルバー",       minPts:1000, bonusPoints:300,  borderColor:"#c0c0c0",              borderGlow:"#708090" },
+  { tierKey:"bronze",     ko:"브론즈",    ja:"ブロンズ",       minPts:1,    bonusPoints:100,  borderColor:"#cd7f32",              borderGlow:"#8B4513" },
+] as const;
+
+// 프로필 테두리 id (tierKey → borderId)
+export const SEASON_BORDER_ID = (tierKey: string) => `s1_${tierKey}`;
+export const BORDER_STYLES: Record<string,{color:string;glow:string;animated?:boolean}> = {
+  s1_bronze:     { color:"#cd7f32", glow:"#8B4513" },
+  s1_silver:     { color:"#c0c0c0", glow:"#708090" },
+  s1_gold:       { color:"#ffd700", glow:"#b8860b" },
+  s1_platinum:   { color:"#40e0d0", glow:"#008b8b" },
+  s1_diamond:    { color:"#b9f2ff", glow:"#4169e1" },
+  s1_master:     { color:"#da70d6", glow:"#9400d3" },
+  s1_challenger: { color:"#ff4500", glow:"#8b0000", animated:true },
+};
 
 const RARITY_DICE_CONFIG: Record<string,{faces:number;count:number}> = {
   common:{faces:6,count:1}, uncommon:{faces:6,count:1},
@@ -518,6 +547,114 @@ interface BattleStats{tierPoints:number;wins:number;losses:number;winStreak:numb
 interface BattleLogEntry{id:number;round:number;attacker:"player"|"opponent";rolls:number[];total:number;playerHp:number;opponentHp:number;}
 type Phase="lobby"|"coin"|"battle"|"result";
 
+// ─── 시즌보상 팝업 ───────────────────────────────────────────────────────────
+function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolean; myPts:number }) {
+  const myRewardIdx = SEASON_REWARDS.findIndex(r => myPts >= r.minPts);
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",
+      background:"rgba(0,0,0,0.75)",backdropFilter:"blur(4px)"}}
+      onClick={onClose}>
+      <div style={{background:"linear-gradient(135deg,#1e1508 0%,#120e06 100%)",
+        border:"2px solid #5a3d0e",borderRadius:10,padding:"24px 20px",width:"min(480px,94vw)",
+        boxShadow:"0 0 40px rgba(200,164,74,0.3)",fontFamily:FONT,position:"relative"}}
+        onClick={e=>e.stopPropagation()}>
+        {/* 헤더 */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <Gift size={18} color="#c8a44a"/>
+            <div>
+              <p style={{margin:0,fontSize:16,fontWeight:900,color:"#c8a44a"}}>
+                {ko ? `시즌 ${SEASON.number} 보상` : `シーズン${SEASON.number}報酬`}
+              </p>
+              <p style={{margin:0,fontSize:11,color:"#8b6f3a"}}>
+                {SEASON.startDate} ~ {SEASON.endDate}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4}}>
+            <X size={18} color="#8b6f3a"/>
+          </button>
+        </div>
+
+        {/* 설명 */}
+        <p style={{fontSize:11,color:"#8b6f3a",margin:"0 0 14px",lineHeight:1.6}}>
+          {ko
+            ? "시즌 종료 시 달성한 최고 티어 기준으로 보상이 지급됩니다. 프로필 테두리는 다음 시즌에도 유지됩니다."
+            : "シーズン終了時の最高ティアに基づいて報酬が付与されます。プロフィール枠は次シーズンも維持されます。"}
+        </p>
+
+        {/* 보상 테이블 */}
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {SEASON_REWARDS.map((r, i) => {
+            const isMine = i === myRewardIdx;
+            const isAbove = myPts > 0 && myPts >= r.minPts;
+            return (
+              <div key={r.tierKey} style={{
+                display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
+                borderRadius:6,border:`1px solid ${isMine?"#c8a44a":isAbove?"#5a3d0e22":"#2e1f06"}`,
+                background:isMine?"rgba(200,164,74,0.08)":isAbove?"rgba(255,255,255,0.02)":"transparent",
+                opacity:isAbove?1:0.6,
+              }}>
+                {/* 테두리 미리보기 */}
+                <div style={{width:32,height:32,flexShrink:0,position:"relative"}}>
+                  <svg width={32} height={32} viewBox="0 0 32 32">
+                    {r.tierKey==="challenger"&&(
+                      <defs>
+                        <linearGradient id="grad-challenger-modal" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#ff4500"/>
+                          <stop offset="33%" stopColor="#ffd700"/>
+                          <stop offset="66%" stopColor="#c0c0c0"/>
+                          <stop offset="100%" stopColor="#ff4500"/>
+                        </linearGradient>
+                      </defs>
+                    )}
+                    <circle cx="16" cy="16" r="14" fill="none"
+                      stroke={r.tierKey==="challenger"?"url(#grad-challenger-modal)":r.borderColor}
+                      strokeWidth={isMine?3:2}
+                      style={r.tierKey==="challenger"?{filter:`drop-shadow(0 0 4px ${r.borderGlow})`}:{}}/>
+                    <circle cx="16" cy="16" r="10" fill="#1e1508"/>
+                    <text x="16" y="20" textAnchor="middle" fontSize="10" fill={r.borderColor as string} fontWeight="bold">
+                      {(ko ? r.ko : r.ja)[0]}
+                    </text>
+                  </svg>
+                  {isMine&&(
+                    <div style={{position:"absolute",top:-3,right:-3,width:10,height:10,
+                      background:"#4ade80",borderRadius:"50%",border:"1px solid #1e1508"}}/>
+                  )}
+                </div>
+                {/* 티어명 */}
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{margin:0,fontSize:13,fontWeight:900,color:r.borderColor as string,
+                    filter:`drop-shadow(0 0 4px ${r.borderGlow})`}}>
+                    {ko ? r.ko : r.ja}
+                  </p>
+                  <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>{r.minPts.toLocaleString()} pts {ko?"이상":"以上"}</p>
+                </div>
+                {/* 보상 */}
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <p style={{margin:0,fontSize:12,fontWeight:900,color:"#4ade80"}}>+{r.bonusPoints.toLocaleString()}P</p>
+                  <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>
+                    {ko?"프로필 테두리":"プロフィール枠"}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 내 현재 위치 */}
+        {myPts > 0 && (
+          <p style={{margin:"14px 0 0",fontSize:11,color:"#c8a44a",textAlign:"center"}}>
+            {ko
+              ? `현재 ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?(ko?SEASON_REWARDS[myRewardIdx].ko:SEASON_REWARDS[myRewardIdx].ja):"미달성"} 보상 예정`
+              : `現在 ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?(ko?SEASON_REWARDS[myRewardIdx].ko:SEASON_REWARDS[myRewardIdx].ja):"未達成"}報酬予定`}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function ColosseumPage(){
   const{rewardSummary}=useAppData();
@@ -527,6 +664,9 @@ export default function ColosseumPage(){
   const myChar=charById(myCharacterId);
   const myEnhanceLevel=rewardSummary.characterEnhancements[myCharacterId]??0;
   const user=getStoredUser();
+
+  // ── 시즌 팝업 ──
+  const[showSeason,setShowSeason]=useState(false);
 
   // ── 랭킹 상태 ──
   const[rankings,setRankings]=useState<RankingEntry[]>([]);
@@ -841,6 +981,18 @@ export default function ColosseumPage(){
           <div style={{position:"absolute",inset:0,opacity:0.06,
             backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(255,255,255,0.5) 31px,rgba(255,255,255,0.5) 32px)",
             pointerEvents:"none"}}/>
+          {/* 시즌보상 버튼 (우상단) */}
+          <button onClick={()=>setShowSeason(true)} style={{
+            position:"absolute",top:12,right:14,zIndex:2,
+            display:"flex",alignItems:"center",gap:5,
+            background:"rgba(200,164,74,0.12)",border:"1px solid #5a3d0e",
+            borderRadius:5,padding:"5px 10px",cursor:"pointer",
+            fontFamily:FONT,fontSize:11,fontWeight:900,color:C.gold,
+            transition:"background 0.15s",
+          }}>
+            <Gift size={13} color={C.gold}/>
+            {ko?`시즌 ${SEASON.number} 보상`:`シーズン${SEASON.number}報酬`}
+          </button>
           <p style={{fontFamily:FONT,fontSize:11,letterSpacing:"0.4em",color:C.stone,marginBottom:2,fontWeight:900}}>
             {t("col.kebomon")}
           </p>
@@ -850,12 +1002,35 @@ export default function ColosseumPage(){
           <h1 style={{fontFamily:"'Courier New',monospace",fontSize:28,fontWeight:900,
             letterSpacing:"0.22em",color:C.gold,
             textShadow:`0 0 24px ${C.goldGlow}, 2px 2px 0 #3a2508, -1px -1px 0 #3a2508`,
-            margin:"6px 0 0",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+            margin:"6px 0 4px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
             <Swords size={22} color={C.gold} strokeWidth={2.5}/>
             COLOSSEUM
             <Swords size={22} color={C.gold} strokeWidth={2.5}/>
           </h1>
+          {/* 시즌 로고 */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:6}}>
+            <div style={{height:1,width:40,background:`linear-gradient(90deg,transparent,${C.gold}88)`}}/>
+            <div style={{
+              display:"flex",alignItems:"center",gap:6,
+              background:"rgba(200,164,74,0.08)",
+              border:`1px solid ${C.gold}44`,
+              borderRadius:20,padding:"3px 14px",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/>
+              </svg>
+              <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,letterSpacing:"0.12em",
+                color:C.gold,textShadow:`0 0 10px ${C.goldGlow}`}}>
+                {ko?`시즌 ${SEASON.number}  ·  영광의 시작`:`シーズン${SEASON.number}  ·  栄光の始まり`}
+              </span>
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/>
+              </svg>
+            </div>
+            <div style={{height:1,width:40,background:`linear-gradient(90deg,${C.gold}88,transparent)`}}/>
+          </div>
         </div>
+        {showSeason&&<SeasonRewardModal onClose={()=>setShowSeason(false)} ko={ko} myPts={tierPts}/>}
 
         <div style={{maxWidth:860,margin:"0 auto",padding:"20px 16px",display:"flex",flexDirection:"column",gap:14}}>
 
@@ -1028,57 +1203,119 @@ export default function ColosseumPage(){
                         </div>
                       )}
                       <div style={{
-                        display:"flex",alignItems:"center",gap:6,padding:"5px 10px",
+                        display:"flex",alignItems:"center",gap:8,padding:"8px 12px",
                         background:isMe?"#1e3a5f18":"transparent",
                         borderBottom:`1px solid ${C.borderFaint}`,
                         borderLeft:isMe?`3px solid #60a5fa`:`3px solid transparent`,
                       }}>
                         {/* 등수 */}
-                        <div style={{width:20,textAlign:"center",flexShrink:0}}>
+                        <div style={{width:24,textAlign:"center",flexShrink:0}}>
                           {entry.rank<=3
-                            ?<RankIcon size={14} color={rankColor} strokeWidth={2}/>
-                            :<span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
+                            ?<RankIcon size={16} color={rankColor} strokeWidth={2}/>
+                            :<span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
                         </div>
                         {/* 캐릭터 전신 (등수 바로 옆) */}
-                        <div style={{width:40,height:46,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
+                        <div style={{width:44,height:50,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
                           {entryChar
-                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={44}/>
+                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={48}/>
                             :<div style={{width:36,height:36,background:C.borderFaint,borderRadius:2}}/>}
                         </div>
                         {/* 닉네임 + 승/연승 */}
                         <div style={{flex:1,minWidth:0,marginLeft:2}}>
-                          <p style={{fontFamily:FONT,fontSize:11,fontWeight:900,
+                          <p style={{fontFamily:FONT,fontSize:13,fontWeight:900,
                             color:isMe?"#93c5fd":C.parchment,margin:0,
                             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {entry.nickname}
-                            {isMe&&<span style={{marginLeft:4,fontSize:8,color:"#60a5fa",
-                              background:"#1e3a5f",padding:"1px 3px",borderRadius:2,fontWeight:900}}>
+                            {isMe&&<span style={{marginLeft:4,fontSize:10,color:"#60a5fa",
+                              background:"#1e3a5f",padding:"1px 4px",borderRadius:2,fontWeight:900}}>
                               {t("col.me")}
                             </span>}
                           </p>
-                          <p style={{fontFamily:FONT,fontSize:9,color:C.stone,margin:0}}>
+                          <p style={{fontFamily:FONT,fontSize:11,color:C.stone,margin:"2px 0 0"}}>
                             {t("col.wins_summary").replace("{w}",String(entry.wins)).replace("{s}",String(entry.winStreak))}
                           </p>
                         </div>
                         {/* 티어 (우측정렬) */}
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:3}}>
-                            <TierBadgeSvg idx={eIdx} size={13}/>
-                            <span style={{fontFamily:FONT,fontSize:9,fontWeight:900,color:eTier.color}}>{ko?eTier.ko:eTier.ja}</span>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:4}}>
+                            <TierBadgeSvg idx={eIdx} size={14}/>
+                            <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,color:eTier.color}}>{ko?eTier.ko:eTier.ja}</span>
                           </div>
-                          <span style={{fontFamily:"monospace",fontSize:9,color:C.stone}}>{entry.tierPoints} pts</span>
+                          <span style={{fontFamily:"monospace",fontSize:12,color:C.stone}}>{entry.tierPoints} pts</span>
                         </div>
                       </div>
                     </div>
                   );
                 };
                 return(
-                  <div ref={rankScrollRef} className="col-rank-scroll"
-                    style={{maxHeight:340,overflowY:"auto"}}
-                    onMouseDown={onRankDown} onMouseMove={onRankMove} onMouseUp={onRankUp} onMouseLeave={onRankUp}
-                    onTouchStart={onRankTouchStart} onTouchMove={onRankTouchMove} onTouchEnd={onRankUp}>
-                    {top10.map(entry=>renderRow(entry))}
-                    {myEntry&&!myInTop10&&renderRow(myEntry,true)}
+                  <div>
+                    {/* 스크롤 가능한 TOP 10 */}
+                    <div ref={rankScrollRef} className="col-rank-scroll"
+                      style={{maxHeight:320,overflowY:"auto"}}
+                      onMouseDown={onRankDown} onMouseMove={onRankMove} onMouseUp={onRankUp} onMouseLeave={onRankUp}
+                      onTouchStart={onRankTouchStart} onTouchMove={onRankTouchMove} onTouchEnd={onRankUp}>
+                      {top10.map(entry=>renderRow(entry))}
+                    </div>
+                    {/* 내 순위 고정 하단 */}
+                    {user&&(()=>{
+                      const myRank=myEntry;
+                      const myEIdx=myRank?getTierIdx(myRank.tierPoints):tierIdx;
+                      const myETier=TIERS[myEIdx];
+                      const myChar2=myRank?.characterId!=null?(CHARACTERS.find(c=>c.id===myRank.characterId)??CHARACTERS[0]):myChar;
+                      return(
+                        <div style={{borderTop:`2px solid ${C.border}`,background:"#0e0b04"}}>
+                          <div style={{padding:"4px 12px 3px",display:"flex",alignItems:"center",gap:6}}>
+                            <span style={{fontSize:9,color:C.stoneFaint,fontFamily:"monospace",letterSpacing:"0.08em"}}>— {ko?"내 순위":"自分の順位"} —</span>
+                            {!myRank&&<span style={{fontSize:9,color:C.stoneFaint,fontFamily:FONT}}>{ko?"(미참전)":"(未参戦)"}</span>}
+                          </div>
+                          <div style={{
+                            display:"flex",alignItems:"center",gap:8,padding:"6px 12px 10px",
+                            background:"linear-gradient(90deg,#1e3a5f22,transparent)",
+                            borderLeft:`3px solid #60a5fa`,
+                          }}>
+                            {/* 등수 */}
+                            <div style={{width:24,textAlign:"center",flexShrink:0}}>
+                              {!myRank
+                                ?<span style={{fontFamily:"monospace",fontSize:11,color:C.stoneFaint}}>-</span>
+                                :myRank.rank===1?<Crown size={16} color="#ffd700" strokeWidth={2}/>
+                                :myRank.rank===2?<Medal size={16} color="#c0c0c0" strokeWidth={2}/>
+                                :myRank.rank===3?<Medal size={16} color="#cd7f32" strokeWidth={2}/>
+                                :<span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,color:"#93c5fd"}}>{myRank.rank}</span>}
+                            </div>
+                            {/* 캐릭터 */}
+                            <div style={{width:44,height:50,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
+                              <PixelSprite type={myChar2.type} colors={myChar2.colors} characterId={myChar2.id} rarity={myChar2.rarity} size={48}/>
+                            </div>
+                            {/* 닉네임 */}
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{fontFamily:FONT,fontSize:13,fontWeight:900,color:"#93c5fd",margin:0,
+                                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                {user.name??(ko?"나":"自分")}
+                                <span style={{marginLeft:4,fontSize:10,color:"#60a5fa",
+                                  background:"#1e3a5f",padding:"1px 4px",borderRadius:2,fontWeight:900}}>
+                                  {t("col.me")}
+                                </span>
+                              </p>
+                              <p style={{fontFamily:FONT,fontSize:11,color:C.stone,margin:"2px 0 0"}}>
+                                {myRank
+                                  ?t("col.wins_summary").replace("{w}",String(myRank.wins)).replace("{s}",String(myRank.winStreak))
+                                  :(ko?"전적 없음":"戦績なし")}
+                              </p>
+                            </div>
+                            {/* 티어 */}
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}}>
+                              <div style={{display:"flex",alignItems:"center",gap:4}}>
+                                <TierBadgeSvg idx={myEIdx} size={14}/>
+                                <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,color:myETier.color}}>{ko?myETier.ko:myETier.ja}</span>
+                              </div>
+                              <span style={{fontFamily:"monospace",fontSize:12,color:"#93c5fd",fontWeight:700}}>
+                                {myRank?myRank.tierPoints:tierPts} pts
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}

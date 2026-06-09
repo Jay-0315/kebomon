@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shield } from "lucide-react";
+import { Shield, ArrowLeft } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -283,30 +283,30 @@ export default function ShopPage() {
         {/* 강화 패널 */}
         {selectedId && selectedChar && (
           <div className="p-4 space-y-4">
-            {/* 뒤로 + 캐릭터 정보 */}
+            {/* 뒤로가기 버튼 */}
+            <button
+              onClick={() => { setSelectedId(null); setEnhResult(null); }}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft size={15} />
+              {lang === "ja" ? "戻る" : "뒤로가기"}
+            </button>
+            {/* 캐릭터 정보 */}
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => { setSelectedId(null); setEnhResult(null); }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                ← {t("enhance.select_char").slice(0, 4)}
-              </button>
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`w-14 h-14 rounded-xl ${RARITY_BG[selectedChar.rarity]} border ${RARITY_BORDER[selectedChar.rarity]} flex items-center justify-center shrink-0`}>
-                  <PixelSprite type={selectedChar.type} colors={selectedChar.colors} characterId={selectedChar.id} rarity={selectedChar.rarity} size={48} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-bold truncate ${RARITY_COLOR[selectedChar.rarity]}`}>
-                    {getCharName(selectedChar, lang)}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${RARITY_BG[selectedChar.rarity]} ${RARITY_COLOR[selectedChar.rarity]}`}>
-                      {getRarityLabel(selectedChar.rarity, lang)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      +{currentLevel} / +{maxLevel}
-                    </span>
-                  </div>
+              <div className={`w-16 h-16 rounded-xl ${RARITY_BG[selectedChar.rarity]} border ${RARITY_BORDER[selectedChar.rarity]} flex items-center justify-center shrink-0`}>
+                <PixelSprite type={selectedChar.type} colors={selectedChar.colors} characterId={selectedChar.id} rarity={selectedChar.rarity} size={52} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-base font-bold truncate ${RARITY_COLOR[selectedChar.rarity]}`}>
+                  {getCharName(selectedChar, lang)}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-xs px-2 py-0.5 rounded ${RARITY_BG[selectedChar.rarity]} ${RARITY_COLOR[selectedChar.rarity]}`}>
+                    {getRarityLabel(selectedChar.rarity, lang)}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    +{currentLevel} / +{maxLevel}
+                  </span>
                 </div>
               </div>
             </div>

@@ -4,7 +4,30 @@ import { Wallet, Mail, Lock, User, ShieldCheck } from "lucide-react";
 import { api } from "../lib/api";
 import { setAuthSession } from "../lib/auth";
 import { useLang } from "../context/LangContext";
+import { useAppData } from "../context/AppDataContext";
 import { type CurrencyCode } from "../types/domain";
+
+function LangSwitcher() {
+  const { lang } = useLang();
+  const { updateSettings } = useAppData();
+  return (
+    <div className="flex items-center justify-center gap-2 mb-5 text-sm">
+      <button
+        onClick={() => void updateSettings({ language: "ko" })}
+        className={`px-2 py-0.5 rounded transition-colors ${lang === "ko" ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+      >
+        한국어
+      </button>
+      <span className="text-border">|</span>
+      <button
+        onClick={() => void updateSettings({ language: "ja" })}
+        className={`px-2 py-0.5 rounded transition-colors ${lang === "ja" ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+      >
+        日本語
+      </button>
+    </div>
+  );
+}
 
 type AuthResponse = {
   accessToken: string;
@@ -109,6 +132,7 @@ export default function SignupPage() {
         </div>
 
         <div className="bg-card rounded p-6 shadow-lg border border-border">
+          <LangSwitcher />
           <form onSubmit={handleSignup} className="space-y-4">
             {/* 이름 */}
             <div>

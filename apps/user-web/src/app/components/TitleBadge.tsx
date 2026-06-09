@@ -93,18 +93,42 @@ function MythicAnimatedText({ text, size }: { text: string; size: "xs" | "sm" | 
 // @keyframes titleShimmer { to { background-position: 200% center; } }
 
 // 칭호 선택 그리드 - MyPage / KabemonPage 내에서 사용
+export type TitleUserStats = {
+  raid_count?: number;
+  attendance?: number;
+  streak?: number;
+  post_count?: number;
+  points?: number;
+  col_wins?: number;
+  col_streak?: number;
+  col_points?: number;
+};
+
+const CONDITION_UNIT: Record<string, string> = {
+  raid_count: "회",
+  attendance: "일",
+  streak: "일",
+  post_count: "개",
+  points: "P",
+  col_wins: "승",
+  col_streak: "연승",
+  col_points: "pts",
+};
+
 export function TitleSelector({
   ownedTitleIds,
   equippedTitleId,
   onEquip,
   onUnequip,
   loading,
+  userStats,
 }: {
   ownedTitleIds: number[];
   equippedTitleId: number | null;
   onEquip: (id: number) => void;
   onUnequip: () => void;
   loading?: boolean;
+  userStats?: TitleUserStats;
 }) {
   const { t } = useLang();
   const ownedSet = new Set(ownedTitleIds);
@@ -159,6 +183,10 @@ export function TitleSelector({
                 {titles.map((title) => {
                   const isOwned = ownedSet.has(title.id);
                   const isEquipped = title.id === equippedTitleId;
+                  const current = userStats?.[title.conditionType as keyof TitleUserStats] ?? 0;
+                  const required = title.conditionValue;
+                  const progress = Math.min(current / required, 1);
+                  const unit = CONDITION_UNIT[title.conditionType] ?? "";
                   return (
                     <div
                       key={title.id}
@@ -167,18 +195,38 @@ export function TitleSelector({
                           ? "bg-primary/5"
                           : isOwned
                           ? "bg-card hover:bg-muted/50"
-                          : "bg-muted/20 opacity-50"
+                          : "bg-muted/20"
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {isOwned ? (
-                          <TitleBadge titleId={title.id} size="sm" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground font-medium px-1.5 py-0.5 bg-muted rounded">
-                            ???
-                          </span>
+                      <div className="flex-1 min-w-0 mr-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          {isOwned ? (
+                            <TitleBadge titleId={title.id} size="sm" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-medium px-1.5 py-0.5 bg-muted rounded">
+                              ???
+                            </span>
+                          )}
+                          <p className="text-[10px] text-muted-foreground truncate">{t(`title.${title.id}.desc` as TranslationKey)}</p>
+                        </div>
+                        {/* 진행률 바 */}
+                        {!isOwned && userStats && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${progress * 100}%`,
+                                  background: TITLE_GRADE_COLOR[grade],
+                                  opacity: 0.8,
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {current.toLocaleString()}/{required.toLocaleString()}{unit}
+                            </span>
+                          </div>
                         )}
-                        <p className="text-[10px] text-muted-foreground truncate">{t(`title.${title.id}.desc` as TranslationKey)}</p>
                       </div>
                       {isOwned && !isEquipped && (
                         <button

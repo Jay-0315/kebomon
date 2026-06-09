@@ -27,24 +27,39 @@ const RATE_WINDOW_MS = 10_000;
 const RATE_LIMIT = 3;
 const MUTE_DURATION_MS = 30_000;
 
-const ADJECTIVES = [
+const KO_ADJ = [
   "야비한", "수상한", "느긋한", "배고픈", "화려한", "소심한", "용감한", "엉뚱한",
   "까칠한", "나른한", "우아한", "발랄한", "시크한", "도도한", "능청맞은", "새침한",
   "천진한", "음흉한", "게으른", "부지런한", "수줍은", "거만한", "귀여운", "무뚝뚝한",
   "엄격한", "자유로운", "변덕스런", "진지한", "쾌활한", "침착한", "엉큼한", "낭만적인",
 ];
-
-const ANIMALS = [
+const KO_ANI = [
   "바다코끼리", "너구리", "수달", "북극곰", "펭귄", "고슴도치", "미어캣", "알파카",
   "카피바라", "두더지", "치타", "나무늘보", "왈라비", "오리너구리", "라쿤", "비버",
   "족제비", "다람쥐", "햄스터", "판다", "코알라", "웜뱃", "여우원숭이", "카멜레온",
   "도롱뇽", "살쾡이", "고라니", "청설모", "표범", "수리부엉이", "물범", "땅늘보",
 ];
+const JA_ADJ = [
+  "のんびり", "あやしい", "いじわるな", "ふしぎな", "ゆうかんな", "おっとりした",
+  "きまぐれな", "おとなしい", "あわてんぼうの", "するどい", "なまけもの", "まじめな",
+  "きさくな", "うっかりした", "ずるがしこい", "おちゃめな", "しずかな", "にぎやかな",
+];
+const JA_ANI = [
+  "セイウチ", "タヌキ", "カワウソ", "ホッキョクグマ", "ペンギン", "ハリネズミ",
+  "ミーアキャット", "アルパカ", "カピバラ", "モグラ", "チーター", "ナマケモノ",
+  "カンガルー", "カモノハシ", "アライグマ", "ビーバー", "リス", "ハムスター",
+  "パンダ", "コアラ", "キツネ", "カメレオン", "ヒョウ", "アザラシ",
+];
 
-function randomNickname(): string {
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
-  return `${adj} ${animal}`;
+function randomNickname(lang: "ko" | "ja" = "ko"): string {
+  if (lang === "ja") {
+    const adj = JA_ADJ[Math.floor(Math.random() * JA_ADJ.length)];
+    const ani = JA_ANI[Math.floor(Math.random() * JA_ANI.length)];
+    return `${adj}${ani}`;
+  }
+  const adj = KO_ADJ[Math.floor(Math.random() * KO_ADJ.length)];
+  const ani = KO_ANI[Math.floor(Math.random() * KO_ANI.length)];
+  return `${adj} ${ani}`;
 }
 
 const room = (channelId: number) => `chat:${channelId}`;
@@ -64,7 +79,7 @@ export class ChatGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage("chat:join")
   handleJoin(
-    @MessageBody() data: { channelId: number; characterId: number; userId?: string },
+    @MessageBody() data: { channelId: number; characterId: number; userId?: string; lang?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const channelId = CHANNEL_IDS.includes(data?.channelId as 1 | 2 | 3 | 4)
@@ -84,7 +99,7 @@ export class ChatGateway implements OnGatewayDisconnect {
       this.broadcastRoster(prev.channelId);
     }
 
-    const nickname = randomNickname();
+    const nickname = randomNickname(data?.lang === "ja" ? "ja" : "ko");
     this.participants.set(client.id, {
       socketId: client.id,
       characterId,

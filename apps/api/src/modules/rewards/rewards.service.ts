@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
+  // 기존 칭호
   { titleId: 1,  type: "raid_count",  value: 1 },
   { titleId: 2,  type: "attendance",  value: 3 },
   { titleId: 3,  type: "points",      value: 50 },
@@ -21,7 +22,6 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   { titleId: 18, type: "points",      value: 15000 },
   { titleId: 19, type: "streak",      value: 60 },
   { titleId: 20, type: "raid_count",  value: 200 },
-  { titleId: 21, type: "live_count",  value: 1 },
   { titleId: 22, type: "post_count",  value: 1 },
   { titleId: 23, type: "streak",      value: 3 },
   { titleId: 24, type: "points",      value: 300 },
@@ -30,6 +30,19 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   { titleId: 27, type: "attendance",  value: 60 },
   { titleId: 28, type: "streak",      value: 45 },
   { titleId: 30, type: "post_count",  value: 150 },
+  // 배틀(콜로세움) 칭호
+  { titleId: 31, type: "col_wins",    value: 1 },
+  { titleId: 32, type: "col_wins",    value: 10 },
+  { titleId: 33, type: "col_streak",  value: 3 },
+  { titleId: 34, type: "col_wins",    value: 30 },
+  { titleId: 35, type: "col_streak",  value: 5 },
+  { titleId: 36, type: "col_points",  value: 1000 },
+  { titleId: 37, type: "col_wins",    value: 75 },
+  { titleId: 38, type: "col_streak",  value: 10 },
+  { titleId: 39, type: "col_points",  value: 4000 },
+  { titleId: 40, type: "col_wins",    value: 150 },
+  { titleId: 41, type: "col_streak",  value: 15 },
+  { titleId: 42, type: "col_points",  value: 8000 },
 ];
 
 // Character rarity duplicate point values (mirrors frontend constants)
@@ -492,6 +505,7 @@ export class RewardsService {
       streakDays: reward.streakDays,
       equippedCharacterId: reward.equippedCharacterId,
       equippedTitleId: reward.equippedTitleId,
+      equippedBorderId: reward.equippedBorderId,
       ownedCharacterIds: ownedChars.map((c) => c.characterId),
       ownedTitleIds: ownedTitles.map((t) => t.titleId),
       gachaPityCount: reward.gachaPityCount,
@@ -888,6 +902,7 @@ export class RewardsService {
   async checkAndGrantTitles(userId: string) {
     const reward = await this.getOrCreateReward(userId);
     const postCount = await this.prisma.communityPost.count({ where: { userId } });
+    const battleStats = await this.prisma.battleStats.findUnique({ where: { userId } });
 
     const stats: Record<string, number> = {
       raid_count:  reward.raidCount,
@@ -896,6 +911,9 @@ export class RewardsService {
       attendance:  reward.attendanceDays,
       streak:      reward.streakDays,
       points:      reward.totalPointsUsed,
+      col_wins:    battleStats?.wins ?? 0,
+      col_streak:  battleStats?.bestStreak ?? 0,
+      col_points:  battleStats?.tierPoints ?? 0,
     };
 
     const ownedTitles = await this.prisma.userTitle.findMany({
@@ -1039,6 +1057,43 @@ export class RewardsService {
       winStreak: stats.winStreak,
       bestStreak: stats.bestStreak,
     };
+  }
+
+  async grantSeasonRankTitles(seasonId: number) {
+    const rows = await this.prisma.battleStats.findMany({
+      take: 10,
+      orderBy: { tierPoints: "desc" },
+      select: { userId: true },
+    });
+
+    // rank → titleId 매핑 (1→43, 2→44, 3→45, 4~10→46)
+    const grants: { userId: string; titleId: number }[] = rows.map((r, i) => ({
+      userId: r.userId,
+      titleId: i === 0 ? 43 : i === 1 ? 44 : i === 2 ? 45 : 46,
+    }));
+
+    await this.prisma.$transaction(
+      grants.map(({ userId, titleId }) =>
+        this.prisma.userTitle.upsert({
+          where: { userId_titleId: { userId, titleId } },
+          create: { userId, titleId },
+          update: {},
+        }),
+      ),
+    );
+
+    // 알림 발송
+    for (const { userId } of grants) {
+      void this.notifications.create({
+        userId,
+        type: "achievement",
+        title: `시즌 ${seasonId} 랭킹 칭호 획득!`,
+        body: "시즌 최종 랭킹 칭호가 지급되었습니다. 칭호 목록에서 확인하세요.",
+        link: "/mypage?titles=1",
+      });
+    }
+
+    return { granted: grants.length, details: grants };
   }
 
   async updateBattleStats(userId: string, won: boolean) {

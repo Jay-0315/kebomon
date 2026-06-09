@@ -79,4 +79,14 @@ export class RewardsController {
   enhanceCharacter(@Body() body: { userId: string; characterId: number }) {
     return this.rewardsService.enhanceCharacter(body.userId, body.characterId);
   }
+
+  @Get("colosseum-stats")
+  getColosseumStats(@Query("userId") userId: string) {
+    return this.rewardsService.getBattleStats(userId);
+  }
+
+  @Post("season/grant-rank-titles")
+  grantSeasonRankTitles(@Body() body: { seasonId: number }) {
+    return this.rewardsService.grantSeasonRankTitles(body.seasonId ?? 1);
+  }
 }

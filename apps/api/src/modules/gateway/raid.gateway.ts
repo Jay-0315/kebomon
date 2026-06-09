@@ -246,7 +246,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   @SubscribeMessage("raid:join")
   join(
-    @MessageBody() data: { raidType: number; characterId: number; userId?: string },
+    @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const type = RAID_TYPES.includes(data?.raidType as 1 | 3 | 4) ? data.raidType : 1;
@@ -280,7 +280,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     // 입장 시 바로 금지 목록에 추가 (1회 입장 보장)
     if (userId) this.getBans(type).add(userId);
 
-    const nickname = nick();
+    const nickname = (data?.nickname ?? "").trim() || nick();
     r.players.set(client.id, {
       socketId: client.id,
       characterId: Number(data?.characterId) || 1,

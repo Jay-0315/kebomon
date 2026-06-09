@@ -103,7 +103,7 @@ const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTE
 
 export default function LiveChatPage() {
   const { rewardSummary } = useAppData();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const location = useLocation();
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
 
@@ -296,7 +296,7 @@ export default function LiveChatPage() {
     setPositions({});
     allPosRef.current = {};
     ownPosRef.current = { x: 50, y: 78 };
-    getChatSocket().emit("chat:join", { channelId: id, characterId: myCharacterId });
+    getChatSocket().emit("chat:join", { channelId: id, characterId: myCharacterId, lang });
     setView("room");
   };
 

@@ -1,5 +1,5 @@
 export type TitleGrade = "common" | "rare" | "epic" | "legendary" | "mythic";
-export type TitleConditionType = "raid_count" | "live_count" | "attendance" | "streak" | "post_count" | "points";
+export type TitleConditionType = "raid_count" | "live_count" | "attendance" | "streak" | "post_count" | "points" | "col_wins" | "col_streak" | "col_points" | "season_rank";
 
 export interface TitleDef {
   id: number;
@@ -47,27 +47,35 @@ export const TITLES: TitleDef[] = [
   { id: 1,  name: "첫 도전자",       grade: "common",    conditionType: "raid_count",  conditionValue: 1,     description: "첫 레이드를 클리어한 자" },
   { id: 2,  name: "성실한 기록가",   grade: "common",    conditionType: "attendance",  conditionValue: 3,     description: "3일 출석 달성" },
   { id: 3,  name: "절약의 싹",       grade: "common",    conditionType: "points",      conditionValue: 50,    description: "포인트 50P 돌파" },
-  { id: 21, name: "채팅 입문",       grade: "common",    conditionType: "live_count",  conditionValue: 1,     description: "라이브 채널에 첫 참여" },
   { id: 22, name: "첫 게시글",       grade: "common",    conditionType: "post_count",  conditionValue: 1,     description: "첫 커뮤니티 글 작성" },
   { id: 23, name: "3일 개근",        grade: "common",    conditionType: "streak",      conditionValue: 3,     description: "3일 연속 출석" },
+  { id: 31, name: "첫 승리",         grade: "common",    conditionType: "col_wins",    conditionValue: 1,     description: "콜로세움 첫 승리" },
   // ── Rare ──
   { id: 4,  name: "레이드 헌터",     grade: "rare",      conditionType: "raid_count",  conditionValue: 5,     description: "레이드 5회 클리어" },
   { id: 5,  name: "발걸음의 탐험가", grade: "rare",      conditionType: "attendance",  conditionValue: 20,    description: "20일 출석 달성" },
   { id: 7,  name: "커뮤니티 멤버",   grade: "rare",      conditionType: "post_count",  conditionValue: 7,     description: "커뮤니티 글 7개 작성" },
   { id: 24, name: "포인트 입문",     grade: "rare",      conditionType: "points",      conditionValue: 300,   description: "포인트 300P 돌파" },
   { id: 25, name: "습관의 시작",     grade: "rare",      conditionType: "streak",      conditionValue: 7,     description: "7일 연속 출석" },
+  { id: 32, name: "전장의 신인",     grade: "rare",      conditionType: "col_wins",    conditionValue: 10,    description: "콜로세움 10승 달성" },
+  { id: 33, name: "연승의 시작",     grade: "rare",      conditionType: "col_streak",  conditionValue: 3,     description: "3연승 달성" },
   // ── Epic ──
   { id: 8,  name: "레이드 베테랑",   grade: "epic",      conditionType: "raid_count",  conditionValue: 20,    description: "레이드 20회 클리어" },
   { id: 9,  name: "강철 의지",       grade: "epic",      conditionType: "streak",      conditionValue: 20,    description: "20일 연속 출석" },
   { id: 10, name: "포인트 수집가",   grade: "epic",      conditionType: "points",      conditionValue: 1000,  description: "포인트 1000P 돌파" },
   { id: 26, name: "필력가",          grade: "epic",      conditionType: "post_count",  conditionValue: 20,    description: "커뮤니티 글 20개 작성" },
   { id: 27, name: "꾸준한 탐험가",   grade: "epic",      conditionType: "attendance",  conditionValue: 60,    description: "60일 출석 달성" },
+  { id: 34, name: "전장의 용사",     grade: "epic",      conditionType: "col_wins",    conditionValue: 30,    description: "콜로세움 30승 달성" },
+  { id: 35, name: "철의 기세",       grade: "epic",      conditionType: "col_streak",  conditionValue: 5,     description: "5연승 달성" },
+  { id: 36, name: "실버 클래스",     grade: "epic",      conditionType: "col_points",  conditionValue: 1000,  description: "콜로세움 1000pts 달성" },
   // ── Legendary ──
   { id: 12, name: "레이드 마스터",   grade: "legendary", conditionType: "raid_count",  conditionValue: 50,    description: "레이드 50회 클리어" },
   { id: 13, name: "반년의 발자국",   grade: "legendary", conditionType: "attendance",  conditionValue: 90,    description: "90일 출석 달성" },
   { id: 14, name: "포인트 영주",     grade: "legendary", conditionType: "points",      conditionValue: 5000,  description: "포인트 5000P 돌파" },
   { id: 15, name: "커뮤니티 스타",   grade: "legendary", conditionType: "post_count",  conditionValue: 50,    description: "커뮤니티 글 50개 작성" },
   { id: 28, name: "연속의 달인",     grade: "legendary", conditionType: "streak",      conditionValue: 45,    description: "45일 연속 출석" },
+  { id: 37, name: "전장의 영웅",     grade: "legendary", conditionType: "col_wins",    conditionValue: 75,    description: "콜로세움 75승 달성" },
+  { id: 38, name: "폭풍 연승",       grade: "legendary", conditionType: "col_streak",  conditionValue: 10,    description: "10연승 달성" },
+  { id: 39, name: "다이아 클래스",   grade: "legendary", conditionType: "col_points",  conditionValue: 4000,  description: "콜로세움 4000pts 달성" },
   // ── Mythic ──
   { id: 16, name: "레이드의 신",     grade: "mythic",    conditionType: "raid_count",  conditionValue: 100,   description: "레이드 100회 클리어" },
   { id: 17, name: "일년의 기억",     grade: "mythic",    conditionType: "attendance",  conditionValue: 200,   description: "200일 출석 달성" },
@@ -75,6 +83,14 @@ export const TITLES: TitleDef[] = [
   { id: 19, name: "불굴의 집념",     grade: "mythic",    conditionType: "streak",      conditionValue: 60,    description: "60일 연속 출석" },
   { id: 20, name: "케보의 전설",     grade: "mythic",    conditionType: "raid_count",  conditionValue: 200,   description: "레이드 200회 클리어" },
   { id: 30, name: "케보의 시인",     grade: "mythic",    conditionType: "post_count",  conditionValue: 150,   description: "커뮤니티 글 150개 작성" },
+  { id: 40, name: "콜로세움의 왕",   grade: "mythic",    conditionType: "col_wins",    conditionValue: 150,   description: "콜로세움 150승 달성" },
+  { id: 41, name: "불멸의 연승",     grade: "mythic",    conditionType: "col_streak",  conditionValue: 15,    description: "15연승 달성" },
+  { id: 42, name: "챌린저",          grade: "mythic",    conditionType: "col_points",  conditionValue: 8000,  description: "콜로세움 8000pts 달성" },
+  // ── 시즌 1 랭킹 칭호 (season_rank: 1/2/3/10) ──
+  { id: 43, name: "시즌1 황제",       grade: "mythic",    conditionType: "season_rank", conditionValue: 1,     description: "시즌 1 최종 1위 달성" },
+  { id: 44, name: "시즌1 기사장",     grade: "legendary", conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성" },
+  { id: 45, name: "시즌1 용사",       grade: "legendary", conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성" },
+  { id: 46, name: "시즌1 투사",       grade: "epic",      conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성" },
 ];
 
 export const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

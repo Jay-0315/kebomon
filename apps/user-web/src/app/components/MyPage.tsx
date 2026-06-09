@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { api } from "../lib/api";
+import type { TitleUserStats } from "./TitleBadge";
 import {
   Flame,
   Heart,
@@ -43,6 +45,32 @@ export default function MyPage() {
   const [showTitleSelector, setShowTitleSelector] = useState(() =>
     new URLSearchParams(location.search).has("titles"),
   );
+  const [titleStats, setTitleStats] = useState<TitleUserStats>({});
+
+  useEffect(() => {
+    api.get<{ tierPoints: number; wins: number; winStreak: number; bestStreak: number }>(
+      `/rewards/colosseum-stats?userId=${encodeURIComponent(profile.id)}`
+    ).then((s) => {
+      setTitleStats({
+        raid_count: rewardSummary.raidCount,
+        attendance: rewardSummary.attendanceDays,
+        streak: rewardSummary.streakDays,
+        post_count: 0,
+        points: rewardSummary.totalPointsUsed,
+        col_wins: s.wins,
+        col_streak: s.bestStreak,
+        col_points: s.tierPoints,
+      });
+    }).catch(() => {
+      setTitleStats({
+        raid_count: rewardSummary.raidCount,
+        attendance: rewardSummary.attendanceDays,
+        streak: rewardSummary.streakDays,
+        points: rewardSummary.totalPointsUsed,
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEquipTitle = async (id: number) => {
     setTitleLoading(true);
@@ -256,6 +284,7 @@ export default function MyPage() {
               onEquip={handleEquipTitle}
               onUnequip={handleUnequipTitle}
               loading={titleLoading}
+              userStats={titleStats}
             />
           </div>
         )}
