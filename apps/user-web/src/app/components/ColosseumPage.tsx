@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Swords, Trophy, Shield, RefreshCw, ChevronLeft,
   Dices, Crown, Medal, Dice6, Zap, Gift, X,
@@ -595,65 +595,101 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
                 background:isMine?"rgba(200,164,74,0.08)":isAbove?"rgba(255,255,255,0.02)":"transparent",
                 opacity:isAbove?1:0.6,
               }}>
-                {/* 테두리 미리보기 */}
-                <div style={{width:38,height:38,flexShrink:0,position:"relative"}}>
-                  <svg width={38} height={38} viewBox="0 0 38 38">
-                    {r.tierKey==="challenger"&&(
-                      <defs>
-                        <linearGradient id="ch-modal-gr" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#ff4500"/>
-                          <stop offset="33%" stopColor="#ffd700"/>
-                          <stop offset="66%" stopColor="#da70d6"/>
-                          <stop offset="100%" stopColor="#ff4500"/>
-                        </linearGradient>
-                      </defs>
-                    )}
-                    {/* Bronze: 귀 달린 동물 방패 */}
-                    {r.tierKey==="bronze"&&<>
-                      <circle cx={19} cy={21} r={12} fill="none" stroke="#cd7f32" strokeWidth={isMine?3:2} style={{filter:"drop-shadow(0 0 4px #8B4513)"}}/>
-                      <circle cx={12} cy={10} r={5} fill="#1e1508" stroke="#cd7f32" strokeWidth={isMine?2.5:1.8}/>
-                      <circle cx={26} cy={10} r={5} fill="#1e1508" stroke="#cd7f32" strokeWidth={isMine?2.5:1.8}/>
-                    </>}
-                    {/* Silver: 다이아몬드 마름모 */}
-                    {r.tierKey==="silver"&&<>
-                      <polygon points="19,2 36,19 19,36 2,19" fill="none" stroke="#c0c0c0" strokeWidth={isMine?2.5:1.8} style={{filter:"drop-shadow(0 0 3px #708090)"}}/>
-                      <polygon points="19,9 29,19 19,29 9,19" fill="none" stroke="#c0c0c0" strokeWidth={0.8} opacity={0.45}/>
-                    </>}
-                    {/* Gold: 날개 달린 원형 */}
-                    {r.tierKey==="gold"&&<>
-                      <circle cx={19} cy={20} r={12} fill="none" stroke="#ffd700" strokeWidth={isMine?2.5:1.8} style={{filter:"drop-shadow(0 0 5px #b8860b)"}}/>
-                      <path d="M7,16 Q11,4 19,9 Q27,4 31,16" fill="none" stroke="#ffd700" strokeWidth={isMine?2.5:1.8} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 5px #b8860b)"}}/>
-                    </>}
-                    {/* Platinum: 팔각형 */}
-                    {r.tierKey==="platinum"&&
-                      <polygon
-                        points={Array.from({length:8},(_,k)=>{const a=(k*45-22.5)*Math.PI/180;return `${19+16*Math.cos(a)},${19+16*Math.sin(a)}`;}).join(" ")}
-                        fill="none" stroke="#40e0d0" strokeWidth={isMine?2.5:1.8} style={{filter:"drop-shadow(0 0 5px #008b8b)"}}/>
-                    }
-                    {/* Diamond: 4각 별 */}
-                    {r.tierKey==="diamond"&&
-                      <polygon
-                        points={Array.from({length:8},(_,k)=>{const a=(k*45-90)*Math.PI/180;const rad=k%2===0?16:7;return `${19+rad*Math.cos(a)},${19+rad*Math.sin(a)}`;}).join(" ")}
-                        fill="none" stroke="#b9f2ff" strokeWidth={isMine?2.5:1.8} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 6px #4169e1)"}}/>
-                    }
-                    {/* Master: 6각 꽃/눈송이 */}
-                    {r.tierKey==="master"&&
-                      <polygon
-                        points={Array.from({length:12},(_,k)=>{const a=(k*30-90)*Math.PI/180;const rad=k%2===0?15:9;return `${19+rad*Math.cos(a)},${19+rad*Math.sin(a)}`;}).join(" ")}
-                        fill="none" stroke="#da70d6" strokeWidth={isMine?2.5:1.8} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 6px #9400d3)"}}/>
-                    }
-                    {/* Challenger: 톱니 + 무지개 그라데이션 */}
-                    {r.tierKey==="challenger"&&
-                      <polygon
-                        points={Array.from({length:16},(_,k)=>{const a=(k*22.5-90)*Math.PI/180;const rad=k%2===0?16:12;return `${19+rad*Math.cos(a)},${19+rad*Math.sin(a)}`;}).join(" ")}
-                        fill="none" stroke="url(#ch-modal-gr)" strokeWidth={isMine?3:2} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 6px #ff4500)"}}/>
-                    }
-                  </svg>
-                  {isMine&&(
-                    <div style={{position:"absolute",top:-2,right:-2,width:10,height:10,
-                      background:"#4ade80",borderRadius:"50%",border:"1px solid #1e1508"}}/>
-                  )}
-                </div>
+                {/* 테두리 미리보기 — 픽셀 도트 링 스타일 */}
+                {(()=>{
+                  const SZ=44, C=22, RR=13, SW=isMine?2.2:1.6;
+                  const P=2; // 픽셀 단위
+                  const DA=`${P} ${P*0.55}`;
+                  const FC=r.borderColor as string;
+                  const FG=r.borderGlow;
+                  const filt=`drop-shadow(0 0 ${SW+2}px ${FG})`;
+                  const baseRing=(stroke:string)=>(
+                    <circle cx={C} cy={C} r={RR} fill="none" stroke={stroke}
+                      strokeWidth={SW} strokeDasharray={DA} strokeLinecap="square"
+                      style={{filter:filt}}/>
+                  );
+                  const pr=(x:number,y:number,w:number,h:number,fill=FC)=>(
+                    <rect x={Math.round(x)} y={Math.round(y)}
+                      width={Math.max(1,Math.round(w))} height={Math.max(1,Math.round(h))}
+                      fill={fill} shapeRendering="crispEdges"/>
+                  );
+                  let inner:React.ReactNode=null;
+                  if(r.tierKey==="bronze"){
+                    const ea=38*Math.PI/180, er=RR+P*2;
+                    const lx=C-Math.sin(ea)*er, ly=C-Math.cos(ea)*er;
+                    const rx=C+Math.sin(ea)*er;
+                    inner=<>{pr(lx-P,ly-P*2,P,P*2)}{pr(lx,ly-P,P,P)}{pr(rx,ly-P*2,P,P*2)}{pr(rx-P,ly-P,P,P)}</>;
+                  } else if(r.tierKey==="silver"){
+                    inner=<>{[0,90,180,270].map(d=>{
+                      const a=(d-90)*Math.PI/180;
+                      const ox=C+(RR+P*2)*Math.cos(a), oy=C+(RR+P*2)*Math.sin(a);
+                      return <g key={d}>{pr(ox-P*.5,oy-P*1.5,P,P)}{pr(ox-P,oy-P*.5,P*2,P)}{pr(ox-P*.5,oy+P*.5,P,P)}</g>;
+                    })}</>;
+                  } else if(r.tierKey==="gold"){
+                    const wa=45*Math.PI/180, wr=RR+P*1.5;
+                    const lx=C-Math.sin(wa)*wr, ly=C-Math.cos(wa)*wr, rx=C+Math.sin(wa)*wr;
+                    inner=<>{pr(lx-P*2.5,ly-P*.5,P*2,P)}{pr(lx-P*2.5,ly-P*1.5,P,P)}{pr(rx+P*.5,ly-P*.5,P*2,P)}{pr(rx+P*1.5,ly-P*1.5,P,P)}</>;
+                  } else if(r.tierKey==="platinum"){
+                    inner=<>{Array.from({length:8},(_,k)=>{
+                      const a=(k*45-90)*Math.PI/180;
+                      const ox=C+(RR+P*1.8)*Math.cos(a), oy=C+(RR+P*1.8)*Math.sin(a);
+                      return <rect key={k} x={Math.round(ox-P*.5)} y={Math.round(oy-P*.5)} width={P} height={P} fill={FC} shapeRendering="crispEdges"/>;
+                    })}</>;
+                  } else if(r.tierKey==="diamond"){
+                    inner=<>{[0,90,180,270].map(d=>{
+                      const a=(d-90)*Math.PI/180;
+                      const bx=C+(RR+P)*Math.cos(a), by=C+(RR+P)*Math.sin(a);
+                      const tx=C+(RR+P*3.5)*Math.cos(a), ty=C+(RR+P*3.5)*Math.sin(a);
+                      const isV=d===0||d===180;
+                      return isV
+                        ?<rect key={d} x={Math.round(bx-P*.5)} y={Math.round(Math.min(by,ty))} width={P} height={Math.round(Math.abs(ty-by))} fill={FC} shapeRendering="crispEdges"/>
+                        :<rect key={d} x={Math.round(Math.min(bx,tx))} y={Math.round(by-P*.5)} width={Math.round(Math.abs(tx-bx))} height={P} fill={FC} shapeRendering="crispEdges"/>;
+                    })}</>;
+                  } else if(r.tierKey==="master"){
+                    inner=<>{Array.from({length:6},(_,k)=>{
+                      const a=(k*60-90)*Math.PI/180;
+                      const ox=C+(RR+P*2)*Math.cos(a), oy=C+(RR+P*2)*Math.sin(a);
+                      const ip=P*1.5;
+                      return <rect key={k} x={Math.round(ox-ip*.5)} y={Math.round(oy-ip*.5)} width={Math.round(ip)} height={Math.round(ip)} fill={FC} shapeRendering="crispEdges"/>;
+                    })}</>;
+                  } else if(r.tierKey==="challenger"){
+                    inner=<>{Array.from({length:8},(_,k)=>{
+                      const a=(k*45-90)*Math.PI/180;
+                      const bx=C+(RR+P)*Math.cos(a), by=C+(RR+P)*Math.sin(a);
+                      const tx=C+(RR+P*3)*Math.cos(a), ty=C+(RR+P*3)*Math.sin(a);
+                      const isV=Math.abs(Math.cos(a))<0.15, isH=Math.abs(Math.sin(a))<0.15;
+                      const sc=k%4===0?"#ff4500":k%2===0?"#da70d6":"#ffd700";
+                      if(isV) return <rect key={k} x={Math.round(bx-P*.5)} y={Math.round(Math.min(by,ty))} width={P} height={Math.round(Math.abs(ty-by))} fill={sc} shapeRendering="crispEdges"/>;
+                      if(isH) return <rect key={k} x={Math.round(Math.min(bx,tx))} y={Math.round(by-P*.5)} width={Math.round(Math.abs(tx-bx))} height={P} fill={sc} shapeRendering="crispEdges"/>;
+                      return <rect key={k} x={Math.round(tx-P*.5)} y={Math.round(ty-P*.5)} width={P} height={P} fill={sc} shapeRendering="crispEdges"/>;
+                    })}</>;
+                  }
+                  return (
+                    <div style={{width:SZ,height:SZ,flexShrink:0,position:"relative"}}>
+                      <svg width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
+                        {r.tierKey==="challenger"?(
+                          <defs>
+                            <linearGradient id="ch-modal-gr2" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#ff4500"/>
+                              <stop offset="33%" stopColor="#ffd700"/>
+                              <stop offset="66%" stopColor="#da70d6"/>
+                              <stop offset="100%" stopColor="#ff4500"/>
+                            </linearGradient>
+                          </defs>
+                        ):null}
+                        {r.tierKey==="challenger"
+                          ? <circle cx={C} cy={C} r={RR} fill="none" stroke="url(#ch-modal-gr2)" strokeWidth={SW} strokeDasharray={DA} strokeLinecap="square" style={{filter:`drop-shadow(0 0 5px #ff4500)`}}/>
+                          : baseRing(FC)
+                        }
+                        {inner}
+                      </svg>
+                      {isMine&&(
+                        <div style={{position:"absolute",top:-2,right:-2,width:10,height:10,
+                          background:"#4ade80",borderRadius:"50%",border:"1px solid #1e1508"}}/>
+                      )}
+                    </div>
+                  );
+                })()}
                 {/* 티어명 */}
                 <div style={{flex:1,minWidth:0}}>
                   <p style={{margin:0,fontSize:13,fontWeight:900,color:r.borderColor as string,
@@ -1201,13 +1237,13 @@ export default function ColosseumPage(){
                       {nextUpdateMin!=null&&nextUpdateMin>0&&` · ${t("col.next_update")} ${nextUpdateMin}${ko?"분":"分"}`}
                     </span>
                   )}
-                  <button onClick={fetchRankings} disabled={rankLoading}
+                  <span
                     style={{background:"none",border:`1px solid ${C.borderFaint}`,borderRadius:3,
-                      color:rankLoading?C.stoneFaint:C.gold,cursor:rankLoading?"not-allowed":"pointer",
+                      color:C.stoneFaint,cursor:"default",
                       display:"flex",alignItems:"center",gap:4,padding:"3px 8px",fontFamily:FONT,fontSize:10,fontWeight:700}}>
                     <RefreshCw size={11} strokeWidth={2.5}/>
                     {t("col.refresh")}
-                  </button>
+                  </span>
                 </div>
               </div>
 
@@ -1235,7 +1271,7 @@ export default function ColosseumPage(){
                         </div>
                       )}
                       <div style={{
-                        display:"flex",alignItems:"center",gap:8,padding:"8px 12px",
+                        display:"flex",alignItems:"center",gap:8,padding:"5px 12px",
                         background:isMe?"#1e3a5f18":"transparent",
                         borderBottom:`1px solid ${C.borderFaint}`,
                         borderLeft:isMe?`3px solid #60a5fa`:`3px solid transparent`,
@@ -1247,13 +1283,13 @@ export default function ColosseumPage(){
                             :<span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,color:rankColor}}>{entry.rank}</span>}
                         </div>
                         {/* 캐릭터 전신 (등수 바로 옆) */}
-                        <div style={{width:44,height:50,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
+                        <div style={{width:36,height:42,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
                           {entryChar
-                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={48}/>
-                            :<div style={{width:36,height:36,background:C.borderFaint,borderRadius:2}}/>}
+                            ?<PixelSprite type={entryChar.type} colors={entryChar.colors} characterId={entryChar.id} rarity={entryChar.rarity} size={36}/>
+                            :<div style={{width:28,height:28,background:C.borderFaint,borderRadius:2}}/>}
                         </div>
                         {/* 닉네임 + 승/연승 */}
-                        <div style={{flex:1,minWidth:0,marginLeft:2}}>
+                        <div style={{flex:1,minWidth:0,marginLeft:8}}>
                           <p style={{fontFamily:FONT,fontSize:13,fontWeight:900,
                             color:isMe?"#93c5fd":C.parchment,margin:0,
                             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
@@ -1296,12 +1332,12 @@ export default function ColosseumPage(){
                       const myChar2=myRank?.characterId!=null?(CHARACTERS.find(c=>c.id===myRank.characterId)??CHARACTERS[0]):myChar;
                       return(
                         <div style={{borderTop:`2px solid ${C.border}`,background:"#0e0b04"}}>
-                          <div style={{padding:"4px 12px 3px",display:"flex",alignItems:"center",gap:6}}>
+                          <div style={{padding:"3px 12px 2px",display:"flex",alignItems:"center",gap:6}}>
                             <span style={{fontSize:9,color:C.stoneFaint,fontFamily:"monospace",letterSpacing:"0.08em"}}>— {ko?"내 순위":"自分の順位"} —</span>
                             {!myRank&&<span style={{fontSize:9,color:C.stoneFaint,fontFamily:FONT}}>{ko?"(미참전)":"(未参戦)"}</span>}
                           </div>
                           <div style={{
-                            display:"flex",alignItems:"center",gap:8,padding:"6px 12px 10px",
+                            display:"flex",alignItems:"center",gap:8,padding:"5px 12px 7px",
                             background:"linear-gradient(90deg,#1e3a5f22,transparent)",
                             borderLeft:`3px solid #60a5fa`,
                           }}>
@@ -1315,11 +1351,11 @@ export default function ColosseumPage(){
                                 :<span style={{fontFamily:"monospace",fontSize:13,fontWeight:900,color:"#93c5fd"}}>{myRank.rank}</span>}
                             </div>
                             {/* 캐릭터 */}
-                            <div style={{width:44,height:50,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
-                              <PixelSprite type={myChar2.type} colors={myChar2.colors} characterId={myChar2.id} rarity={myChar2.rarity} size={48}/>
+                            <div style={{width:36,height:42,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"visible"}}>
+                              <PixelSprite type={myChar2.type} colors={myChar2.colors} characterId={myChar2.id} rarity={myChar2.rarity} size={36}/>
                             </div>
                             {/* 닉네임 */}
-                            <div style={{flex:1,minWidth:0}}>
+                            <div style={{flex:1,minWidth:0,marginLeft:8}}>
                               <p style={{fontFamily:FONT,fontSize:13,fontWeight:900,color:"#93c5fd",margin:0,
                                 overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                                 {user.name??(ko?"나":"自分")}

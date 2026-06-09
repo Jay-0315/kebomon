@@ -279,50 +279,53 @@ export class BattleGateway implements OnGatewayDisconnect {
 
   /** 비슷한 티어 점수의 유저 클론을 상대로 선택 */
   private async pickOpponent(excludeUserId: string): Promise<Fighter> {
-    const playerStats = await this.prisma.battleStats.findUnique({
-      where: { userId: excludeUserId },
-      select: { tierPoints: true },
-    });
+    const [playerStats, playerReward] = await Promise.all([
+      this.prisma.battleStats.findUnique({
+        where: { userId: excludeUserId },
+        select: { tierPoints: true },
+      }),
+      this.prisma.userReward.findUnique({
+        where: { userId: excludeUserId },
+        select: { equippedCharacterId: true },
+      }),
+    ]);
     const playerPts = playerStats?.tierPoints ?? 0;
 
-    // 점수 대역을 점점 넓히며 후보 탐색 (300 → 1000 → 3000 → 무제한)
-    const BANDS = [300, 1000, 3000, null] as const;
-    let rows: {
-      userId: string;
-      tierPoints: number;
-      user: { name: string | null; reward: { equippedCharacterId: number | null } | null };
-    }[] = [];
-
-    for (const band of BANDS) {
-      rows = await this.prisma.battleStats.findMany({
-        where: {
-          userId: { not: excludeUserId },
-          user: { reward: { is: { equippedCharacterId: { not: null } } } },
-          ...(band !== null && {
-            tierPoints: { gte: playerPts - band, lte: playerPts + band },
-          }),
-        },
-        select: {
-          userId: true,
-          tierPoints: true,
-          user: {
-            select: {
-              name: true,
-              reward: { select: { equippedCharacterId: true } },
-            },
+    // ±1000점 범위 내 유저 클론 탐색
+    const rows = await this.prisma.battleStats.findMany({
+      where: {
+        userId: { not: excludeUserId },
+        user: { reward: { is: { equippedCharacterId: { not: null } } } },
+        tierPoints: { gte: playerPts - 1000, lte: playerPts + 1000 },
+      },
+      select: {
+        userId: true,
+        tierPoints: true,
+        user: {
+          select: {
+            name: true,
+            reward: { select: { equippedCharacterId: true } },
           },
         },
-        take: 30,
-      });
-      if (rows.length > 0) break;
-    }
+      },
+      take: 30,
+    });
 
+    // ±1000점 내 유저 없으면 도감 캐릭터(같은 등급, 강화 미적용) 반환
     if (rows.length === 0) {
+      const playerCharId = playerReward?.equippedCharacterId ?? 4;
+      const playerRarity = CHAR_RARITY[playerCharId] ?? "common";
+      const sameRarityCharIds = Object.entries(CHAR_RARITY)
+        .filter(([, r]) => r === playerRarity)
+        .map(([id]) => Number(id));
+      const fallbackCharId =
+        sameRarityCharIds[Math.floor(Math.random() * sameRarityCharIds.length)] ?? playerCharId;
+
       return {
         userId: "clone",
         nickname: "케보몬 클론",
-        characterId: 4,
-        rarity: "common",
+        characterId: fallbackCharId,
+        rarity: playerRarity,
         hp: MAX_HP,
         isPlayer: false,
         enhancementLevel: 0,

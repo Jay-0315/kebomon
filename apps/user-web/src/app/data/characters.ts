@@ -128,12 +128,12 @@ export const RARITY_DUPLICATE_POINTS: Record<CharacterRarity, number> = {
 
 // Gacha pull rates (sum = 100)
 export const GACHA_RATES: Record<CharacterRarity, number> = {
-  common: 45,
-  uncommon: 30,
+  common: 45.84,
+  uncommon: 30.56,
   rare: 15,
   epic: 6,
-  legendary: 3,
-  mythic: 1,
+  legendary: 2,
+  mythic: 0.6,
 };
 
 export const GACHA_COST_SINGLE = 120;
