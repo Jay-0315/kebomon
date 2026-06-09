@@ -12,8 +12,11 @@ async function bootstrap() {
   app.use(require("express").urlencoded({ limit: "20mb", extended: true }));
   app.useWebSocketAdapter(new IoAdapter(app));
   app.setGlobalPrefix("api");
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",")
+    : ["http://localhost:5173"];
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
   });
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
