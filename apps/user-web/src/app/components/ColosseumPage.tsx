@@ -596,29 +596,61 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
                 opacity:isAbove?1:0.6,
               }}>
                 {/* 테두리 미리보기 */}
-                <div style={{width:32,height:32,flexShrink:0,position:"relative"}}>
-                  <svg width={32} height={32} viewBox="0 0 32 32">
+                <div style={{width:38,height:38,flexShrink:0,position:"relative"}}>
+                  <svg width={38} height={38} viewBox="0 0 38 38">
                     {r.tierKey==="challenger"&&(
                       <defs>
-                        <linearGradient id="grad-challenger-modal" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <linearGradient id="ch-modal-gr" x1="0%" y1="0%" x2="100%" y2="0%">
                           <stop offset="0%" stopColor="#ff4500"/>
                           <stop offset="33%" stopColor="#ffd700"/>
-                          <stop offset="66%" stopColor="#c0c0c0"/>
+                          <stop offset="66%" stopColor="#da70d6"/>
                           <stop offset="100%" stopColor="#ff4500"/>
                         </linearGradient>
                       </defs>
                     )}
-                    <circle cx="16" cy="16" r="14" fill="none"
-                      stroke={r.tierKey==="challenger"?"url(#grad-challenger-modal)":r.borderColor}
-                      strokeWidth={isMine?3:2}
-                      style={r.tierKey==="challenger"?{filter:`drop-shadow(0 0 4px ${r.borderGlow})`}:{}}/>
-                    <circle cx="16" cy="16" r="10" fill="#1e1508"/>
-                    <text x="16" y="20" textAnchor="middle" fontSize="10" fill={r.borderColor as string} fontWeight="bold">
-                      {(ko ? r.ko : r.ja)[0]}
-                    </text>
+                    {/* Bronze: 귀 달린 동물 방패 */}
+                    {r.tierKey==="bronze"&&<>
+                      <circle cx={19} cy={21} r={12} fill="none" stroke="#cd7f32" strokeWidth={isMine?3:2} style={{filter:"drop-shadow(0 0 4px #8B4513)"}}/>
+                      <circle cx={12} cy={10} r={5} fill="#1e1508" stroke="#cd7f32" strokeWidth={isMine?2.5:1.8}/>
+                      <circle cx={26} cy={10} r={5} fill="#1e1508" stroke="#cd7f32" strokeWidth={isMine?2.5:1.8}/>
+                    </>}
+                    {/* Silver: 다이아몬드 마름모 */}
+                    {r.tierKey==="silver"&&<>
+                      <polygon points="19,2 36,19 19,36 2,19" fill="none" stroke="#c0c0c0" strokeWidth={isMine?2.5:1.8} style={{filter:"drop-shadow(0 0 3px #708090)"}}/>
+                      <polygon points="19,9 29,19 19,29 9,19" fill="none" stroke="#c0c0c0" strokeWidth={0.8} opacity={0.45}/>
+                    </>}
+                    {/* Gold: 날개 달린 원형 */}
+                    {r.tierKey==="gold"&&<>
+                      <circle cx={19} cy={20} r={12} fill="none" stroke="#ffd700" strokeWidth={isMine?2.5:1.8} style={{filter:"drop-shadow(0 0 5px #b8860b)"}}/>
+                      <path d="M7,16 Q11,4 19,9 Q27,4 31,16" fill="none" stroke="#ffd700" strokeWidth={isMine?2.5:1.8} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 5px #b8860b)"}}/>
+                    </>}
+                    {/* Platinum: 팔각형 */}
+                    {r.tierKey==="platinum"&&
+                      <polygon
+                        points={Array.from({length:8},(_,k)=>{const a=(k*45-22.5)*Math.PI/180;return `${19+16*Math.cos(a)},${19+16*Math.sin(a)}`;}).join(" ")}
+                        fill="none" stroke="#40e0d0" strokeWidth={isMine?2.5:1.8} style={{filter:"drop-shadow(0 0 5px #008b8b)"}}/>
+                    }
+                    {/* Diamond: 4각 별 */}
+                    {r.tierKey==="diamond"&&
+                      <polygon
+                        points={Array.from({length:8},(_,k)=>{const a=(k*45-90)*Math.PI/180;const rad=k%2===0?16:7;return `${19+rad*Math.cos(a)},${19+rad*Math.sin(a)}`;}).join(" ")}
+                        fill="none" stroke="#b9f2ff" strokeWidth={isMine?2.5:1.8} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 6px #4169e1)"}}/>
+                    }
+                    {/* Master: 6각 꽃/눈송이 */}
+                    {r.tierKey==="master"&&
+                      <polygon
+                        points={Array.from({length:12},(_,k)=>{const a=(k*30-90)*Math.PI/180;const rad=k%2===0?15:9;return `${19+rad*Math.cos(a)},${19+rad*Math.sin(a)}`;}).join(" ")}
+                        fill="none" stroke="#da70d6" strokeWidth={isMine?2.5:1.8} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 6px #9400d3)"}}/>
+                    }
+                    {/* Challenger: 톱니 + 무지개 그라데이션 */}
+                    {r.tierKey==="challenger"&&
+                      <polygon
+                        points={Array.from({length:16},(_,k)=>{const a=(k*22.5-90)*Math.PI/180;const rad=k%2===0?16:12;return `${19+rad*Math.cos(a)},${19+rad*Math.sin(a)}`;}).join(" ")}
+                        fill="none" stroke="url(#ch-modal-gr)" strokeWidth={isMine?3:2} strokeLinejoin="round" style={{filter:"drop-shadow(0 0 6px #ff4500)"}}/>
+                    }
                   </svg>
                   {isMine&&(
-                    <div style={{position:"absolute",top:-3,right:-3,width:10,height:10,
+                    <div style={{position:"absolute",top:-2,right:-2,width:10,height:10,
                       background:"#4ade80",borderRadius:"50%",border:"1px solid #1e1508"}}/>
                   )}
                 </div>
