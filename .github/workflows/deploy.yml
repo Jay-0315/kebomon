@@ -36,6 +36,7 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
         run: |
+          docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
           docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
           docker image prune -f
 
