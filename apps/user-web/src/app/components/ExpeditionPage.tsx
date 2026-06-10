@@ -202,16 +202,19 @@ function CharPickerModal({ ownedIds, selected, maxParty, minRarity, onToggle, on
   ko: boolean;
 }) {
   const minIdx = RARITY_REQ_ORDER.indexOf(minRarity);
+  const RARITY_SORT: CharacterRarity[] = ["mythic","legendary","epic","rare","uncommon","common"];
   const eligibleChars = CHARACTERS.filter(c =>
     ownedIds.includes(c.id) && RARITY_REQ_ORDER.indexOf(c.rarity) >= minIdx
-  );
+  ).sort((a, b) => RARITY_SORT.indexOf(a.rarity) - RARITY_SORT.indexOf(b.rarity));
 
   return (
     <div
       style={{ position:"fixed", inset:0, zIndex:999, background:"#000b", display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}
     >
+      <style>{`.exp-picker::-webkit-scrollbar{display:none}.exp-picker{scrollbar-width:none;-ms-overflow-style:none}`}</style>
       <div
+        className="exp-picker"
         style={{ background:C.panel, border:`1px solid ${C.border}`, borderRadius:14, padding:20,
           width:"min(480px,94vw)", maxHeight:"80vh", overflow:"auto", fontFamily:FONT }}
         onClick={e => e.stopPropagation()}

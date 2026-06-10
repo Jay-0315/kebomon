@@ -735,7 +735,7 @@ export default function RoguePage() {
     return (
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
         <style>{css}</style>
-        <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:24}}>
           {/* Header */}
           <div style={{textAlign:"center",animation:"rogue-in 0.4s ease-out both"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:4}}>
@@ -746,7 +746,7 @@ export default function RoguePage() {
           </div>
 
           {/* Character card */}
-          <div style={{background:C.panel,border:`2px solid ${ac}44`,borderRadius:12,padding:20,display:"flex",alignItems:"center",gap:16,animation:"rogue-in 0.4s 0.05s ease-out both"}}>
+          <div style={{background:C.panel,border:`2px solid ${ac}44`,borderRadius:12,padding:20,display:"flex",alignItems:"center",gap:20,overflow:"hidden",animation:"rogue-in 0.4s 0.05s ease-out both"}}>
             <div style={{animation:"rogue-float 3s ease-in-out infinite",flexShrink:0}}>
               <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} rarity={myChar.rarity} size={72}/>
             </div>
