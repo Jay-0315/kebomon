@@ -9,6 +9,29 @@ import { CHARACTERS, getCharName } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
 import type { TranslationKey } from "../lib/i18n";
 
+// ─── 원정 localStorage ────────────────────────────────────────────────────────
+const EXP_STORAGE_KEY = "kebo_expedition";
+interface ExpeditionState {
+  regionId: string;
+  partyIds: number[];
+  startTime: number;
+  durationMs: number;
+  durationHours: number;
+  rewardClaimed: boolean;
+}
+function loadExpedition(): ExpeditionState | null {
+  try { return JSON.parse(localStorage.getItem(EXP_STORAGE_KEY) ?? "null"); }
+  catch { return null; }
+}
+const REGION_NAME: Record<string, { ko: string; ja: string }> = {
+  grassland: { ko: "초원의 평야", ja: "草原の平野" },
+  forest:    { ko: "삼림의 비경", ja: "森の秘境" },
+  ruins:     { ko: "폐허의 유적", ja: "廃墟の遺跡" },
+  plaza:     { ko: "광장의 시장", ja: "広場の市場" },
+  beach:     { ko: "해변의 보물섬", ja: "海辺の宝島" },
+  altar:     { ko: "제단의 신비", ja: "祭壇の神秘" },
+};
+
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 const TIERS = [
   { ko:"브론즈",    ja:"ブロンズ",     min:0,    color:"#cd7f32", glow:"#8B4513" },
@@ -158,6 +181,7 @@ export default function StatusPanel() {
 
   const [battleStats, setBattleStats] = useState<BattleStats>({ tierPoints: 0, wins: 0, losses: 0, winStreak: 0 });
   const [raidLobby, setRaidLobby] = useState<Record<number, RaidInfo>>({});
+  const [expedition, setExpedition] = useState<ExpeditionState | null>(() => loadExpedition());
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
