@@ -63,7 +63,7 @@ export class NotificationsService implements OnModuleInit {
     const payload = this.serialize(notif);
     this.gateway.emitToUser(input.userId, "notification", payload);
     // Web Push (실패해도 메인 플로우 중단 안 함)
-    void this.sendPush(input.userId, input.title, input.body, input.link ?? undefined);
+    void this.sendPush(input.userId, input.title, input.body, input.link ?? undefined).catch(() => undefined);
     return payload;
   }
 

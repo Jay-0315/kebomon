@@ -3,6 +3,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { AppModule } from "./modules/app.module";
+import { TimeoutInterceptor } from "./common/interceptors/timeout.interceptor";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -19,10 +20,16 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
   });
-  app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-    next();
-  });
+  app.use(
+    (
+      _req: unknown,
+      res: { setHeader: (k: string, v: string) => void },
+      next: () => void,
+    ) => {
+      res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+      next();
+    },
+  );
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -30,6 +37,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalInterceptors(new TimeoutInterceptor());
 
   const port = Number(process.env.API_PORT || 4000);
   await app.listen(port);

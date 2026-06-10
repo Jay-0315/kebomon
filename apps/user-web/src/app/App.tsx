@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import NetworkErrorToast from "./components/NetworkErrorToast";
 import Layout from "./components/Layout";
 import HomePage from "./components/HomePage";
 import LoginPage from "./components/LoginPage";
@@ -11,6 +12,8 @@ import KabemonPage from "./components/KabemonPage";
 import LiveChatPage from "./components/LiveChatPage";
 import RaidPage from "./components/RaidPage";
 import ColosseumPage from "./components/ColosseumPage";
+import RoguePage from "./components/RoguePage";
+import ExpeditionPage from "./components/ExpeditionPage";
 import ShopPage from "./components/ShopPage";
 import SettingsPage from "./components/SettingsPage";
 import StarterSelectionPage from "./components/StarterSelectionPage";
@@ -86,11 +89,14 @@ export default function App() {
           <Route path="live" element={<LiveChatPage />} />
           <Route path="raid" element={<RaidPage />} />
           <Route path="colosseum" element={<ColosseumPage />} />
+          <Route path="rogue" element={<RoguePage />} />
+          <Route path="expedition" element={<ExpeditionPage />} />
           <Route path="shop" element={<ShopPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="mypage/character" element={<Navigate to="/kabemon" replace />} />
         </Route>
       </Routes>
+      <NetworkErrorToast />
       </LangProvider>
     </BrowserRouter>
   );

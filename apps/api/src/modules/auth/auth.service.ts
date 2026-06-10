@@ -413,7 +413,7 @@ export class AuthService {
     const needsStarter =
       needsStarterOverride ?? (await this.resolveNeedsStarter(user.id));
 
-    void this.rewardsService.recordAttendance(user.id);
+    void this.rewardsService.recordAttendance(user.id).catch(() => undefined);
 
     const token = jwt.sign(
       {

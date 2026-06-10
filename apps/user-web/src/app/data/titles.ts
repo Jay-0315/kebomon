@@ -1,5 +1,5 @@
 export type TitleGrade = "common" | "rare" | "epic" | "legendary" | "mythic";
-export type TitleConditionType = "raid_count" | "live_count" | "attendance" | "streak" | "post_count" | "points" | "col_wins" | "col_streak" | "col_points" | "season_rank";
+export type TitleConditionType = "raid_count" | "attendance" | "streak" | "post_count" | "points" | "col_wins" | "col_streak" | "col_points" | "season_rank" | "rogue_clears" | "expedition_count";
 
 export interface TitleDef {
   id: number;
@@ -92,6 +92,17 @@ export const TITLES: TitleDef[] = [
   { id: 44, name: "시즌1 기사장",     grade: "legendary", conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성" },
   { id: 45, name: "시즌1 용사",       grade: "legendary", conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성" },
   { id: 46, name: "시즌1 투사",       grade: "epic",      conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성" },
+  // ── 로그라이크 ──
+  { id: 48, name: "덱의 입문자",     grade: "common",    conditionType: "rogue_clears",    conditionValue: 1,   description: "로그라이크 첫 클리어" },
+  { id: 49, name: "탐험의 첫걸음",   grade: "common",    conditionType: "expedition_count",conditionValue: 1,   description: "원정 첫 완료" },
+  { id: 50, name: "카드의 탐험가",   grade: "rare",      conditionType: "rogue_clears",    conditionValue: 3,   description: "로그라이크 3회 클리어" },
+  { id: 51, name: "원정 전문가",     grade: "rare",      conditionType: "expedition_count",conditionValue: 5,   description: "원정 5회 완료" },
+  { id: 52, name: "덱 마스터",       grade: "epic",      conditionType: "rogue_clears",    conditionValue: 10,  description: "로그라이크 10회 클리어" },
+  { id: 53, name: "숙련된 원정대장", grade: "epic",      conditionType: "expedition_count",conditionValue: 20,  description: "원정 20회 완료" },
+  { id: 54, name: "카드의 영웅",     grade: "legendary", conditionType: "rogue_clears",    conditionValue: 25,  description: "로그라이크 25회 클리어" },
+  { id: 55, name: "전설의 원정대",   grade: "legendary", conditionType: "expedition_count",conditionValue: 50,  description: "원정 50회 완료" },
+  { id: 56, name: "전설의 카드마스터",grade: "mythic",   conditionType: "rogue_clears",    conditionValue: 50,  description: "로그라이크 50회 클리어" },
+  { id: 57, name: "불굴의 탐험가",   grade: "mythic",    conditionType: "expedition_count",conditionValue: 100, description: "원정 100회 완료" },
   // ── GM 전용 ──
   { id: 47, name: "GM",              grade: "mythic",    conditionType: "raid_count",  conditionValue: 0,     description: "케보 운영진", hidden: true },
 ];

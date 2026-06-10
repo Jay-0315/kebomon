@@ -51,3 +51,18 @@ ALTER TABLE user_rewards
 
 ALTER TABLE user_characters
   ADD COLUMN enhancement_level INT NOT NULL DEFAULT 0 AFTER obtained_at;
+
+-- ============================================================
+-- Migration: Add expedition_count and rogue_clears columns
+-- Applied: 2026-06-10
+-- ============================================================
+ALTER TABLE user_rewards
+  ADD COLUMN expedition_count INT NOT NULL DEFAULT 0 AFTER live_count,
+  ADD COLUMN rogue_clears     INT NOT NULL DEFAULT 0 AFTER expedition_count;
+
+-- ============================================================
+-- Migration: Remove auto_backup column
+-- Applied: 2026-06-10
+-- ============================================================
+ALTER TABLE app_settings
+  DROP COLUMN auto_backup;

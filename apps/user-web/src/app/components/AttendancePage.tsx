@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarCheck, Flame, Check } from "lucide-react";
+import { CalendarCheck, Flame, Check, Egg } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
@@ -212,8 +212,8 @@ export default function AttendancePage() {
                   <span>{day}</span>
                 )}
                 {isWeekEnd && stamped && weekRewardClaimed && (
-                  <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-amber-400 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
-                    🥚
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                    <Egg size={8} strokeWidth={2.5} />
                   </span>
                 )}
               </div>

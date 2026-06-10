@@ -12,7 +12,6 @@ export const initialAppData: AppData = {
   settings: {
     notifications: true,
     darkMode: true,
-    autoBackup: false,
     themeColor: "rose",
   },
   countries,

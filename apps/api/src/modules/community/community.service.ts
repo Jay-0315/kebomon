@@ -283,7 +283,7 @@ export class CommunityService {
         title: "내 글에 새 댓글",
         body: `${commenterName}: ${preview || "(이미지)"}`,
         link: `/community/${postId}`,
-      });
+      }).catch(() => undefined);
     }
 
     return this.formatComment(comment);

@@ -23,8 +23,9 @@ export interface EggOpenResult {
   isDuplicate: boolean;
   points: number;
 }
-import { CHARACTERS as _CHARS } from "../data/characters";
+import { CHARACTERS as _CHARS, ACHIEVEMENTS as _ACHIEVEMENTS } from "../data/characters";
 const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
+const _ACHIEVEMENT_CHAR_IDS = new Set(_ACHIEVEMENTS.map((a) => a.characterId));
 import { initialAppData } from "../data/seed";
 import { applyThemePreset } from "../lib/theme-presets";
 import { api } from "../lib/api";
@@ -35,6 +36,7 @@ import type {
   CommunityPostDraft,
   PostCategory,
   RewardSummary,
+  RogueMilestone,
   UserProfile,
 } from "../types/domain";
 
@@ -59,7 +61,10 @@ interface AppDataContextValue {
   openEgg: (eggType: EggType) => Promise<EggOpenResult>;
   openEggs: (eggType: EggType, count: number) => Promise<EggOpenResult[]>;
   refreshRewards: () => Promise<void>;
+  refreshRewardsWithCheck: () => Promise<void>;
   checkAchievements: () => Promise<number[]>;
+  pendingAchievements: number[];
+  clearPendingAchievements: () => void;
   equipTitle: (titleId: number) => Promise<void>;
   unequipTitle: () => Promise<void>;
   checkTitles: () => Promise<number[]>;
@@ -68,6 +73,8 @@ interface AppDataContextValue {
   claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
   buyShopItem: (itemId: string, quantity?: number) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
+  completeExpedition: (rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }) => Promise<void>;
+  completeRogue: () => Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null>;
   refreshData: () => Promise<void>;
   profilePhoto: string | null;
   updateProfilePhoto: (photo: string | null) => void;
@@ -97,6 +104,8 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     characterEnhancements: summary?.characterEnhancements ?? {},
     raidCount: summary?.raidCount ?? 0,
     liveCount: summary?.liveCount ?? 0,
+    expeditionCount: summary?.expeditionCount ?? 0,
+    rogueClears: summary?.rogueClears ?? 0,
     attendanceClaimedToday: summary?.attendanceClaimedToday ?? false,
     monthDays: summary?.monthDays ?? 0,
     monthWeekRewards: summary?.monthWeekRewards ?? 0,
@@ -164,6 +173,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [rewardsFailed, setRewardsFailed] = useState(false);
+  const [pendingAchievements, setPendingAchievements] = useState<number[]>([]);
+  const clearPendingAchievements = () => setPendingAchievements([]);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [rewardSummary, setRewardSummary] = useState<RewardSummary>(
     normalizeRewardSummary(undefined),
@@ -397,6 +408,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setRewardSummary(normalizeRewardSummary(summary));
   };
 
+  const refreshRewardsWithCheck = async () => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    const prevOwnedIds = new Set(rewardSummary.ownedCharacterIds);
+    const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
+    const newSummary = normalizeRewardSummary(summary);
+    setRewardSummary(newSummary);
+    const newAchievementChars = newSummary.ownedCharacterIds.filter(
+      (id) => !prevOwnedIds.has(id) && _ACHIEVEMENT_CHAR_IDS.has(id),
+    );
+    if (newAchievementChars.length > 0) {
+      setPendingAchievements((prev) => [...new Set([...prev, ...newAchievementChars])]);
+    }
+  };
+
   const equipTitle = async (titleId: number) => {
     const currentUser = getStoredUser();
     if (!currentUser) return;
@@ -481,9 +507,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       userId: currentUser.id,
     });
     if (result.newlyUnlocked.length > 0) {
-      // 서버에서 최신 상태를 받아 즉시 반영
       const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
       setRewardSummary(normalizeRewardSummary(summary));
+      setPendingAchievements((prev) => [...new Set([...prev, ...result.newlyUnlocked])]);
     }
     return result.newlyUnlocked;
   };
@@ -501,6 +527,42 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       missionPoints: result.remainingPoints,
       enhancementStones: result.enhancementStones,
     }));
+    return result;
+  };
+
+  const completeExpedition = async (rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }): Promise<void> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    const prevOwnedIds = new Set(rewardSummary.ownedCharacterIds);
+    await api.post("/rewards/expedition/complete", { userId: currentUser.id, ...rewards });
+    const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
+    const newSummary = normalizeRewardSummary(summary);
+    setRewardSummary(newSummary);
+    const newAchievementChars = newSummary.ownedCharacterIds.filter(
+      (id) => !prevOwnedIds.has(id) && _ACHIEVEMENT_CHAR_IDS.has(id),
+    );
+    if (newAchievementChars.length > 0) {
+      setPendingAchievements((prev) => [...new Set([...prev, ...newAchievementChars])]);
+    }
+  };
+
+  const completeRogue = async (): Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return null;
+    const prevOwnedIds = new Set(rewardSummary.ownedCharacterIds);
+    const result = await api.post<{ rogueClears: number; milestones: RogueMilestone[] }>(
+      "/rewards/rogue/complete",
+      { userId: currentUser.id },
+    );
+    const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
+    const newSummary = normalizeRewardSummary(summary);
+    setRewardSummary(newSummary);
+    const newAchievementChars = newSummary.ownedCharacterIds.filter(
+      (id) => !prevOwnedIds.has(id) && _ACHIEVEMENT_CHAR_IDS.has(id),
+    );
+    if (newAchievementChars.length > 0) {
+      setPendingAchievements((prev) => [...new Set([...prev, ...newAchievementChars])]);
+    }
     return result;
   };
 
@@ -552,7 +614,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     openEgg,
     openEggs,
     refreshRewards,
+    refreshRewardsWithCheck,
     checkAchievements,
+    pendingAchievements,
+    clearPendingAchievements,
     equipTitle,
     unequipTitle,
     checkTitles,
@@ -561,6 +626,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     claimAttendance,
     buyShopItem,
     enhanceCharacter,
+    completeExpedition,
+    completeRogue,
     refreshData,
     profilePhoto,
     updateProfilePhoto,

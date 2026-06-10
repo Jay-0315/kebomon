@@ -44,16 +44,38 @@ export class EmailService {
       return;
     }
 
+    // NestJS 전역 타임아웃(10s)보다 짧게 설정하여 orphaned promise 방지
+    const EMAIL_TIMEOUT_MS = 8000;
+
     try {
-      const { error } = await this.resend.emails.send({
-        from: this.from,
-        to,
-        subject,
-        html,
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new ServiceUnavailableException(
+                "이메일 발송 시간이 초과됐습니다. 잠시 후 다시 시도해주세요.",
+              ),
+            ),
+          EMAIL_TIMEOUT_MS,
+        );
       });
 
-      if (error) {
-        this.logger.error(`Resend 발송 실패: ${JSON.stringify(error)}`);
+      // 항상 resolve되는 래퍼로 orphaned promise의 unhandled rejection 방지
+      const safePromise = this.resend.emails
+        .send({ from: this.from, to, subject, html })
+        .catch((e: unknown) => ({
+          data: null,
+          error: { name: "send_error", message: String(e), statusCode: 503 },
+        }));
+
+      const result = await Promise.race([safePromise, timeoutPromise]).finally(
+        () => clearTimeout(timer),
+      );
+
+      if (result.error) {
+        this.logger.error(`Resend 발송 실패: ${JSON.stringify(result.error)}`);
         throw new ServiceUnavailableException(
           "이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.",
         );

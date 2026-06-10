@@ -369,6 +369,41 @@ function eggCount(reward: { normalEggs: number; bigEggs: number; goldenEggs: num
   return reward.goldenEggs;
 }
 
+interface RogueMilestone {
+  clears: number;
+  points: number;
+  stones: number;
+  normalEgg: number;
+  bigEgg: number;
+  goldEgg: number;
+}
+
+const ROGUE_MILESTONES: RogueMilestone[] = [
+  { clears:   1, points:   500, stones: 0, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:   3, points:  1000, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:   5, points:  1500, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:  10, points:  2000, stones: 1, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  20, points:  3000, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  30, points:  3500, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  40, points:  4000, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  50, points:  4500, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  75, points:  5000, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 100, points:  5000, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 125, points:  5500, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 150, points:  5000, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+];
+
+function getRogueMilestones(prev: number, next: number): RogueMilestone[] {
+  const hit = ROGUE_MILESTONES.filter(m => m.clears > prev && m.clears <= next);
+  // 150회 이후 매 50회 반복
+  for (let n = 200; n <= next; n += 50) {
+    if (n > prev) {
+      hit.push({ clears: n, points: 5000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 });
+    }
+  }
+  return hit;
+}
+
 interface RankingRow {
   rank: number;
   userId: string;
@@ -398,6 +433,66 @@ export class RewardsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return;
     await this.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+  }
+
+  async completeExpedition(
+    userId: string,
+    rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number },
+  ) {
+    await this.getOrCreateReward(userId);
+    const updated = await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        expeditionCount:  { increment: 1 },
+        missionPoints:    { increment: Math.max(0, rewards.points) },
+        enhancementStones:{ increment: Math.max(0, rewards.stones) },
+        normalEggs:       { increment: Math.max(0, rewards.normalEgg) },
+        bigEggs:          { increment: Math.max(0, rewards.bigEgg) },
+        goldenEggs:       { increment: Math.max(0, rewards.goldEgg) },
+      },
+    });
+    await Promise.all([
+      this.checkAndGrantAchievements(userId),
+      this.checkAndGrantTitles(userId),
+    ]).catch(() => undefined);
+    return { expeditionCount: updated.expeditionCount };
+  }
+
+  async completeRogue(userId: string) {
+    const reward = await this.getOrCreateReward(userId);
+    const prevClears = reward.rogueClears;
+
+    const updated = await this.prisma.userReward.update({
+      where: { userId },
+      data: { rogueClears: { increment: 1 } },
+    });
+    const newClears = updated.rogueClears;
+
+    const milestones = getRogueMilestones(prevClears, newClears);
+    if (milestones.length > 0) {
+      const pts     = milestones.reduce((s, m) => s + m.points,    0);
+      const stones  = milestones.reduce((s, m) => s + m.stones,    0);
+      const normals = milestones.reduce((s, m) => s + m.normalEgg, 0);
+      const bigs    = milestones.reduce((s, m) => s + m.bigEgg,    0);
+      const golds   = milestones.reduce((s, m) => s + m.goldEgg,   0);
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: {
+          missionPoints:     { increment: pts },
+          enhancementStones: { increment: stones },
+          normalEggs:        { increment: normals },
+          bigEggs:           { increment: bigs },
+          goldenEggs:        { increment: golds },
+        },
+      });
+    }
+
+    await Promise.all([
+      this.checkAndGrantAchievements(userId),
+      this.checkAndGrantTitles(userId),
+    ]).catch(() => undefined);
+
+    return { rogueClears: newClears, milestones };
   }
 
   async incrementLiveCount(userId: string): Promise<void> {
@@ -523,6 +618,8 @@ export class RewardsService {
       enhancementStones: reward.enhancementStones,
       raidCount: reward.raidCount,
       liveCount: reward.liveCount,
+      expeditionCount: reward.expeditionCount,
+      rogueClears: reward.rogueClears,
       attendanceClaimedToday: reward.lastAttendanceDate === todayKTC,
       monthDays: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthDays : 0,
       monthWeekRewards: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthWeekRewards : 0,
@@ -941,15 +1038,17 @@ export class RewardsService {
     const battleStats = await this.prisma.battleStats.findUnique({ where: { userId } });
 
     const stats: Record<string, number> = {
-      raid_count:  reward.raidCount,
-      live_count:  reward.liveCount,
-      post_count:  postCount,
-      attendance:  reward.attendanceDays,
-      streak:      reward.streakDays,
-      points:      reward.totalPointsUsed,
-      col_wins:    battleStats?.wins ?? 0,
-      col_streak:  battleStats?.bestStreak ?? 0,
-      col_points:  battleStats?.tierPoints ?? 0,
+      raid_count:       reward.raidCount,
+      live_count:       reward.liveCount,
+      expedition_count: reward.expeditionCount,
+      rogue_clears:     reward.rogueClears,
+      post_count:       postCount,
+      attendance:       reward.attendanceDays,
+      streak:           reward.streakDays,
+      points:           reward.totalPointsUsed,
+      col_wins:         battleStats?.wins ?? 0,
+      col_streak:       battleStats?.bestStreak ?? 0,
+      col_points:       battleStats?.tierPoints ?? 0,
     };
 
     const ownedTitles = await this.prisma.userTitle.findMany({
@@ -994,12 +1093,14 @@ export class RewardsService {
     const postCount = await this.prisma.communityPost.count({ where: { userId } });
 
     const stats: Record<string, number> = {
-      raid_count:  reward.raidCount,
-      live_count:  reward.liveCount,
-      post_count:  postCount,
-      attendance:  reward.attendanceDays,
-      streak:      reward.streakDays,
-      points:      reward.totalPointsUsed,
+      raid_count:       reward.raidCount,
+      live_count:       reward.liveCount,
+      expedition_count: reward.expeditionCount,
+      rogue_clears:     reward.rogueClears,
+      post_count:       postCount,
+      attendance:       reward.attendanceDays,
+      streak:           reward.streakDays,
+      points:           reward.totalPointsUsed,
     };
 
     const owned = await this.prisma.userCharacter.findMany({
@@ -1036,7 +1137,7 @@ export class RewardsService {
           title: "업적 달성!",
           body: "새로운 케보몬을 획득했어요. 도감에서 확인해보세요.",
           link: "/kabemon",
-        });
+        }).catch(() => undefined);
       }
     }
 
@@ -1126,7 +1227,7 @@ export class RewardsService {
         title: `시즌 ${seasonId} 랭킹 칭호 획득!`,
         body: "시즌 최종 랭킹 칭호가 지급되었습니다. 칭호 목록에서 확인하세요.",
         link: "/mypage?titles=1",
-      });
+      }).catch(() => undefined);
     }
 
     return { granted: grants.length, details: grants };

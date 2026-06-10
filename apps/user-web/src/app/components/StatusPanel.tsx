@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Swords, Clock, Shield, Zap, ChevronRight, Flame } from "lucide-react";
+import { Swords, Clock, Shield, Zap, ChevronRight, Flame, Layers, Map } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getStoredUser } from "../lib/auth";
@@ -205,6 +205,18 @@ export default function StatusPanel() {
           >
             {t("raid.title")}<ChevronRight className="w-3 h-3" />
           </button>
+          <button
+            onClick={() => navigate("/rogue")}
+            className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors"
+          >
+            {t("nav.rogue")}<ChevronRight className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => navigate("/expedition")}
+            className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors"
+          >
+            {t("nav.expedition")}<ChevronRight className="w-3 h-3" />
+          </button>
         </div>
       </div>
 
@@ -301,6 +313,48 @@ export default function StatusPanel() {
             ) : (
               <p className="text-xs text-muted-foreground">{t("status.unranked")}</p>
             )}
+          </div>
+        </div>
+
+        {/* ── 로그라이크 · 원정 ── */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div
+            className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => navigate("/rogue")}
+          >
+            <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+              <Layers className="w-3 h-3" />{t("nav.rogue")}
+            </p>
+            <p className="font-black text-xl leading-none tabular-nums">
+              {rewardSummary.rogueClears}
+              <span className="text-xs font-normal text-muted-foreground ml-1">
+                {ko ? "클리어" : "クリア"}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {rewardSummary.rogueClears === 0
+                ? (ko ? "아직 도전 기록이 없어요" : "まだ記録がありません")
+                : (ko ? "도전을 이어가세요!" : "挑戦を続けましょう！")}
+            </p>
+          </div>
+          <div
+            className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => navigate("/expedition")}
+          >
+            <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+              <Map className="w-3 h-3" />{t("nav.expedition")}
+            </p>
+            <p className="font-black text-xl leading-none tabular-nums">
+              {rewardSummary.expeditionCount}
+              <span className="text-xs font-normal text-muted-foreground ml-1">
+                {ko ? "회" : "回"}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {rewardSummary.expeditionCount === 0
+                ? (ko ? "아직 원정 기록이 없어요" : "まだ遠征記録がありません")
+                : (ko ? "다시 출발해볼까요?" : "また出発しましょう！")}
+            </p>
           </div>
         </div>
 

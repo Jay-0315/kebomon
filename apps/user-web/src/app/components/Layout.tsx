@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck, Trophy, Shield } from "lucide-react";
+import { Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck, Trophy, Shield, Layers, Map } from "lucide-react";
 import Footer from "./Footer";
+import { AchievementRevealModal } from "./KabemonPage";
 import { useState, useEffect } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -23,7 +24,7 @@ export default function Layout() {
       return next;
     });
   };
-  const { profile, rewardSummary, profilePhoto } = useAppData();
+  const { profile, rewardSummary, profilePhoto, pendingAchievements, clearPendingAchievements } = useAppData();
   const { t } = useLang();
 
   const navItems = [
@@ -35,6 +36,8 @@ export default function Layout() {
     { path: "/live", icon: Radio, label: t("nav.live") },
     { path: "/raid", icon: Swords, label: t("nav.raid") },
     { path: "/colosseum", icon: Trophy, label: t("nav.colosseum") },
+    { path: "/rogue", icon: Layers, label: t("nav.rogue") },
+    { path: "/expedition", icon: Map, label: t("nav.expedition") },
   ];
 
   const settingsItems = [
@@ -107,6 +110,14 @@ export default function Layout() {
   );
 
   return (
+    <>
+    {pendingAchievements.length > 0 && (
+      <AchievementRevealModal
+        newlyUnlocked={pendingAchievements}
+        onClose={clearPendingAchievements}
+        t={t}
+      />
+    )}
     <div className="min-h-screen bg-background flex">
       {/* ── Desktop sidebar expand button (shown when collapsed) ── */}
       {isSidebarCollapsed && (
@@ -274,5 +285,6 @@ export default function Layout() {
         <Footer />
       </main>
     </div>
+    </>
   );
 }

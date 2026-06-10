@@ -8,7 +8,6 @@ import {
   Moon,
   Sun,
   Shield,
-  Database,
   Trash2,
   ChevronRight,
   Globe,
@@ -300,30 +299,6 @@ export default function SettingsPage() {
       <div className="bg-card rounded-md p-5 border border-border">
         <h3 className="mb-4">{t("settings.data_privacy")}</h3>
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Database className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-medium">{t("settings.auto_backup")}</p>
-                <p className="text-sm text-muted-foreground">
-                  {t("settings.auto_backup_desc")}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() =>
-                updateSettings({ autoBackup: !settings.autoBackup })
-              }
-              className="relative w-12 h-6 rounded-full transition-colors bg-gray-300 dark:bg-zinc-600"
-            >
-              <div
-                className={`absolute top-1 left-1 w-4 h-4 bg-primary rounded-full transition-transform ${
-                  settings.autoBackup ? "translate-x-6" : ""
-                }`}
-              />
-            </button>
-          </div>
-
           {/* 비밀번호 변경 — hasPassword인 유저만 표시 */}
           {profile.hasPassword && (
             <div>
@@ -538,10 +513,6 @@ export default function SettingsPage() {
               {t("settings.version")}
             </span>
             <span className="font-medium">1.0.0</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-muted-foreground">{t("settings.build")}</span>
-            <span className="font-medium">2026.05.15</span>
           </div>
         </div>
       </div>

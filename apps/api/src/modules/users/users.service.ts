@@ -32,14 +32,12 @@ export class UsersService {
         ? {
             notifications: user.settings.notifications,
             darkMode: user.settings.darkMode,
-            autoBackup: user.settings.autoBackup,
             themeColor: user.settings.themeColor,
             language: user.settings.language,
           }
         : {
             notifications: true,
             darkMode: true,
-            autoBackup: false,
             themeColor: "emerald",
             language: "ko",
           },
@@ -109,14 +107,12 @@ export class UsersService {
         userId,
         notifications: dto.notifications ?? true,
         darkMode: dto.darkMode ?? true,
-        autoBackup: dto.autoBackup ?? false,
         themeColor: dto.themeColor ?? "emerald",
         language: dto.language ?? "ko",
       },
       update: {
         ...(dto.notifications !== undefined ? { notifications: dto.notifications } : {}),
         ...(dto.darkMode !== undefined ? { darkMode: dto.darkMode } : {}),
-        ...(dto.autoBackup !== undefined ? { autoBackup: dto.autoBackup } : {}),
         ...(dto.themeColor !== undefined ? { themeColor: dto.themeColor } : {}),
         ...(dto.language !== undefined ? { language: dto.language } : {}),
       },

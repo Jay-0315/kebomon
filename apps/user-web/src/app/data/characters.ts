@@ -42,7 +42,9 @@ export type AchievementType =
   | "attendance"
   | "streak"
   | "raid_count"
-  | "live_count"
+  | "colosseum_wins"
+  | "rogue_clears"
+  | "expedition_count"
   | "post_count"
   | "points";
 
@@ -3369,10 +3371,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // Uncommon
   {
     characterId: 16,
-    type: "live_count",
-    value: 3,
+    type: "colosseum_wins",
+    value: 1,
     hidden: false,
-    label: "라이브 채널 3회 참여",
+    label: "콜로세움 첫 승리",
   },
   {
     characterId: 17,
@@ -3397,10 +3399,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 20,
-    type: "live_count",
+    type: "rogue_clears",
     value: 1,
     hidden: false,
-    label: "라이브 채널 첫 참여",
+    label: "로그라이크 첫 클리어",
   },
   {
     characterId: 21,
@@ -3461,10 +3463,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 37,
-    type: "live_count",
-    value: 10,
+    type: "expedition_count",
+    value: 3,
     hidden: false,
-    label: "라이브 채널 10회 참여",
+    label: "원정 3회 완료",
   },
   {
     characterId: 38,
@@ -3539,10 +3541,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     characterId: 58,
-    type: "live_count",
-    value: 20,
+    type: "rogue_clears",
+    value: 5,
     hidden: true,
-    label: "라이브 채널 20회 참여",
+    label: "로그라이크 5회 클리어",
   },
   {
     characterId: 59,

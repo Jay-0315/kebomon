@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Swords, Trophy, Shield, RefreshCw, ChevronLeft,
+  Swords, Trophy, Shield, RefreshCw, ChevronLeft, ChevronRight,
   Dices, Crown, Medal, Dice6, Zap, Gift, X,
 } from "lucide-react";
 import { getBattleSocket, disconnectBattleSocket } from "../lib/socket";
@@ -1344,7 +1344,7 @@ export default function ColosseumPage(){
                       color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
                       cursor:rankPage===0?"not-allowed":"pointer",padding:"2px 4px",
                       opacity:rankPage===0?0.4:1}}>
-                    ◀ {ko?"상위 보기":"上位を見る"}
+                    <ChevronLeft size={12}/> {ko?"상위 보기":"上位を見る"}
                   </button>
                   <span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:C.stone}}>
                     {rankPage+1} / {rankTotalPages}
@@ -1356,7 +1356,7 @@ export default function ColosseumPage(){
                       color:rankPage===rankTotalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
                       cursor:rankPage===rankTotalPages-1?"not-allowed":"pointer",padding:"2px 4px",
                       opacity:rankPage===rankTotalPages-1?0.4:1}}>
-                    {ko?"하위 보기":"下位を見る"} ▶
+                    {ko?"하위 보기":"下位を見る"} <ChevronRight size={12}/>
                   </button>
                 </div>
               </div>

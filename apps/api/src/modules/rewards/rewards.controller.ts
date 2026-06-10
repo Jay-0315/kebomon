@@ -100,6 +100,22 @@ export class RewardsController {
     return this.rewardsService.getBattleStats(userId);
   }
 
+  @Post("expedition/complete")
+  completeExpedition(@Body() body: { userId: string; points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }) {
+    return this.rewardsService.completeExpedition(body.userId, {
+      points:    body.points,
+      stones:    body.stones,
+      normalEgg: body.normalEgg,
+      bigEgg:    body.bigEgg,
+      goldEgg:   body.goldEgg,
+    });
+  }
+
+  @Post("rogue/complete")
+  completeRogue(@Body() body: { userId: string }) {
+    return this.rewardsService.completeRogue(body.userId);
+  }
+
   @Post("season/grant-rank-titles")
   grantSeasonRankTitles(@Body() body: { seasonId: number }) {
     return this.rewardsService.grantSeasonRankTitles(body.seasonId ?? 1);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Swords, Users, Send, ArrowLeft, Trophy, Egg, Sparkles, Clock, Heart } from "lucide-react";
+import { Swords, Users, Send, ArrowLeft, Trophy, Egg, Sparkles, Clock, Heart, Medal } from "lucide-react";
 import { useAppData, type EggType, type EggOpenResult } from "../context/AppDataContext";
 import { getRaidSocket, disconnectRaidSocket } from "../lib/socket";
 import { getStoredUser } from "../lib/auth";
@@ -934,7 +934,7 @@ function BulletHellGame({
 }
 
 export default function RaidPage() {
-  const { rewardSummary, openEgg, openEggs, refreshRewards } = useAppData();
+  const { rewardSummary, openEgg, openEggs, refreshRewardsWithCheck } = useAppData();
   const { t, lang } = useLang();
   const bossName = (id: number | undefined) => (id ? getCharName(charById(id), lang) : "");
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
@@ -1075,7 +1075,15 @@ export default function RaidPage() {
       setRankings(d.rankings ?? []);
       setContributed(false);
       setContribText(""); setContribAnswer("");
-      refreshRewards().catch(() => undefined);
+      refreshRewardsWithCheck().catch(() => undefined);
+      if (d.raidType != null) {
+        const raw = localStorage.getItem("kebo_raid_first_clears");
+        const clears: Record<number, boolean> = raw ? JSON.parse(raw) : {};
+        if (!clears[d.raidType]) {
+          clears[d.raidType] = true;
+          localStorage.setItem("kebo_raid_first_clears", JSON.stringify(clears));
+        }
+      }
     };
     const onFull = () => { setFull(true); setTimeout(() => setFull(false), 2500); };
     const onCooldown = (d: { raidType: number; until: number }) => {
@@ -1329,7 +1337,7 @@ export default function RaidPage() {
               ) : (
                 <div className="space-y-1.5 max-h-72 overflow-y-auto">
                   {rankingsModal.rankings.map((entry) => {
-                    const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : null;
+                    const medalColor = entry.rank === 1 ? "#fbbf24" : entry.rank === 2 ? "#94a3b8" : entry.rank === 3 ? "#cd7f32" : null;
                     return (
                       <div
                         key={entry.rank}
@@ -1337,8 +1345,10 @@ export default function RaidPage() {
                           entry.rank <= 3 ? "bg-amber-500/10 border border-amber-500/20" : "bg-muted/50"
                         }`}
                       >
-                        <span className="w-6 shrink-0 text-center font-bold text-muted-foreground">
-                          {medal ?? entry.rank}
+                        <span className="w-6 shrink-0 flex items-center justify-center font-bold text-muted-foreground">
+                          {medalColor
+                            ? <Medal size={16} color={medalColor} />
+                            : entry.rank}
                         </span>
                         <span className="flex-1 truncate font-medium">{entry.nickname}</span>
                         <span className="shrink-0 font-bold text-red-400">{entry.damage.toLocaleString()}</span>

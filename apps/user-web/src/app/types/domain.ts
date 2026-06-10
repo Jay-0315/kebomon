@@ -129,9 +129,20 @@ export interface RewardSummary {
   characterEnhancements: Record<number, number>;
   raidCount: number;
   liveCount: number;
+  expeditionCount: number;
+  rogueClears: number;
   attendanceClaimedToday: boolean;
   monthDays: number;
   monthWeekRewards: number;
+}
+
+export interface RogueMilestone {
+  clears: number;
+  points: number;
+  stones: number;
+  normalEgg: number;
+  bigEgg: number;
+  goldEgg: number;
 }
 
 export interface UserProfile {
@@ -146,8 +157,7 @@ export interface UserProfile {
 export interface AppSettings {
   notifications: boolean;
   darkMode: boolean;
-  autoBackup: boolean;
-  themeColor: string;
+themeColor: string;
   language?: "ko" | "ja";
 }
 

@@ -90,7 +90,9 @@ const dict = {
     "kabemon.cat_attendance": "출석",
     "kabemon.cat_streak": "연속 출석",
     "kabemon.cat_raid": "레이드",
-    "kabemon.cat_live": "라이브",
+    "kabemon.cat_colosseum": "콜로세움",
+    "kabemon.cat_rogue": "로그라이크",
+    "kabemon.cat_expedition": "원정",
     "kabemon.cat_post": "글 작성",
     "kabemon.cat_points": "포인트",
     "kabemon.obtain_hidden": "히든 업적을 달성하면 공개됩니다",
@@ -435,6 +437,8 @@ const dict = {
     // Colosseum
     "nav.battle": "배틀",
     "nav.colosseum": "콜로세움",
+    "nav.rogue": "로그라이크",
+    "nav.expedition": "원정",
     "nav.shop": "강화",
     "battle.title": "케보몬 배틀",
     "battle.desc": "다른 유저의 클론 데이터와 배틀! 승리로 티어를 올려보세요.",
@@ -542,6 +546,19 @@ const dict = {
     "status.streak": "연",
     "status.players": "명",
     "status.win_streak": "연승",
+    // Rogue
+    "rogue.title": "카드 탐험",
+    "rogue.subtitle": "카드 배틀 로그라이크",
+    "rogue.start": "탐험 시작!",
+    "rogue.clears": "클리어",
+    "rogue.no_record": "아직 도전 기록이 없어요",
+    "rogue.keep_going": "도전을 이어가세요!",
+    // Expedition
+    "expedition.title": "케보몬 원정",
+    "expedition.subtitle": "원정대를 꾸려 지역을 탐험하고 보상을 획득하세요",
+    "expedition.count": "회",
+    "expedition.no_record": "아직 원정 기록이 없어요",
+    "expedition.keep_going": "다시 출발해볼까요?",
   },
   ja: {
     // Comments
@@ -646,7 +663,9 @@ const dict = {
     "kabemon.cat_attendance": "出席",
     "kabemon.cat_streak": "連続出席",
     "kabemon.cat_raid": "レイド",
-    "kabemon.cat_live": "ライブ",
+    "kabemon.cat_colosseum": "コロシアム",
+    "kabemon.cat_rogue": "ローグライク",
+    "kabemon.cat_expedition": "遠征",
     "kabemon.cat_post": "投稿作成",
     "kabemon.cat_points": "ポイント",
     "kabemon.obtain_hidden": "隠し実績を達成すると公開されます",
@@ -977,6 +996,8 @@ const dict = {
     // Colosseum
     "nav.battle": "バトル",
     "nav.colosseum": "コロシアム",
+    "nav.rogue": "ローグライク",
+    "nav.expedition": "遠征",
     "nav.shop": "強化",
     "battle.title": "ケボモンバトル",
     "battle.desc":
@@ -1085,6 +1106,19 @@ const dict = {
     "status.streak": "連",
     "status.players": "人",
     "status.win_streak": "連勝",
+    // Rogue
+    "rogue.title": "カード探検",
+    "rogue.subtitle": "カードバトルローグライク",
+    "rogue.start": "探検開始！",
+    "rogue.clears": "クリア",
+    "rogue.no_record": "まだ記録がありません",
+    "rogue.keep_going": "挑戦を続けましょう！",
+    // Expedition
+    "expedition.title": "ケボモン遠征",
+    "expedition.subtitle": "遠征隊を編成してエリアを探索し報酬を獲得しよう",
+    "expedition.count": "回",
+    "expedition.no_record": "まだ遠征記録がありません",
+    "expedition.keep_going": "また出発しましょう！",
   },
 } as const;
 

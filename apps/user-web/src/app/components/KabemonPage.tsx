@@ -1,10 +1,12 @@
-import React, { useState, useId } from "react";
+import React, { useState, useEffect, useId } from "react";
 import {
   Trophy, Lock, BookOpen, User, Sparkles, Shield, Gamepad2,
-  CheckCircle2, Flame, Star, Zap, Gift, RotateCcw, ChevronDown,
+  CheckCircle2, Flame, Zap, Gift, RotateCcw, ChevronDown, ChevronRight, Swords, Layers,
+  Map as MapIcon,
 } from "lucide-react";
 import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
+import { api } from "../lib/api";
 import { type TranslationKey } from "../lib/i18n";
 import PixelCharacter, { PixelSprite } from "./PixelCharacter";
 import {
@@ -435,7 +437,7 @@ function GachaCapsuleModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function KabemonPage() {
-  const { rewardSummary, equipCharacter, checkAchievements, performGacha, refreshRewards } = useAppData();
+  const { rewardSummary, equipCharacter, checkAchievements, performGacha, profile } = useAppData();
   const { t, lang } = useLang();
   const [tab, setTab] = useState<Tab>("character");
   const [filter, setFilter] = useState<Filter>("all");
@@ -444,9 +446,8 @@ export default function KabemonPage() {
   const [pulling, setPulling] = useState(false);
   const [gachaResult, setGachaResult] = useState<GachaResult | null>(null);
   const [checkingAchievements, setCheckingAchievements] = useState(false);
-  const [newAchievements, setNewAchievements] = useState<number[]>([]);
 
-  const { missionPoints, attendanceDays, streakDays, equippedCharacterId, ownedCharacterIds, gachaPityCount, legendaryPityCount } = rewardSummary;
+  const { missionPoints, attendanceDays, streakDays, equippedCharacterId, ownedCharacterIds, gachaPityCount, legendaryPityCount, raidCount, rogueClears, expeditionCount } = rewardSummary;
 
   const ownedSet = new Set(ownedCharacterIds);
 
@@ -477,11 +478,7 @@ export default function KabemonPage() {
   const handleCheckAchievements = async () => {
     setCheckingAchievements(true);
     try {
-      const unlocked = await checkAchievements();
-      if (unlocked.length > 0) {
-        await refreshRewards();
-      }
-      setNewAchievements(unlocked);
+      await checkAchievements();
     } finally {
       setCheckingAchievements(false);
     }
@@ -668,6 +665,10 @@ export default function KabemonPage() {
             attendanceDays={attendanceDays}
             streakDays={streakDays}
             totalPointsUsed={rewardSummary.totalPointsUsed}
+            raidCount={raidCount}
+            rogueClears={rogueClears}
+            expeditionCount={expeditionCount}
+            userId={profile.id}
             checking={checkingAchievements}
             onCheck={() => void handleCheckAchievements()}
             t={t}
@@ -676,15 +677,6 @@ export default function KabemonPage() {
 
 
       </div>
-
-      {/* ── Achievement reveal modal ── */}
-      {newAchievements.length > 0 && (
-        <AchievementRevealModal
-          newlyUnlocked={newAchievements}
-          onClose={() => setNewAchievements([])}
-          t={t}
-        />
-      )}
 
       {/* ── Gacha result modal ── */}
       {gachaResult && (
@@ -793,6 +785,11 @@ function CollectionTab({
                 {isEquipped && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
                     <Shield className="w-2 h-2 text-primary-foreground" />
+                  </div>
+                )}
+                {char.obtainMethod === "starter" && isOwned && !isEquipped && (
+                  <div className="absolute -top-1 -left-1 text-[7px] font-bold bg-amber-500 text-white px-0.5 rounded leading-none py-px">
+                    ST
                   </div>
                 )}
               </div>
@@ -1009,21 +1006,27 @@ function GachaTab({
 
 // ─── Achievement Tab ──────────────────────────────────────────────────────
 const CATEGORY_ICON: Record<AchievementType, { icon: React.ReactNode; color: string; labelKey: TranslationKey }> = {
-  attendance:  { icon: <CheckCircle2 className="w-4 h-4" />, color: "text-blue-400",   labelKey: "kabemon.cat_attendance" },
-  streak:      { icon: <Flame        className="w-4 h-4" />, color: "text-orange-400", labelKey: "kabemon.cat_streak" },
-  raid_count:  { icon: <Zap          className="w-4 h-4" />, color: "text-yellow-400", labelKey: "kabemon.cat_raid" },
-  live_count:  { icon: <Star         className="w-4 h-4" />, color: "text-green-400",  labelKey: "kabemon.cat_live" },
-  post_count:  { icon: <Sparkles     className="w-4 h-4" />, color: "text-purple-400", labelKey: "kabemon.cat_post" },
-  points:      { icon: <Gift         className="w-4 h-4" />, color: "text-primary",    labelKey: "kabemon.cat_points" },
+  attendance:       { icon: <CheckCircle2 className="w-4 h-4" />, color: "text-blue-400",   labelKey: "kabemon.cat_attendance" },
+  streak:           { icon: <Flame        className="w-4 h-4" />, color: "text-orange-400", labelKey: "kabemon.cat_streak" },
+  raid_count:       { icon: <Zap          className="w-4 h-4" />, color: "text-yellow-400", labelKey: "kabemon.cat_raid" },
+  colosseum_wins:   { icon: <Swords       className="w-4 h-4" />, color: "text-amber-400",  labelKey: "kabemon.cat_colosseum" },
+  rogue_clears:     { icon: <Layers       className="w-4 h-4" />, color: "text-violet-400", labelKey: "kabemon.cat_rogue" },
+  expedition_count: { icon: <MapIcon       className="w-4 h-4" />, color: "text-emerald-400",labelKey: "kabemon.cat_expedition" },
+  post_count:       { icon: <Sparkles     className="w-4 h-4" />, color: "text-purple-400", labelKey: "kabemon.cat_post" },
+  points:           { icon: <Gift         className="w-4 h-4" />, color: "text-primary",    labelKey: "kabemon.cat_points" },
 };
 
 function AchievementTab({
-  ownedSet, attendanceDays, streakDays, totalPointsUsed, checking, onCheck, t,
+  ownedSet, attendanceDays, streakDays, totalPointsUsed, raidCount, rogueClears, expeditionCount, userId, checking, onCheck, t,
 }: {
   ownedSet: Set<number>;
   attendanceDays: number;
   streakDays: number;
   totalPointsUsed: number;
+  raidCount: number;
+  rogueClears: number;
+  expeditionCount: number;
+  userId: string;
   checking: boolean;
   onCheck: () => void;
   t: TFunc;
@@ -1032,6 +1035,13 @@ function AchievementTab({
   const visibleAchs = ACHIEVEMENTS.filter((a) => !a.hidden);
   const hiddenAchs  = ACHIEVEMENTS.filter((a) => a.hidden);
   const totalDone   = ACHIEVEMENTS.filter((a) => ownedSet.has(a.characterId)).length;
+
+  const [colosseumWins, setColosseumWins] = useState<number | null>(null);
+  useEffect(() => {
+    api.get<{ wins: number }>(`/rewards/colosseum-stats?userId=${encodeURIComponent(userId)}`)
+      .then(s => setColosseumWins(s.wins))
+      .catch(() => setColosseumWins(0));
+  }, [userId]);
 
   const categories = (Object.keys(CATEGORY_ICON) as AchievementType[]).filter(
     (cat) => visibleAchs.some((a) => a.type === cat)
@@ -1043,10 +1053,14 @@ function AchievementTab({
 
   const progressOf = (type: AchievementType, value: number) => {
     switch (type) {
-      case "attendance": return Math.min(attendanceDays, value);
-      case "streak":     return Math.min(streakDays, value);
-      case "points":     return Math.min(totalPointsUsed, value);
-      default:           return null;
+      case "attendance":       return Math.min(attendanceDays, value);
+      case "streak":           return Math.min(streakDays, value);
+      case "points":           return Math.min(totalPointsUsed, value);
+      case "rogue_clears":     return Math.min(rogueClears, value);
+      case "expedition_count": return Math.min(expeditionCount, value);
+      case "raid_count":       return Math.min(raidCount, value);
+      case "colosseum_wins":   return colosseumWins !== null ? Math.min(colosseumWins, value) : null;
+      default:                 return null;
     }
   };
 
@@ -1204,7 +1218,7 @@ function AchievementTab({
 }
 
 // ─── Achievement Reveal Modal ─────────────────────────────────────────────
-function AchievementRevealModal({
+export function AchievementRevealModal({
   newlyUnlocked,
   onClose,
   t,
@@ -1258,7 +1272,7 @@ function AchievementRevealModal({
           onClick={skipAll}
           className="absolute top-5 right-5 text-white/50 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors z-20"
         >
-          {t("kabemon.ach_view_all")} ▶
+          {t("kabemon.ach_view_all")} <ChevronRight className="w-3 h-3 inline-block" />
         </button>
       )}
 

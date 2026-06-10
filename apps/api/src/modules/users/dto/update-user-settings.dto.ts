@@ -10,10 +10,6 @@ export class UpdateUserSettingsDto {
   darkMode?: boolean;
 
   @IsOptional()
-  @IsBoolean()
-  autoBackup?: boolean;
-
-  @IsOptional()
   @IsString()
   @MaxLength(20)
   themeColor?: string;
