@@ -606,6 +606,7 @@ export default function RoguePage() {
       }
 
       // Enemy action
+      enemy.currentShield = 0;
       const pattern = enemy.patterns[enemy.patternIdx % enemy.patterns.length];
       enemy.patternIdx++;
 
@@ -700,6 +701,8 @@ export default function RoguePage() {
     @keyframes rogue-in{from{opacity:0;transform:scale(0.9) translateY(8px)}to{opacity:1;transform:none}}
     @keyframes rogue-slide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
     .rogue-card-hover:hover{transform:translateY(-6px)!important;box-shadow:0 8px 24px #00000055!important}
+    .rogue-log::-webkit-scrollbar{display:none}
+    .rogue-log{scrollbar-width:none;-ms-overflow-style:none}
   `;
 
   // ── Deck modal ────────────────────────────────────────────────────────────
@@ -983,7 +986,7 @@ export default function RoguePage() {
         </div>
 
         {/* Battle log */}
-        <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",maxHeight:90,overflow:"auto"}}>
+        <div className="rogue-log" style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",maxHeight:90,overflowY:"auto"}}>
           {gs.log.slice(-5).map((l,i)=>(
             <p key={i} style={{margin:0,fontSize:11,color:i===gs.log.slice(-5).length-1?C.text:C.textDim,lineHeight:1.7}}>{l}</p>
           ))}
