@@ -415,6 +415,7 @@ export default function RoguePage() {
   const [gs, setGs] = useState<GameState | null>(null);
   const [selIdx, setSelIdx] = useState<number | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
+  const [logExpanded, setLogExpanded] = useState(false);
   const [rogueMilestones, setRogueMilestones] = useState<RogueMilestone[]>([]);
   const victoryCountedRef = useRef(false);
   const completeRogueRef = useRef(completeRogue);
@@ -986,11 +987,39 @@ export default function RoguePage() {
         </div>
 
         {/* Battle log */}
-        <div className="rogue-log" style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",maxHeight:90,overflowY:"auto"}}>
-          {gs.log.slice(-5).map((l,i)=>(
-            <p key={i} style={{margin:0,fontSize:11,color:i===gs.log.slice(-5).length-1?C.text:C.textDim,lineHeight:1.7}}>{l}</p>
-          ))}
+        <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden"}}>
+          <div style={{padding:"8px 12px"}}>
+            {gs.log.slice(-3).map((l,i,arr)=>(
+              <p key={i} style={{margin:0,fontSize:11,color:i===arr.length-1?C.text:C.textDim,lineHeight:1.7}}>{l}</p>
+            ))}
+          </div>
+          {gs.log.length > 0 && (
+            <button
+              onClick={()=>setLogExpanded(true)}
+              style={{width:"100%",background:"none",border:"none",borderTop:`1px solid ${C.border}22`,padding:"4px 12px",color:C.textDim,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",display:"flex",alignItems:"center",gap:4}}
+            >
+              <ChevronRight size={10} style={{transform:"rotate(90deg)",flexShrink:0}}/>
+              {ko?`전체 로그 (${gs.log.length}줄)`:`全ログ(${gs.log.length}行)`}
+            </button>
+          )}
         </div>
+
+        {/* Log modal */}
+        {logExpanded && (
+          <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setLogExpanded(false)}>
+            <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:"12px 12px 0 0",width:"100%",maxWidth:640,maxHeight:"60vh",display:"flex",flexDirection:"column",fontFamily:FONT}} onClick={e=>e.stopPropagation()}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+                <p style={{margin:0,color:C.textBright,fontWeight:700,fontSize:13}}>{ko?"전투 로그":"戦闘ログ"}</p>
+                <button onClick={()=>setLogExpanded(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,padding:0}}><X size={16}/></button>
+              </div>
+              <div style={{overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:1}}>
+                {gs.log.map((l,i)=>(
+                  <p key={i} style={{margin:0,fontSize:12,color:i===gs.log.length-1?C.text:C.textDim,lineHeight:1.8}}>{l}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Player status */}
         <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
@@ -1026,6 +1055,13 @@ export default function RoguePage() {
             </div>
           </div>
           <HpBar hp={gs.playerHp} max={gs.playerMaxHp}/>
+        </div>
+
+        {/* How-to hint */}
+        <div style={{display:"flex",flexDirection:"column",gap:4,padding:"4px 2px",opacity:0.45}}>
+          <p style={{margin:0,fontSize:10,color:C.textDim,textAlign:"center"}}>
+            {ko?"카드 클릭 → 즉시 사용  ·  흐린 카드는 에너지 부족  ·  턴 종료하면 적이 행동":"カードタップ→即使用  ·  暗いカードはエナジー不足  ·  ターン終了で敵行動"}
+          </p>
         </div>
 
         {/* Hand */}
