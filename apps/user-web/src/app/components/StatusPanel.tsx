@@ -197,7 +197,10 @@ export default function StatusPanel() {
   }, [user?.id]);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => {
+      setNow(Date.now());
+      setExpedition(loadExpedition());
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -361,25 +364,67 @@ export default function StatusPanel() {
                 : (ko ? "도전을 이어가세요!" : "挑戦を続けましょう！")}
             </p>
           </div>
-          <div
-            className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
-            onClick={() => navigate("/expedition")}
-          >
-            <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
-              <Map className="w-3 h-3" />{t("nav.expedition")}
-            </p>
-            <p className="font-black text-xl leading-none tabular-nums">
-              {rewardSummary.expeditionCount}
-              <span className="text-xs font-normal text-muted-foreground ml-1">
-                {ko ? "회" : "回"}
-              </span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {rewardSummary.expeditionCount === 0
-                ? (ko ? "아직 원정 기록이 없어요" : "まだ遠征記録がありません")
-                : (ko ? "다시 출발해볼까요?" : "また出発しましょう！")}
-            </p>
-          </div>
+          {(() => {
+            const activeExp = expedition && !expedition.rewardClaimed ? expedition : null;
+            const expRemaining = activeExp
+              ? Math.max(0, activeExp.startTime + activeExp.durationMs - now)
+              : 0;
+            const expDone = activeExp && expRemaining === 0;
+            return (
+              <div
+                className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => navigate("/expedition")}
+              >
+                <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+                  <Map className="w-3 h-3" />{t("nav.expedition")}
+                </p>
+                {activeExp ? (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${expDone ? "bg-primary" : "bg-amber-400"} animate-pulse`} />
+                      <span className={`text-xs font-semibold ${expDone ? "text-primary" : "text-amber-400"}`}>
+                        {expDone
+                          ? (ko ? "수령 대기중" : "受取待ち")
+                          : (ko ? "원정 진행 중" : "遠征進行中")}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold leading-tight truncate">
+                      {REGION_NAME[activeExp.regionId]?.[ko ? "ko" : "ja"] ?? activeExp.regionId}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                      {expDone
+                        ? (ko ? "완료!" : "完了！")
+                        : fmtTimer(expRemaining)}
+                      <span className="ml-1 opacity-60">{activeExp.partyIds.length}{ko ? "마리" : "匹"}</span>
+                    </p>
+                    <div className="flex gap-1 mt-1.5">
+                      {activeExp.partyIds.slice(0, 5).map(id => {
+                        const char = CHARACTERS.find(c => c.id === id);
+                        if (!char) return null;
+                        return (
+                          <PixelSprite key={id} type={char.type} colors={char.colors} characterId={char.id} size={22} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-black text-xl leading-none tabular-nums">
+                      {rewardSummary.expeditionCount}
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        {ko ? "회" : "回"}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {rewardSummary.expeditionCount === 0
+                        ? (ko ? "아직 원정 기록이 없어요" : "まだ遠征記録がありません")
+                        : (ko ? "다시 출발해볼까요?" : "また出発しましょう！")}
+                    </p>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── 레이드 현황 ── */}
