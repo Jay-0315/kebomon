@@ -132,7 +132,7 @@ function LangSwitcher() {
 }
 
 export default function LoginPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -208,6 +208,9 @@ export default function LoginPage() {
         password,
       });
       setAuthSession(response.accessToken, response.user);
+      if (lang !== "ko") {
+        await api.patch(`/users/${response.user.id}/settings`, { language: lang }).catch(() => undefined);
+      }
       window.location.assign(response.needsStarter ? "/starter" : "/");
     } catch {
       setErrorMessage(t("login.error"));

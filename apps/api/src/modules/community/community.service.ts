@@ -282,6 +282,8 @@ export class CommunityService {
         type: "comment",
         title: "내 글에 새 댓글",
         body: `${commenterName}: ${preview || "(이미지)"}`,
+        titleJa: "自分の投稿に新しいコメント",
+        bodyJa: `${commenterName}: ${preview || "（画像）"}`,
         link: `/community/${postId}`,
       }).catch(() => undefined);
     }

@@ -49,14 +49,24 @@ export class NotificationsService implements OnModuleInit {
     type: NotificationType;
     title: string;
     body: string;
+    titleJa?: string;
+    bodyJa?: string;
     link?: string | null;
   }) {
+    const settings = await this.prisma.appSetting.findUnique({
+      where: { userId: input.userId },
+      select: { language: true },
+    });
+    const lang = settings?.language ?? "ko";
+    const title = lang === "ja" && input.titleJa ? input.titleJa : input.title;
+    const body = lang === "ja" && input.bodyJa ? input.bodyJa : input.body;
+
     const notif = await this.prisma.notification.create({
       data: {
         userId: input.userId,
         type: input.type,
-        title: input.title.slice(0, 120),
-        body: input.body.slice(0, 255),
+        title: title.slice(0, 120),
+        body: body.slice(0, 255),
         link: input.link ?? null,
       },
     });
