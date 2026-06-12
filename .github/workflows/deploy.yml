@@ -1,7 +1,9 @@
 name: Deploy to EC2
 
 on:
-  workflow_dispatch: {} # 수동 실행のみ許可（個人リポジトリでは自動デプロイ無効）
+  push:
+    branches: [main]
+  workflow_dispatch: {}
 
 concurrency:
   group: deploy-prod
