@@ -790,6 +790,7 @@ export default function KebomonPage() {
     checkAchievements,
     profile,
     enhanceCharacter,
+    buyShopItem,
   } = useAppData();
   const { t, lang } = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -802,6 +803,11 @@ export default function KebomonPage() {
     success: boolean;
     newLevel: number;
   } | null>(null);
+  const [buyQty, setBuyQty] = useState(1);
+  const [buying, setBuying] = useState(false);
+  const [buyFeedback, setBuyFeedback] = useState<"success" | "fail" | null>(
+    null,
+  );
   const [checkingAchievements, setCheckingAchievements] = useState(false);
 
   const setTab = (nextTab: Tab) => {
@@ -893,6 +899,21 @@ export default function KebomonPage() {
     }
   };
 
+  const handleBuy = async () => {
+    if (buying) return;
+    setBuying(true);
+    setBuyFeedback(null);
+    try {
+      await buyShopItem("enhancement_stone", buyQty);
+      setBuyFeedback("success");
+    } catch (e) {
+      setBuyFeedback("fail");
+    } finally {
+      setBuying(false);
+      setTimeout(() => setBuyFeedback(null), 2000);
+    }
+  };
+
   const rarities: Filter[] = [
     "all",
     "common",
@@ -977,7 +998,14 @@ export default function KebomonPage() {
             {/* ── Hero card ── */}
             <div className="flex flex-col gap-4 flex-1 min-w-0">
               <div
-                className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]}`}
+                onClick={() => setTab("collection")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setTab("collection");
+                }}
+                role="button"
+                tabIndex={0}
+                title={lang === "ja" ? "図鑑へ" : "도감으로 이동"}
+                className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]} cursor-pointer`}
               >
                 <div className="flex flex-col items-center gap-4">
                   <div
@@ -1105,14 +1133,70 @@ export default function KebomonPage() {
 
                     <div className="mt-4 space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="rounded-2xl border border-border bg-muted p-4">
+                        <div className="rounded-2xl border border-border bg-muted p-4 text-center">
                           <p className="text-xs text-muted-foreground mb-1">
                             {lang === "ja" ? "強化石" : "강화석"}
                           </p>
-                          <p className="text-2xl font-bold flex items-center gap-2">
+                          <p className="text-2xl font-bold flex items-center justify-center gap-2 mx-auto">
                             {enhancementStones}
                             <Sparkles className="w-4 h-4 text-primary" />
                           </p>
+                          <div className="mt-3 flex items-center justify-center gap-2">
+                            <div className="flex items-center gap-2 bg-card rounded-md px-2 py-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setBuyQty(Math.max(1, buyQty - 1))
+                                }
+                                disabled={buying}
+                                className="px-2 text-sm"
+                              >
+                                -
+                              </button>
+                              <span className="text-sm font-medium">
+                                {buyQty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setBuyQty(buyQty + 1)}
+                                disabled={buying}
+                                className="px-2 text-sm"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleBuy()}
+                              disabled={buying}
+                              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                                !buying
+                                  ? "bg-primary text-white hover:bg-primary/90"
+                                  : "bg-secondary text-muted-foreground"
+                              }`}
+                            >
+                              {buying
+                                ? lang === "ja"
+                                  ? "購入中…"
+                                  : "구매중..."
+                                : lang === "ja"
+                                  ? "購入"
+                                  : "구매"}
+                            </button>
+                          </div>
+                          {buyFeedback && (
+                            <p
+                              className={`text-sm mt-2 ${buyFeedback === "success" ? "text-emerald-400" : "text-rose-400"}`}
+                            >
+                              {buyFeedback === "success"
+                                ? lang === "ja"
+                                  ? "購入成功"
+                                  : "구매 성공"
+                                : lang === "ja"
+                                  ? "購入失敗"
+                                  : "구매 실패"}
+                            </p>
+                          )}
                         </div>
                         <div className="rounded-2xl border border-border bg-muted p-4">
                           <p className="text-xs text-muted-foreground mb-1">
@@ -1142,7 +1226,13 @@ export default function KebomonPage() {
                             : "bg-secondary text-muted-foreground cursor-not-allowed"
                         }`}
                       >
-                        {enhancing ? t("enhance.enhancing") : t("enhance.btn")}
+                        {enhancing
+                          ? t("enhance.enhancing")
+                          : currentEnhance >= MAX_ENHANCE[equippedChar.rarity]
+                            ? lang === "ja"
+                              ? "最大強化"
+                              : "최대강화"
+                            : t("enhance.btn")}
                       </button>
                       {enhanceResult && (
                         <p
