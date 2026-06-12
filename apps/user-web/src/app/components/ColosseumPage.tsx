@@ -34,13 +34,13 @@ const C = {
 };
 
 const TIERS = [
-  { key:"bronze",    ko:"브론즈",    ja:"ブロンズ",      min:0,     color:"#cd7f32",glow:"#8B4513" },
-  { key:"silver",    ko:"실버",      ja:"シルバー",      min:3000,  color:"#c0c0c0",glow:"#708090" },
-  { key:"gold",      ko:"골드",      ja:"ゴールド",      min:6000,  color:"#ffd700",glow:"#b8860b" },
-  { key:"platinum",  ko:"플레티넘",  ja:"プラチナ",      min:9000,  color:"#40e0d0",glow:"#008b8b" },
-  { key:"diamond",   ko:"다이아몬드",ja:"ダイヤモンド",  min:12000, color:"#b9f2ff",glow:"#4169e1" },
-  { key:"master",    ko:"마스터",    ja:"マスター",      min:15000, color:"#da70d6",glow:"#800080" },
-  { key:"challenger",ko:"챌린저",   ja:"チャレンジャー",min:18000, color:"#ff4500",glow:"#8b0000" },
+  { key:"bronze",    ko:"브론즈",    ja:"ブロンズ",      en:"Bronze",     min:0,     color:"#cd7f32",glow:"#8B4513" },
+  { key:"silver",    ko:"실버",      ja:"シルバー",      en:"Silver",     min:3000,  color:"#c0c0c0",glow:"#708090" },
+  { key:"gold",      ko:"골드",      ja:"ゴールド",      en:"Gold",       min:6000,  color:"#ffd700",glow:"#b8860b" },
+  { key:"platinum",  ko:"플레티넘",  ja:"プラチナ",      en:"Platinum",   min:9000,  color:"#40e0d0",glow:"#008b8b" },
+  { key:"diamond",   ko:"다이아몬드",ja:"ダイヤモンド",  en:"Diamond",    min:12000, color:"#b9f2ff",glow:"#4169e1" },
+  { key:"master",    ko:"마스터",    ja:"マスター",      en:"Master",     min:15000, color:"#da70d6",glow:"#800080" },
+  { key:"challenger",ko:"챌린저",   ja:"チャレンジャー",en:"Challenger", min:18000, color:"#ff4500",glow:"#8b0000" },
 ] as const;
 
 // ─── 시즌 ────────────────────────────────────────────────────────────────────
@@ -51,12 +51,12 @@ const SEASON = {
 };
 
 const SEASON_REWARDS = [
-  { tierKey:"challenger", ko:"챌린저",    ja:"チャレンジャー", minPts:18000, bonusPoints:6000, color:"#ff4500", glow:"#8b0000" },
-  { tierKey:"master",     ko:"마스터",    ja:"マスター",       minPts:15000, bonusPoints:4500, color:"#da70d6", glow:"#9400d3" },
-  { tierKey:"diamond",    ko:"다이아몬드",ja:"ダイヤモンド",   minPts:12000, bonusPoints:3000, color:"#b9f2ff", glow:"#4169e1" },
-  { tierKey:"platinum",   ko:"플레티넘",  ja:"プラチナ",       minPts:9000,  bonusPoints:2100, color:"#40e0d0", glow:"#008b8b" },
-  { tierKey:"gold",       ko:"골드",      ja:"ゴールド",       minPts:6000,  bonusPoints:1500, color:"#ffd700", glow:"#b8860b" },
-  { tierKey:"silver",     ko:"실버",      ja:"シルバー",       minPts:3000,  bonusPoints:900,  color:"#c0c0c0", glow:"#708090" },
+  { tierKey:"challenger", ko:"챌린저",    ja:"チャレンジャー", en:"Challenger", minPts:18000, bonusPoints:6000, color:"#ff4500", glow:"#8b0000" },
+  { tierKey:"master",     ko:"마스터",    ja:"マスター",       en:"Master",     minPts:15000, bonusPoints:4500, color:"#da70d6", glow:"#9400d3" },
+  { tierKey:"diamond",    ko:"다이아몬드",ja:"ダイヤモンド",   en:"Diamond",    minPts:12000, bonusPoints:3000, color:"#b9f2ff", glow:"#4169e1" },
+  { tierKey:"platinum",   ko:"플레티넘",  ja:"プラチナ",       en:"Platinum",   minPts:9000,  bonusPoints:2100, color:"#40e0d0", glow:"#008b8b" },
+  { tierKey:"gold",       ko:"골드",      ja:"ゴールド",       en:"Gold",       minPts:6000,  bonusPoints:1500, color:"#ffd700", glow:"#b8860b" },
+  { tierKey:"silver",     ko:"실버",      ja:"シルバー",       en:"Silver",     minPts:3000,  bonusPoints:900,  color:"#c0c0c0", glow:"#708090" },
 ] as const;
 
 // 프로필 테두리 id (tierKey → borderId)
@@ -70,14 +70,14 @@ export const BORDER_STYLES: Record<string,{image:string}> = {
   s1_challenger: { image:"/challenger.png" },
   gm:            { image:"/GM.png" },
 };
-export const BORDER_NAMES: Record<string,{ko:string;ja:string}> = {
-  s1_silver:     { ko:"S1 실버",      ja:"S1シルバー" },
-  s1_gold:       { ko:"S1 골드",      ja:"S1ゴールド" },
-  s1_platinum:   { ko:"S1 플레티넘",  ja:"S1プラチナ" },
-  s1_diamond:    { ko:"S1 다이아몬드",ja:"S1ダイヤ" },
-  s1_master:     { ko:"S1 마스터",    ja:"S1マスター" },
-  s1_challenger: { ko:"S1 챌린저",    ja:"S1チャレンジャー" },
-  gm:            { ko:"GM",           ja:"GM" },
+export const BORDER_NAMES: Record<string,{ko:string;ja:string;en:string}> = {
+  s1_silver:     { ko:"S1 실버",      ja:"S1シルバー",       en:"S1 Silver" },
+  s1_gold:       { ko:"S1 골드",      ja:"S1ゴールド",       en:"S1 Gold" },
+  s1_platinum:   { ko:"S1 플레티넘",  ja:"S1プラチナ",       en:"S1 Platinum" },
+  s1_diamond:    { ko:"S1 다이아몬드",ja:"S1ダイヤ",         en:"S1 Diamond" },
+  s1_master:     { ko:"S1 마스터",    ja:"S1マスター",       en:"S1 Master" },
+  s1_challenger: { ko:"S1 챌린저",    ja:"S1チャレンジャー", en:"S1 Challenger" },
+  gm:            { ko:"GM",           ja:"GM",               en:"GM" },
 };
 
 const RARITY_DICE_CONFIG: Record<string,{faces:number;count:number}> = {
@@ -101,6 +101,9 @@ const RARITY_KO: Record<string,string> = {
 const RARITY_JA: Record<string,string> = {
   common:"コモン",uncommon:"アンコモン",rare:"レア",epic:"エピック",legendary:"レジェンダリー",mythic:"ミシック",
 };
+const RARITY_EN: Record<string,string> = {
+  common:"Common",uncommon:"Uncommon",rare:"Rare",epic:"Epic",legendary:"Legendary",mythic:"Mythic",
+};
 
 const ENHANCE_EFFECTS_KO: Record<number,string> = {
   1:"주사위 최솟값 2",2:"주사위 최솟값 3",3:"주사위 최솟값 4",4:"주사위 최솟값 5",
@@ -109,6 +112,10 @@ const ENHANCE_EFFECTS_KO: Record<number,string> = {
 const ENHANCE_EFFECTS_JA: Record<number,string> = {
   1:"ダイス最小値2",2:"ダイス最小値3",3:"ダイス最小値4",4:"ダイス最小値5",
   5:"ボーナスd6ダイス追加",6:"ボーナスダイス→d8アップグレード",
+};
+const ENHANCE_EFFECTS_EN: Record<number,string> = {
+  1:"Dice min 2",2:"Dice min 3",3:"Dice min 4",4:"Dice min 5",
+  5:"Add bonus d6 die",6:"Upgrade bonus die → d8",
 };
 
 function getTierIdx(pts:number){
@@ -400,6 +407,7 @@ function BattleEventCard({rolls,total,attacker,isRolling,battle}:{
 }){
   const{lang}=useLang();
   const ko=lang==="ko";
+  const ja=lang==="ja";
   const isP=attacker==="player";
   const accent=isP?"#60a5fa":"#f87171";
   const glow=isP?"#3b82f6":"#ef4444";
@@ -424,7 +432,7 @@ function BattleEventCard({rolls,total,attacker,isRolling,battle}:{
         padding:"7px 12px",display:"flex",alignItems:"center",gap:7}}>
         {isP?<Swords size={13} color={accent} strokeWidth={2.5}/>:<Zap size={13} color={accent} strokeWidth={2.5}/>}
         <span style={{color:accent,fontFamily:FONT,fontWeight:900,fontSize:13,letterSpacing:"0.1em",flex:1}}>
-          {isP?(ko?"나의 공격!":"自分の攻撃!"):(ko?"적의 공격!":"敵の攻撃!")}
+          {isP?(ko?"나의 공격!":ja?"自分の攻撃!":"Your attack!"):(ko?"적의 공격!":ja?"敵の攻撃!":"Opponent's attack!")}
         </span>
         <span style={{fontSize:10,color:C.stoneFaint,fontFamily:FONT,
           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>
@@ -445,7 +453,7 @@ function BattleEventCard({rolls,total,attacker,isRolling,battle}:{
         {isRolling&&(
           <span style={{fontSize:10,color:C.stoneFaint,fontFamily:FONT,letterSpacing:"0.15em",
             animation:"col-log-in 0.2s ease-out both"}}>
-            {ko?"굴리는 중...":"ロール中..."}
+            {ko?"굴리는 중...":ja?"ロール中...":"Rolling..."}
           </span>
         )}
         {!isRolling&&total>0&&(
@@ -490,6 +498,7 @@ function BattleHistoryRow({entry,opacity,maxHp}:{
 }){
   const{lang}=useLang();
   const ko=lang==="ko";
+  const ja=lang==="ja";
   const isP=entry.attacker==="player";
   const accent=isP?"#2563eb":"#dc2626";
   const accentBright=isP?"#60a5fa":"#f87171";
@@ -503,7 +512,7 @@ function BattleHistoryRow({entry,opacity,maxHp}:{
       <span style={{fontSize:12,color:accentBright,fontWeight:700}}>[{entry.rolls.join("][")}]</span>
       <span style={{fontSize:11,color:C.stone,fontWeight:700}}>={entry.total}</span>
       <span style={{marginLeft:"auto",fontSize:11,color:C.stoneFaint,flexShrink:0}}>
-        {ko?(isP?"적":"나"):(isP?"敵":"自")} HP {defHp}/{maxHp}
+        {ko?(isP?"적":"나"):ja?(isP?"敵":"自"):(isP?"Opp":"You")} HP {defHp}/{maxHp}
       </span>
     </div>
   );
@@ -556,7 +565,7 @@ interface BattleLogEntry{id:number;round:number;attacker:"player"|"opponent";rol
 type Phase="lobby"|"coin"|"battle"|"result";
 
 // ─── 시즌보상 팝업 ───────────────────────────────────────────────────────────
-function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolean; myPts:number }) {
+function SeasonRewardModal({ onClose, ko, ja, myPts }: { onClose:()=>void; ko:boolean; ja:boolean; myPts:number }) {
   const myRewardIdx = SEASON_REWARDS.findIndex(r => myPts >= r.minPts);
   return (
     <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",
@@ -572,7 +581,7 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
             <Gift size={18} color="#c8a44a"/>
             <div>
               <p style={{margin:0,fontSize:16,fontWeight:900,color:"#c8a44a"}}>
-                {ko ? `시즌 ${SEASON.number} 보상` : `シーズン${SEASON.number}報酬`}
+                {ko ? `시즌 ${SEASON.number} 보상` : ja ? `シーズン${SEASON.number}報酬` : `Season ${SEASON.number} Rewards`}
               </p>
               <p style={{margin:0,fontSize:11,color:"#8b6f3a"}}>
                 {SEASON.startDate} ~ {SEASON.endDate}
@@ -588,7 +597,8 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
         <p style={{fontSize:11,color:"#8b6f3a",margin:"0 0 14px",lineHeight:1.6}}>
           {ko
             ? "시즌 종료 시 달성 티어와 그 아래 모든 티어의 프로필 테두리가 함께 지급됩니다. 테두리는 다음 시즌에도 유지됩니다."
-            : "シーズン終了時、達成ティアとそれ以下の全ティアのプロフィール枠が付与されます。枠は次シーズンも維持されます。"}
+            : ja ? "シーズン終了時、達成ティアとそれ以下の全ティアのプロフィール枠が付与されます。枠は次シーズンも維持されます。"
+            : "At season end, you'll receive profile borders for your achieved tier and all tiers below it. Borders carry over to the next season."}
         </p>
 
         {/* 보상 테이블 */}
@@ -606,7 +616,7 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
               }}>
                 {/* 테두리 미리보기 — PNG 이미지 */}
                 <div style={{width:44,height:44,flexShrink:0,position:"relative"}}>
-                  <img src={`/${r.tierKey}.png`} alt={ko?r.ko:r.ja}
+                  <img src={`/${r.tierKey}.png`} alt={ko?r.ko:ja?r.ja:r.en}
                     style={{width:44,height:44,objectFit:"contain"}}
                   />
                   {isMine&&(
@@ -618,15 +628,15 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
                 <div style={{flex:1,minWidth:0}}>
                   <p style={{margin:0,fontSize:13,fontWeight:900,color:r.color,
                     filter:`drop-shadow(0 0 4px ${r.glow})`}}>
-                    {ko ? r.ko : r.ja}
+                    {ko ? r.ko : ja ? r.ja : r.en}
                   </p>
-                  <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>{r.minPts.toLocaleString()} pts {ko?"이상":"以上"}</p>
+                  <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>{r.minPts.toLocaleString()} pts {ko?"이상":ja?"以上":"& above"}</p>
                 </div>
                 {/* 보상 */}
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <p style={{margin:0,fontSize:12,fontWeight:900,color:"#4ade80"}}>+{r.bonusPoints.toLocaleString()}P</p>
                   <p style={{margin:0,fontSize:10,color:"#8b6f3a"}}>
-                    {ko?`테두리 ${borCount}종`:`枠${borCount}種`}
+                    {ko?`테두리 ${borCount}종`:ja?`枠${borCount}種`:`${borCount} border${borCount>1?"s":""}`}
                   </p>
                 </div>
               </div>
@@ -638,8 +648,10 @@ function SeasonRewardModal({ onClose, ko, myPts }: { onClose:()=>void; ko:boolea
         {myPts > 0 && (
           <p style={{margin:"14px 0 0",fontSize:11,color:"#c8a44a",textAlign:"center"}}>
             {ko
-              ? `현재 ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?(ko?SEASON_REWARDS[myRewardIdx].ko:SEASON_REWARDS[myRewardIdx].ja):"미달성"} 보상 예정`
-              : `現在 ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?(ko?SEASON_REWARDS[myRewardIdx].ko:SEASON_REWARDS[myRewardIdx].ja):"未達成"}報酬予定`}
+              ? `현재 ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?SEASON_REWARDS[myRewardIdx].ko:"미달성"} 보상 예정`
+              : ja
+              ? `現在 ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?SEASON_REWARDS[myRewardIdx].ja:"未達成"}報酬予定`
+              : `Currently ${myPts.toLocaleString()} pts · ${myRewardIdx>=0?SEASON_REWARDS[myRewardIdx].en:"Not yet achieved"} reward expected`}
           </p>
         )}
       </div>
@@ -652,6 +664,7 @@ export default function ColosseumPage(){
   const{rewardSummary}=useAppData();
   const{lang,t}=useLang();
   const ko=lang==="ko";
+  const ja=lang==="ja";
   const myCharacterId=rewardSummary.equippedCharacterId??CHARACTERS[0].id;
   const myChar=charById(myCharacterId);
   const myEnhanceLevel=rewardSummary.characterEnhancements[myCharacterId]??0;
@@ -833,7 +846,7 @@ export default function ColosseumPage(){
     setPhase("coin");setCoinResult(null);setBattle(null);
     setRollAnimRolls([]);setRollAnimActive(false);setResult(null);
     setBattleHistory([]);setLogText("");setWaitForNext(false);
-    getBattleSocket().emit("battle:start",{userId:user?.id,characterId:myCharacterId,nickname:user?.name??(ko?"플레이어":"プレイヤー")});
+    getBattleSocket().emit("battle:start",{userId:user?.id,characterId:myCharacterId,nickname:user?.name??(ko?"플레이어":ja?"プレイヤー":"Player")});
   },[user,myCharacterId,ko,consume]);
 
   const rollDice=useCallback(()=>{
@@ -909,7 +922,7 @@ export default function ColosseumPage(){
 
   const tierIdx=getTierIdx(tierPts);
   const tier=TIERS[tierIdx];
-  const tierLabel=ko?tier.ko:tier.ja;
+  const tierLabel=ko?tier.ko:ja?tier.ja:tier.en;
   const tierNext=TIERS[tierIdx+1]?.min??tier.min+1000;
   const tierProgress=Math.min(1,(tierPts-tier.min)/(tierNext-tier.min));
 
@@ -963,7 +976,7 @@ export default function ColosseumPage(){
   // LOBBY
   // ══════════════════════════════════════════════════════════════════════════
   if(phase==="lobby"){
-    const rarityLabel=ko?(RARITY_KO[myChar.rarity]??myChar.rarity):(RARITY_JA[myChar.rarity]??myChar.rarity);
+    const rarityLabel=ko?(RARITY_KO[myChar.rarity]??myChar.rarity):ja?(RARITY_JA[myChar.rarity]??myChar.rarity):(RARITY_EN[myChar.rarity]??myChar.rarity);
     const rarityTheme=RARITY_THEME[myChar.rarity];
     // 다음 갱신 계산
     const nextUpdateMs=rankUpdatedAt?Math.max(0,nextHourStartMs(rankClock)-rankClock):null;
@@ -997,7 +1010,7 @@ export default function ColosseumPage(){
             transition:"background 0.15s",
           }}>
             <Gift size={13} color={C.gold}/>
-            {ko?`시즌 ${SEASON.number} 보상`:`シーズン${SEASON.number}報酬`}
+            {ko?`시즌 ${SEASON.number} 보상`:ja?`シーズン${SEASON.number}報酬`:`Season ${SEASON.number} Rewards`}
           </button>
           <p style={{fontFamily:FONT,fontSize:11,letterSpacing:"0.4em",color:C.stone,marginBottom:2,fontWeight:900}}>
             {t("col.kebomon")}
@@ -1027,7 +1040,7 @@ export default function ColosseumPage(){
               </svg>
               <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,letterSpacing:"0.12em",
                 color:C.gold,textShadow:`0 0 10px ${C.goldGlow}`}}>
-                {ko?`시즌 ${SEASON.number}  ·  영광의 시작`:`シーズン${SEASON.number}  ·  栄光の始まり`}
+                {ko?`시즌 ${SEASON.number}  ·  영광의 시작`:ja?`シーズン${SEASON.number}  ·  栄光の始まり`:`Season ${SEASON.number}  ·  Glory Begins`}
               </span>
               <svg width="14" height="14" viewBox="0 0 14 14">
                 <polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/>
@@ -1036,7 +1049,7 @@ export default function ColosseumPage(){
             <div style={{height:1,width:40,background:`linear-gradient(90deg,${C.gold}88,transparent)`}}/>
           </div>
         </div>
-        {showSeason&&<SeasonRewardModal onClose={()=>setShowSeason(false)} ko={ko} myPts={tierPts}/>}
+        {showSeason&&<SeasonRewardModal onClose={()=>setShowSeason(false)} ko={ko} ja={ja} myPts={tierPts}/>}
 
         <div style={{maxWidth:860,margin:"0 auto",padding:"20px 16px",display:"flex",flexDirection:"column",gap:14}}>
 
@@ -1080,7 +1093,7 @@ export default function ColosseumPage(){
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontFamily:FONT,fontSize:15,fontWeight:900,color:C.parchment,margin:0,
                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                  {user?.name??(ko?"플레이어":"プレイヤー")}
+                  {user?.name??(ko?"플레이어":ja?"プレイヤー":"Player")}
                 </p>
                 <p style={{fontFamily:FONT,fontSize:11,color:rarityTheme.color,
                   textShadow:`0 0 8px ${rarityTheme.glow}`,margin:"2px 0 8px",
@@ -1095,7 +1108,7 @@ export default function ColosseumPage(){
                       +{myEnhanceLevel}
                     </span>
                     <span style={{fontFamily:FONT,fontSize:10,color:"#93c5fd"}}>
-                      {ko?ENHANCE_EFFECTS_KO[myEnhanceLevel]:ENHANCE_EFFECTS_JA[myEnhanceLevel]}
+                      {ko?ENHANCE_EFFECTS_KO[myEnhanceLevel]:ja?ENHANCE_EFFECTS_JA[myEnhanceLevel]:ENHANCE_EFFECTS_EN[myEnhanceLevel]}
                     </span>
                   </div>
                 )}
@@ -1154,7 +1167,8 @@ export default function ColosseumPage(){
             color:C.stone,lineHeight:1.9,whiteSpace:"pre-line"}}>
             {ko
               ?"• 동전으로 선공 결정\n• 턴마다 주사위 굴려 데미지\n• 먼저 HP 0이 된 쪽 패배\n• 승: +100pts  패: -50pts  연승: +20pts"
-              :"• コインで先攻決定\n• ターンごとにダイスを振りダメージ\n• 先にHP0になった側が敗北\n• 勝: +100pts  負: -50pts  連勝: +20pts"}
+              :ja?"• コインで先攻決定\n• ターンごとにダイスを振りダメージ\n• 先にHP0になった側が敗北\n• 勝: +100pts  負: -50pts  連勝: +20pts"
+              :"• Coin flip decides who goes first\n• Roll dice each turn to deal damage\n• First to reach 0 HP loses\n• Win: +100pts  Loss: -50pts  Streak: +20pts"}
           </div>
 
           {/* ── 하단 2열: 랭킹 + 티어 목록 ── */}
@@ -1168,9 +1182,9 @@ export default function ColosseumPage(){
               {/* 탭 바 */}
               <div style={{display:"flex",borderBottom:`2px solid ${C.border}`,background:"#0f0a04"}}>
                 {([
-                  {id:"current",ko:"현재 랭킹",ja:"現在ランキング"},
-                  {id:"top",    ko:"상위 랭킹",ja:"上位ランキング"},
-                ] as {id:string;ko:string;ja:string}[]).map(tab=>{
+                  {id:"current",ko:"현재 랭킹",ja:"現在ランキング",en:"Current Rankings"},
+                  {id:"top",    ko:"상위 랭킹",ja:"上位ランキング",en:"Top Rankings"},
+                ] as {id:string;ko:string;ja:string;en:string}[]).map(tab=>{
                   const active=rankTab===tab.id;
                   return(
                     <button key={tab.id} onClick={()=>{setRankTab(tab.id);setRankPage(0);}}
@@ -1181,7 +1195,7 @@ export default function ColosseumPage(){
                         border:"none",cursor:"pointer",
                         borderBottom:active?`2px solid ${C.gold}`:`2px solid transparent`,
                         marginBottom:-2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                      {ko?tab.ko:tab.ja}
+                      {ko?tab.ko:ja?tab.ja:tab.en}
                     </button>
                   );
                 })}
@@ -1256,13 +1270,13 @@ export default function ColosseumPage(){
                           <TierBadgeSvg idx={eIdx} size={11}/>
                           <span style={{fontFamily:FONT,fontSize:10,fontWeight:900,color:eTier.color,
                             textShadow:`0 0 6px ${eTier.glow}88`}}>
-                            {ko?eTier.ko:eTier.ja}
+                            {ko?eTier.ko:ja?eTier.ja:eTier.en}
                           </span>
                           {entry.winStreak>1&&(
                             <span style={{fontSize:9,color:C.gold,fontFamily:FONT,
                               background:"#c8a44a18",border:`1px solid ${C.gold}44`,
                               borderRadius:2,padding:"0 3px"}}>
-                              {entry.winStreak}{ko?"연승":"連勝"}
+                              {entry.winStreak}{ko?"연승":ja?"連勝":" streak"}
                             </span>
                           )}
                         </div>
@@ -1276,7 +1290,7 @@ export default function ColosseumPage(){
                           {entry.tierPoints.toLocaleString()}
                         </p>
                         <p style={{fontFamily:FONT,fontSize:9,color:C.stoneFaint,margin:"1px 0 0"}}>
-                          {entry.wins}{ko?"승":"勝"} · pts
+                          {entry.wins}{ko?"승":ja?"勝":" W"} · pts
                         </p>
                       </div>
                     </div>
@@ -1298,13 +1312,13 @@ export default function ColosseumPage(){
                       padding:"4px 12px",background:"#0d0904",borderBottom:`1px solid ${C.borderFaint}`}}>
                       <span style={{fontFamily:FONT,fontSize:9,color:C.stoneFaint}}>
                         {rankUpdatedAt
-                          ?`${t("col.last_updated")} ${new Date(rankUpdatedAt).toLocaleTimeString(ko?"ko-KR":"ja-JP",{hour:"2-digit",minute:"2-digit"})}${nextUpdateMin&&nextUpdateMin>0?` · ${nextUpdateMin}${ko?"분 후 갱신":"分後に更新"}`:""}`
-                          :(ko?"갱신 대기 중":"更新待ち")}
+                          ?`${t("col.last_updated")} ${new Date(rankUpdatedAt).toLocaleTimeString(ko?"ko-KR":ja?"ja-JP":"en-US",{hour:"2-digit",minute:"2-digit"})}${nextUpdateMin&&nextUpdateMin>0?` · ${nextUpdateMin}${ko?"분 후 갱신":ja?"分後に更新":` min until refresh`}`:""}`
+                          :(ko?"갱신 대기 중":ja?"更新待ち":"Waiting for update")}
                       </span>
                       <span style={{display:"flex",alignItems:"center",gap:3,
                         fontFamily:FONT,fontSize:9,color:C.stoneFaint}}>
                         <RefreshCw size={8} strokeWidth={2}/>
-                        {ko?"자동갱신":"自動更新"}
+                        {ko?"자동갱신":ja?"自動更新":"Auto-refresh"}
                       </span>
                     </div>
 
@@ -1320,7 +1334,7 @@ export default function ColosseumPage(){
                       <div style={{borderTop:`1px solid ${C.border}`,background:"#0d0a04"}}>
                         <div style={{padding:"2px 12px 1px"}}>
                           <span style={{fontFamily:"monospace",fontSize:8,color:C.stoneFaint,letterSpacing:"0.08em"}}>
-                            ─── {ko?"내 순위":"自分の順位"} ───
+                            ─── {ko?"내 순위":ja?"自分の順位":"My Rank"} ───
                           </span>
                         </div>
                         {renderRankRow(myRankEntry)}
@@ -1337,7 +1351,7 @@ export default function ColosseumPage(){
                 {user&&!myRankEntry&&(
                   <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.borderFaint}`,background:"#0d0a04"}}>
                     <span style={{fontFamily:FONT,fontSize:10,color:C.stoneFaint}}>
-                      {ko?"아직 전적이 없습니다":"まだ戦績がありません"}
+                      {ko?"아직 전적이 없습니다":ja?"まだ戦績がありません":"No match history yet"}
                     </span>
                   </div>
                 )}
@@ -1350,7 +1364,7 @@ export default function ColosseumPage(){
                       color:rankPage===0?C.stoneFaint:C.gold,background:"none",border:"none",
                       cursor:rankPage===0?"not-allowed":"pointer",padding:"2px 4px",
                       opacity:rankPage===0?0.4:1}}>
-                    <ChevronLeft size={12}/> {ko?"상위 보기":"上位を見る"}
+                    <ChevronLeft size={12}/> {ko?"상위 보기":ja?"上位を見る":"Higher"}
                   </button>
                   <span style={{fontFamily:"monospace",fontSize:11,fontWeight:900,color:C.stone}}>
                     {rankPage+1} / {rankTotalPages}
@@ -1362,7 +1376,7 @@ export default function ColosseumPage(){
                       color:rankPage===rankTotalPages-1?C.stoneFaint:C.gold,background:"none",border:"none",
                       cursor:rankPage===rankTotalPages-1?"not-allowed":"pointer",padding:"2px 4px",
                       opacity:rankPage===rankTotalPages-1?0.4:1}}>
-                    {ko?"하위 보기":"下位を見る"} <ChevronRight size={12}/>
+                    {ko?"하위 보기":ja?"下位を見る":"Lower"} <ChevronRight size={12}/>
                   </button>
                 </div>
               </div>
@@ -1394,7 +1408,7 @@ export default function ColosseumPage(){
                       <p style={{fontFamily:FONT,fontSize:12,fontWeight:900,color:t2.color,
                         textShadow:isCurrent?`0 0 8px ${t2.glow}`:"none",margin:0,
                         display:"flex",alignItems:"center",gap:6}}>
-                        {ko?t2.ko:t2.ja}
+                        {ko?t2.ko:ja?t2.ja:t2.en}
                         {isCurrent&&(
                           <span style={{fontSize:8,background:t2.color,color:"#000",
                             padding:"1px 4px",borderRadius:2,fontWeight:900,letterSpacing:"0.05em"}}>
@@ -1433,7 +1447,7 @@ export default function ColosseumPage(){
     const newIdx=getTierIdx(result.tierPoints);
     const prevIdx=getTierIdx(result.tierPoints-result.pointsDelta);
     const newTier=TIERS[newIdx];
-    const newLabel=ko?newTier.ko:newTier.ja;
+    const newLabel=ko?newTier.ko:ja?newTier.ja:newTier.en;
     const tierUp=newIdx>prevIdx;
     const tierDown=newIdx<prevIdx;
 
@@ -1746,7 +1760,7 @@ export default function ColosseumPage(){
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             <p style={{textAlign:"center",fontSize:11,color:"#94a3b8",fontWeight:700,
               letterSpacing:"0.08em",margin:"0 0 4px",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
-              <Shield size={11} color="#94a3b8" strokeWidth={2}/>{ko?"공격 결과 확인 — 다음을 눌러 상대 턴 시작":"攻撃結果確認 — 次で相手ターン開始"}
+              <Shield size={11} color="#94a3b8" strokeWidth={2}/>{ko?"공격 결과 확인 — 다음을 눌러 상대 턴 시작":ja?"攻撃結果確認 — 次で相手ターン開始":"Attack resolved — press Next to start opponent's turn"}
             </p>
             <PixelBtn onClick={ackOpponentTurn} color="gray">
               <Dices size={16}/>{t("col.next_turn")}

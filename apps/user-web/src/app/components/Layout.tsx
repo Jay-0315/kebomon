@@ -21,14 +21,14 @@ export default function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("sidebarCollapsed") === "1",
   );
-  const [kebemonOpen, setKebemonOpen] = useState(() => {
-    return typeof window !== "undefined" && localStorage.getItem("navKebemonOpen") !== "0";
+  const [kebomonOpen, setKebomonOpen] = useState(() => {
+    return typeof window !== "undefined" && localStorage.getItem("navKebomonOpen") !== "0";
   });
   const [missionOpen, setMissionOpen] = useState(() => {
     return typeof window !== "undefined" && localStorage.getItem("navMissionOpen") !== "0";
   });
 
-  const toggleKebemon = () => setKebemonOpen(p => { localStorage.setItem("navKebemonOpen", p ? "0" : "1"); return !p; });
+  const toggleKebomon = () => setKebomonOpen(p => { localStorage.setItem("navKebomonOpen", p ? "0" : "1"); return !p; });
   const toggleMission = () => setMissionOpen(p => { localStorage.setItem("navMissionOpen", p ? "0" : "1"); return !p; });
 
   const toggleSidebarCollapsed = () => {
@@ -58,19 +58,19 @@ export default function Layout() {
     window.location.reload();
   };
 
-  const NavLink = ({ to, icon: Icon, label, exact = false, onNav }: {
-    to: string; icon: React.ElementType; label: string; exact?: boolean; onNav?: () => void;
+  const NavLink = ({ to, icon: Icon, label, exact = false, sub = false, onNav }: {
+    to: string; icon: React.ElementType; label: string; exact?: boolean; sub?: boolean; onNav?: () => void;
   }) => {
     const active = isActive(to, exact);
     return (
       <Link
         to={to}
         onClick={onNav}
-        className={`flex items-center gap-3 px-3 py-2 rounded transition-colors text-sm ${
-          active ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent"
-        }`}
+        className={`flex items-center gap-3 rounded transition-colors ${
+          sub ? "pl-9 pr-3 py-1.5 text-sm" : "px-3 py-2 text-[15px] font-medium"
+        } ${active ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}
       >
-        <Icon className="w-4 h-4 shrink-0" />
+        <Icon className={`shrink-0 ${sub ? "w-4 h-4" : "w-[18px] h-[18px]"}`} />
         <span>{label}</span>
       </Link>
     );
@@ -84,7 +84,7 @@ export default function Layout() {
       <Link
         to={`${to}?tab=${tab}`}
         onClick={onNav}
-        className={`flex items-center gap-3 pl-9 pr-3 py-2 rounded transition-colors text-sm ${
+        className={`flex items-center gap-3 pl-9 pr-3 py-1.5 rounded transition-colors text-sm ${
           active ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent"
         }`}
       >
@@ -99,9 +99,9 @@ export default function Layout() {
   }) => (
     <button
       onClick={onToggle}
-      className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+      className="w-full flex items-center gap-3 px-3 py-2 rounded text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
     >
-      <Icon className="w-4 h-4 shrink-0" />
+      <Icon className="w-[18px] h-[18px] shrink-0" />
       <span className="flex-1 text-left">{label}</span>
       <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
     </button>
@@ -109,23 +109,23 @@ export default function Layout() {
 
   const NavLinks = ({ onNav }: { onNav?: () => void }) => (
     <div className="space-y-0.5">
-      <NavLink to="/" icon={Home}         label={ko?"홈":ja?"ホーム":"Home"} exact onNav={onNav} />
-      <NavLink to="/community" icon={Newspaper}   label={ko?"커뮤니티":ja?"コミュニティ":"Community"} onNav={onNav} />
+      <NavLink to="/" icon={Home}           label={ko?"홈":ja?"ホーム":"Home"} exact onNav={onNav} />
+      <NavLink to="/community" icon={Newspaper} label={ko?"커뮤니티":ja?"コミュニティ":"Community"} onNav={onNav} />
       <NavLink to="/attendance" icon={CalendarCheck} label={ko?"출석":ja?"出席":"Attendance"} onNav={onNav} />
-      <NavLink to="/shop"       icon={ShoppingBag}  label={ko?"뽑기":ja?"ガチャ":"Gacha"} onNav={onNav} />
+      <NavLink to="/kebomon" icon={Zap} label={ko?"강화":ja?"強化":"Enhance"} onNav={onNav} />
 
-      {/* 케모몬 group */}
+      {/* 케보몬 group */}
       <GroupHeader
         icon={Gamepad2}
         label={ko?"케보몬":ja?"ケボモン":"Kebomon"}
-        open={kebemonOpen}
-        onToggle={toggleKebemon}
+        open={kebomonOpen}
+        onToggle={toggleKebomon}
       />
-      {kebemonOpen && (
+      {kebomonOpen && (
         <div className="space-y-0.5">
-          <NavTabLink to="/kebomon" tab="character" icon={Zap}      label={ko?"강화":ja?"強化":"Enhance"} onNav={onNav} />
-          <NavTabLink to="/kebomon" tab="collection" icon={BookOpen} label={ko?"도감":ja?"図鑑":"Pokedex"} onNav={onNav} />
-          <NavTabLink to="/kebomon" tab="achievement" icon={Star}   label={ko?"업적":ja?"業績":"Achieve"} onNav={onNav} />
+          <NavTabLink to="/kebomon" tab="collection"  icon={BookOpen}    label={ko?"도감":ja?"図鑑":"Pokedex"} onNav={onNav} />
+          <NavLink    to="/gacha"                     icon={ShoppingBag} label={ko?"뽑기":ja?"ガチャ":"Gacha"} sub onNav={onNav} />
+          <NavTabLink to="/kebomon" tab="achievement" icon={Star}        label={ko?"업적":ja?"業績":"Achieve"} onNav={onNav} />
         </div>
       )}
 
@@ -138,10 +138,10 @@ export default function Layout() {
       />
       {missionOpen && (
         <div className="space-y-0.5">
-          <NavLink to="/colosseum"  icon={Trophy}  label={ko?"콜로세움":ja?"コロシアム":"Colosseum"} onNav={onNav} />
-          <NavLink to="/raid"       icon={Shield}  label={ko?"보스레이드":ja?"ボスレイド":"Raid"} onNav={onNav} />
-          <NavLink to="/rogue"      icon={Layers}  label={ko?"로그라이크":ja?"ローグライク":"Roguelike"} onNav={onNav} />
-          <NavLink to="/expedition" icon={Map}     label={ko?"원정":ja?"遠征":"Expedition"} onNav={onNav} />
+          <NavLink to="/colosseum"  icon={Trophy}  label={ko?"콜로세움":ja?"コロシアム":"Colosseum"} sub onNav={onNav} />
+          <NavLink to="/raid"       icon={Shield}  label={ko?"보스레이드":ja?"ボスレイド":"Raid"}      sub onNav={onNav} />
+          <NavLink to="/rogue"      icon={Layers}  label={ko?"로그라이크":ja?"ローグライク":"Roguelike"} sub onNav={onNav} />
+          <NavLink to="/expedition" icon={Map}     label={ko?"원정":ja?"遠征":"Expedition"}            sub onNav={onNav} />
         </div>
       )}
 

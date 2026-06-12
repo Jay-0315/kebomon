@@ -19,6 +19,7 @@ import SettingsPage from "./components/SettingsPage";
 import StarterSelectionPage from "./components/StarterSelectionPage";
 import AttendancePage from "./components/AttendancePage";
 import MissionPage from "./components/MissionPage";
+import GachaPage from "./components/GachaPage";
 import { useAppData } from "./context/AppDataContext";
 import { isAuthenticated } from "./lib/auth";
 import { LangProvider } from "./context/LangContext";
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="mypage" element={<MyPage />} />
           <Route path="kebomon" element={<KebomonPage />} />
+          <Route path="gacha" element={<GachaPage />} />
           <Route path="live" element={<LiveChatPage />} />
           <Route path="mission" element={<MissionPage />} />
           <Route path="raid" element={<RaidPage />} />

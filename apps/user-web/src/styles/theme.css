@@ -173,14 +173,14 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'M PLUS Rounded 1c', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   html {
     font-size: var(--font-size);
-    font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'M PLUS Rounded 1c', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   /**

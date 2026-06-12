@@ -1228,7 +1228,7 @@ export default function RaidPage() {
         {eliminated && !banned && (
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-500">
             <Heart className="h-4 w-4 fill-red-500" />
-            {lang === "ko" ? "라이프가 모두 소진되어 퇴장되었습니다. 다음 타임에 재도전하세요." : "ライフが尽きたため退場しました。次のタイムに再挑戦してください。"}
+            {lang === "ko" ? "라이프가 모두 소진되어 퇴장되었습니다. 다음 타임에 재도전하세요." : lang === "ja" ? "ライフが尽きたため退場しました。次のタイムに再挑戦してください。" : "All lives spent — you've been eliminated. Try again next round."}
           </div>
         )}
         {full && <div className="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{t("raid.full_msg")}</div>}
@@ -1362,7 +1362,7 @@ export default function RaidPage() {
                 onClick={() => setRankingsModal(null)}
                 className="mt-4 w-full rounded-lg bg-muted py-2 text-sm font-semibold hover:bg-muted/70 transition-colors"
               >
-                {lang === "ko" ? "닫기" : "閉じる"}
+                {t("common.close")}
               </button>
             </div>
           </div>

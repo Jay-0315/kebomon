@@ -210,6 +210,7 @@ const dict = {
     // Common
     "common.loading": "로딩 중...",
     "common.photo": "사진",
+    "common.close": "닫기",
     // Signup
     "signup.title": "회원가입",
     "signup.subtitle": "가계부와 함께 시작해보세요",
@@ -587,6 +588,7 @@ const dict = {
     // Common
     "common.loading": "読み込み中...",
     "common.photo": "写真",
+    "common.close": "閉じる",
     // Nav
     "nav.menu": "メニュー",
     "nav.settings_section": "設定",
@@ -1347,6 +1349,7 @@ const dict = {
     // Common
     "common.loading": "Loading...",
     "common.photo": "Photo",
+    "common.close": "Close",
     // Signup
     "signup.title": "Sign Up",
     "signup.subtitle": "Join the community",

@@ -81,9 +81,9 @@ type Phase      = "lobby" | "map" | "battle" | "reward" | "shop" | "rest" | "gam
 type Intent     = "attack" | "defend" | "buff" | "poison";
 
 interface CardDef {
-  id: string; name: string; nameJa: string;
+  id: string; name: string; nameJa: string; nameEn: string;
   cost: number; type: CardType; rarity: CardRarity;
-  desc: string; descJa: string; archetype: string;
+  desc: string; descJa: string; descEn: string; archetype: string;
   damage?: number; shield?: number; draw?: number;
   poison?: number; strength?: number; heal?: number;
   multiHit?: number; bonusEnergy?: number; selfDamage?: number;
@@ -95,7 +95,7 @@ interface EnemyPattern {
   poison?: number; shield?: number; strength?: number;
 }
 interface EnemyDef {
-  id: string; name: string; nameJa: string;
+  id: string; name: string; nameJa: string; nameEn: string;
   charType: CharacterType; hp: number;
   patterns: EnemyPattern[]; isBoss?: boolean;
 }
@@ -125,58 +125,58 @@ interface GameState {
 // ── Card pool ─────────────────────────────────────────────────────────────
 const CARDS: CardDef[] = [
   // Universal
-  { id:"strike",       name:"스트라이크",   nameJa:"ストライク",       cost:1,type:"attack",rarity:"common",   desc:"6 데미지",           descJa:"6ダメージ",          archetype:"all",     damage:6 },
-  { id:"defend",       name:"방어",         nameJa:"ディフェンス",      cost:1,type:"skill", rarity:"common",   desc:"방어력 5",           descJa:"シールド5",          archetype:"all",     shield:5 },
-  { id:"bash",         name:"강타",         nameJa:"バッシュ",          cost:2,type:"attack",rarity:"uncommon", desc:"14 데미지",          descJa:"14ダメージ",         archetype:"all",     damage:14 },
-  { id:"fortify",      name:"요새화",       nameJa:"フォーティファイ",  cost:2,type:"skill", rarity:"uncommon", desc:"방어력 12",          descJa:"シールド12",         archetype:"all",     shield:12 },
-  { id:"dual_strike",  name:"연타",         nameJa:"二連打",            cost:1,type:"attack",rarity:"uncommon", desc:"4 데미지 × 2",      descJa:"4ダメージ×2",        archetype:"all",     damage:4, multiHit:2 },
-  { id:"quick_guard",  name:"속방어",       nameJa:"素早い防御",        cost:1,type:"skill", rarity:"common",   desc:"방어력 3, 드로우 1", descJa:"シールド3・ドロー1", archetype:"all",     shield:3,draw:1 },
-  { id:"power_surge",  name:"파워 서지",    nameJa:"パワーサージ",      cost:3,type:"attack",rarity:"rare",     desc:"20 데미지",          descJa:"20ダメージ",         archetype:"all",     damage:20 },
-  { id:"iron_wall",    name:"철벽",         nameJa:"鉄壁",              cost:3,type:"skill", rarity:"rare",     desc:"방어력 18",          descJa:"シールド18",         archetype:"all",     shield:18 },
-  { id:"battle_cry",   name:"전투 함성",    nameJa:"バトルクライ",      cost:1,type:"power", rarity:"rare",     desc:"힘 +2 (영구)",       descJa:"力+2（永続）",       archetype:"all",     strength:2 },
-  { id:"second_wind",  name:"재기",         nameJa:"セカンドウィンド",  cost:2,type:"skill", rarity:"epic",     desc:"방어력 8, 드로우 2", descJa:"シールド8・ドロー2", archetype:"all",     shield:8,draw:2 },
+  { id:"strike",       name:"스트라이크",   nameJa:"ストライク",       nameEn:"Strike",        cost:1,type:"attack",rarity:"common",   desc:"6 데미지",            descJa:"6ダメージ",           descEn:"Deal 6 damage",                   archetype:"all",     damage:6 },
+  { id:"defend",       name:"방어",         nameJa:"ディフェンス",      nameEn:"Defend",        cost:1,type:"skill", rarity:"common",   desc:"방어력 5",            descJa:"シールド5",           descEn:"Gain 5 shield",                   archetype:"all",     shield:5 },
+  { id:"bash",         name:"강타",         nameJa:"バッシュ",          nameEn:"Bash",          cost:2,type:"attack",rarity:"uncommon", desc:"14 데미지",           descJa:"14ダメージ",          descEn:"Deal 14 damage",                  archetype:"all",     damage:14 },
+  { id:"fortify",      name:"요새화",       nameJa:"フォーティファイ",  nameEn:"Fortify",       cost:2,type:"skill", rarity:"uncommon", desc:"방어력 12",           descJa:"シールド12",          descEn:"Gain 12 shield",                  archetype:"all",     shield:12 },
+  { id:"dual_strike",  name:"연타",         nameJa:"二連打",            nameEn:"Dual Strike",   cost:1,type:"attack",rarity:"uncommon", desc:"4 데미지 × 2",       descJa:"4ダメージ×2",         descEn:"Deal 4 damage twice",             archetype:"all",     damage:4, multiHit:2 },
+  { id:"quick_guard",  name:"속방어",       nameJa:"素早い防御",        nameEn:"Quick Guard",   cost:1,type:"skill", rarity:"common",   desc:"방어력 3, 드로우 1",  descJa:"シールド3・ドロー1",  descEn:"Gain 3 shield, draw 1",           archetype:"all",     shield:3,draw:1 },
+  { id:"power_surge",  name:"파워 서지",    nameJa:"パワーサージ",      nameEn:"Power Surge",   cost:3,type:"attack",rarity:"rare",     desc:"20 데미지",           descJa:"20ダメージ",          descEn:"Deal 20 damage",                  archetype:"all",     damage:20 },
+  { id:"iron_wall",    name:"철벽",         nameJa:"鉄壁",              nameEn:"Iron Wall",     cost:3,type:"skill", rarity:"rare",     desc:"방어력 18",           descJa:"シールド18",          descEn:"Gain 18 shield",                  archetype:"all",     shield:18 },
+  { id:"battle_cry",   name:"전투 함성",    nameJa:"バトルクライ",      nameEn:"Battle Cry",    cost:1,type:"power", rarity:"rare",     desc:"힘 +2 (영구)",        descJa:"力+2（永続）",        descEn:"Gain 2 strength (permanent)",     archetype:"all",     strength:2 },
+  { id:"second_wind",  name:"재기",         nameJa:"セカンドウィンド",  nameEn:"Second Wind",   cost:2,type:"skill", rarity:"epic",     desc:"방어력 8, 드로우 2",  descJa:"シールド8・ドロー2",  descEn:"Gain 8 shield, draw 2",           archetype:"all",     shield:8,draw:2 },
   // Warrior
-  { id:"war_howl",     name:"전쟁의 외침",  nameJa:"戦の咆哮",          cost:1,type:"power", rarity:"uncommon", desc:"힘 +1, 드로우 1",    descJa:"力+1・ドロー1",     archetype:"warrior", strength:1,draw:1 },
-  { id:"feral_strike", name:"야성 연타",    nameJa:"野性連打",          cost:1,type:"attack",rarity:"rare",     desc:"5 데미지 × 2",      descJa:"5ダメージ×2",        archetype:"warrior", damage:5,multiHit:2 },
-  { id:"alpha_wrath",  name:"알파의 분노",  nameJa:"アルファの怒り",    cost:2,type:"attack",rarity:"epic",     desc:"18 데미지, 힘 +1",   descJa:"18ダメージ・力+1",   archetype:"warrior", damage:18,strength:1 },
-  { id:"war_cry",      name:"전쟁의 함성",  nameJa:"戦いの叫び",        cost:2,type:"power", rarity:"rare",     desc:"힘 +3",              descJa:"力+3",              archetype:"warrior", strength:3 },
-  { id:"reckless",     name:"무모한 공격",  nameJa:"無謀な攻撃",        cost:0,type:"attack",rarity:"uncommon", desc:"7 데미지, 자신 2 피해",descJa:"7ダメージ・自身2",  archetype:"warrior", damage:7,selfDamage:2 },
+  { id:"war_howl",     name:"전쟁의 외침",  nameJa:"戦の咆哮",          nameEn:"War Howl",      cost:1,type:"power", rarity:"uncommon", desc:"힘 +1, 드로우 1",     descJa:"力+1・ドロー1",      descEn:"Gain 1 strength, draw 1",         archetype:"warrior", strength:1,draw:1 },
+  { id:"feral_strike", name:"야성 연타",    nameJa:"野性連打",          nameEn:"Feral Strike",  cost:1,type:"attack",rarity:"rare",     desc:"5 데미지 × 2",       descJa:"5ダメージ×2",         descEn:"Deal 5 damage twice",             archetype:"warrior", damage:5,multiHit:2 },
+  { id:"alpha_wrath",  name:"알파의 분노",  nameJa:"アルファの怒り",    nameEn:"Alpha's Wrath", cost:2,type:"attack",rarity:"epic",     desc:"18 데미지, 힘 +1",    descJa:"18ダメージ・力+1",   descEn:"Deal 18 damage, gain 1 strength", archetype:"warrior", damage:18,strength:1 },
+  { id:"war_cry",      name:"전쟁의 함성",  nameJa:"戦いの叫び",        nameEn:"War Cry",       cost:2,type:"power", rarity:"rare",     desc:"힘 +3",               descJa:"力+3",               descEn:"Gain 3 strength",                 archetype:"warrior", strength:3 },
+  { id:"reckless",     name:"무모한 공격",  nameJa:"無謀な攻撃",        nameEn:"Reckless Swing",cost:0,type:"attack",rarity:"uncommon", desc:"7 데미지, 자신 2 피해",descJa:"7ダメージ・自身2",   descEn:"Deal 7 damage, take 2",           archetype:"warrior", damage:7,selfDamage:2 },
   // Rogue
-  { id:"scratch",      name:"할퀴기",       nameJa:"引っ掻き",          cost:0,type:"attack",rarity:"common",   desc:"4 데미지",           descJa:"4ダメージ",          archetype:"rogue",   damage:4 },
-  { id:"pounce",       name:"도약 공격",    nameJa:"飛び掛かり",        cost:1,type:"attack",rarity:"uncommon", desc:"8 데미지, 에너지 +1",descJa:"8ダメージ・エナジー+1",archetype:"rogue", damage:8,bonusEnergy:1 },
-  { id:"smoke_bomb",   name:"연막탄",       nameJa:"煙幕弾",            cost:1,type:"skill", rarity:"rare",     desc:"방어력 10, 드로우 1",descJa:"シールド10・ドロー1",archetype:"rogue",  shield:10,draw:1 },
-  { id:"swift_strike", name:"신속 공격",    nameJa:"迅速打",            cost:1,type:"attack",rarity:"common",   desc:"5 데미지, 드로우 1", descJa:"5ダメージ・ドロー1", archetype:"rogue",   damage:5,draw:1 },
-  { id:"backflip",     name:"백플립",       nameJa:"バックフリップ",    cost:1,type:"skill", rarity:"uncommon", desc:"방어력 6, 드로우 2", descJa:"シールド6・ドロー2", archetype:"rogue",   shield:6,draw:2 },
+  { id:"scratch",      name:"할퀴기",       nameJa:"引っ掻き",          nameEn:"Scratch",       cost:0,type:"attack",rarity:"common",   desc:"4 데미지",            descJa:"4ダメージ",           descEn:"Deal 4 damage",                   archetype:"rogue",   damage:4 },
+  { id:"pounce",       name:"도약 공격",    nameJa:"飛び掛かり",        nameEn:"Pounce",        cost:1,type:"attack",rarity:"uncommon", desc:"8 데미지, 에너지 +1", descJa:"8ダメージ・エナジー+1",descEn:"Deal 8 damage, gain 1 energy",   archetype:"rogue", damage:8,bonusEnergy:1 },
+  { id:"smoke_bomb",   name:"연막탄",       nameJa:"煙幕弾",            nameEn:"Smoke Bomb",    cost:1,type:"skill", rarity:"rare",     desc:"방어력 10, 드로우 1", descJa:"シールド10・ドロー1", descEn:"Gain 10 shield, draw 1",          archetype:"rogue",  shield:10,draw:1 },
+  { id:"swift_strike", name:"신속 공격",    nameJa:"迅速打",            nameEn:"Swift Strike",  cost:1,type:"attack",rarity:"common",   desc:"5 데미지, 드로우 1",  descJa:"5ダメージ・ドロー1",  descEn:"Deal 5 damage, draw 1",           archetype:"rogue",   damage:5,draw:1 },
+  { id:"backflip",     name:"백플립",       nameJa:"バックフリップ",    nameEn:"Backflip",      cost:1,type:"skill", rarity:"uncommon", desc:"방어력 6, 드로우 2",  descJa:"シールド6・ドロー2",  descEn:"Gain 6 shield, draw 2",           archetype:"rogue",   shield:6,draw:2 },
   // Mage
-  { id:"soul_drain",   name:"영혼 흡수",    nameJa:"魂の吸収",          cost:2,type:"attack",rarity:"uncommon", desc:"10 데미지, HP +5",   descJa:"10ダメージ・HP+5",   archetype:"mage",    damage:10,heal:5 },
-  { id:"haunt",        name:"저주",         nameJa:"呪い",              cost:1,type:"attack",rarity:"uncommon", desc:"6 데미지, 독 2",     descJa:"6ダメージ・毒2",     archetype:"mage",    damage:6,poison:2 },
-  { id:"arcane_surge", name:"비전 서지",    nameJa:"アーケインサージ",  cost:2,type:"attack",rarity:"rare",     desc:"16 데미지, 드로우 1",descJa:"16ダメージ・ドロー1",archetype:"mage",   damage:16,draw:1 },
-  { id:"phantom_ward", name:"환영 방벽",    nameJa:"幻影の防壁",        cost:1,type:"skill", rarity:"rare",     desc:"방어력 12",          descJa:"シールド12",         archetype:"mage",    shield:12 },
-  { id:"curse_bolt",   name:"저주 번개",    nameJa:"呪いの稲妻",        cost:2,type:"attack",rarity:"epic",     desc:"18 데미지, 독 3",    descJa:"18ダメージ・毒3",    archetype:"mage",    damage:18,poison:3 },
+  { id:"soul_drain",   name:"영혼 흡수",    nameJa:"魂の吸収",          nameEn:"Soul Drain",    cost:2,type:"attack",rarity:"uncommon", desc:"10 데미지, HP +5",    descJa:"10ダメージ・HP+5",   descEn:"Deal 10 damage, heal 5 HP",       archetype:"mage",    damage:10,heal:5 },
+  { id:"haunt",        name:"저주",         nameJa:"呪い",              nameEn:"Haunt",         cost:1,type:"attack",rarity:"uncommon", desc:"6 데미지, 독 2",      descJa:"6ダメージ・毒2",      descEn:"Deal 6 damage, apply 2 poison",   archetype:"mage",    damage:6,poison:2 },
+  { id:"arcane_surge", name:"비전 서지",    nameJa:"アーケインサージ",  nameEn:"Arcane Surge",  cost:2,type:"attack",rarity:"rare",     desc:"16 데미지, 드로우 1", descJa:"16ダメージ・ドロー1", descEn:"Deal 16 damage, draw 1",          archetype:"mage",   damage:16,draw:1 },
+  { id:"phantom_ward", name:"환영 방벽",    nameJa:"幻影の防壁",        nameEn:"Phantom Ward",  cost:1,type:"skill", rarity:"rare",     desc:"방어력 12",           descJa:"シールド12",          descEn:"Gain 12 shield",                  archetype:"mage",    shield:12 },
+  { id:"curse_bolt",   name:"저주 번개",    nameJa:"呪いの稲妻",        nameEn:"Curse Bolt",    cost:2,type:"attack",rarity:"epic",     desc:"18 데미지, 독 3",     descJa:"18ダメージ・毒3",     descEn:"Deal 18 damage, apply 3 poison",  archetype:"mage",    damage:18,poison:3 },
   // Tank
-  { id:"shell_block",  name:"등껍질 방어",  nameJa:"甲羅防御",          cost:1,type:"skill", rarity:"common",   desc:"방어력 9",           descJa:"シールド9",          archetype:"tank",    shield:9 },
-  { id:"crush_bite",   name:"분쇄 물기",    nameJa:"砕く噛みつき",      cost:2,type:"attack",rarity:"uncommon", desc:"13 데미지",          descJa:"13ダメージ",         archetype:"tank",    damage:13 },
-  { id:"fortress",     name:"요새",         nameJa:"要塞",              cost:2,type:"skill", rarity:"rare",     desc:"방어력 16, 힘 +1",   descJa:"シールド16・力+1",   archetype:"tank",    shield:16,strength:1 },
-  { id:"body_slam",    name:"몸통 박치기",  nameJa:"体当たり",          cost:2,type:"attack",rarity:"rare",     desc:"10 데미지, 방어력 8",descJa:"10ダメージ・シールド8",archetype:"tank",  damage:10,shield:8 },
-  { id:"endure",       name:"인내",         nameJa:"忍耐",              cost:0,type:"skill", rarity:"rare",     desc:"방어력 7",           descJa:"シールド7",          archetype:"tank",    shield:7 },
+  { id:"shell_block",  name:"등껍질 방어",  nameJa:"甲羅防御",          nameEn:"Shell Block",   cost:1,type:"skill", rarity:"common",   desc:"방어력 9",            descJa:"シールド9",           descEn:"Gain 9 shield",                   archetype:"tank",    shield:9 },
+  { id:"crush_bite",   name:"분쇄 물기",    nameJa:"砕く噛みつき",      nameEn:"Crush Bite",    cost:2,type:"attack",rarity:"uncommon", desc:"13 데미지",           descJa:"13ダメージ",          descEn:"Deal 13 damage",                  archetype:"tank",    damage:13 },
+  { id:"fortress",     name:"요새",         nameJa:"要塞",              nameEn:"Fortress",      cost:2,type:"skill", rarity:"rare",     desc:"방어력 16, 힘 +1",    descJa:"シールド16・力+1",   descEn:"Gain 16 shield, gain 1 strength", archetype:"tank",    shield:16,strength:1 },
+  { id:"body_slam",    name:"몸통 박치기",  nameJa:"体当たり",          nameEn:"Body Slam",     cost:2,type:"attack",rarity:"rare",     desc:"10 데미지, 방어력 8", descJa:"10ダメージ・シールド8",descEn:"Deal 10 damage, gain 8 shield",  archetype:"tank",  damage:10,shield:8 },
+  { id:"endure",       name:"인내",         nameJa:"忍耐",              nameEn:"Endure",        cost:0,type:"skill", rarity:"rare",     desc:"방어력 7",            descJa:"シールド7",           descEn:"Gain 7 shield",                   archetype:"tank",    shield:7 },
   // Nature
-  { id:"thorn_strike", name:"가시 공격",    nameJa:"棘攻撃",            cost:1,type:"attack",rarity:"common",   desc:"7 데미지",           descJa:"7ダメージ",          archetype:"nature",  damage:7 },
-  { id:"spore_cloud",  name:"포자 구름",    nameJa:"胞子の雲",          cost:1,type:"skill", rarity:"uncommon", desc:"독 3, 방어력 4",     descJa:"毒3・シールド4",     archetype:"nature",  poison:3,shield:4 },
-  { id:"rejuvenate",   name:"재생",         nameJa:"再生",              cost:2,type:"skill", rarity:"rare",     desc:"HP +14",             descJa:"HP+14",              archetype:"nature",  heal:14 },
-  { id:"vine_lash",    name:"넝쿨 채찍",    nameJa:"蔓の鞭",            cost:1,type:"attack",rarity:"uncommon", desc:"8 데미지, 독 1",     descJa:"8ダメージ・毒1",     archetype:"nature",  damage:8,poison:1 },
-  { id:"photosyn",     name:"광합성",       nameJa:"光合成",            cost:2,type:"skill", rarity:"epic",     desc:"HP +8, 드로우 2",    descJa:"HP+8・ドロー2",      archetype:"nature",  heal:8,draw:2 },
+  { id:"thorn_strike", name:"가시 공격",    nameJa:"棘攻撃",            nameEn:"Thorn Strike",  cost:1,type:"attack",rarity:"common",   desc:"7 데미지",            descJa:"7ダメージ",           descEn:"Deal 7 damage",                   archetype:"nature",  damage:7 },
+  { id:"spore_cloud",  name:"포자 구름",    nameJa:"胞子の雲",          nameEn:"Spore Cloud",   cost:1,type:"skill", rarity:"uncommon", desc:"독 3, 방어력 4",      descJa:"毒3・シールド4",      descEn:"Apply 3 poison, gain 4 shield",   archetype:"nature",  poison:3,shield:4 },
+  { id:"rejuvenate",   name:"재생",         nameJa:"再生",              nameEn:"Rejuvenate",    cost:2,type:"skill", rarity:"rare",     desc:"HP +14",              descJa:"HP+14",               descEn:"Heal 14 HP",                      archetype:"nature",  heal:14 },
+  { id:"vine_lash",    name:"넝쿨 채찍",    nameJa:"蔓の鞭",            nameEn:"Vine Lash",     cost:1,type:"attack",rarity:"uncommon", desc:"8 데미지, 독 1",      descJa:"8ダメージ・毒1",      descEn:"Deal 8 damage, apply 1 poison",   archetype:"nature",  damage:8,poison:1 },
+  { id:"photosyn",     name:"광합성",       nameJa:"光合成",            nameEn:"Photosynthesis",cost:2,type:"skill", rarity:"epic",     desc:"HP +8, 드로우 2",     descJa:"HP+8・ドロー2",       descEn:"Heal 8 HP, draw 2",               archetype:"nature",  heal:8,draw:2 },
   // Wild
-  { id:"overclock",    name:"오버클록",     nameJa:"オーバークロック",  cost:1,type:"power", rarity:"uncommon", desc:"에너지 +2",          descJa:"エナジー+2",         archetype:"wild",    bonusEnergy:2 },
-  { id:"self_repair",  name:"자가 수리",    nameJa:"自己修復",          cost:2,type:"skill", rarity:"rare",     desc:"방어력 8, HP +8",    descJa:"シールド8・HP+8",    archetype:"wild",    shield:8,heal:8 },
-  { id:"absorb",       name:"흡수",         nameJa:"吸収",              cost:1,type:"skill", rarity:"uncommon", desc:"방어력 8",           descJa:"シールド8",          archetype:"wild",    shield:8 },
-  { id:"replicate",    name:"복제",         nameJa:"複製",              cost:2,type:"skill", rarity:"epic",     desc:"드로우 3",           descJa:"ドロー3",            archetype:"wild",    draw:3 },
-  { id:"shock_blast",  name:"충격 파동",    nameJa:"衝撃波",            cost:2,type:"attack",rarity:"rare",     desc:"12 데미지, 독 2",    descJa:"12ダメージ・毒2",    archetype:"wild",    damage:12,poison:2 },
+  { id:"overclock",    name:"오버클록",     nameJa:"オーバークロック",  nameEn:"Overclock",     cost:1,type:"power", rarity:"uncommon", desc:"에너지 +2",           descJa:"エナジー+2",          descEn:"Gain 2 energy",                   archetype:"wild",    bonusEnergy:2 },
+  { id:"self_repair",  name:"자가 수리",    nameJa:"自己修復",          nameEn:"Self-Repair",   cost:2,type:"skill", rarity:"rare",     desc:"방어력 8, HP +8",     descJa:"シールド8・HP+8",     descEn:"Gain 8 shield, heal 8 HP",        archetype:"wild",    shield:8,heal:8 },
+  { id:"absorb",       name:"흡수",         nameJa:"吸収",              nameEn:"Absorb",        cost:1,type:"skill", rarity:"uncommon", desc:"방어력 8",            descJa:"シールド8",           descEn:"Gain 8 shield",                   archetype:"wild",    shield:8 },
+  { id:"replicate",    name:"복제",         nameJa:"複製",              nameEn:"Replicate",     cost:2,type:"skill", rarity:"epic",     desc:"드로우 3",            descJa:"ドロー3",             descEn:"Draw 3 cards",                    archetype:"wild",    draw:3 },
+  { id:"shock_blast",  name:"충격 파동",    nameJa:"衝撃波",            nameEn:"Shock Blast",   cost:2,type:"attack",rarity:"rare",     desc:"12 데미지, 독 2",     descJa:"12ダメージ・毒2",     descEn:"Deal 12 damage, apply 2 poison",  archetype:"wild",    damage:12,poison:2 },
   // Legendary
-  { id:"final_strike", name:"최후의 일격",  nameJa:"最後の一撃",        cost:3,type:"attack",rarity:"legendary",desc:"25 데미지",          descJa:"25ダメージ",         archetype:"all",     damage:25 },
-  { id:"immortal",     name:"불멸",         nameJa:"不滅",              cost:3,type:"skill", rarity:"legendary",desc:"방어력 20, HP +20",  descJa:"シールド20・HP+20",  archetype:"all",     shield:20,heal:20 },
-  { id:"berserker",    name:"광전사",       nameJa:"バーサーカー",      cost:2,type:"attack",rarity:"legendary",desc:"6 데미지 × 4",      descJa:"6ダメージ×4",        archetype:"warrior", damage:6,multiHit:4 },
-  { id:"shadow_realm", name:"암흑 영역",    nameJa:"暗黒領域",          cost:3,type:"attack",rarity:"legendary",desc:"20 데미지, 독 5",    descJa:"20ダメージ・毒5",    archetype:"mage",    damage:20,poison:5 },
-  { id:"ancient_armor",name:"고대의 갑옷",  nameJa:"古代の鎧",          cost:3,type:"skill", rarity:"legendary",desc:"방어력 25, 힘 +2",   descJa:"シールド25・力+2",   archetype:"tank",    shield:25,strength:2 },
+  { id:"final_strike", name:"최후의 일격",  nameJa:"最後の一撃",        nameEn:"Final Strike",  cost:3,type:"attack",rarity:"legendary",desc:"25 데미지",           descJa:"25ダメージ",          descEn:"Deal 25 damage",                  archetype:"all",     damage:25 },
+  { id:"immortal",     name:"불멸",         nameJa:"不滅",              nameEn:"Immortal",      cost:3,type:"skill", rarity:"legendary",desc:"방어력 20, HP +20",   descJa:"シールド20・HP+20",  descEn:"Gain 20 shield, heal 20 HP",      archetype:"all",     shield:20,heal:20 },
+  { id:"berserker",    name:"광전사",       nameJa:"バーサーカー",      nameEn:"Berserker",     cost:2,type:"attack",rarity:"legendary",desc:"6 데미지 × 4",       descJa:"6ダメージ×4",         descEn:"Deal 6 damage four times",        archetype:"warrior", damage:6,multiHit:4 },
+  { id:"shadow_realm", name:"암흑 영역",    nameJa:"暗黒領域",          nameEn:"Shadow Realm",  cost:3,type:"attack",rarity:"legendary",desc:"20 데미지, 독 5",     descJa:"20ダメージ・毒5",     descEn:"Deal 20 damage, apply 5 poison",  archetype:"mage",    damage:20,poison:5 },
+  { id:"ancient_armor",name:"고대의 갑옷",  nameJa:"古代の鎧",          nameEn:"Ancient Armor", cost:3,type:"skill", rarity:"legendary",desc:"방어력 25, 힘 +2",    descJa:"シールド25・力+2",   descEn:"Gain 25 shield, gain 2 strength", archetype:"tank",    shield:25,strength:2 },
 ];
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
@@ -192,20 +192,20 @@ const DIFF_EPIC_FLOOR:Record<Difficulty, number> = { normal:3,  hard:2,   hell:1
 // ── Enemies ────────────────────────────────────────────────────────────────
 const ENEMY_DEFS: EnemyDef[] = [
   // Normal tier
-  { id:"goblin",      name:"슬라임 고블린",  nameJa:"スライムゴブリン",  charType:"slime",   hp:30,  patterns:[{intent:"attack",value:6},{intent:"attack",value:6},{intent:"defend",value:0,shield:5},{intent:"attack",value:8}] },
-  { id:"skeleton",    name:"해골 전사",      nameJa:"スケルトン戦士",    charType:"ghost",   hp:38,  patterns:[{intent:"attack",value:7},{intent:"defend",value:0,shield:6},{intent:"attack",value:9},{intent:"attack",value:7}] },
-  { id:"orc",         name:"오크 투사",      nameJa:"オーク戦士",        charType:"bear",    hp:55,  patterns:[{intent:"attack",value:10},{intent:"attack",value:10},{intent:"defend",value:0,shield:8},{intent:"attack",value:13}] },
-  { id:"darkknight",  name:"흑기사",         nameJa:"黒騎士",            charType:"wolf",    hp:80,  patterns:[{intent:"defend",value:0,shield:10},{intent:"attack",value:12},{intent:"attack",value:12},{intent:"buff",value:0,strength:2},{intent:"attack",value:14}] },
-  { id:"poisonwitch", name:"독 마녀",        nameJa:"毒の魔女",          charType:"plant",   hp:65,  patterns:[{intent:"poison",value:7,poison:2},{intent:"poison",value:7,poison:2},{intent:"buff",value:0,strength:2},{intent:"attack",value:10}] },
-  { id:"shadowdragon",name:"그림자 드래곤",  nameJa:"シャドウドラゴン",  charType:"dragon",  hp:95,  patterns:[{intent:"attack",value:14},{intent:"attack",value:14},{intent:"defend",value:0,shield:12},{intent:"attack",value:18},{intent:"defend",value:0,shield:8}] },
+  { id:"goblin",      name:"슬라임 고블린",  nameJa:"スライムゴブリン",  nameEn:"Slime Goblin",    charType:"slime",   hp:30,  patterns:[{intent:"attack",value:6},{intent:"attack",value:6},{intent:"defend",value:0,shield:5},{intent:"attack",value:8}] },
+  { id:"skeleton",    name:"해골 전사",      nameJa:"スケルトン戦士",    nameEn:"Skeleton Warrior", charType:"ghost",   hp:38,  patterns:[{intent:"attack",value:7},{intent:"defend",value:0,shield:6},{intent:"attack",value:9},{intent:"attack",value:7}] },
+  { id:"orc",         name:"오크 투사",      nameJa:"オーク戦士",        nameEn:"Orc Fighter",      charType:"bear",    hp:55,  patterns:[{intent:"attack",value:10},{intent:"attack",value:10},{intent:"defend",value:0,shield:8},{intent:"attack",value:13}] },
+  { id:"darkknight",  name:"흑기사",         nameJa:"黒騎士",            nameEn:"Dark Knight",      charType:"wolf",    hp:80,  patterns:[{intent:"defend",value:0,shield:10},{intent:"attack",value:12},{intent:"attack",value:12},{intent:"buff",value:0,strength:2},{intent:"attack",value:14}] },
+  { id:"poisonwitch", name:"독 마녀",        nameJa:"毒の魔女",          nameEn:"Poison Witch",     charType:"plant",   hp:65,  patterns:[{intent:"poison",value:7,poison:2},{intent:"poison",value:7,poison:2},{intent:"buff",value:0,strength:2},{intent:"attack",value:10}] },
+  { id:"shadowdragon",name:"그림자 드래곤",  nameJa:"シャドウドラゴン",  nameEn:"Shadow Dragon",    charType:"dragon",  hp:95,  patterns:[{intent:"attack",value:14},{intent:"attack",value:14},{intent:"defend",value:0,shield:12},{intent:"attack",value:18},{intent:"defend",value:0,shield:8}] },
   // Hard+ tier
-  { id:"voidwarden",  name:"허공의 수호자",  nameJa:"虚空の守護者",      charType:"owl",     hp:110, patterns:[{intent:"defend",value:0,shield:14},{intent:"attack",value:13},{intent:"attack",value:13},{intent:"buff",value:0,strength:2},{intent:"attack",value:16}] },
-  { id:"irongolem",   name:"강철 골렘",      nameJa:"鋼鉄ゴーレム",      charType:"robot",   hp:120, patterns:[{intent:"attack",value:16},{intent:"defend",value:0,shield:18},{intent:"attack",value:16},{intent:"buff",value:0,strength:2},{intent:"attack",value:20}] },
+  { id:"voidwarden",  name:"허공의 수호자",  nameJa:"虚空の守護者",      nameEn:"Void Warden",      charType:"owl",     hp:110, patterns:[{intent:"defend",value:0,shield:14},{intent:"attack",value:13},{intent:"attack",value:13},{intent:"buff",value:0,strength:2},{intent:"attack",value:16}] },
+  { id:"irongolem",   name:"강철 골렘",      nameJa:"鋼鉄ゴーレム",      nameEn:"Iron Golem",       charType:"robot",   hp:120, patterns:[{intent:"attack",value:16},{intent:"defend",value:0,shield:18},{intent:"attack",value:16},{intent:"buff",value:0,strength:2},{intent:"attack",value:20}] },
   // Hell tier
-  { id:"hellspawn",   name:"지옥의 자식",    nameJa:"地獄の子",          charType:"demon",   hp:130, patterns:[{intent:"poison",value:10,poison:3},{intent:"attack",value:14},{intent:"attack",value:14},{intent:"poison",value:12,poison:2},{intent:"buff",value:0,strength:3}] },
+  { id:"hellspawn",   name:"지옥의 자식",    nameJa:"地獄の子",          nameEn:"Hellspawn",        charType:"demon",   hp:130, patterns:[{intent:"poison",value:10,poison:3},{intent:"attack",value:14},{intent:"attack",value:14},{intent:"poison",value:12,poison:2},{intent:"buff",value:0,strength:3}] },
   // Bosses
-  { id:"chaosboss",   name:"카오스 드래곤",  nameJa:"カオスドラゴン",    charType:"demon",   hp:160, isBoss:true, patterns:[{intent:"attack",value:16},{intent:"attack",value:16},{intent:"defend",value:0,shield:15},{intent:"poison",value:12,poison:3},{intent:"buff",value:0,strength:3},{intent:"attack",value:20}] },
-  { id:"infernodragon",name:"지옥 화염룡",  nameJa:"地獄炎竜",           charType:"phoenix", hp:280, isBoss:true, patterns:[{intent:"attack",value:22},{intent:"attack",value:22},{intent:"defend",value:0,shield:20},{intent:"poison",value:16,poison:4},{intent:"buff",value:0,strength:4},{intent:"attack",value:26},{intent:"attack",value:18}] },
+  { id:"chaosboss",   name:"카오스 드래곤",  nameJa:"カオスドラゴン",    nameEn:"Chaos Dragon",     charType:"demon",   hp:160, isBoss:true, patterns:[{intent:"attack",value:16},{intent:"attack",value:16},{intent:"defend",value:0,shield:15},{intent:"poison",value:12,poison:3},{intent:"buff",value:0,strength:3},{intent:"attack",value:20}] },
+  { id:"infernodragon",name:"지옥 화염룡",  nameJa:"地獄炎竜",           nameEn:"Inferno Dragon",   charType:"phoenix", hp:280, isBoss:true, patterns:[{intent:"attack",value:22},{intent:"attack",value:22},{intent:"defend",value:0,shield:20},{intent:"poison",value:16,poison:4},{intent:"buff",value:0,strength:4},{intent:"attack",value:26},{intent:"attack",value:18}] },
 ];
 
 // ── Maps ───────────────────────────────────────────────────────────────────
@@ -432,11 +432,25 @@ function spawnEnemyForFloor(floor: number, nodeType: "fight"|"elite"|"boss", dif
 }
 
 // ── Card Component ─────────────────────────────────────────────────────────
-function CardView({ card, canPlay, onClick, selected }: {
-  card: CardDef; canPlay: boolean; onClick?: () => void; selected?: boolean;
+function CardView({ card, canPlay, onClick, selected, lang="ko" }: {
+  card: CardDef; canPlay: boolean; onClick?: () => void; selected?: boolean; lang?: string;
 }) {
   const rs = RARITY_STYLE[card.rarity] ?? RARITY_STYLE.common;
   const accent = TYPE_ACCENT[card.type] ?? "#94a3b8";
+  const ko = lang === "ko";
+  const ja = lang === "ja";
+  const cardName = ko ? card.name : ja ? card.nameJa : card.nameEn;
+  const cardDesc = ko ? card.desc : ja ? card.descJa : card.descEn;
+  const typeLabel = card.type === "attack"
+    ? (ko ? "공격" : ja ? "攻撃" : "ATTACK")
+    : card.type === "skill"
+    ? (ko ? "기술" : ja ? "スキル" : "SKILL")
+    : (ko ? "파워" : ja ? "パワー" : "POWER");
+  const rarityLabel = card.rarity === "legendary"
+    ? (ko ? "전설" : ja ? "伝説" : "Legendary")
+    : card.rarity === "epic"
+    ? (ko ? "에픽" : ja ? "エピック" : "Epic")
+    : (ko ? "레어" : ja ? "レア" : "Rare");
   return (
     <div
       onClick={canPlay ? onClick : undefined}
@@ -468,14 +482,14 @@ function CardView({ card, canPlay, onClick, selected }: {
         <div style={{
           fontSize:9, fontWeight:700, color:accent,
           textTransform:"uppercase", letterSpacing:"0.08em",
-        }}>{card.type==="attack"?"공격":card.type==="skill"?"기술":"파워"}</div>
+        }}>{typeLabel}</div>
       </div>
 
       {/* Name */}
       <div style={{
         padding:"5px 7px 3px", fontSize:10, fontWeight:800,
         color: C.textBright, lineHeight:1.3,
-      }}>{card.name}</div>
+      }}>{cardName}</div>
 
       {/* Rarity dot */}
       <div style={{ padding:"0 7px 4px", display:"flex", gap:3 }}>
@@ -484,7 +498,7 @@ function CardView({ card, canPlay, onClick, selected }: {
             fontSize:9, fontWeight:700, color: rs.badge,
             background:`${rs.badge}20`, borderRadius:3, padding:"1px 4px",
           }}>
-            {card.rarity==="legendary"?"전설":card.rarity==="epic"?"에픽":"레어"}
+            {rarityLabel}
           </span>
         ) : null}
       </div>
@@ -493,7 +507,7 @@ function CardView({ card, canPlay, onClick, selected }: {
       <div style={{
         flex:1, padding:"0 7px 6px", fontSize:10, color: C.textDim,
         lineHeight:1.4, overflow:"hidden",
-      }}>{card.desc}</div>
+      }}>{cardDesc}</div>
 
       {/* Bottom accent */}
       <div style={{ height:3, background: accent, opacity:0.6 }} />
@@ -517,16 +531,20 @@ function HpBar({ hp, max, color="#22c55e" }: { hp:number; max:number; color?:str
 }
 
 // ── Intent badge ───────────────────────────────────────────────────────────
-function IntentBadge({ pattern, ko }: { pattern: EnemyPattern; ko: boolean }) {
-  const intentInfo: Record<Intent,{label:string;labelJa:string;color:string;icon:React.ReactNode}> = {
-    attack:  { label:"공격", labelJa:"攻撃", color:"#ef4444", icon:<Swords size={12}/> },
-    defend:  { label:"방어", labelJa:"防御", color:"#3b82f6", icon:<Shield size={12}/> },
-    buff:    { label:"강화", labelJa:"強化", color:"#f59e0b", icon:<Star size={12}/> },
-    poison:  { label:"독 공격", labelJa:"毒攻撃", color:"#a855f7", icon:<Flame size={12}/> },
+function IntentBadge({ pattern, ko, ja=false }: { pattern: EnemyPattern; ko: boolean; ja?: boolean }) {
+  const intentInfo: Record<Intent,{label:string;labelJa:string;labelEn:string;color:string;icon:React.ReactNode;poisonSuffix:string;poisonSuffixJa:string;poisonSuffixEn:string}> = {
+    attack:  { label:"공격", labelJa:"攻撃", labelEn:"Attack",  color:"#ef4444", icon:<Swords size={12}/>, poisonSuffix:" + 독", poisonSuffixJa:" + 毒", poisonSuffixEn:" + poison " },
+    defend:  { label:"방어", labelJa:"防御", labelEn:"Defend",  color:"#3b82f6", icon:<Shield size={12}/>, poisonSuffix:" + 독", poisonSuffixJa:" + 毒", poisonSuffixEn:" + poison " },
+    buff:    { label:"강화", labelJa:"強化", labelEn:"Buff",    color:"#f59e0b", icon:<Star size={12}/>,   poisonSuffix:" + 독", poisonSuffixJa:" + 毒", poisonSuffixEn:" + poison " },
+    poison:  { label:"독 공격", labelJa:"毒攻撃", labelEn:"Poison", color:"#a855f7", icon:<Flame size={12}/>, poisonSuffix:" + 독", poisonSuffixJa:" + 毒", poisonSuffixEn:" + poison " },
   };
   const info = intentInfo[pattern.intent] ?? intentInfo.attack;
   const val = pattern.intent==="attack"||pattern.intent==="poison" ? pattern.value
     : pattern.shield ?? pattern.strength ?? pattern.value;
+  const intentLabel = ko ? info.label : ja ? info.labelJa : info.labelEn;
+  const poisonText = pattern.poison
+    ? (ko ? `${info.poisonSuffix}${pattern.poison}` : ja ? `${info.poisonSuffixJa}${pattern.poison}` : `${info.poisonSuffixEn}${pattern.poison}`)
+    : "";
   return (
     <div style={{
       display:"flex", alignItems:"center", gap:5,
@@ -535,8 +553,7 @@ function IntentBadge({ pattern, ko }: { pattern: EnemyPattern; ko: boolean }) {
       fontFamily:FONT, fontSize:12, fontWeight:700,
     }}>
       {info.icon}
-      {ko ? info.label : info.labelJa} {val}
-      {pattern.poison ? ` + 독${pattern.poison}` : ""}
+      {intentLabel} {val}{poisonText}
     </div>
   );
 }
@@ -560,6 +577,7 @@ export default function RoguePage() {
   const { rewardSummary, completeRogue } = useAppData();
   const { lang } = useLang();
   const ko = lang === "ko";
+  const ja = lang === "ja";
   const isDark = useIsDark();
   const C = isDark ? C_DARK : C_LIGHT;
 
@@ -677,7 +695,7 @@ export default function RoguePage() {
           chosenPath:newChosenPath,
           shield:0, energy:prev.maxEnergy, enemy,
           hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
-          log:[ko?"전투 시작!":"バトル開始！"], turnCount:1,
+          log:[ko?"전투 시작!":ja?"バトル開始！":"Battle start!"], turnCount:1,
           chainPending, cursedRest:false, shopInflated:false,
         };
       }
@@ -691,7 +709,7 @@ export default function RoguePage() {
             ...prev, phase:"battle", floor:floorIdx, chosenPath:newChosenPath,
             shield:0, energy:prev.maxEnergy, enemy,
             hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
-            log:[ko?"⚠ 함정이다! 적이 숨어 있었다!":"⚠ トラップ！敵が潜んでいた！"], turnCount:1,
+            log:[ko?"⚠ 함정이다! 적이 숨어 있었다!":ja?"⚠ トラップ！敵が潜んでいた！":"⚠ Ambush! An enemy was hiding!"], turnCount:1,
             chainPending:null, cursedRest:false, shopInflated:false,
           };
         }
@@ -710,7 +728,7 @@ export default function RoguePage() {
       return prev;
     });
     setSelIdx(null);
-  }, [ko, arch]);
+  }, [ko, ja, arch]);
 
   // ── Play a card ──────────────────────────────────────────────────────────
   const playCard = useCallback((handIdx: number) => {
@@ -727,7 +745,7 @@ export default function RoguePage() {
       const logs: string[] = [];
 
       // 1. Strength first
-      if (card.strength) { strength += card.strength; logs.push(ko?`힘 +${card.strength}`:`力+${card.strength}`); }
+      if (card.strength) { strength += card.strength; logs.push(ko?`힘 +${card.strength}`:ja?`力+${card.strength}`:`Strength +${card.strength}`); }
 
       // 2. Damage
       if (card.damage) {
@@ -741,21 +759,21 @@ export default function RoguePage() {
           total += raw;
         }
         const hitStr = hits>1 ? ` ×${hits}` : "";
-        logs.push(ko?`${total} 데미지${hitStr}`:`${total}ダメージ${hitStr}`);
+        logs.push(ko?`${total} 데미지${hitStr}`:ja?`${total}ダメージ${hitStr}`:`${total} damage${hitStr}`);
       }
 
       // 3. Shield
-      if (card.shield) { shield += card.shield; logs.push(ko?`방어력 +${card.shield}`:`シールド+${card.shield}`); }
+      if (card.shield) { shield += card.shield; logs.push(ko?`방어력 +${card.shield}`:ja?`シールド+${card.shield}`:`Shield +${card.shield}`); }
 
       // 4. Heal
       if (card.heal) {
         const h = Math.min(card.heal, prev.playerMaxHp - playerHp);
         playerHp = Math.min(prev.playerMaxHp, playerHp + card.heal);
-        if (h>0) logs.push(ko?`HP +${h}`:`HP+${h}`);
+        if (h>0) logs.push(`HP +${h}`);
       }
 
       // 5. Poison on enemy
-      if (card.poison) { enemy.poisonStacks += card.poison; logs.push(ko?`독 ${card.poison}`:`毒${card.poison}`); }
+      if (card.poison) { enemy.poisonStacks += card.poison; logs.push(ko?`독 ${card.poison}`:ja?`毒${card.poison}`:`Poison ${card.poison}`); }
 
       // 6. Self damage
       if (card.selfDamage) {
@@ -763,11 +781,11 @@ export default function RoguePage() {
         shield = Math.max(0, shield - card.selfDamage);
         const direct = card.selfDamage - abs;
         playerHp = Math.max(0, playerHp - direct);
-        if (direct>0) logs.push(ko?`자신 -${direct}`:`自身-${direct}`);
+        if (direct>0) logs.push(ko?`자신 -${direct}`:ja?`自身-${direct}`:`Self -${direct}`);
       }
 
       // 7. Bonus energy
-      if (card.bonusEnergy) { energy += card.bonusEnergy; logs.push(ko?`에너지 +${card.bonusEnergy}`:`エナジー+${card.bonusEnergy}`); }
+      if (card.bonusEnergy) { energy += card.bonusEnergy; logs.push(ko?`에너지 +${card.bonusEnergy}`:ja?`エナジー+${card.bonusEnergy}`:`Energy +${card.bonusEnergy}`); }
 
       // Update hand / discard
       const newHand = prev.hand.filter((_,i)=>i!==handIdx);
@@ -787,7 +805,7 @@ export default function RoguePage() {
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         if (nodeType==="boss") {
-          return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":"クリア！"], phase:"victory" };
+          return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":ja?"クリア！":"Victory!"], phase:"victory" };
         }
         // 억까: 연전 처리
         if (prev.chainPending) {
@@ -795,12 +813,12 @@ export default function RoguePage() {
           const chainDrawn = drawN([], chainDrawPile, [], 5);
           return { ...prev, playerHp, shield:0, strength, energy:prev.maxEnergy, enemy:prev.chainPending, chainPending:null,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
-            log:[...newLog, ko?"⚠ 연전! 새로운 적이 나타났다!":"⚠ 連戦！新たな敵が出現！"], turnCount:1,
+            log:[...newLog, ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
           };
         }
         const goldGain = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
         const rewards = pickRewards(prev.floor, arch, prev.difficulty);
-        return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":"撃破！"], phase:"reward", gold:prev.gold+goldGain, rewardCards:rewards };
+        return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":ja?"撃破！":"Defeated!"], phase:"reward", gold:prev.gold+goldGain, rewardCards:rewards };
       }
 
       // Player dead?
@@ -811,7 +829,7 @@ export default function RoguePage() {
       return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:newLog };
     });
     setSelIdx(null);
-  }, [ko, arch]);
+  }, [ko, ja, arch]);
 
   // ── End turn ─────────────────────────────────────────────────────────────
   const endTurn = useCallback(() => {
@@ -822,20 +840,20 @@ export default function RoguePage() {
       let playerHp = prev.playerHp;
       let playerPoison = prev.poison;
       const logs: string[] = [];
-      const eName = ko ? enemy.name : enemy.nameJa;
+      const eName = ko ? enemy.name : ja ? enemy.nameJa : enemy.nameEn;
 
       // Enemy poison tick
       if (enemy.poisonStacks > 0) {
         const pd = enemy.poisonStacks;
         enemy.currentHp = Math.max(0, enemy.currentHp - pd);
         enemy.poisonStacks = Math.max(0, enemy.poisonStacks - 1);
-        logs.push(ko?`[독] -${pd} HP`:`[毒] -${pd} HP`);
+        logs.push(ko?`[독] -${pd} HP`:ja?`[毒] -${pd} HP`:`[Poison] -${pd} HP`);
       }
 
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         if (nodeType==="boss") {
-          return { ...prev, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":"クリア！"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+          return { ...prev, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":ja?"クリア！":"Victory!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
         }
         // 억까: 연전 처리
         if (prev.chainPending) {
@@ -844,11 +862,11 @@ export default function RoguePage() {
           return { ...prev, enemy:prev.chainPending, chainPending:null,
             shield:0, energy:prev.maxEnergy,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
-            log:[...prev.log.slice(-3),...logs,ko?"⚠ 연전! 새로운 적이 나타났다!":"⚠ 連戦！新たな敵が出現！"], turnCount:1,
+            log:[...prev.log.slice(-3),...logs,ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
           };
         }
         const goldGain = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
-        return { ...prev, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+goldGain, rewardCards:pickRewards(prev.floor, arch, prev.difficulty), log:[...prev.log.slice(-5),...logs,ko?"처치!":"撃破！"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        return { ...prev, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+goldGain, rewardCards:pickRewards(prev.floor, arch, prev.difficulty), log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
       }
 
       // Enemy action
@@ -861,18 +879,18 @@ export default function RoguePage() {
         const abs = Math.min(prev.shield, atk);
         const direct = atk - abs;
         playerHp = Math.max(0, playerHp - direct);
-        logs.push(`[${eName}] ${ko?"공격":"攻撃"} ${atk}${direct<atk?` (${ko?"방어":"盾"}${abs})`:""}${direct>0?` → -${direct}HP`:""}`);
-        if (pattern.poison) { playerPoison += pattern.poison; logs.push(ko?`독 ${pattern.poison} 적용`:`毒${pattern.poison}`); }
+        logs.push(`[${eName}] ${ko?"공격":ja?"攻撃":"Attack"} ${atk}${direct<atk?` (${ko?"방어":ja?"盾":"Block"} ${abs})`:""}${direct>0?` → -${direct}HP`:""}`);
+        if (pattern.poison) { playerPoison += pattern.poison; logs.push(ko?`독 ${pattern.poison} 적용`:ja?`毒${pattern.poison}`:`Poison ${pattern.poison} applied`); }
       }
       if (pattern.intent==="defend") {
         const sh = pattern.shield ?? 0;
         enemy.currentShield = sh;
-        logs.push(`[${eName}] ${ko?`방어력 ${sh}`:`シールド${sh}`}`);
+        logs.push(`[${eName}] ${ko?`방어력 ${sh}`:ja?`シールド${sh}`:`Shield ${sh}`}`);
       }
       if (pattern.intent==="buff") {
         const str = pattern.strength ?? 0;
         enemy.currentStrength += str;
-        logs.push(`[${eName}] ${ko?`힘 +${str}`:`力+${str}`}`);
+        logs.push(`[${eName}] ${ko?`힘 +${str}`:ja?`力+${str}`:`Strength +${str}`}`);
       }
 
       // Player death check
@@ -885,7 +903,7 @@ export default function RoguePage() {
         const pd = playerPoison;
         playerHp = Math.max(0, playerHp - pd);
         playerPoison = Math.max(0, playerPoison - 1);
-        logs.push(ko?`[나] 독 -${pd} HP`:`[自分] 毒-${pd}HP`);
+        logs.push(ko?`[나] 독 -${pd} HP`:ja?`[自分] 毒-${pd}HP`:`[You] Poison -${pd} HP`);
         if (playerHp <= 0) {
           return { ...prev, playerHp:0, poison:playerPoison, enemy, phase:"gameover", log:[...prev.log.slice(-5),...logs], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
         }
@@ -901,12 +919,12 @@ export default function RoguePage() {
         shield:0, energy:prev.maxEnergy,
         enemy,
         hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
-        log:[...prev.log.slice(-4),...logs, ko?`— 턴 ${prev.turnCount+1}`:`— ターン${prev.turnCount+1}`],
+        log:[...prev.log.slice(-4),...logs, ko?`— 턴 ${prev.turnCount+1}`:ja?`— ターン${prev.turnCount+1}`:`— Turn ${prev.turnCount+1}`],
         turnCount:prev.turnCount+1,
       };
     });
     setSelIdx(null);
-  }, [ko, arch]);
+  }, [ko, ja, arch]);
 
   // ── Pick reward ──────────────────────────────────────────────────────────
   const pickReward = useCallback((card: CardDef) => {
@@ -965,12 +983,12 @@ export default function RoguePage() {
       <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setDeckOpen(false)}>
         <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:12,padding:20,width:"min(560px,94vw)",maxHeight:"80vh",overflow:"auto",fontFamily:FONT}} onClick={e=>e.stopPropagation()}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <p style={{margin:0,color:C.textBright,fontWeight:800,fontSize:15}}>{ko?"덱 보기":"デッキ確認"} ({gs.deck.length}{ko?"장":"枚"})</p>
+            <p style={{margin:0,color:C.textBright,fontWeight:800,fontSize:15}}>{ko?"덱 보기":ja?"デッキ確認":"Deck"} ({gs.deck.length}{ko?"장":ja?"枚":" cards"})</p>
             <button onClick={()=>setDeckOpen(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim}}><X size={18}/></button>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
             {gs.deck.map((c,i)=>(
-              <CardView key={c.uid??i} card={c} canPlay={false}/>
+              <CardView key={c.uid??i} card={c} canPlay={false} lang={lang}/>
             ))}
           </div>
         </div>
@@ -982,12 +1000,13 @@ export default function RoguePage() {
   // LOBBY
   // ════════════════════════════════════════════════════════════
   if (!gs) {
-    const archLabel: Record<string,string> = { warrior:ko?"전사형":"戦士型", rogue:ko?"도적형":"盗賊型", mage:ko?"마법사형":"魔法使い型", tank:ko?"수호자형":"守護者型", nature:ko?"자연형":"自然型", wild:ko?"야생형":"野生型", all:ko?"만능형":"万能型" };
+    const archLabel: Record<string,string> = { warrior:ko?"전사형":ja?"戦士型":"Warrior", rogue:ko?"도적형":ja?"盗賊型":"Rogue", mage:ko?"마법사형":ja?"魔法使い型":"Mage", tank:ko?"수호자형":ja?"守護者型":"Guardian", nature:ko?"자연형":ja?"自然型":"Nature", wild:ko?"야생형":ja?"野生型":"Wild", all:ko?"만능형":ja?"万能型":"All-rounder" };
     const archColor: Record<string,string> = { warrior:"#ef4444", rogue:"#a855f7", mage:"#3b82f6", tank:"#22c55e", nature:"#84cc16", wild:"#f59e0b", all:"#94a3b8" };
     const ac = archColor[arch] ?? "#94a3b8";
     const RARITY_KO: Record<string,string> = { common:"커먼",uncommon:"언커먼",rare:"레어",epic:"에픽",legendary:"레전더리",mythic:"신화" };
     const RARITY_JA: Record<string,string> = { common:"コモン",uncommon:"アンコモン",rare:"レア",epic:"エピック",legendary:"レジェンダリー",mythic:"ミシック" };
-    const rarityLabel = ko ? RARITY_KO[myChar.rarity] : RARITY_JA[myChar.rarity];
+    const RARITY_EN_L: Record<string,string> = { common:"Common",uncommon:"Uncommon",rare:"Rare",epic:"Epic",legendary:"Legendary",mythic:"Mythic" };
+    const rarityLabel = ko ? RARITY_KO[myChar.rarity] : ja ? RARITY_JA[myChar.rarity] : RARITY_EN_L[myChar.rarity];
     return (
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
         <style>{css}</style>
@@ -998,7 +1017,7 @@ export default function RoguePage() {
               <Layers size={28} color={C.gold}/>
               <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
             </div>
-            <p style={{margin:0,fontSize:12,color:C.textDim}}>{ko?"카드 배틀 로그라이크":"カードバトルローグライク"}</p>
+            <p style={{margin:0,fontSize:12,color:C.textDim}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
           </div>
 
           {/* Character card */}
@@ -1016,14 +1035,14 @@ export default function RoguePage() {
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:4,background:"#22c55e18",borderRadius:6,padding:"3px 8px"}}>
                   <Layers size={11} color="#22c55e"/>
-                  <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>{ko?"덱 10장":"デッキ10枚"}</span>
+                  <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>{ko?"덱 10장":ja?"デッキ10枚":"10 Cards"}</span>
                 </div>
                 {(()=>{
                   const rt = ROGUE_TYPE_MAP[myChar.type]??"energy";
                   const tColor = rt==="energy"?"#38bdf8":rt==="attack"?"#ef4444":"#3b82f6";
                   const tIcon = rt==="energy"?<Swords size={11}/>:rt==="attack"?<Swords size={11}/>:<Shield size={11}/>;
-                  const tLabel = rt==="energy"?(ko?"에너지형":"エナジー型"):rt==="attack"?(ko?"공격형":"アタック型"):(ko?"방어형":"ディフェンス型");
-                  const tBonus = rt==="energy"?(ko?"+1에너지":"+1エナジー"):rt==="attack"?(ko?"+1힘":"+1力"):(ko?"+5방어":"+5シールド");
+                  const tLabel = rt==="energy"?(ko?"에너지형":ja?"エナジー型":"Energy"):rt==="attack"?(ko?"공격형":ja?"アタック型":"Attack"):(ko?"방어형":ja?"ディフェンス型":"Defense");
+                  const tBonus = rt==="energy"?(ko?"+1에너지":ja?"+1エナジー":"+1 Energy"):rt==="attack"?(ko?"+1힘":ja?"+1力":"+1 Strength"):(ko?"+5방어":ja?"+5シールド":"+5 Shield");
                   return (
                     <div style={{display:"flex",alignItems:"center",gap:4,background:`${tColor}18`,borderRadius:6,padding:"3px 8px"}}>
                       <span style={{color:tColor,display:"flex"}}>{tIcon}</span>
@@ -1038,13 +1057,13 @@ export default function RoguePage() {
           {/* Difficulty selector */}
           <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.08s ease-out both"}}>
             <p style={{margin:"0 0 10px",color:C.textBright,fontWeight:700,fontSize:13}}>
-              {ko?"난이도 선택":"難易度選択"}
+              {ko?"난이도 선택":ja?"難易度選択":"Difficulty"}
             </p>
             <div style={{display:"flex",gap:8}}>
               {([
-                ["normal", ko?"노말":"ノーマル", ko?"7스테이지 · 입문":"7ステージ・入門", "#22c55e", 7],
-                ["hard",   ko?"하드":"ハード",   ko?"10스테이지 · 고급":"10ステージ・上級","#f59e0b",10],
-                ["hell",   ko?"지옥":"ヘル",     ko?"15스테이지 · 극한":"15ステージ・極限","#ef4444",15],
+                ["normal", ko?"노말":ja?"ノーマル":"Normal", ko?"7스테이지 · 입문":ja?"7ステージ・入門":"7 stages · Beginner", "#22c55e", 7],
+                ["hard",   ko?"하드":ja?"ハード":"Hard",     ko?"10스테이지 · 고급":ja?"10ステージ・上級":"10 stages · Advanced","#f59e0b",10],
+                ["hell",   ko?"지옥":ja?"ヘル":"Hell",       ko?"15스테이지 · 극한":ja?"15ステージ・極限":"15 stages · Extreme","#ef4444",15],
               ] as [Difficulty, string, string, string, number][]).map(([d, label, desc, col, stages]) => {
                 const active = difficulty === d;
                 return (
@@ -1061,7 +1080,7 @@ export default function RoguePage() {
                     }}
                   >
                     <p style={{margin:"0 0 2px",fontSize:13,fontWeight:900,color: active ? col : C.textDim}}>{label}</p>
-                    <p style={{margin:"0 0 4px",fontSize:9,color:active?col:C.textDim,fontWeight:600}}>{stages}{ko?"스테이지":"ステージ"}</p>
+                    <p style={{margin:"0 0 4px",fontSize:9,color:active?col:C.textDim,fontWeight:600}}>{stages}{ko?"스테이지":ja?"ステージ":" stages"}</p>
                     <p style={{margin:0,fontSize:9,color:C.textDim,lineHeight:1.3}}>{desc}</p>
                   </button>
                 );
@@ -1071,11 +1090,11 @@ export default function RoguePage() {
 
           {/* Rules */}
           <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:16,fontSize:12,color:C.textDim,animation:"rogue-in 0.4s 0.1s ease-out both"}}>
-            <p style={{margin:"0 0 8px",color:C.textBright,fontWeight:700}}>{ko?"규칙":"ルール"}</p>
+            <p style={{margin:"0 0 8px",color:C.textBright,fontWeight:700}}>{ko?"규칙":ja?"ルール":"Rules"}</p>
             {[
-              ko?"전투 후 카드 3장 중 1장을 선택해 덱에 추가":"戦闘後、カード3枚から1枚をデッキに追加",
-              ko?"에너지를 소비해 카드를 사용":"エナジーを消費してカードを使用",
-              ko?"매 턴 방어력은 초기화됩니다":"毎ターン防御力はリセットされます",
+              ko?"전투 후 카드 3장 중 1장을 선택해 덱에 추가":ja?"戦闘後、カード3枚から1枚をデッキに追加":"After each battle, pick 1 of 3 cards to add to your deck",
+              ko?"에너지를 소비해 카드를 사용":ja?"エナジーを消費してカードを使用":"Spend energy to play cards",
+              ko?"매 턴 방어력은 초기화됩니다":ja?"毎ターン防御力はリセットされます":"Shield resets at the start of every turn",
             ].map((rule, i) => (
               <div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,lineHeight:1.7}}>
                 <ChevronRight size={11} color={C.textDim} style={{flexShrink:0,marginTop:3}}/>
@@ -1094,7 +1113,7 @@ export default function RoguePage() {
               fontFamily:FONT,letterSpacing:"0.05em",
               animation:"rogue-in 0.4s 0.15s ease-out both",
             }}
-          >{ko?"탐험 시작!":"探検開始！"}</button>
+          >{ko?"탐험 시작!":ja?"探検開始！":"Start Expedition!"}</button>
         </div>
       </div>
     );
@@ -1105,22 +1124,22 @@ export default function RoguePage() {
   // ════════════════════════════════════════════════════════════
   if (gs.phase === "map") {
     const nodeLabel: Record<NodeType,[string,string]> = {
-      fight:    [ko?"전투":"戦闘",         "#ef4444"],
-      elite:    [ko?"엘리트":"エリート",    "#f97316"],
-      treasure: [ko?"보물":"宝物",          "#f59e0b"],
-      shop:     [ko?"상점":"商店",          "#22c55e"],
-      rest:     [ko?"휴식":"休憩",          "#60a5fa"],
-      boss:     [ko?"최종 보스":"最終ボス", "#ec4899"],
+      fight:    [ko?"전투":ja?"戦闘":"Fight",              "#ef4444"],
+      elite:    [ko?"엘리트":ja?"エリート":"Elite",        "#f97316"],
+      treasure: [ko?"보물":ja?"宝物":"Treasure",            "#f59e0b"],
+      shop:     [ko?"상점":ja?"商店":"Shop",                "#22c55e"],
+      rest:     [ko?"휴식":ja?"休憩":"Rest",                "#60a5fa"],
+      boss:     [ko?"최종 보스":ja?"最終ボス":"Final Boss", "#ec4899"],
     };
     const eg = DIFF_GOLD_ELITE[gs.difficulty];
     const fg = DIFF_GOLD_FIGHT[gs.difficulty];
     const nodeDesc: Record<NodeType,string> = {
-      fight:    ko?`${fg}G + 카드`:`${fg}G+カード`,
-      elite:    ko?`${eg}G + 카드`:`${eg}G+カード`,
-      treasure: ko?"카드 선택":"カード選択",
-      shop:     ko?"카드 구매":"購入",
-      rest:     ko?"HP 30% 회복":"HP30%回復",
-      boss:     ko?"최종 보스 처치":"ボス撃破",
+      fight:    ko?`${fg}G + 카드`:ja?`${fg}G+カード`:`${fg}G + card`,
+      elite:    ko?`${eg}G + 카드`:ja?`${eg}G+カード`:`${eg}G + card`,
+      treasure: ko?"카드 선택":ja?"カード選択":"Pick a card",
+      shop:     ko?"카드 구매":ja?"購入":"Buy cards",
+      rest:     ko?"HP 30% 회복":ja?"HP30%回復":"Heal 30% HP",
+      boss:     ko?"최종 보스 처치":ja?"ボス撃破":"Defeat final boss",
     };
     const nextFloor = gs.floor + 1;
     const totalFloors = gs.mapLayout.length;
@@ -1139,7 +1158,8 @@ export default function RoguePage() {
               border:`1px solid ${gs.difficulty==="hell"?"#ef444444":gs.difficulty==="hard"?"#f59e0b44":"#22c55e44"}`,
             }}>
               {ko ? (gs.difficulty==="hell"?"지옥":gs.difficulty==="hard"?"하드":"노말")
-                  : (gs.difficulty==="hell"?"ヘル":gs.difficulty==="hard"?"ハード":"ノーマル")}
+                  : ja ? (gs.difficulty==="hell"?"ヘル":gs.difficulty==="hard"?"ハード":"ノーマル")
+                  : (gs.difficulty==="hell"?"Hell":gs.difficulty==="hard"?"Hard":"Normal")}
             </span>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -1150,10 +1170,10 @@ export default function RoguePage() {
               <Heart size={12} color={C.red}/><span style={{fontSize:12,color:C.red,fontWeight:700}}>{gs.playerHp}/{gs.playerMaxHp}</span>
             </div>
             <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 10px",color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:FONT}}>
-              {ko?`덱 (${gs.deck.length}장)`:`デッキ(${gs.deck.length}枚)`}
+              {ko?`덱 (${gs.deck.length}장)`:ja?`デッキ(${gs.deck.length}枚)`:`Deck (${gs.deck.length})`}
             </button>
             <button onClick={abandonRun} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:11,fontFamily:FONT,padding:"4px 6px"}}>
-              {ko?"포기":"放棄"}
+              {ko?"포기":ja?"放棄":"Quit"}
             </button>
           </div>
         </div>
@@ -1162,11 +1182,11 @@ export default function RoguePage() {
         <div style={{maxWidth:520,margin:"0 auto 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
             <span style={{fontSize:11,color:C.textDim,fontWeight:600}}>
-              {ko?`${nextFloor}/${totalFloors}층`:`${nextFloor}/${totalFloors}F`}
+              {ko?`${nextFloor}/${totalFloors}층`:ja?`${nextFloor}/${totalFloors}F`:`Floor ${nextFloor}/${totalFloors}`}
             </span>
             <div style={{display:"flex",gap:8}}>
-              {gs.poison>0&&<span style={{fontSize:11,color:"#a855f7"}}>독 {gs.poison}</span>}
-              {gs.strength>0&&<span style={{fontSize:11,color:C.gold}}>힘 +{gs.strength}</span>}
+              {gs.poison>0&&<span style={{fontSize:11,color:"#a855f7"}}>{ko?"독":ja?"毒":"Poison"} {gs.poison}</span>}
+              {gs.strength>0&&<span style={{fontSize:11,color:C.gold}}>{ko?"힘":ja?"力":"Str"} +{gs.strength}</span>}
             </div>
           </div>
           <HpBar hp={gs.playerHp} max={gs.playerMaxHp}/>
@@ -1194,7 +1214,7 @@ export default function RoguePage() {
                     {isDone?"✓":floorIdx+1}
                   </div>
                   <div style={{flex:1,height:1,background:isDone?"#1e3a5f33":C.border+"44"}}/>
-                  {isCurrent&&<span style={{fontSize:10,color:"#facc15",fontWeight:700,flexShrink:0}}>{ko?"선택":"選択"}</span>}
+                  {isCurrent&&<span style={{fontSize:10,color:"#facc15",fontWeight:700,flexShrink:0}}>{ko?"선택":ja?"選択":"Pick"}</span>}
                 </div>
 
                 {/* Options row */}
@@ -1306,7 +1326,7 @@ export default function RoguePage() {
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                 <p style={{margin:0,fontSize:14,fontWeight:800,color:"#fca5a5",display:"flex",alignItems:"center",gap:5}}>
-                  {ko?e.name:e.nameJa}
+                  {ko?e.name:ja?e.nameJa:e.nameEn}
                   {e.isBoss&&<Crown size={13} color="#f59e0b"/>}
                 </p>
                 <p style={{margin:0,fontSize:12,color:"#ef4444",fontWeight:700}}>{e.currentHp}/{e.hp}</p>
@@ -1321,20 +1341,20 @@ export default function RoguePage() {
                 )}
                 {e.currentStrength>0&&(
                   <div style={{display:"flex",alignItems:"center",gap:3,background:"#b4530920",border:"1px solid #b45309",borderRadius:5,padding:"2px 6px"}}>
-                    <span style={{fontSize:11,color:C.gold,fontWeight:700}}>힘+{e.currentStrength}</span>
+                    <span style={{fontSize:11,color:C.gold,fontWeight:700}}>{ko?"힘":ja?"力":"Str"}+{e.currentStrength}</span>
                   </div>
                 )}
                 {e.poisonStacks>0&&(
                   <div style={{display:"flex",alignItems:"center",gap:3,background:"#7e22ce20",border:"1px solid #7e22ce",borderRadius:5,padding:"2px 6px"}}>
-                    <span style={{fontSize:11,color:"#a855f7",fontWeight:700}}>독{e.poisonStacks}</span>
+                    <span style={{fontSize:11,color:"#a855f7",fontWeight:700}}>{ko?"독":ja?"毒":"Poison"} {e.poisonStacks}</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
           <div style={{marginTop:8,display:"flex",alignItems:"center",gap:6}}>
-            <span style={{fontSize:11,color:C.textDim,fontWeight:600}}>{ko?"다음 행동:":"次の行動:"}</span>
-            <IntentBadge pattern={nextP} ko={ko}/>
+            <span style={{fontSize:11,color:C.textDim,fontWeight:600}}>{ko?"다음 행동:":ja?"次の行動:":"Next Action:"}</span>
+            <IntentBadge pattern={nextP} ko={ko} ja={ja}/>
           </div>
         </div>
         </div>{/* /enemy wrapper */}
@@ -1352,7 +1372,7 @@ export default function RoguePage() {
               style={{width:"100%",background:"none",border:"none",borderTop:`1px solid ${C.border}22`,padding:"4px 12px",color:C.textDim,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",display:"flex",alignItems:"center",gap:4}}
             >
               <ChevronRight size={10} style={{transform:"rotate(90deg)",flexShrink:0}}/>
-              {ko?`전체 로그 (${gs.log.length}줄)`:`全ログ(${gs.log.length}行)`}
+              {ko?`전체 로그 (${gs.log.length}줄)`:ja?`全ログ(${gs.log.length}行)`:`Full log (${gs.log.length} lines)`}
             </button>
           )}
         </div>
@@ -1362,7 +1382,7 @@ export default function RoguePage() {
           <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setLogExpanded(false)}>
             <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:"12px 12px 0 0",width:"100%",maxWidth:640,maxHeight:"60vh",display:"flex",flexDirection:"column",fontFamily:FONT}} onClick={e=>e.stopPropagation()}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
-                <p style={{margin:0,color:C.textBright,fontWeight:700,fontSize:13}}>{ko?"전투 로그":"戦闘ログ"}</p>
+                <p style={{margin:0,color:C.textBright,fontWeight:700,fontSize:13}}>{ko?"전투 로그":ja?"戦闘ログ":"Battle Log"}</p>
                 <button onClick={()=>setLogExpanded(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,padding:0}}><X size={16}/></button>
               </div>
               <div style={{overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:1}}>
@@ -1414,12 +1434,12 @@ export default function RoguePage() {
               )}
               {gs.strength>0&&(
                 <div style={{background:"#b4530920",borderRadius:5,padding:"2px 6px"}}>
-                  <span style={{fontSize:11,color:C.gold,fontWeight:700}}>힘+{gs.strength}</span>
+                  <span style={{fontSize:11,color:C.gold,fontWeight:700}}>{ko?"힘":ja?"力":"Str"}+{gs.strength}</span>
                 </div>
               )}
               {gs.poison>0&&(
                 <div style={{background:"#7e22ce20",borderRadius:5,padding:"2px 6px"}}>
-                  <span style={{fontSize:11,color:"#a855f7",fontWeight:700}}>독{gs.poison}</span>
+                  <span style={{fontSize:11,color:"#a855f7",fontWeight:700}}>{ko?"독":ja?"毒":"Poison"} {gs.poison}</span>
                 </div>
               )}
             </div>
@@ -1436,19 +1456,20 @@ export default function RoguePage() {
         {/* How-to hint */}
         <div style={{display:"flex",flexDirection:"column",gap:4,padding:"4px 2px",opacity:0.45}}>
           <p style={{margin:0,fontSize:10,color:C.textDim,textAlign:"center"}}>
-            {ko?"카드 클릭 → 즉시 사용  ·  흐린 카드는 에너지 부족  ·  턴 종료하면 적이 행동":"カードタップ→即使用  ·  暗いカードはエナジー不足  ·  ターン終了で敵行動"}
+            {ko?"카드 클릭 → 즉시 사용  ·  흐린 카드는 에너지 부족  ·  턴 종료하면 적이 행동":ja?"カードタップ→即使用  ·  暗いカードはエナジー不足  ·  ターン終了で敵行動":"Tap a card to play it  ·  Dimmed = not enough energy  ·  End turn to trigger enemy action"}
           </p>
         </div>
 
         {/* Hand */}
         <div style={{flex:1,overflowX:"auto",display:"flex",gap:8,padding:"4px 0 8px",alignItems:"flex-end"}}>
           {gs.hand.length===0
-            ? <p style={{color:C.textDim,fontSize:13,margin:"auto"}}>{ko?"패가 없습니다":"手札がありません"}</p>
+            ? <p style={{color:C.textDim,fontSize:13,margin:"auto"}}>{ko?"패가 없습니다":ja?"手札がありません":"No cards in hand"}</p>
             : gs.hand.map((card, i) => (
               <div key={card.uid} className="rogue-card-hover">
                 <CardView
                   card={card}
                   canPlay={gs.energy >= card.cost}
+                  lang={lang}
                   onClick={() => {
                     if (selIdx===i) {
                       if (gs.energy >= card.cost) {
@@ -1474,25 +1495,25 @@ export default function RoguePage() {
         {/* Bottom bar */}
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <div style={{fontSize:11,color:C.textDim}}>
-            {ko?`덱:${gs.drawPile.length} / 버림:${gs.discardPile.length}`:`山:${gs.drawPile.length} / 捨:${gs.discardPile.length}`}
+            {ko?`덱:${gs.drawPile.length} / 버림:${gs.discardPile.length}`:ja?`山:${gs.drawPile.length} / 捨:${gs.discardPile.length}`:`Draw:${gs.drawPile.length} / Discard:${gs.discardPile.length}`}
           </div>
           <div style={{flex:1}}/>
           {selIdx!==null&&(
             <button onClick={()=>setSelIdx(null)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:12}}>
-              {ko?"취소":"キャンセル"}
+              {ko?"취소":ja?"キャンセル":"Cancel"}
             </button>
           )}
           <button
             onClick={endTurn}
             style={{background:"#1d3a1d",border:"2px solid #15803d",borderRadius:10,padding:"10px 22px",color:"#4ade80",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:FONT}}
           >
-            {ko?"턴 종료":"ターン終了"}
+            {ko?"턴 종료":ja?"ターン終了":"End Turn"}
           </button>
         </div>
 
         {selIdx!==null&&(
           <p style={{textAlign:"center",fontSize:12,color:C.textDim,margin:0}}>
-            {ko?"한 번 더 클릭해서 카드 사용":"もう一度タップしてカード使用"}
+            {ko?"한 번 더 클릭해서 카드 사용":ja?"もう一度タップしてカード使用":"Tap again to play the card"}
           </p>
         )}
         <DeckModal/>
@@ -1508,18 +1529,18 @@ export default function RoguePage() {
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20,gap:16}}>
         <style>{css}</style>
         <div style={{textAlign:"center",animation:"rogue-in 0.3s ease-out both"}}>
-          <p style={{margin:0,fontSize:20,fontWeight:900,color:C.gold}}>{ko?"카드 보상":"カード報酬"}</p>
-          <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>{ko?"1장을 선택해 덱에 추가하세요":"1枚選んでデッキに追加してください"}</p>
+          <p style={{margin:0,fontSize:20,fontWeight:900,color:C.gold}}>{ko?"카드 보상":ja?"カード報酬":"Card Reward"}</p>
+          <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>{ko?"1장을 선택해 덱에 추가하세요":ja?"1枚選んでデッキに追加してください":"Pick 1 card to add to your deck"}</p>
         </div>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center",animation:"rogue-in 0.3s 0.05s ease-out both"}}>
           {gs.rewardCards.map((card,i)=>(
             <div key={i} onClick={()=>pickReward(card)} style={{cursor:"pointer",animation:`rogue-in 0.3s ${0.05+i*0.05}s ease-out both`}}>
-              <CardView card={card} canPlay={true}/>
+              <CardView card={card} canPlay={true} lang={lang}/>
             </div>
           ))}
         </div>
         <button onClick={skipReward} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 20px",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
-          {ko?"건너뛰기":"スキップ"}
+          {ko?"건너뛰기":ja?"スキップ":"Skip"}
         </button>
       </div>
     );
@@ -1536,21 +1557,21 @@ export default function RoguePage() {
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:4}}>
             <ShoppingCart size={20} color={gs.shopInflated?"#f59e0b":"#22c55e"}/>
             <p style={{margin:0,fontSize:20,fontWeight:900,color:gs.shopInflated?"#f59e0b":"#22c55e"}}>
-              {gs.shopInflated?(ko?"바가지 상점 ⚠":"ぼったくり商店 ⚠"):(ko?"상점":"商店")}
+              {gs.shopInflated?(ko?"바가지 상점 ⚠":ja?"ぼったくり商店 ⚠":"Overpriced Shop ⚠"):(ko?"상점":ja?"商店":"Shop")}
             </p>
           </div>
           {gs.shopInflated && (
             <p style={{margin:"0 0 4px",fontSize:12,color:"#fbbf24",fontWeight:700}}>
-              {ko?"상인이 가격을 올려놨다... 모든 가격 +50%":"商人が値段を上げた…全価格+50%"}
+              {ko?"상인이 가격을 올려놨다... 모든 가격 +50%":ja?"商人が値段を上げた…全価格+50%":"The merchant jacked up prices... all items +50%"}
             </p>
           )}
-          <p style={{margin:0,fontSize:13,color:C.gold,fontWeight:700}}>{ko?`보유 골드: ${gs.gold}G`:`所持ゴールド: ${gs.gold}G`}</p>
+          <p style={{margin:0,fontSize:13,color:C.gold,fontWeight:700}}>{ko?`보유 골드: ${gs.gold}G`:ja?`所持ゴールド: ${gs.gold}G`:`Gold: ${gs.gold}G`}</p>
         </div>
         <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center"}}>
           {gs.shopItems.map((item,i)=>(
             <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
               <div style={{opacity:item.bought?0.4:1}}>
-                <CardView card={item.card} canPlay={!item.bought&&gs.gold>=item.price}/>
+                <CardView card={item.card} canPlay={!item.bought&&gs.gold>=item.price} lang={lang}/>
               </div>
               <button
                 disabled={item.bought||gs.gold<item.price}
@@ -1563,13 +1584,13 @@ export default function RoguePage() {
                   fontFamily:FONT, fontWeight:700, fontSize:13,
                 }}
               >
-                {item.bought?(ko?"구매완료":"購入済"):ko?`${item.price}G로 구매`:`${item.price}Gで購入`}
+                {item.bought?(ko?"구매완료":ja?"購入済":"Purchased"):ko?`${item.price}G로 구매`:ja?`${item.price}Gで購入`:`Buy ${item.price}G`}
               </button>
             </div>
           ))}
         </div>
         <button onClick={leaveShop} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 24px",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
-          {ko?"상점 나가기":"商店を出る"}
+          {ko?"상점 나가기":ja?"商店を出る":"Leave Shop"}
         </button>
       </div>
     );
@@ -1586,20 +1607,20 @@ export default function RoguePage() {
         <Flame size={48} color={gs.cursedRest?"#a855f7":"#60a5fa"} style={{animation:"rogue-float 2s ease-in-out infinite"}}/>
         <div style={{textAlign:"center"}}>
           <p style={{margin:0,fontSize:20,fontWeight:900,color:gs.cursedRest?"#a855f7":"#60a5fa"}}>
-            {gs.cursedRest?(ko?"저주받은 모닥불":"呪われた焚き火"):(ko?"모닥불":"焚き火")}
+            {gs.cursedRest?(ko?"저주받은 모닥불":ja?"呪われた焚き火":"Cursed Campfire"):(ko?"모닥불":ja?"焚き火":"Campfire")}
           </p>
           {gs.cursedRest && (
             <p style={{margin:"4px 0",fontSize:12,color:"#c084fc",fontWeight:700}}>
-              {ko?"불길한 기운... 회복량이 크게 감소했다":"不吉な気配…回復量が大幅に減少した"}
+              {ko?"불길한 기운... 회복량이 크게 감소했다":ja?"不吉な気配…回復量が大幅に減少した":"An ominous aura... healing is greatly reduced"}
             </p>
           )}
-          <p style={{margin:"4px 0",fontSize:13,color:C.textDim}}>{ko?`현재 HP: ${gs.playerHp} / ${gs.playerMaxHp}`:`現在HP: ${gs.playerHp} / ${gs.playerMaxHp}`}</p>
+          <p style={{margin:"4px 0",fontSize:13,color:C.textDim}}>{ko?`현재 HP: ${gs.playerHp} / ${gs.playerMaxHp}`:ja?`現在HP: ${gs.playerHp} / ${gs.playerMaxHp}`:`HP: ${gs.playerHp} / ${gs.playerMaxHp}`}</p>
         </div>
         <button
           onClick={doRest}
           style={{background:gs.cursedRest?"#1a0830":"#082030",border:`2px solid ${gs.cursedRest?"#a855f7":"#60a5fa"}`,borderRadius:10,padding:"12px 28px",color:gs.cursedRest?"#a855f7":"#60a5fa",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:FONT}}
         >
-          {ko?`HP ${healAmt} 회복하기 (${gs.cursedRest?10:30}%)`:`HP ${healAmt} 回復する（${gs.cursedRest?10:30}%）`}
+          {ko?`HP ${healAmt} 회복하기 (${gs.cursedRest?10:30}%)`:ja?`HP ${healAmt} 回復する（${gs.cursedRest?10:30}%）`:`Rest — Heal ${healAmt} HP (${gs.cursedRest?10:30}%)`}
         </button>
       </div>
     );
@@ -1614,12 +1635,12 @@ export default function RoguePage() {
         <style>{css}</style>
         <Skull size={64} color={C.red} style={{animation:"rogue-in 0.5s ease-out both"}}/>
         <div style={{textAlign:"center",animation:"rogue-in 0.4s 0.1s ease-out both"}}>
-          <p style={{margin:0,fontSize:26,fontWeight:900,color:C.red}}>{ko?"탐험 실패":"探検失敗"}</p>
+          <p style={{margin:0,fontSize:26,fontWeight:900,color:C.red}}>{ko?"탐험 실패":ja?"探検失敗":"Expedition Failed"}</p>
           <p style={{margin:"6px 0 0",fontSize:13,color:C.textDim}}>
-            {ko?`${gs.floor+1}번째 방에서 쓰러졌습니다`:`${gs.floor+1}部屋目で倒れました`}
+            {ko?`${gs.floor+1}번째 방에서 쓰러졌습니다`:ja?`${gs.floor+1}部屋目で倒れました`:`Fell on floor ${gs.floor+1}`}
           </p>
           <p style={{margin:"4px 0 0",fontSize:13,color:C.textDim}}>
-            {ko?`덱: ${gs.deck.length}장`:`デッキ: ${gs.deck.length}枚`}
+            {ko?`덱: ${gs.deck.length}장`:ja?`デッキ: ${gs.deck.length}枚`:`Deck: ${gs.deck.length} cards`}
           </p>
         </div>
         <div style={{display:"flex",gap:10,animation:"rogue-in 0.4s 0.2s ease-out both"}}>
@@ -1627,12 +1648,12 @@ export default function RoguePage() {
             onClick={startRun}
             style={{background:"#1c0a0a",border:`2px solid ${C.red}`,borderRadius:10,padding:"12px 24px",color:C.red,fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:FONT}}
           >
-            <div style={{display:"flex",alignItems:"center",gap:6}}><RefreshCw size={16}/>{ko?"다시 도전":"再挑戦"}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}><RefreshCw size={16}/>{ko?"다시 도전":ja?"再挑戦":"Try Again"}</div>
           </button>
           <button
             onClick={abandonRun}
             style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 24px",color:C.textDim,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:FONT}}
-          >{ko?"처음으로":"トップへ"}</button>
+          >{ko?"처음으로":ja?"トップへ":"Home"}</button>
         </div>
       </div>
     );
@@ -1648,18 +1669,18 @@ export default function RoguePage() {
         <style>{css}</style>
         <Trophy size={72} color={C.gold} style={{animation:"rogue-float 2s ease-in-out infinite"}}/>
         <div style={{textAlign:"center",animation:"rogue-in 0.4s ease-out both"}}>
-          <p style={{margin:0,fontSize:28,fontWeight:900,color:C.gold,letterSpacing:"0.08em"}}>{ko?"탐험 성공!":"探検成功！"}</p>
+          <p style={{margin:0,fontSize:28,fontWeight:900,color:C.gold,letterSpacing:"0.08em"}}>{ko?"탐험 성공!":ja?"探検成功！":"Expedition Clear!"}</p>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:8}}>
             <Skull size={16} color="#4ade80"/>
             <p style={{margin:0,fontSize:14,color:"#4ade80"}}>
-              {ko?"카오스 드래곤을 처치했습니다":"カオスドラゴンを撃破しました"}
+              {ko?"카오스 드래곤을 처치했습니다":ja?"カオスドラゴンを撃破しました":"You defeated the Chaos Dragon"}
             </p>
           </div>
           <p style={{margin:"4px 0 0",fontSize:13,color:C.textDim}}>
-            {ko?`HP ${gs.playerHp} / ${gs.playerMaxHp} · 덱 ${gs.deck.length}장`:`HP ${gs.playerHp} / ${gs.playerMaxHp} · デッキ${gs.deck.length}枚`}
+            {ko?`HP ${gs.playerHp} / ${gs.playerMaxHp} · 덱 ${gs.deck.length}장`:ja?`HP ${gs.playerHp} / ${gs.playerMaxHp} · デッキ${gs.deck.length}枚`:`HP ${gs.playerHp} / ${gs.playerMaxHp} · Deck ${gs.deck.length} cards`}
           </p>
           <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>
-            {ko?`누적 클리어: ${totalClears}회`:`累計クリア: ${totalClears}回`}
+            {ko?`누적 클리어: ${totalClears}회`:ja?`累計クリア: ${totalClears}回`:`Total Clears: ${totalClears}`}
           </p>
         </div>
 
@@ -1672,14 +1693,14 @@ export default function RoguePage() {
                 borderRadius:10, padding:"10px 14px",
               }}>
                 <p style={{margin:"0 0 7px",fontSize:13,fontWeight:800,color:"#22c55e"}}>
-                  🎉 {ko?`${m.clears}회 달성 보상!`:`${m.clears}回達成報酬！`}
+                  🎉 {ko?`${m.clears}회 달성 보상!`:ja?`${m.clears}回達成報酬！`:`${m.clears}-Clear Reward!`}
                 </p>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {m.points>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"포인트":"ポイント"} ×{m.points.toLocaleString()}</span>}
-                  {m.stones>0&&<span style={{fontSize:11,fontWeight:700,color:"#60a5fa",background:"#60a5fa15",border:"1px solid #60a5fa44",borderRadius:5,padding:"2px 8px"}}>{ko?"강화석":"強化石"} ×{m.stones}</span>}
-                  {m.normalEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#94a3b8",background:"#94a3b815",border:"1px solid #94a3b844",borderRadius:5,padding:"2px 8px"}}>{ko?"일반 알":"通常卵"} ×{m.normalEgg}</span>}
-                  {m.bigEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#4ade80",background:"#4ade8015",border:"1px solid #4ade8044",borderRadius:5,padding:"2px 8px"}}>{ko?"고급 알":"上級卵"} ×{m.bigEgg}</span>}
-                  {m.goldEgg>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"황금 알":"黄金卵"} ×{m.goldEgg}</span>}
+                  {m.points>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"포인트":ja?"ポイント":"Points"} ×{m.points.toLocaleString()}</span>}
+                  {m.stones>0&&<span style={{fontSize:11,fontWeight:700,color:"#60a5fa",background:"#60a5fa15",border:"1px solid #60a5fa44",borderRadius:5,padding:"2px 8px"}}>{ko?"강화석":ja?"強化石":"Upgrade Stone"} ×{m.stones}</span>}
+                  {m.normalEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#94a3b8",background:"#94a3b815",border:"1px solid #94a3b844",borderRadius:5,padding:"2px 8px"}}>{ko?"일반 알":ja?"通常卵":"Normal Egg"} ×{m.normalEgg}</span>}
+                  {m.bigEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#4ade80",background:"#4ade8015",border:"1px solid #4ade8044",borderRadius:5,padding:"2px 8px"}}>{ko?"고급 알":ja?"上級卵":"Premium Egg"} ×{m.bigEgg}</span>}
+                  {m.goldEgg>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"황금 알":ja?"黄金卵":"Golden Egg"} ×{m.goldEgg}</span>}
                 </div>
               </div>
             ))}
@@ -1691,12 +1712,12 @@ export default function RoguePage() {
             onClick={startRun}
             style={{background:`linear-gradient(135deg,${C.gold}cc,${C.gold}88)`,border:`2px solid ${C.gold}`,borderRadius:10,padding:"12px 28px",color:"#1c1500",fontWeight:900,fontSize:15,cursor:"pointer",fontFamily:FONT}}
           >
-            <div style={{display:"flex",alignItems:"center",gap:6}}><RefreshCw size={16}/>{ko?"다시 하기":"もう一度"}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}><RefreshCw size={16}/>{ko?"다시 하기":ja?"もう一度":"Play Again"}</div>
           </button>
           <button
             onClick={abandonRun}
             style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 24px",color:C.textDim,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:FONT}}
-          >{ko?"메인으로":"メインへ"}</button>
+          >{ko?"메인으로":ja?"メインへ":"Home"}</button>
         </div>
       </div>
     );
