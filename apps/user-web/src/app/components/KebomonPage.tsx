@@ -109,8 +109,7 @@ const RARITY_GLOW: Record<CharacterRarity, string> = {
   mythic: "shadow-pink-400/60",
 };
 
-
-type Tab = "character" | "collection" | "achievement";
+type Tab = "character" | "enhance" | "collection" | "achievement";
 type Filter = "all" | CharacterRarity;
 
 // ─── Pixel Gacha Ball SVG ─────────────────────────────────────────────────
@@ -790,15 +789,36 @@ export default function KebomonPage() {
     equipCharacter,
     checkAchievements,
     profile,
+    enhanceCharacter,
   } = useAppData();
   const { t, lang } = useLang();
-  const [searchParams] = useSearchParams();
-  const initTab = (searchParams.get("tab") as Tab | null) ?? "character";
-  const [tab, setTab] = useState<Tab>(initTab);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get("tab") as Tab | null) ?? "character";
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<number | null>(null);
   const [equipping, setEquipping] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceResult, setEnhanceResult] = useState<{
+    success: boolean;
+    newLevel: number;
+  } | null>(null);
   const [checkingAchievements, setCheckingAchievements] = useState(false);
+
+  const setTab = (nextTab: Tab) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", nextTab);
+    setSearchParams(nextParams);
+  };
+
+  const MAX_ENHANCE: Record<CharacterRarity, number> = {
+    common: 3,
+    uncommon: 3,
+    rare: 4,
+    epic: 4,
+    legendary: 5,
+    mythic: 6,
+  };
+  const ENHANCE_RATES = [1.0, 0.9, 0.8, 0.6, 0.4, 0.2];
 
   const {
     missionPoints,
@@ -806,6 +826,7 @@ export default function KebomonPage() {
     streakDays,
     equippedCharacterId,
     ownedCharacterIds,
+    enhancementStones,
     raidCount,
     rogueClears,
     expeditionCount,
@@ -816,6 +837,14 @@ export default function KebomonPage() {
   const equippedChar = equippedCharacterId
     ? (CHARACTERS.find((c) => c.id === equippedCharacterId) ?? CHARACTERS[0])
     : (CHARACTERS.find((c) => ownedSet.has(c.id)) ?? CHARACTERS[0]);
+
+  const currentEnhance =
+    rewardSummary.characterEnhancements[equippedChar.id] ?? 0;
+  const stoneCost = currentEnhance + 1;
+  const successRate = ENHANCE_RATES[currentEnhance] ?? 0;
+  const canEnhance =
+    currentEnhance < MAX_ENHANCE[equippedChar.rarity] &&
+    enhancementStones >= stoneCost;
 
   const handleEquip = async (characterId: number) => {
     setEquipping(true);
@@ -833,6 +862,34 @@ export default function KebomonPage() {
       await checkAchievements();
     } finally {
       setCheckingAchievements(false);
+    }
+  };
+
+  const handleEnhance = async () => {
+    const equippedEnhanceLevel =
+      rewardSummary.characterEnhancements[equippedChar.id] ?? 0;
+    const nextCost = equippedEnhanceLevel + 1;
+    if (
+      enhancing ||
+      equippedEnhanceLevel >= MAX_ENHANCE[equippedChar.rarity] ||
+      enhancementStones < nextCost
+    ) {
+      return;
+    }
+
+    setEnhancing(true);
+    setEnhanceResult(null);
+    try {
+      const result = await enhanceCharacter(equippedChar.id);
+      setEnhanceResult({ success: result.success, newLevel: result.newLevel });
+    } catch {
+      setEnhanceResult({
+        success: false,
+        newLevel: rewardSummary.characterEnhancements[equippedChar.id] ?? 0,
+      });
+    } finally {
+      setEnhancing(false);
+      setTimeout(() => setEnhanceResult(null), 2500);
     }
   };
 
@@ -882,15 +939,17 @@ export default function KebomonPage() {
 
         {/* ── Tab Navigation ── */}
         <div className="flex gap-1 bg-muted p-1 rounded-xl">
-          {(["character", "collection", "achievement"] as Tab[]).map(
+          {(["character", "enhance", "collection", "achievement"] as Tab[]).map(
             (t_) => {
               const icons: Record<Tab, React.ReactNode> = {
                 character: <User className="w-3.5 h-3.5" />,
+                enhance: <Shield className="w-3.5 h-3.5" />,
                 collection: <BookOpen className="w-3.5 h-3.5" />,
                 achievement: <Trophy className="w-3.5 h-3.5" />,
               };
               const labels: Record<Tab, string> = {
-                character: lang === "ja" ? "強化" : "강화",
+                character: t("kebomon.my_character"),
+                enhance: t("enhance.tab"),
                 collection: lang === "ja" ? "図鑑" : "도감",
                 achievement: lang === "ja" ? "実績" : "업적",
               };
@@ -912,7 +971,7 @@ export default function KebomonPage() {
           )}
         </div>
 
-        {/* ══════════════ CHARACTER TAB ══════════════ */}
+        {/* ══════════════ 내 캐릭터 탭 ══════════════ */}
         {tab === "character" && (
           <div className="flex flex-col lg:flex-row lg:items-start gap-4">
             {/* ── Hero card ── */}
@@ -970,6 +1029,7 @@ export default function KebomonPage() {
                     <p className="text-sm text-muted-foreground mt-1">
                       {getCharDesc(equippedChar, lang)}
                     </p>
+
                     <p className="text-[11px] text-muted-foreground/60 mt-2">
                       {t("kebomon.mouse_hint")}
                     </p>
@@ -983,6 +1043,127 @@ export default function KebomonPage() {
                 enhancements={rewardSummary.characterEnhancements}
                 lang={lang}
               />
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════ 강화 탭 ══════════════ */}
+        {tab === "enhance" && (
+          <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+            <div className="flex flex-col gap-4 flex-1 min-w-0">
+              <div
+                className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]}`}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div
+                    className={`rounded-2xl ${equippedChar.rarity === "mythic" ? "" : RARITY_BG[equippedChar.rarity]} relative overflow-hidden`}
+                    style={{ width: "100%", minHeight: 220 }}
+                  >
+                    {equippedChar.rarity !== "mythic" && (
+                      <div
+                        className={`absolute inset-0 rounded-2xl blur-md opacity-30 ${RARITY_BG[equippedChar.rarity]}`}
+                        style={{ transform: "scale(1.1)" }}
+                      />
+                    )}
+                    {equippedChar.rarity === "mythic" && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none z-0">
+                        <MythicMagicCircle size={240} />
+                      </div>
+                    )}
+                    <div className="relative z-10 flex items-center justify-center py-6">
+                      <PixelCharacter
+                        characterId={equippedChar.id}
+                        size={140}
+                        float
+                      />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <span
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${RARITY_BG[equippedChar.rarity]} ${RARITY_COLOR[equippedChar.rarity]}`}
+                      >
+                        {getRarityLabel(equippedChar.rarity, lang)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        #{charNum(equippedChar.id)}
+                      </span>
+                    </div>
+                    <p
+                      className={`text-2xl font-bold ${RARITY_COLOR[equippedChar.rarity]}`}
+                    >
+                      {getCharName(equippedChar, lang)}
+                      {currentEnhance > 0 && (
+                        <span className="text-amber-400 ml-1.5">
+                          +{currentEnhance}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {getCharDesc(equippedChar, lang)}
+                    </p>
+
+                    <div className="mt-4 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="rounded-2xl border border-border bg-muted p-4">
+                          <p className="text-xs text-muted-foreground mb-1">
+                            {lang === "ja" ? "強化石" : "강화석"}
+                          </p>
+                          <p className="text-2xl font-bold flex items-center gap-2">
+                            {enhancementStones}
+                            <Sparkles className="w-4 h-4 text-primary" />
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border bg-muted p-4">
+                          <p className="text-xs text-muted-foreground mb-1">
+                            {lang === "ja" ? "強化レベル" : "강화 레벨"}
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {currentEnhance > 0 ? `+${currentEnhance}` : "0"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {currentEnhance >= MAX_ENHANCE[equippedChar.rarity]
+                              ? lang === "ja"
+                                ? "最大強化完了"
+                                : "최대 강화 완료"
+                              : lang === "ja"
+                                ? `次のコスト ${stoneCost}個 / 成功率 ${(successRate * 100).toFixed(0)}%`
+                                : `다음 비용 ${stoneCost}개 / 성공률 ${(successRate * 100).toFixed(0)}%`}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleEnhance()}
+                        disabled={!canEnhance || enhancing}
+                        className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
+                          canEnhance && !enhancing
+                            ? "bg-primary text-white hover:bg-primary/90"
+                            : "bg-secondary text-muted-foreground cursor-not-allowed"
+                        }`}
+                      >
+                        {enhancing ? t("enhance.enhancing") : t("enhance.btn")}
+                      </button>
+                      {enhanceResult && (
+                        <p
+                          className={`text-sm font-medium ${enhanceResult.success ? "text-emerald-400" : "text-rose-400"}`}
+                        >
+                          {enhanceResult.success
+                            ? t("enhance.success")
+                            : t("enhance.fail")}
+                          {enhanceResult.success
+                            ? ` +${enhanceResult.newLevel}`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground/60 mt-2">
+                      {t("kebomon.mouse_hint")}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2252,63 +2433,198 @@ const KEBO_STATUS_CSS = `
 const CYN = "#00d4ff";
 const CYN_DIM = "#005f7a";
 
-function HudCorners({ size = 10, color = CYN, opacity = 1 }: { size?: number; color?: string; opacity?: number }) {
-  const s: React.CSSProperties = { position: "absolute", width: size, height: size, opacity };
+function HudCorners({
+  size = 10,
+  color = CYN,
+  opacity = 1,
+}: {
+  size?: number;
+  color?: string;
+  opacity?: number;
+}) {
+  const s: React.CSSProperties = {
+    position: "absolute",
+    width: size,
+    height: size,
+    opacity,
+  };
   return (
     <>
-      <div style={{ ...s, top: 0, left: 0,  borderTop: `1.5px solid ${color}`, borderLeft:  `1.5px solid ${color}` }} />
-      <div style={{ ...s, top: 0, right: 0, borderTop: `1.5px solid ${color}`, borderRight: `1.5px solid ${color}` }} />
-      <div style={{ ...s, bottom: 0, left: 0,  borderBottom: `1.5px solid ${color}`, borderLeft:  `1.5px solid ${color}` }} />
-      <div style={{ ...s, bottom: 0, right: 0, borderBottom: `1.5px solid ${color}`, borderRight: `1.5px solid ${color}` }} />
+      <div
+        style={{
+          ...s,
+          top: 0,
+          left: 0,
+          borderTop: `1.5px solid ${color}`,
+          borderLeft: `1.5px solid ${color}`,
+        }}
+      />
+      <div
+        style={{
+          ...s,
+          top: 0,
+          right: 0,
+          borderTop: `1.5px solid ${color}`,
+          borderRight: `1.5px solid ${color}`,
+        }}
+      />
+      <div
+        style={{
+          ...s,
+          bottom: 0,
+          left: 0,
+          borderBottom: `1.5px solid ${color}`,
+          borderLeft: `1.5px solid ${color}`,
+        }}
+      />
+      <div
+        style={{
+          ...s,
+          bottom: 0,
+          right: 0,
+          borderBottom: `1.5px solid ${color}`,
+          borderRight: `1.5px solid ${color}`,
+        }}
+      />
     </>
   );
 }
 
 function HudSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-      <div style={{ width: 7, height: 7, background: CYN, boxShadow: `0 0 6px ${CYN}` }} />
-      <span style={{ fontSize: 10, fontWeight: 800, color: CYN, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "monospace" }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        marginBottom: 10,
+      }}
+    >
+      <div
+        style={{
+          width: 7,
+          height: 7,
+          background: CYN,
+          boxShadow: `0 0 6px ${CYN}`,
+        }}
+      />
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 800,
+          color: CYN,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          fontFamily: "monospace",
+        }}
+      >
         {children}
       </span>
-      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg,${CYN_DIM},transparent)` }} />
+      <div
+        style={{
+          flex: 1,
+          height: 1,
+          background: `linear-gradient(90deg,${CYN_DIM},transparent)`,
+        }}
+      />
     </div>
   );
 }
 
-function KeboStatBar({ value, max, color }: { value: number; max: number; color: string }) {
+function KeboStatBar({
+  value,
+  max,
+  color,
+}: {
+  value: number;
+  max: number;
+  color: string;
+}) {
   const pct = Math.min(100, Math.round((value / max) * 100));
   return (
-    <div style={{ flex: 1, height: 5, background: "#06111e", borderRadius: 2, overflow: "hidden", position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: `${CYN_DIM}18` }} />
-      <div style={{
-        height: "100%", width: `${pct}%`,
-        background: `linear-gradient(90deg, ${color}60, ${color})`,
-        boxShadow: `0 0 8px ${color}88`,
+    <div
+      style={{
+        flex: 1,
+        height: 5,
+        background: "#06111e",
         borderRadius: 2,
-        animation: "kebo-bar-in 0.6s ease-out both",
-      }} />
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{ position: "absolute", inset: 0, background: `${CYN_DIM}18` }}
+      />
+      <div
+        style={{
+          height: "100%",
+          width: `${pct}%`,
+          background: `linear-gradient(90deg, ${color}60, ${color})`,
+          boxShadow: `0 0 8px ${color}88`,
+          borderRadius: 2,
+          animation: "kebo-bar-in 0.6s ease-out both",
+        }}
+      />
     </div>
   );
 }
 
-function KeboStatRow({ label, value, max, color, unit = "" }: {
-  label: string; value: number; max: number; color: string; unit?: string;
+function KeboStatRow({
+  label,
+  value,
+  max,
+  color,
+  unit = "",
+}: {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+  unit?: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-      <span style={{ width: 32, fontSize: 9, fontWeight: 700, color: "#3a6070", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, fontFamily: "monospace" }}>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}
+    >
+      <span
+        style={{
+          width: 32,
+          fontSize: 9,
+          fontWeight: 700,
+          color: "#3a6070",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          flexShrink: 0,
+          fontFamily: "monospace",
+        }}
+      >
         {label}
       </span>
       <KeboStatBar value={value} max={max} color={color} />
-      <span style={{ width: 38, fontSize: 11, fontWeight: 800, color, textAlign: "right", flexShrink: 0, fontFamily: "monospace", textShadow: `0 0 8px ${color}88` }}>
-        {value}{unit}
+      <span
+        style={{
+          width: 38,
+          fontSize: 11,
+          fontWeight: 800,
+          color,
+          textAlign: "right",
+          flexShrink: 0,
+          fontFamily: "monospace",
+          textShadow: `0 0 8px ${color}88`,
+        }}
+      >
+        {value}
+        {unit}
       </span>
     </div>
   );
 }
 
-export function KeboStatusPanel({ char, enhancements, lang }: {
+export function KeboStatusPanel({
+  char,
+  enhancements,
+  lang,
+}: {
   char: CharacterDef;
   enhancements: Record<number, number>;
   lang: string;
@@ -2318,24 +2634,55 @@ export function KeboStatusPanel({ char, enhancements, lang }: {
   const enhance = enhancements[char.id] ?? 0;
   const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
   const arch = ROGUE_ARCH[char.type] ?? "wild";
-  const raid  = RARITY_RAID_STATS[char.rarity];
-  const col   = RARITY_COL_STATS[char.rarity];
+  const raid = RARITY_RAID_STATS[char.rarity];
+  const col = RARITY_COL_STATS[char.rarity];
 
   const finalAtk = Math.round(raid.atk * TYPE_ATK_MULT[rt] + enhance * 3);
-  const finalDef = Math.round(col.def  * TYPE_DEF_MULT[rt] + enhance * 2);
-  const finalHp  = Math.round(col.hp   * TYPE_HP_MULT[rt]  + enhance * 20);
-  const finalSpd = Math.round(col.spd  * TYPE_SPD_MULT[rt]);
-  const rogueHp  = RARITY_HP_TABLE[char.rarity];
-  const dps      = Math.round(finalAtk * (1 + raid.crit / 100 * 1.5));
+  const finalDef = Math.round(col.def * TYPE_DEF_MULT[rt] + enhance * 2);
+  const finalHp = Math.round(col.hp * TYPE_HP_MULT[rt] + enhance * 20);
+  const finalSpd = Math.round(col.spd * TYPE_SPD_MULT[rt]);
+  const rogueHp = RARITY_HP_TABLE[char.rarity];
+  const dps = Math.round(finalAtk * (1 + (raid.crit / 100) * 1.5));
 
-  const rtColor  = rt === "energy" ? "#00d4ff" : rt === "attack" ? "#ff5c5c" : "#60a5fa";
-  const rtLabel  = ja ? (rt==="energy"?"エナジー型":rt==="attack"?"アタック型":"ディフェンス型")
-                      : ko ? (rt==="energy"?"에너지형":rt==="attack"?"공격형":"방어형")
-                      : (rt==="energy"?"Energy":rt==="attack"?"Attack":"Defense");
-  const rtBonus  = ja ? (rt==="energy"?"+1エナジー":rt==="attack"?"+1力":"+5シールド")
-                      : ko ? (rt==="energy"?"+1 에너지":rt==="attack"?"+1 힘":"+5 방어")
-                      : (rt==="energy"?"+1 Energy":rt==="attack"?"+1 STR":"+5 Shield");
-  const archLabel = ja ? (ARCHETYPE_JA[arch]??arch) : (ARCHETYPE_KO[arch]??arch);
+  const rtColor =
+    rt === "energy" ? "#00d4ff" : rt === "attack" ? "#ff5c5c" : "#60a5fa";
+  const rtLabel = ja
+    ? rt === "energy"
+      ? "エナジー型"
+      : rt === "attack"
+        ? "アタック型"
+        : "ディフェンス型"
+    : ko
+      ? rt === "energy"
+        ? "에너지형"
+        : rt === "attack"
+          ? "공격형"
+          : "방어형"
+      : rt === "energy"
+        ? "Energy"
+        : rt === "attack"
+          ? "Attack"
+          : "Defense";
+  const rtBonus = ja
+    ? rt === "energy"
+      ? "+1エナジー"
+      : rt === "attack"
+        ? "+1力"
+        : "+5シールド"
+    : ko
+      ? rt === "energy"
+        ? "+1 에너지"
+        : rt === "attack"
+          ? "+1 힘"
+          : "+5 방어"
+      : rt === "energy"
+        ? "+1 Energy"
+        : rt === "attack"
+          ? "+1 STR"
+          : "+5 Shield";
+  const archLabel = ja
+    ? (ARCHETYPE_JA[arch] ?? arch)
+    : (ARCHETYPE_KO[arch] ?? arch);
 
   const panel: React.CSSProperties = {
     background: "linear-gradient(160deg,#020c18 0%,#03111e 50%,#020e1a 100%)",
@@ -2348,32 +2695,75 @@ export function KeboStatusPanel({ char, enhancements, lang }: {
   };
 
   return (
-    <div style={{ fontFamily:"'Noto Sans KR','Malgun Gothic',monospace" }}>
+    <div style={{ fontFamily: "'Noto Sans KR','Malgun Gothic',monospace" }}>
       <style>{KEBO_STATUS_CSS}</style>
 
       {/* ── OUTER WRAPPER ── */}
-      <div style={{
-        background: "linear-gradient(160deg,#010810 0%,#020d1b 100%)",
-        border: `1px solid ${CYN_DIM}44`,
-        borderRadius: 6,
-        padding: 16,
-        position: "relative",
-        boxShadow: `0 0 40px #00d4ff0c, inset 0 0 30px #00050e`,
-      }}>
+      <div
+        style={{
+          background: "linear-gradient(160deg,#010810 0%,#020d1b 100%)",
+          border: `1px solid ${CYN_DIM}44`,
+          borderRadius: 6,
+          padding: 16,
+          position: "relative",
+          boxShadow: `0 0 40px #00d4ff0c, inset 0 0 30px #00050e`,
+        }}
+      >
         <HudCorners size={14} color={CYN} />
 
         {/* header */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ width:2, height:18, background:`linear-gradient(180deg,${CYN},transparent)`, boxShadow:`0 0 8px ${CYN}` }} />
-            <span style={{ fontSize:11, fontWeight:800, color:CYN, letterSpacing:"0.22em", fontFamily:"monospace" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 14,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                width: 2,
+                height: 18,
+                background: `linear-gradient(180deg,${CYN},transparent)`,
+                boxShadow: `0 0 8px ${CYN}`,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: CYN,
+                letterSpacing: "0.22em",
+                fontFamily: "monospace",
+              }}
+            >
               CHARACTER STATUS
             </span>
           </div>
-          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-            <span style={{ fontSize:10, color:`${CYN}99`, fontFamily:"monospace" }}>#{String(char.id).padStart(3,"0")}</span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span
+              style={{
+                fontSize: 10,
+                color: `${CYN}99`,
+                fontFamily: "monospace",
+              }}
+            >
+              #{String(char.id).padStart(3, "0")}
+            </span>
             {enhance > 0 && (
-              <span style={{ fontSize:10, fontWeight:900, color:"#ffd060", background:"#ffd06015", border:"1px solid #ffd06040", borderRadius:3, padding:"1px 6px", fontFamily:"monospace" }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: "#ffd060",
+                  background: "#ffd06015",
+                  border: "1px solid #ffd06040",
+                  borderRadius: 3,
+                  padding: "1px 6px",
+                  fontFamily: "monospace",
+                }}
+              >
                 +{enhance}
               </span>
             )}
@@ -2383,40 +2773,107 @@ export function KeboStatusPanel({ char, enhancements, lang }: {
         {/* ── RAID panel ── */}
         <div style={{ ...panel }}>
           <HudCorners size={8} color={CYN} opacity={0.5} />
-          <HudSectionLabel>{ja?"RAID":ko?"■ 레이드":"■ RAID"}</HudSectionLabel>
-          <KeboStatRow label="ATK"  value={finalAtk} max={260} color="#ff5c5c" />
-          <KeboStatRow label="CRIT" value={raid.crit} max={30} color="#ffd060" unit="%" />
-          <KeboStatRow label="DPS"  value={dps}       max={350} color="#ff9040" />
+          <HudSectionLabel>
+            {ja ? "RAID" : ko ? "■ 레이드" : "■ RAID"}
+          </HudSectionLabel>
+          <KeboStatRow label="ATK" value={finalAtk} max={260} color="#ff5c5c" />
+          <KeboStatRow
+            label="CRIT"
+            value={raid.crit}
+            max={30}
+            color="#ffd060"
+            unit="%"
+          />
+          <KeboStatRow label="DPS" value={dps} max={350} color="#ff9040" />
         </div>
 
         {/* ── COLOSSEUM panel ── */}
         <div style={{ ...panel }}>
           <HudCorners size={8} color={CYN} opacity={0.5} />
-          <HudSectionLabel>{ja?"■ コロシアム":ko?"■ 콜로세움":"■ COLOSSEUM"}</HudSectionLabel>
-          <KeboStatRow label="HP"  value={finalHp}  max={1500} color="#3dffb0" />
-          <KeboStatRow label="DEF" value={finalDef} max={230}  color={CYN} />
-          <KeboStatRow label="SPD" value={finalSpd} max={170}  color="#b080ff" />
+          <HudSectionLabel>
+            {ja ? "■ コロシアム" : ko ? "■ 콜로세움" : "■ COLOSSEUM"}
+          </HudSectionLabel>
+          <KeboStatRow label="HP" value={finalHp} max={1500} color="#3dffb0" />
+          <KeboStatRow label="DEF" value={finalDef} max={230} color={CYN} />
+          <KeboStatRow label="SPD" value={finalSpd} max={170} color="#b080ff" />
         </div>
 
         {/* ── ROGUELIKE panel ── */}
-        <div style={{ ...panel, marginBottom:0 }}>
+        <div style={{ ...panel, marginBottom: 0 }}>
           <HudCorners size={8} color={CYN} opacity={0.5} />
-          <HudSectionLabel>{ja?"■ ローグライク":ko?"■ 로그라이크":"■ ROGUELIKE"}</HudSectionLabel>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            {([
-              { key: ja?"タイプ":ko?"타입":"Type",         val: rtLabel,        icon: true,  color: rtColor },
-              { key: ja?"ボーナス":ko?"특수보너스":"Bonus", val: rtBonus,        icon: true,  color: rtColor },
-              { key: ja?"アーキ":ko?"아키타입":"Archetype", val: archLabel,      icon: false, color:"#7ecfff" },
-              { key: "START HP",                            val: String(rogueHp),icon: false, color:"#3dffb0" },
-            ] as const).map(({ key, val, icon, color }) => (
-              <div key={key} style={{
-                background:"#020c18", border:`1px solid ${CYN_DIM}55`, borderRadius:3, padding:"7px 9px", position:"relative",
-              }}>
-                <p style={{ margin:"0 0 3px", fontSize:9, color:`${CYN}60`, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", fontFamily:"monospace" }}>{key}</p>
-                <p style={{ margin:0, fontSize:12, fontWeight:800, color, display:"flex", alignItems:"center", gap:4, fontFamily:"monospace", textShadow:`0 0 10px ${color}66` }}>
-                  {icon && rt==="energy"  && <Zap    size={11} />}
-                  {icon && rt==="attack"  && <Swords size={11} />}
-                  {icon && rt==="defense" && <Shield size={11} />}
+          <HudSectionLabel>
+            {ja ? "■ ローグライク" : ko ? "■ 로그라이크" : "■ ROGUELIKE"}
+          </HudSectionLabel>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}
+          >
+            {(
+              [
+                {
+                  key: ja ? "タイプ" : ko ? "타입" : "Type",
+                  val: rtLabel,
+                  icon: true,
+                  color: rtColor,
+                },
+                {
+                  key: ja ? "ボーナス" : ko ? "특수보너스" : "Bonus",
+                  val: rtBonus,
+                  icon: true,
+                  color: rtColor,
+                },
+                {
+                  key: ja ? "アーキ" : ko ? "아키타입" : "Archetype",
+                  val: archLabel,
+                  icon: false,
+                  color: "#7ecfff",
+                },
+                {
+                  key: "START HP",
+                  val: String(rogueHp),
+                  icon: false,
+                  color: "#3dffb0",
+                },
+              ] as const
+            ).map(({ key, val, icon, color }) => (
+              <div
+                key={key}
+                style={{
+                  background: "#020c18",
+                  border: `1px solid ${CYN_DIM}55`,
+                  borderRadius: 3,
+                  padding: "7px 9px",
+                  position: "relative",
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 3px",
+                    fontSize: 9,
+                    color: `${CYN}60`,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {key}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontFamily: "monospace",
+                    textShadow: `0 0 10px ${color}66`,
+                  }}
+                >
+                  {icon && rt === "energy" && <Zap size={11} />}
+                  {icon && rt === "attack" && <Swords size={11} />}
+                  {icon && rt === "defense" && <Shield size={11} />}
                   {val}
                 </p>
               </div>
