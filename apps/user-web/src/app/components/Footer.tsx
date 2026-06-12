@@ -17,7 +17,7 @@ function FooterContent() {
   const serviceLinks = [
     { to: "/", label: t("nav.home") },
     { to: "/community", label: t("nav.community") },
-    { to: "/kabemon", label: t("nav.kabemon") },
+    { to: "/kebomon", label: t("nav.kebomon") },
     { to: "/attendance", label: t("nav.attendance") },
     { to: "/live", label: t("nav.live") },
     { to: "/raid", label: t("nav.raid") },

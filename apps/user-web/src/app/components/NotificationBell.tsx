@@ -6,12 +6,15 @@ import { getStoredUser } from "../lib/auth";
 import { getSocket } from "../lib/socket";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
+import { type TranslationKey } from "../lib/i18n";
 
 type Notif = {
   id: string;
   type: "comment" | "achievement" | "title" | "attendance";
   title: string;
   body: string;
+  titleKey?: string | null;
+  bodyKey?: string | null;
   link: string | null;
   isRead: boolean;
   createdAt: string;
@@ -21,12 +24,25 @@ type Notif = {
 function timeAgo(iso: string, lang: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return lang === "ja" ? "たった今" : "방금";
-  if (m < 60) return lang === "ja" ? `${m}分前` : `${m}분 전`;
+  if (lang === "ja") {
+    if (m < 1) return "たった今";
+    if (m < 60) return `${m}分前`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}時間前`;
+    return `${Math.floor(h / 24)}日前`;
+  }
+  if (lang === "en") {
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
   const h = Math.floor(m / 60);
-  if (h < 24) return lang === "ja" ? `${h}時間前` : `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  return lang === "ja" ? `${d}日前` : `${d}일 전`;
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
 }
 
 function NotifIcon({ type }: { type: Notif["type"] }) {
@@ -36,7 +52,13 @@ function NotifIcon({ type }: { type: Notif["type"] }) {
   return <CalendarCheck className="h-4 w-4 text-green-400" />;
 }
 
-export default function NotificationBell({ navStyle = false }: { navStyle?: boolean }) {
+export default function NotificationBell({
+  navStyle = false,
+  floating = false,
+}: {
+  navStyle?: boolean;
+  floating?: boolean;
+}) {
   const { t, lang } = useLang();
   const { rewardSummary } = useAppData();
   const [open, setOpen] = useState(false);
@@ -130,6 +152,11 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
     }
   };
 
+  const getNotifText = (n: Notif) => ({
+    title: n.titleKey ? t(n.titleKey as TranslationKey) : n.title,
+    body: n.bodyKey ? t(n.bodyKey as TranslationKey) : n.body,
+  });
+
   const onClickItem = (n: Notif) => {
     if (!n.isLocal) {
       const u = getStoredUser();
@@ -142,8 +169,8 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
     if (n.link) navigate(n.link);
   };
 
-  const Dropdown = ({ pos }: { pos: string }) => (
-    <div className={`absolute ${pos} z-50 w-80 max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card shadow-xl`}>
+  const Dropdown = ({ posClass }: { posClass: string }) => (
+    <div className={`${posClass} z-50 w-80 max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card shadow-xl`}>
       <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
         <span className="text-sm font-bold">{t("notification.title")}</span>
         {items.length > 0 && (
@@ -173,10 +200,10 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-semibold">{n.title}</span>
+                  <span className="truncate text-sm font-semibold">{getNotifText(n).title}</span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(n.createdAt, lang)}</span>
                 </span>
-                <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.body}</span>
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">{getNotifText(n).body}</span>
               </span>
               {!n.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
               {!n.isLocal && (
@@ -194,6 +221,26 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
     </div>
   );
 
+  if (floating) {
+    return (
+      <div ref={ref}>
+        <button
+          onClick={toggle}
+          title={t("notification.title")}
+          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+        >
+          <Bell className="h-6 w-6" />
+          {displayUnread > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {displayUnread > 9 ? "9+" : displayUnread}
+            </span>
+          )}
+        </button>
+        {open && <Dropdown posClass="fixed bottom-24 right-6" />}
+      </div>
+    );
+  }
+
   if (navStyle) {
     return (
       <div ref={ref} className="relative w-full">
@@ -209,7 +256,7 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
             </span>
           )}
         </button>
-        {open && <Dropdown pos="left-[calc(100%+1rem)] top-0" />}
+        {open && <Dropdown posClass="absolute left-[calc(100%+1rem)] top-0" />}
       </div>
     );
   }
@@ -228,7 +275,7 @@ export default function NotificationBell({ navStyle = false }: { navStyle?: bool
           </span>
         )}
       </button>
-      {open && <Dropdown pos="right-0 top-full mt-2" />}
+      {open && <Dropdown posClass="absolute right-0 top-full mt-2" />}
     </div>
   );
 }

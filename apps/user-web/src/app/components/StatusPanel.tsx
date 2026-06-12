@@ -254,7 +254,7 @@ export default function StatusPanel() {
           {/* 장착 캐릭터 카드 */}
           <div
             className="rounded border border-border bg-muted/10 p-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
-            onClick={() => navigate("/kabemon")}
+            onClick={() => navigate("/kebomon")}
           >
             <p className="text-xs text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
               <Shield className="w-3 h-3" />{t("status.char")}

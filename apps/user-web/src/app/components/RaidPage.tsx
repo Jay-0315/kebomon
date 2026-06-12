@@ -1043,7 +1043,7 @@ export default function RaidPage() {
     if (state == null) return;
     if (prevHp.current != null && state.hp < prevHp.current) {
       setHit(true);
-      const t = setTimeout(() => setHit(false), 350);
+      const t = setTimeout(() => setHit(false), 380);
       prevHp.current = state.hp;
       return () => clearTimeout(t);
     }
@@ -1386,10 +1386,11 @@ export default function RaidPage() {
     <div className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-gradient-to-b from-background to-muted dark:from-gray-900 dark:to-gray-950">
       <style>{`
         @keyframes raid-bubble{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(10px)}}
-        @keyframes boss-hit{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+        @keyframes ut-boss-hit{0%{transform:translateX(0) scale(1.06);filter:brightness(50) saturate(0)}12%{transform:translateX(-9px);filter:brightness(14) saturate(0)}26%{transform:translateX(7px);filter:brightness(5) saturate(0.3)}44%{transform:translateX(-5px);filter:brightness(2.2) saturate(1)}62%{transform:translateX(4px);filter:brightness(1.3)}80%{transform:translateX(-2px);filter:brightness(1)}100%{transform:translateX(0);filter:brightness(1)}}
         @keyframes boss-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-        @keyframes damage-float{0%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-32px) scale(0.8)}}
+        @keyframes ut-dmg-pop{0%{opacity:1;transform:translateY(0) scale(1.8)}20%{opacity:1;transform:translateY(-8px) scale(1.3)}100%{opacity:0;transform:translateY(-46px) scale(0.85)}}
         @keyframes boss-talk-in{0%{opacity:0;transform:translateY(4px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0}}
+        @keyframes ut-panel-shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-5px)}35%{transform:translateX(5px)}55%{transform:translateX(-3px)}75%{transform:translateX(2px)}}
       `}</style>
 
       {/* header */}
@@ -1406,14 +1407,15 @@ export default function RaidPage() {
       </div>
 
       {/* boss panel */}
-      <div className="relative z-20 border-b border-border bg-white/60 px-4 py-3 backdrop-blur dark:bg-gray-900/50">
+      <div className="relative z-20 border-b border-border bg-white/60 px-4 py-3 backdrop-blur dark:bg-gray-900/50"
+        style={{ animation: hit ? "ut-panel-shake 0.38s" : undefined }}>
         <div className="flex items-center gap-3">
           {/* boss sprite + 데미지 이펙트 */}
           <div className="relative shrink-0">
             <div
               style={{
-                animation: state?.cleared ? undefined : hit ? "boss-hit 0.35s" : "boss-float 2.5s ease-in-out infinite",
-                filter: state?.cleared ? "grayscale(1) opacity(0.4)" : hit ? "brightness(2)" : undefined,
+                animation: state?.cleared ? undefined : hit ? "ut-boss-hit 0.38s ease-out" : "boss-float 2.5s ease-in-out infinite",
+                filter: state?.cleared ? "grayscale(1) opacity(0.4)" : undefined,
               }}
             >
               {state && <PixelCharacter characterId={state.boss.characterId} size={72} />}
@@ -1422,8 +1424,16 @@ export default function RaidPage() {
             {damageNums.map((n) => (
               <span
                 key={n.id}
-                className="pointer-events-none absolute -top-4 font-extrabold text-red-500 text-base"
-                style={{ left: `${n.x}%`, animation: "damage-float 0.9s ease-out forwards" }}
+                className="pointer-events-none absolute -top-6 font-extrabold text-xl"
+                style={{
+                  left: `${n.x}%`,
+                  animation: "ut-dmg-pop 0.9s ease-out forwards",
+                  color: "#faff00",
+                  textShadow: "0 0 10px #ffffff, 0 0 5px #ffd700, 1px 1px 0 #000",
+                  fontFamily: "monospace",
+                  letterSpacing: "0.04em",
+                  zIndex: 10,
+                }}
               >
                 -{n.dmg}
               </span>

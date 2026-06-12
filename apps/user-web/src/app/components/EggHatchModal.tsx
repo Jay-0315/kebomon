@@ -126,7 +126,7 @@ export function EggBatchModal({
             onClick={onClose}
             className="w-full py-3 rounded-xl bg-primary/80 text-white font-bold hover:bg-primary transition-colors shadow-lg"
           >
-            {t("kabemon.gacha_confirm")}
+            {t("kebomon.gacha_confirm")}
           </button>
         ) : (
           <>
@@ -236,7 +236,7 @@ export default function EggHatchModal({
               </p>
             )}
             <button onClick={onClose} className="mt-4 w-full rounded-full bg-primary py-2 font-semibold text-primary-foreground">
-              {t("kabemon.gacha_confirm")}
+              {t("kebomon.gacha_confirm")}
             </button>
           </>
         )}

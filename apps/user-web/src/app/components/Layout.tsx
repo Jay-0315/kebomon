@@ -1,7 +1,11 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, Radio, PanelLeftClose, PanelLeft, Swords, CalendarCheck, Trophy, Shield, Layers, Map } from "lucide-react";
+import {
+  Home, User, Settings, Menu, X, Gamepad2, LogOut, Newspaper, PanelLeftClose,
+  PanelLeft, Swords, CalendarCheck, Trophy, Shield, Layers, Map, ShoppingBag,
+  ChevronDown, BookOpen, Star, Zap,
+} from "lucide-react";
 import Footer from "./Footer";
-import { AchievementRevealModal } from "./KabemonPage";
+import { AchievementRevealModal } from "./KebomonPage";
 import { useState, useEffect } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -17,6 +21,16 @@ export default function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("sidebarCollapsed") === "1",
   );
+  const [kebemonOpen, setKebemonOpen] = useState(() => {
+    return typeof window !== "undefined" && localStorage.getItem("navKebemonOpen") !== "0";
+  });
+  const [missionOpen, setMissionOpen] = useState(() => {
+    return typeof window !== "undefined" && localStorage.getItem("navMissionOpen") !== "0";
+  });
+
+  const toggleKebemon = () => setKebemonOpen(p => { localStorage.setItem("navKebemonOpen", p ? "0" : "1"); return !p; });
+  const toggleMission = () => setMissionOpen(p => { localStorage.setItem("navMissionOpen", p ? "0" : "1"); return !p; });
+
   const toggleSidebarCollapsed = () => {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;
@@ -25,30 +39,14 @@ export default function Layout() {
     });
   };
   const { profile, rewardSummary, profilePhoto, pendingAchievements, clearPendingAchievements } = useAppData();
-  const { t } = useLang();
+  const { lang, t } = useLang();
+  const ko = lang === "ko";
+  const ja = lang === "ja";
 
-  const navItems = [
-    { path: "/", icon: Home, label: t("nav.home") },
-    { path: "/community", icon: Newspaper, label: t("nav.community") },
-    { path: "/attendance", icon: CalendarCheck, label: t("nav.attendance") },
-    { path: "/kabemon", icon: Gamepad2, label: t("nav.kabemon") },
-    { path: "/shop", icon: Shield, label: t("nav.shop") },
-    { path: "/live", icon: Radio, label: t("nav.live") },
-    { path: "/raid", icon: Swords, label: t("nav.raid") },
-    { path: "/colosseum", icon: Trophy, label: t("nav.colosseum") },
-    { path: "/rogue", icon: Layers, label: t("nav.rogue") },
-    { path: "/expedition", icon: Map, label: t("nav.expedition") },
-  ];
-
-  const settingsItems = [
-    { path: "/mypage", icon: User, label: t("nav.mypage") },
-    { path: "/settings", icon: Settings, label: t("nav.settings") },
-  ];
-
-  const isActive = (path: string) =>
-    path === "/"
-      ? location.pathname === "/"
-      : location.pathname.startsWith(path);
+  const isActive = (path: string, exact = false) =>
+    exact ? location.pathname === path : location.pathname.startsWith(path);
+  const isTabActive = (path: string, tab: string) =>
+    location.pathname.startsWith(path) && location.search.includes(`tab=${tab}`);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -60,53 +58,98 @@ export default function Layout() {
     window.location.reload();
   };
 
-  const NavLinks = ({ onNav }: { onNav?: () => void }) => (
-    <>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground px-3 mb-2">
-          {t("nav.menu")}
-        </p>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={onNav}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded transition-colors ${
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+  const NavLink = ({ to, icon: Icon, label, exact = false, onNav }: {
+    to: string; icon: React.ElementType; label: string; exact?: boolean; onNav?: () => void;
+  }) => {
+    const active = isActive(to, exact);
+    return (
+      <Link
+        to={to}
+        onClick={onNav}
+        className={`flex items-center gap-3 px-3 py-2 rounded transition-colors text-sm ${
+          active ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent"
+        }`}
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        <span>{label}</span>
+      </Link>
+    );
+  };
 
-      <div className="mt-8 space-y-1">
-        <p className="text-xs text-muted-foreground px-3 mb-2">
-          {t("nav.settings_section")}
-        </p>
-        {settingsItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={onNav}
-              className="flex items-center gap-3 px-3 py-2.5 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-            >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+  const NavTabLink = ({ to, tab, icon: Icon, label, onNav }: {
+    to: string; tab: string; icon: React.ElementType; label: string; onNav?: () => void;
+  }) => {
+    const active = isTabActive(to, tab) || (tab === "character" && location.pathname === to && !location.search);
+    return (
+      <Link
+        to={`${to}?tab=${tab}`}
+        onClick={onNav}
+        className={`flex items-center gap-3 pl-9 pr-3 py-2 rounded transition-colors text-sm ${
+          active ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent"
+        }`}
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        <span>{label}</span>
+      </Link>
+    );
+  };
+
+  const GroupHeader = ({ icon: Icon, label, open, onToggle }: {
+    icon: React.ElementType; label: string; open: boolean; onToggle: () => void;
+  }) => (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+    >
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="flex-1 text-left">{label}</span>
+      <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+    </button>
+  );
+
+  const NavLinks = ({ onNav }: { onNav?: () => void }) => (
+    <div className="space-y-0.5">
+      <NavLink to="/" icon={Home}         label={ko?"홈":ja?"ホーム":"Home"} exact onNav={onNav} />
+      <NavLink to="/community" icon={Newspaper}   label={ko?"커뮤니티":ja?"コミュニティ":"Community"} onNav={onNav} />
+      <NavLink to="/attendance" icon={CalendarCheck} label={ko?"출석":ja?"出席":"Attendance"} onNav={onNav} />
+      <NavLink to="/shop"       icon={ShoppingBag}  label={ko?"뽑기":ja?"ガチャ":"Gacha"} onNav={onNav} />
+
+      {/* 케모몬 group */}
+      <GroupHeader
+        icon={Gamepad2}
+        label={ko?"케보몬":ja?"ケボモン":"Kebomon"}
+        open={kebemonOpen}
+        onToggle={toggleKebemon}
+      />
+      {kebemonOpen && (
+        <div className="space-y-0.5">
+          <NavTabLink to="/kebomon" tab="character" icon={Zap}      label={ko?"강화":ja?"強化":"Enhance"} onNav={onNav} />
+          <NavTabLink to="/kebomon" tab="collection" icon={BookOpen} label={ko?"도감":ja?"図鑑":"Pokedex"} onNav={onNav} />
+          <NavTabLink to="/kebomon" tab="achievement" icon={Star}   label={ko?"업적":ja?"業績":"Achieve"} onNav={onNav} />
+        </div>
+      )}
+
+      {/* 미션 group */}
+      <GroupHeader
+        icon={Swords}
+        label={ko?"미션":ja?"ミッション":"Mission"}
+        open={missionOpen}
+        onToggle={toggleMission}
+      />
+      {missionOpen && (
+        <div className="space-y-0.5">
+          <NavLink to="/colosseum"  icon={Trophy}  label={ko?"콜로세움":ja?"コロシアム":"Colosseum"} onNav={onNav} />
+          <NavLink to="/raid"       icon={Shield}  label={ko?"보스레이드":ja?"ボスレイド":"Raid"} onNav={onNav} />
+          <NavLink to="/rogue"      icon={Layers}  label={ko?"로그라이크":ja?"ローグライク":"Roguelike"} onNav={onNav} />
+          <NavLink to="/expedition" icon={Map}     label={ko?"원정":ja?"遠征":"Expedition"} onNav={onNav} />
+        </div>
+      )}
+
+      <div className="mt-6 pt-4 border-t border-sidebar-border space-y-0.5">
+        <NavLink to="/mypage"   icon={User}     label={ko?"마이페이지":ja?"マイページ":"My Page"} onNav={onNav} />
+        <NavLink to="/settings" icon={Settings} label={ko?"설정":ja?"設定":"Settings"} onNav={onNav} />
       </div>
-    </>
+    </div>
   );
 
   return (
@@ -119,7 +162,6 @@ export default function Layout() {
       />
     )}
     <div className="min-h-screen bg-background flex">
-      {/* ── Desktop sidebar expand button (shown when collapsed) ── */}
       {isSidebarCollapsed && (
         <button
           onClick={toggleSidebarCollapsed}
@@ -130,59 +172,35 @@ export default function Layout() {
         </button>
       )}
 
-      {/* ── Desktop Sidebar ── */}
+      {/* Desktop Sidebar */}
       <aside
         className={`hidden lg:flex lg:flex-col w-56 bg-sidebar border-r border-sidebar-border fixed h-screen z-30 transition-transform duration-200 ${
           isSidebarCollapsed ? "-translate-x-full" : "translate-x-0"
         }`}
       >
-        {/* Logo */}
         <div className="p-6 border-b border-sidebar-border flex items-center justify-between gap-2">
-          <Link
-            to="/"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
-          >
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0">
             <img src="/logo(light).png" alt="Kebo" className="h-16 w-auto shrink-0 object-contain dark:hidden" />
             <img src="/logo(dark).png"  alt="Kebo" className="h-16 w-auto shrink-0 object-contain hidden dark:block" />
           </Link>
-          <button
-            onClick={toggleSidebarCollapsed}
-            title="사이드바 접기"
-            className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
+          <button onClick={toggleSidebarCollapsed} title="사이드바 접기" className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
             <PanelLeftClose className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Notification Bell */}
-        <div className="px-4 pt-1.5 pb-0.5">
-          <NotificationBell navStyle />
-        </div>
-
-        {/* Navigation */}
         <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
           <NavLinks />
         </nav>
 
-        {/* User Info + Logout */}
         <div className="p-4 border-t border-sidebar-border space-y-2">
-          <Link
-            to="/mypage"
-            className="flex items-center gap-3 p-2 rounded bg-sidebar-accent hover:bg-primary/10 transition-colors"
-          >
-            <UserAvatar
-              authorId={profile.id}
-              authorName={profile.name}
-              size="md"
-              photoUrl={profilePhoto}
-              borderId={rewardSummary.equippedBorderId ?? null}
-            />
+          <Link to="/mypage" className="flex items-center gap-3 p-2 rounded bg-sidebar-accent hover:bg-primary/10 transition-colors">
+            <UserAvatar authorId={profile.id} authorName={profile.name} size="md" photoUrl={profilePhoto} borderId={rewardSummary.equippedBorderId ?? null} />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{profile.name}</p>
               {rewardSummary.equippedTitleId ? (
                 <TitleBadge titleId={rewardSummary.equippedTitleId} size="xs" />
               ) : (
-                <p className="text-xs text-muted-foreground/60 truncate">{t("nav.no_title")}</p>
+                <p className="text-xs text-muted-foreground/60 truncate">{ko?"장착중인 칭호 없음":ja?"称号なし":"No title"}</p>
               )}
             </div>
           </Link>
@@ -191,89 +209,61 @@ export default function Layout() {
             className="w-full flex items-center gap-3 px-3 py-2 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
           >
             <LogOut className="w-4 h-4" />
-            {t("nav.logout")}
+            {ko?"로그아웃":ja?"ログアウト":"Logout"}
           </button>
         </div>
       </aside>
 
-      {/* ── Mobile Header ── */}
+      {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-sidebar border-b border-sidebar-border z-40 px-4 py-3">
         <div className="flex items-center justify-between">
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
-          >
+          <button onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)} className="text-foreground">
+            {isMobileSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <img src="/logo(light).png" alt="Kebo" className="h-10 w-auto object-contain dark:hidden" />
             <img src="/logo(dark).png"  alt="Kebo" className="h-10 w-auto object-contain hidden dark:block" />
           </Link>
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <button
-              onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-              className="text-foreground"
-            >
-              {isMobileSidebarOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* ── Mobile Sidebar Overlay ── */}
+      {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 mt-14"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        >
-          <aside
-            className="w-64 bg-sidebar h-full flex flex-col overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-40 mt-14" onClick={() => setIsMobileSidebarOpen(false)}>
+          <aside className="w-64 bg-sidebar h-full flex flex-col overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <nav className="flex-1 p-4">
               <NavLinks onNav={() => setIsMobileSidebarOpen(false)} />
             </nav>
-
             <div className="p-4 border-t border-sidebar-border space-y-2">
               <Link
                 to="/mypage"
                 onClick={() => setIsMobileSidebarOpen(false)}
                 className="flex items-center gap-3 p-2 rounded bg-sidebar-accent hover:bg-primary/10 transition-colors"
               >
-                <UserAvatar
-                  authorId={profile.id}
-                  authorName={profile.name}
-                  size="md"
-                  photoUrl={profilePhoto}
-                  borderId={rewardSummary.equippedBorderId ?? null}
-                />
+                <UserAvatar authorId={profile.id} authorName={profile.name} size="md" photoUrl={profilePhoto} borderId={rewardSummary.equippedBorderId ?? null} />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{profile.name}</p>
                   {rewardSummary.equippedTitleId ? (
                     <TitleBadge titleId={rewardSummary.equippedTitleId} size="xs" />
                   ) : (
-                    <p className="text-xs text-muted-foreground/60 truncate">{t("nav.no_title")}</p>
+                    <p className="text-xs text-muted-foreground/60 truncate">{ko?"장착중인 칭호 없음":ja?"称号なし":"No title"}</p>
                   )}
                 </div>
               </Link>
               <button
-                onClick={() => {
-                  setIsMobileSidebarOpen(false);
-                  handleLogout();
-                }}
+                onClick={() => { setIsMobileSidebarOpen(false); handleLogout(); }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
               >
                 <LogOut className="w-4 h-4" />
-                {t("nav.logout")}
+                {ko?"로그아웃":ja?"ログアウト":"Logout"}
               </button>
             </div>
           </aside>
         </div>
       )}
 
-      {/* ── Main Content ── */}
+      <NotificationBell floating />
+
       <main
         className={`flex-1 mt-14 lg:mt-0 overflow-x-hidden transition-all duration-200 ${
           isSidebarCollapsed ? "lg:ml-0" : "lg:ml-56"

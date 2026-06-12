@@ -223,15 +223,6 @@ export default function LiveChatPage() {
     };
   }, []);
 
-  // 입장 시 높이를 현재 innerHeight로 고정 — 키보드가 올라와도 레이아웃 불변
-  useEffect(() => {
-    if (view !== "room") return;
-    const el = containerRef.current;
-    if (!el) return;
-    el.style.height = `${window.innerHeight}px`;
-    return () => { el.style.height = ""; };
-  }, [view]);
-
   useEffect(() => {
     if (view !== "room") return;
     const MOVE_KEYS = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d","W","A","S","D"]);
@@ -387,7 +378,8 @@ export default function LiveChatPage() {
   }
 
   return (
-    <div ref={containerRef} className="fixed inset-x-0 top-0 z-40 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4">
+    <div ref={containerRef} className="relative flex flex-col overflow-hidden rounded-2xl shadow-2xl w-full" style={{ maxWidth: "56rem", height: "min(85vh, 700px)" }}>
       <ChannelBackground channelId={channelId} />
 
       <div className="relative z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
@@ -509,6 +501,7 @@ export default function LiveChatPage() {
           )}
         </button>
       </div>
+    </div>
     </div>
   );
 }

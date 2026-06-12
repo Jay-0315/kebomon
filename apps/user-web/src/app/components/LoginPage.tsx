@@ -112,21 +112,24 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
 function LangSwitcher() {
   const { lang } = useLang();
   const { updateSettings } = useAppData();
+  const options = [
+    { code: "ko" as const, label: "한국어" },
+    { code: "ja" as const, label: "日本語" },
+    { code: "en" as const, label: "English" },
+  ];
   return (
     <div className="flex items-center justify-center gap-2 mb-5 text-sm">
-      <button
-        onClick={() => void updateSettings({ language: "ko" })}
-        className={`px-2 py-0.5 rounded transition-colors ${lang === "ko" ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
-      >
-        한국어
-      </button>
-      <span className="text-border">|</span>
-      <button
-        onClick={() => void updateSettings({ language: "ja" })}
-        className={`px-2 py-0.5 rounded transition-colors ${lang === "ja" ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
-      >
-        日本語
-      </button>
+      {options.map((opt, i) => (
+        <div key={opt.code} className="flex items-center gap-2">
+          {i > 0 && <span className="text-border">|</span>}
+          <button
+            onClick={() => void updateSettings({ language: opt.code })}
+            className={`px-2 py-0.5 rounded transition-colors ${lang === opt.code ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {opt.label}
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
@@ -208,9 +211,7 @@ export default function LoginPage() {
         password,
       });
       setAuthSession(response.accessToken, response.user);
-      if (lang !== "ko") {
-        await api.patch(`/users/${response.user.id}/settings`, { language: lang }).catch(() => undefined);
-      }
+      await api.patch(`/users/${response.user.id}/settings`, { language: lang }).catch(() => undefined);
       window.location.assign(response.needsStarter ? "/starter" : "/");
     } catch {
       setErrorMessage(t("login.error"));

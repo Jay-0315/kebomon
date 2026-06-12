@@ -256,7 +256,7 @@ export default function MyPage() {
 
       {/* ── 케보몬 shortcut card ── */}
       <button
-        onClick={() => navigate("/kabemon")}
+        onClick={() => navigate("/kebomon")}
         className="w-full bg-card rounded-md border-2 border-primary/50 hover:border-primary p-4 transition-all hover:shadow-md group flex items-center gap-4 text-left"
       >
         <div className="shrink-0">
@@ -266,7 +266,7 @@ export default function MyPage() {
           <div className="flex items-center gap-1.5 mb-0.5">
             <Gamepad2 className="w-4 h-4 text-primary" />
             <span className="text-sm font-semibold">
-              {t("mypage.kabemon_link")}
+              {t("mypage.kebomon_link")}
             </span>
           </div>
           <p
@@ -280,7 +280,7 @@ export default function MyPage() {
           <p className="text-xs text-muted-foreground">
             {getRarityLabel(displayChar.rarity, lang)} ·{" "}
             {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length}{" "}
-            {t("kabemon.collection_count")} · {rewardSummary.missionPoints}P
+            {t("kebomon.collection_count")} · {rewardSummary.missionPoints}P
           </p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
@@ -415,31 +415,31 @@ export default function MyPage() {
             <div className="bg-muted rounded p-3 text-center">
               <CalendarCheck className="w-4 h-4 text-accent mx-auto mb-1" />
               <p className="text-xs text-muted-foreground mb-1">
-                {t("kabemon.attendance")}
+                {t("kebomon.attendance")}
               </p>
               <p className="text-lg font-bold">
                 {rewardSummary.attendanceDays}
                 <span className="text-sm font-normal text-muted-foreground">
-                  {t("kabemon.days")}
+                  {t("kebomon.days")}
                 </span>
               </p>
             </div>
             <div className="bg-muted rounded p-3 text-center">
               <Flame className="w-4 h-4 text-orange-400 mx-auto mb-1" />
               <p className="text-xs text-muted-foreground mb-1">
-                {t("kabemon.streak")}
+                {t("kebomon.streak")}
               </p>
               <p className="text-lg font-bold">
                 {rewardSummary.streakDays}
                 <span className="text-sm font-normal text-muted-foreground">
-                  {t("kabemon.days")}
+                  {t("kebomon.days")}
                 </span>
               </p>
             </div>
             <div className="bg-muted rounded p-3 text-center">
               <Gamepad2 className="w-4 h-4 text-primary/70 mx-auto mb-1" />
               <p className="text-xs text-muted-foreground mb-1">
-                {t("kabemon.collection_count")}
+                {t("kebomon.collection_count")}
               </p>
               <p className="text-lg font-bold">
                 {rewardSummary.ownedCharacterIds.length}

@@ -5,13 +5,13 @@ import {
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
-import { CHARACTERS, type CharacterType, type CharacterRarity, getCharName } from "../data/characters";
+import { CHARACTERS, ROGUE_TYPE_MAP, type CharacterType, type CharacterRarity, getCharName } from "../data/characters";
 import { useLang } from "../context/LangContext";
 import type { RogueMilestone } from "../types/domain";
 
 const FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 
-const C = {
+const C_DARK = {
   bg:        "#060d1a",
   panel:     "#0d1525",
   panelDark: "#081018",
@@ -24,6 +24,35 @@ const C = {
   green:     "#22c55e",
   blue:      "#3b82f6",
 };
+const C_LIGHT = {
+  bg:        "#1a2035",
+  panel:     "#222a45",
+  panelDark: "#151c30",
+  border:    "#2e3f60",
+  gold:      "#f59e0b",
+  text:      "#c8d4f0",
+  textBright:"#e6eeff",
+  textDim:   "#7888b0",
+  red:       "#ef4444",
+  green:     "#22c55e",
+  blue:      "#3b82f6",
+};
+
+// module-level alias for sub-components (CardView, HpBar, etc.)
+const C = C_DARK;
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+  );
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => setIsDark(el.classList.contains("dark")));
+    obs.observe(el, { attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
 
 const RARITY_STYLE: Record<string, { border: string; glow: string; badge: string }> = {
   common:    { border:"#475569", glow:"#1e293b44", badge:"#64748b" },
@@ -76,6 +105,7 @@ interface EnemyState extends EnemyDef {
 }
 interface GameState {
   phase: Phase; floor: number;
+  difficulty: Difficulty;
   mapLayout: { options: NodeType[] }[];
   chosenPath: NodeType[];
   playerHp: number; playerMaxHp: number;
@@ -87,6 +117,9 @@ interface GameState {
   log: string[]; rewardCards: CardDef[];
   shopItems: { card: CardDef; price: number; bought: boolean }[];
   turnCount: number;
+  chainPending: EnemyState | null;
+  cursedRest: boolean;
+  shopInflated: boolean;
 }
 
 // ── Card pool ─────────────────────────────────────────────────────────────
@@ -146,18 +179,37 @@ const CARDS: CardDef[] = [
   { id:"ancient_armor",name:"고대의 갑옷",  nameJa:"古代の鎧",          cost:3,type:"skill", rarity:"legendary",desc:"방어력 25, 힘 +2",   descJa:"シールド25・力+2",   archetype:"tank",    shield:25,strength:2 },
 ];
 
+// ── Difficulty ─────────────────────────────────────────────────────────────
+type Difficulty = "normal" | "hard" | "hell";
+const DIFF_HP_MULT:  Record<Difficulty, number> = { normal:1.0, hard:1.5, hell:2.2 };
+const DIFF_ATK_BONUS:Record<Difficulty, number> = { normal:0,   hard:4,   hell:10  };
+const DIFF_STR_BONUS:Record<Difficulty, number> = { normal:0,   hard:0,   hell:2   };
+const DIFF_GOLD_FIGHT:Record<Difficulty,number> = { normal:50,  hard:65,  hell:80  };
+const DIFF_GOLD_ELITE:Record<Difficulty,number> = { normal:75,  hard:95,  hell:115 };
+const DIFF_LEG_FLOOR: Record<Difficulty, number> = { normal:5,  hard:4,   hell:3   };
+const DIFF_EPIC_FLOOR:Record<Difficulty, number> = { normal:3,  hard:2,   hell:1   };
+
 // ── Enemies ────────────────────────────────────────────────────────────────
 const ENEMY_DEFS: EnemyDef[] = [
-  { id:"goblin",      name:"슬라임 고블린",  nameJa:"スライムゴブリン",  charType:"slime",  hp:30,  patterns:[{intent:"attack",value:6},{intent:"attack",value:6},{intent:"defend",value:0,shield:5},{intent:"attack",value:8}] },
-  { id:"skeleton",    name:"해골 전사",      nameJa:"スケルトン戦士",    charType:"ghost",  hp:38,  patterns:[{intent:"attack",value:7},{intent:"defend",value:0,shield:6},{intent:"attack",value:9},{intent:"attack",value:7}] },
-  { id:"orc",         name:"오크 투사",      nameJa:"オーク戦士",        charType:"bear",   hp:55,  patterns:[{intent:"attack",value:10},{intent:"attack",value:10},{intent:"defend",value:0,shield:8},{intent:"attack",value:13}] },
-  { id:"darkknight",  name:"흑기사",         nameJa:"黒騎士",            charType:"wolf",   hp:80,  patterns:[{intent:"defend",value:0,shield:10},{intent:"attack",value:12},{intent:"attack",value:12},{intent:"buff",value:0,strength:2},{intent:"attack",value:14}] },
-  { id:"poisonwitch", name:"독 마녀",        nameJa:"毒の魔女",          charType:"plant",  hp:65,  patterns:[{intent:"poison",value:7,poison:2},{intent:"poison",value:7,poison:2},{intent:"buff",value:0,strength:2},{intent:"attack",value:10}] },
-  { id:"shadowdragon",name:"그림자 드래곤",  nameJa:"シャドウドラゴン",  charType:"dragon", hp:95,  patterns:[{intent:"attack",value:14},{intent:"attack",value:14},{intent:"defend",value:0,shield:12},{intent:"attack",value:18},{intent:"defend",value:0,shield:8}] },
-  { id:"chaosboss",   name:"카오스 드래곤",  nameJa:"カオスドラゴン",    charType:"demon",  hp:160, isBoss:true, patterns:[{intent:"attack",value:16},{intent:"attack",value:16},{intent:"defend",value:0,shield:15},{intent:"poison",value:12,poison:3},{intent:"buff",value:0,strength:3},{intent:"attack",value:20}] },
+  // Normal tier
+  { id:"goblin",      name:"슬라임 고블린",  nameJa:"スライムゴブリン",  charType:"slime",   hp:30,  patterns:[{intent:"attack",value:6},{intent:"attack",value:6},{intent:"defend",value:0,shield:5},{intent:"attack",value:8}] },
+  { id:"skeleton",    name:"해골 전사",      nameJa:"スケルトン戦士",    charType:"ghost",   hp:38,  patterns:[{intent:"attack",value:7},{intent:"defend",value:0,shield:6},{intent:"attack",value:9},{intent:"attack",value:7}] },
+  { id:"orc",         name:"오크 투사",      nameJa:"オーク戦士",        charType:"bear",    hp:55,  patterns:[{intent:"attack",value:10},{intent:"attack",value:10},{intent:"defend",value:0,shield:8},{intent:"attack",value:13}] },
+  { id:"darkknight",  name:"흑기사",         nameJa:"黒騎士",            charType:"wolf",    hp:80,  patterns:[{intent:"defend",value:0,shield:10},{intent:"attack",value:12},{intent:"attack",value:12},{intent:"buff",value:0,strength:2},{intent:"attack",value:14}] },
+  { id:"poisonwitch", name:"독 마녀",        nameJa:"毒の魔女",          charType:"plant",   hp:65,  patterns:[{intent:"poison",value:7,poison:2},{intent:"poison",value:7,poison:2},{intent:"buff",value:0,strength:2},{intent:"attack",value:10}] },
+  { id:"shadowdragon",name:"그림자 드래곤",  nameJa:"シャドウドラゴン",  charType:"dragon",  hp:95,  patterns:[{intent:"attack",value:14},{intent:"attack",value:14},{intent:"defend",value:0,shield:12},{intent:"attack",value:18},{intent:"defend",value:0,shield:8}] },
+  // Hard+ tier
+  { id:"voidwarden",  name:"허공의 수호자",  nameJa:"虚空の守護者",      charType:"owl",     hp:110, patterns:[{intent:"defend",value:0,shield:14},{intent:"attack",value:13},{intent:"attack",value:13},{intent:"buff",value:0,strength:2},{intent:"attack",value:16}] },
+  { id:"irongolem",   name:"강철 골렘",      nameJa:"鋼鉄ゴーレム",      charType:"robot",   hp:120, patterns:[{intent:"attack",value:16},{intent:"defend",value:0,shield:18},{intent:"attack",value:16},{intent:"buff",value:0,strength:2},{intent:"attack",value:20}] },
+  // Hell tier
+  { id:"hellspawn",   name:"지옥의 자식",    nameJa:"地獄の子",          charType:"demon",   hp:130, patterns:[{intent:"poison",value:10,poison:3},{intent:"attack",value:14},{intent:"attack",value:14},{intent:"poison",value:12,poison:2},{intent:"buff",value:0,strength:3}] },
+  // Bosses
+  { id:"chaosboss",   name:"카오스 드래곤",  nameJa:"カオスドラゴン",    charType:"demon",   hp:160, isBoss:true, patterns:[{intent:"attack",value:16},{intent:"attack",value:16},{intent:"defend",value:0,shield:15},{intent:"poison",value:12,poison:3},{intent:"buff",value:0,strength:3},{intent:"attack",value:20}] },
+  { id:"infernodragon",name:"지옥 화염룡",  nameJa:"地獄炎竜",           charType:"phoenix", hp:280, isBoss:true, patterns:[{intent:"attack",value:22},{intent:"attack",value:22},{intent:"defend",value:0,shield:20},{intent:"poison",value:16,poison:4},{intent:"buff",value:0,strength:4},{intent:"attack",value:26},{intent:"attack",value:18}] },
 ];
 
 // ── Maps ───────────────────────────────────────────────────────────────────
+// Normal (7F)
 const FIGHT_POOL: string[][] = [
   ["goblin"],
   ["goblin","skeleton"],
@@ -174,14 +226,103 @@ const ELITE_POOL: string[][] = [
   ["shadowdragon"],
   ["shadowdragon"],
 ];
-function generateMap(): { options: NodeType[] }[] {
+// Hard (10F)
+const HARD_FIGHT_POOL: string[][] = [
+  ["goblin"],
+  ["goblin","skeleton"],
+  ["skeleton","orc"],
+  ["orc","darkknight"],
+  ["darkknight","poisonwitch"],
+  ["poisonwitch","shadowdragon"],
+  ["shadowdragon"],
+  ["shadowdragon","voidwarden"],
+  ["voidwarden","irongolem"],
+];
+const HARD_ELITE_POOL: string[][] = [
+  ["skeleton"],
+  ["orc"],
+  ["darkknight"],
+  ["poisonwitch"],
+  ["shadowdragon"],
+  ["voidwarden"],
+  ["voidwarden"],
+  ["irongolem"],
+  ["irongolem"],
+];
+// Hell (15F)
+const HELL_FIGHT_POOL: string[][] = [
+  ["goblin","skeleton"],
+  ["skeleton","orc"],
+  ["orc","darkknight"],
+  ["darkknight","poisonwitch"],
+  ["poisonwitch","shadowdragon"],
+  ["shadowdragon"],
+  ["shadowdragon","voidwarden"],
+  ["voidwarden"],
+  ["voidwarden","irongolem"],
+  ["irongolem"],
+  ["irongolem","hellspawn"],
+  ["hellspawn"],
+  ["hellspawn","irongolem"],
+  ["hellspawn"],
+];
+const HELL_ELITE_POOL: string[][] = [
+  ["orc"],
+  ["darkknight"],
+  ["poisonwitch"],
+  ["shadowdragon"],
+  ["voidwarden"],
+  ["voidwarden"],
+  ["irongolem"],
+  ["irongolem"],
+  ["hellspawn"],
+  ["hellspawn"],
+  ["hellspawn"],
+  ["hellspawn"],
+  ["hellspawn","irongolem"],
+  ["hellspawn"],
+];
+
+function ms(floor: number, alt: NodeType): NodeType {
+  return floor >= 3 && Math.random() < 0.65 ? "shop" : alt;
+}
+function generateMap(diff: Difficulty = "normal"): { options: NodeType[] }[] {
+  if (diff === "hard") return [
+    { options: shuffle(["fight","treasure"]              as NodeType[]) },
+    { options: shuffle(["fight","rest"]                  as NodeType[]) },
+    { options: shuffle(["fight","rest"]                  as NodeType[]) },
+    { options: shuffle(["elite","treasure"]              as NodeType[]) },
+    { options: shuffle(["fight", ms(4,"rest")]           as NodeType[]) },
+    { options: shuffle(["elite","rest"]                  as NodeType[]) },
+    { options: shuffle(["fight", ms(6,"treasure")]       as NodeType[]) },
+    { options: shuffle(["elite", ms(7,"rest")]           as NodeType[]) },
+    { options: shuffle([ms(8,"rest"),"fight"]            as NodeType[]) },
+    { options: ["boss" as NodeType] },
+  ];
+  if (diff === "hell") return [
+    { options: shuffle(["fight","treasure"]              as NodeType[]) },
+    { options: shuffle(["fight","rest"]                  as NodeType[]) },
+    { options: shuffle(["fight","rest"]                  as NodeType[]) },
+    { options: shuffle(["elite","treasure"]              as NodeType[]) },
+    { options: shuffle(["fight", ms(4,"rest")]           as NodeType[]) },
+    { options: shuffle(["elite", ms(5,"rest")]           as NodeType[]) },
+    { options: shuffle(["fight", ms(6,"treasure")]       as NodeType[]) },
+    { options: shuffle(["elite", ms(7,"rest")]           as NodeType[]) },
+    { options: shuffle(["fight", ms(8,"rest")]           as NodeType[]) },
+    { options: shuffle(["elite","treasure"]              as NodeType[]) },
+    { options: shuffle([ms(10,"fight"), ms(10,"rest")]   as NodeType[]) },
+    { options: shuffle(["elite","rest"]                  as NodeType[]) },
+    { options: shuffle(["fight","elite"]                 as NodeType[]) },
+    { options: shuffle([ms(13,"rest"), ms(13,"fight")]   as NodeType[]) },
+    { options: ["boss" as NodeType] },
+  ];
   return [
-    { options: shuffle(["fight","treasure"] as NodeType[]) },
-    { options: shuffle(["fight","shop"]     as NodeType[]) },
-    { options: shuffle(["fight","rest"]     as NodeType[]) },
-    { options: shuffle(["elite","treasure"] as NodeType[]) },
-    { options: shuffle(["elite","shop"]     as NodeType[]) },
-    { options: shuffle(["rest","fight"]     as NodeType[]) },
+    { options: shuffle(["fight","treasure"]              as NodeType[]) },
+    { options: shuffle(["fight","rest"]                  as NodeType[]) },
+    { options: shuffle(["fight","rest"]                  as NodeType[]) },
+    { options: shuffle(["elite", ms(3,"treasure")]       as NodeType[]) },
+    { options: shuffle([ms(4,"fight"),"rest"]            as NodeType[]) },
+    { options: shuffle(["rest","fight"]                  as NodeType[]) },
     { options: ["boss" as NodeType] },
   ];
 }
@@ -236,11 +377,12 @@ function makeStarterDeck(type: CharacterType): CardInstance[] {
   return shuffle(ids.map(id=>CARDS.find(c=>c.id===id)!).filter(Boolean)).map(toInst);
 }
 
-function pickRewards(floor: number, arch: string): CardDef[] {
-  const allowLeg = floor >= 5;
+function pickRewards(floor: number, arch: string, diff: Difficulty = "normal"): CardDef[] {
+  const allowLeg = floor >= DIFF_LEG_FLOOR[diff];
+  const allowEpicFloor = DIFF_EPIC_FLOOR[diff];
   const pool = CARDS.filter(c => {
     if (c.rarity==="legendary" && !allowLeg) return false;
-    if (c.rarity==="epic" && floor<3) return false;
+    if (c.rarity==="epic" && floor<allowEpicFloor) return false;
     return c.archetype===arch || c.archetype==="all";
   });
   const weighted: CardDef[] = [];
@@ -259,23 +401,34 @@ function pickRewards(floor: number, arch: string): CardDef[] {
   return res;
 }
 
-function makeShopItems(arch: string) {
+function makeShopItems(arch: string, inflated = false) {
   const pool = shuffle(CARDS.filter(c=>c.archetype===arch||c.archetype==="all")).slice(0,3);
-  return pool.map(card=>({ card, price: CARD_PRICE[card.rarity]??60, bought:false }));
+  const mult = inflated ? 1.5 : 1.0;
+  return pool.map(card=>({ card, price: Math.ceil((CARD_PRICE[card.rarity]??60) * mult / 10) * 10, bought:false }));
 }
 
-function spawnEnemyForFloor(floor: number, nodeType: "fight"|"elite"|"boss"): EnemyState {
+function spawnEnemyForFloor(floor: number, nodeType: "fight"|"elite"|"boss", diff: Difficulty = "normal"): EnemyState {
   let pool: string[];
   if (nodeType==="boss") {
-    pool = ["chaosboss"];
+    pool = diff === "hell" ? ["infernodragon"] : ["chaosboss"];
   } else if (nodeType==="elite") {
-    pool = ELITE_POOL[Math.min(floor, ELITE_POOL.length-1)];
+    const p = diff==="hell" ? HELL_ELITE_POOL : diff==="hard" ? HARD_ELITE_POOL : ELITE_POOL;
+    pool = p[Math.min(floor, p.length-1)];
   } else {
-    pool = FIGHT_POOL[Math.min(floor, FIGHT_POOL.length-1)];
+    const p = diff==="hell" ? HELL_FIGHT_POOL : diff==="hard" ? HARD_FIGHT_POOL : FIGHT_POOL;
+    pool = p[Math.min(floor, p.length-1)];
   }
   const id = pool[Math.floor(Math.random()*pool.length)];
   const def = ENEMY_DEFS.find(e=>e.id===id) ?? ENEMY_DEFS[0];
-  return { ...def, currentHp:def.hp, currentShield:0, currentStrength:0, poisonStacks:0, patternIdx:0 };
+  const hpMult = DIFF_HP_MULT[diff];
+  const atkBonus = DIFF_ATK_BONUS[diff];
+  const scaledPatterns = def.patterns.map(p => ({
+    ...p,
+    value: (p.intent==="attack"||p.intent==="poison") ? p.value+atkBonus : p.value,
+    strength: p.strength !== undefined ? p.strength+DIFF_STR_BONUS[diff] : p.strength,
+  }));
+  const scaledHp = Math.round(def.hp * hpMult);
+  return { ...def, hp:scaledHp, patterns:scaledPatterns, currentHp:scaledHp, currentShield:0, currentStrength:0, poisonStacks:0, patternIdx:0 };
 }
 
 // ── Card Component ─────────────────────────────────────────────────────────
@@ -407,19 +560,64 @@ export default function RoguePage() {
   const { rewardSummary, completeRogue } = useAppData();
   const { lang } = useLang();
   const ko = lang === "ko";
+  const isDark = useIsDark();
+  const C = isDark ? C_DARK : C_LIGHT;
 
   const equippedId = rewardSummary.equippedCharacterId ?? CHARACTERS[0].id;
   const myChar = CHARACTERS.find(c=>c.id===equippedId) ?? CHARACTERS[0];
   const arch = ARCHETYPE_MAP[myChar.type] ?? "all";
 
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [gs, setGs] = useState<GameState | null>(null);
   const [selIdx, setSelIdx] = useState<number | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
   const [logExpanded, setLogExpanded] = useState(false);
   const [rogueMilestones, setRogueMilestones] = useState<RogueMilestone[]>([]);
+  const [enemyHit, setEnemyHit] = useState(false);
+  const [playerHit, setPlayerHit] = useState(false);
+  const [rogueDmgNums, setRogueDmgNums] = useState<{id:number;dmg:number;side:"enemy"|"player"}[]>([]);
+  const [cardEffect, setCardEffect] = useState<{effectType:"attack"|"shield"|"heal"|"power";multiHit?:number;id:number}|null>(null);
+  const prevEnemyHpRef = useRef<number|null>(null);
+  const prevPlayerHpRef = useRef<number|null>(null);
   const victoryCountedRef = useRef(false);
   const completeRogueRef = useRef(completeRogue);
   completeRogueRef.current = completeRogue;
+
+  // 피격 이펙트 — gs 변경 시 HP 델타 감지
+  useEffect(() => {
+    if (!gs || gs.phase !== "battle") {
+      prevEnemyHpRef.current = null;
+      prevPlayerHpRef.current = null;
+      return;
+    }
+    const cleanups: Array<() => void> = [];
+
+    const enemyHp = gs.enemy?.currentHp ?? null;
+    if (enemyHp !== null && prevEnemyHpRef.current !== null && enemyHp < prevEnemyHpRef.current) {
+      const dmg = prevEnemyHpRef.current - enemyHp;
+      setEnemyHit(true);
+      const id = Date.now() + Math.random();
+      setRogueDmgNums(p => [...p.slice(-4), { id, dmg, side: "enemy" as const }]);
+      const t1 = setTimeout(() => setEnemyHit(false), 380);
+      const t2 = setTimeout(() => setRogueDmgNums(p => p.filter(n => n.id !== id)), 900);
+      cleanups.push(() => { clearTimeout(t1); clearTimeout(t2); });
+    }
+    prevEnemyHpRef.current = enemyHp;
+
+    const playerHp = gs.playerHp;
+    if (prevPlayerHpRef.current !== null && playerHp < prevPlayerHpRef.current) {
+      const dmg = prevPlayerHpRef.current - playerHp;
+      setPlayerHit(true);
+      const id = Date.now() + Math.random();
+      setRogueDmgNums(p => [...p.slice(-4), { id, dmg, side: "player" as const }]);
+      const t1 = setTimeout(() => setPlayerHit(false), 380);
+      const t2 = setTimeout(() => setRogueDmgNums(p => p.filter(n => n.id !== id)), 900);
+      cleanups.push(() => { clearTimeout(t1); clearTimeout(t2); });
+    }
+    prevPlayerHpRef.current = playerHp;
+
+    if (cleanups.length) return () => cleanups.forEach(fn => fn());
+  }, [gs]);
 
   useEffect(() => {
     if (gs?.phase === "victory" && !victoryCountedRef.current) {
@@ -440,19 +638,25 @@ export default function RoguePage() {
   const startRun = useCallback(() => {
     const maxHp = RARITY_HP[myChar.rarity] ?? 75;
     const deck = makeStarterDeck(myChar.type);
+    const rogueType = ROGUE_TYPE_MAP[myChar.type] ?? "energy";
+    const startEnergy    = rogueType === "energy"  ? 4 : 3;
+    const startStrength  = rogueType === "attack"  ? 1 : 0;
+    const startShield    = rogueType === "defense" ? 5 : 0;
     setGs({
       phase:"map", floor:-1,
-      mapLayout: generateMap(),
+      difficulty,
+      mapLayout: generateMap(difficulty),
       chosenPath: [],
       playerHp:maxHp, playerMaxHp:maxHp,
-      shield:0, strength:0, poison:0,
-      energy:3, maxEnergy:3,
+      shield:startShield, strength:startStrength, poison:0,
+      energy:startEnergy, maxEnergy:startEnergy,
       deck, hand:[], drawPile:shuffle(deck), discardPile:[],
       gold:0, enemy:null, log:[],
       rewardCards:[], shopItems:[], turnCount:0,
+      chainPending:null, cursedRest:false, shopInflated:false,
     });
     setSelIdx(null);
-  }, [myChar]);
+  }, [myChar, difficulty]);
 
   // ── Enter a map node ─────────────────────────────────────────────────────
   const enterNode = useCallback((floorIdx: number, nodeType: NodeType) => {
@@ -461,25 +665,47 @@ export default function RoguePage() {
       const newChosenPath = [...prev.chosenPath, nodeType];
 
       if (nodeType==="fight"||nodeType==="elite"||nodeType==="boss") {
-        const enemy = spawnEnemyForFloor(floorIdx, nodeType as "fight"|"elite"|"boss");
+        const enemy = spawnEnemyForFloor(floorIdx, nodeType as "fight"|"elite"|"boss", prev.difficulty);
         const drawPile = shuffle([...prev.deck]);
         const drawn = drawN([], drawPile, [], 5);
+        // 억까: 연전 - elite floor4+ 20% 확률로 2연전
+        const chainPending = (nodeType==="elite" && floorIdx >= 4 && Math.random() < 0.20)
+          ? spawnEnemyForFloor(floorIdx, "fight", prev.difficulty)
+          : null;
         return {
           ...prev, phase:"battle", floor:floorIdx,
           chosenPath:newChosenPath,
           shield:0, energy:prev.maxEnergy, enemy,
           hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
           log:[ko?"전투 시작!":"バトル開始！"], turnCount:1,
+          chainPending, cursedRest:false, shopInflated:false,
         };
       }
       if (nodeType==="treasure") {
-        return { ...prev, phase:"reward", floor:floorIdx, chosenPath:newChosenPath, rewardCards:pickRewards(floorIdx, arch) };
+        // 억까: 함정 보물 - 25% 확률로 적 매복
+        if (Math.random() < 0.25) {
+          const enemy = spawnEnemyForFloor(floorIdx, "fight", prev.difficulty);
+          const drawPile = shuffle([...prev.deck]);
+          const drawn = drawN([], drawPile, [], 5);
+          return {
+            ...prev, phase:"battle", floor:floorIdx, chosenPath:newChosenPath,
+            shield:0, energy:prev.maxEnergy, enemy,
+            hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
+            log:[ko?"⚠ 함정이다! 적이 숨어 있었다!":"⚠ トラップ！敵が潜んでいた！"], turnCount:1,
+            chainPending:null, cursedRest:false, shopInflated:false,
+          };
+        }
+        return { ...prev, phase:"reward", floor:floorIdx, chosenPath:newChosenPath, rewardCards:pickRewards(floorIdx, arch, prev.difficulty) };
       }
       if (nodeType==="shop") {
-        return { ...prev, phase:"shop", floor:floorIdx, chosenPath:newChosenPath, shopItems:makeShopItems(arch) };
+        // 억까: 바가지 상점 - 30% 확률로 가격 1.5배
+        const inflated = Math.random() < 0.30;
+        return { ...prev, phase:"shop", floor:floorIdx, chosenPath:newChosenPath, shopItems:makeShopItems(arch, inflated), shopInflated:inflated };
       }
       if (nodeType==="rest") {
-        return { ...prev, phase:"rest", floor:floorIdx, chosenPath:newChosenPath };
+        // 억까: 저주받은 휴식소 - floor4+ 25% 확률
+        const cursedRest = floorIdx >= 4 && Math.random() < 0.25;
+        return { ...prev, phase:"rest", floor:floorIdx, chosenPath:newChosenPath, cursedRest };
       }
       return prev;
     });
@@ -563,8 +789,17 @@ export default function RoguePage() {
         if (nodeType==="boss") {
           return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":"クリア！"], phase:"victory" };
         }
-        const goldGain = nodeType==="elite" ? 35 : 20;
-        const rewards = pickRewards(prev.floor, arch);
+        // 억까: 연전 처리
+        if (prev.chainPending) {
+          const chainDrawPile = shuffle([...prev.deck]);
+          const chainDrawn = drawN([], chainDrawPile, [], 5);
+          return { ...prev, playerHp, shield:0, strength, energy:prev.maxEnergy, enemy:prev.chainPending, chainPending:null,
+            hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
+            log:[...newLog, ko?"⚠ 연전! 새로운 적이 나타났다!":"⚠ 連戦！新たな敵が出現！"], turnCount:1,
+          };
+        }
+        const goldGain = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
+        const rewards = pickRewards(prev.floor, arch, prev.difficulty);
         return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":"撃破！"], phase:"reward", gold:prev.gold+goldGain, rewardCards:rewards };
       }
 
@@ -602,8 +837,18 @@ export default function RoguePage() {
         if (nodeType==="boss") {
           return { ...prev, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":"クリア！"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
         }
-        const goldGain = nodeType==="elite" ? 35 : 20;
-        return { ...prev, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+goldGain, rewardCards:pickRewards(prev.floor, arch), log:[...prev.log.slice(-5),...logs,ko?"처치!":"撃破！"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        // 억까: 연전 처리
+        if (prev.chainPending) {
+          const chainDrawPile = shuffle([...prev.deck]);
+          const chainDrawn = drawN([], chainDrawPile, [], 5);
+          return { ...prev, enemy:prev.chainPending, chainPending:null,
+            shield:0, energy:prev.maxEnergy,
+            hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
+            log:[...prev.log.slice(-3),...logs,ko?"⚠ 연전! 새로운 적이 나타났다!":"⚠ 連戦！新たな敵が出現！"], turnCount:1,
+          };
+        }
+        const goldGain = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
+        return { ...prev, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+goldGain, rewardCards:pickRewards(prev.floor, arch, prev.difficulty), log:[...prev.log.slice(-5),...logs,ko?"처치!":"撃破！"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
       }
 
       // Enemy action
@@ -689,8 +934,9 @@ export default function RoguePage() {
   const doRest = useCallback(() => {
     setGs(prev => {
       if (!prev) return prev;
-      const heal = Math.floor(prev.playerMaxHp * 0.3);
-      return { ...prev, playerHp: Math.min(prev.playerMaxHp, prev.playerHp+heal), phase:"map" };
+      const healPct = prev.cursedRest ? 0.10 : 0.30;
+      const heal = Math.floor(prev.playerMaxHp * healPct);
+      return { ...prev, playerHp: Math.min(prev.playerMaxHp, prev.playerHp+heal), phase:"map", cursedRest:false };
     });
   }, []);
 
@@ -701,6 +947,12 @@ export default function RoguePage() {
     @keyframes rogue-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
     @keyframes rogue-in{from{opacity:0;transform:scale(0.9) translateY(8px)}to{opacity:1;transform:none}}
     @keyframes rogue-slide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+    @keyframes ut-enemy-hit{0%{transform:translateX(0) scale(1.06);filter:brightness(50) saturate(0)}12%{transform:translateX(-9px);filter:brightness(14) saturate(0)}26%{transform:translateX(7px);filter:brightness(5) saturate(0.3)}44%{transform:translateX(-5px);filter:brightness(2.2) saturate(1)}62%{transform:translateX(4px);filter:brightness(1.3)}80%{transform:translateX(-2px);filter:brightness(1)}100%{transform:translateX(0);filter:brightness(1)}}
+    @keyframes ut-dmg-pop{0%{opacity:1;transform:translateY(0) scale(1.8)}20%{opacity:1;transform:translateY(-8px) scale(1.3)}100%{opacity:0;transform:translateY(-48px) scale(0.85)}}
+    @keyframes ut-player-flash{0%{opacity:0.55}100%{opacity:0}}
+    @keyframes ut-card-panel-flash{0%{opacity:0.85}50%{opacity:0.55}100%{opacity:0}}
+    @keyframes ut-card-icon{0%{opacity:0.95;transform:scale(0.3) rotate(-18deg)}28%{opacity:1;transform:scale(1.35) rotate(6deg)}60%{opacity:0.85;transform:scale(1.05) rotate(0)}100%{opacity:0;transform:scale(0.8) rotate(0)}}
+    @keyframes ut-multihit-badge{0%{opacity:0;transform:scale(0.4) translateY(4px)}30%{opacity:1;transform:scale(1.2) translateY(-2px)}70%{opacity:1;transform:scale(1) translateY(0)}100%{opacity:0;transform:scale(0.8) translateY(-6px)}}
     .rogue-card-hover:hover{transform:translateY(-6px)!important;box-shadow:0 8px 24px #00000055!important}
     .rogue-log::-webkit-scrollbar{display:none}
     .rogue-log{scrollbar-width:none;-ms-overflow-style:none}
@@ -757,7 +1009,7 @@ export default function RoguePage() {
             <div style={{flex:1}}>
               <p style={{margin:0,fontSize:16,fontWeight:800,color:C.textBright}}>{getCharName(myChar, lang)}</p>
               <p style={{margin:"2px 0 6px",fontSize:11,color:ac}}>{rarityLabel} · {archLabel[arch]}</p>
-              <div style={{display:"flex",gap:8}}>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:4,background:`${C.red}18`,borderRadius:6,padding:"3px 8px"}}>
                   <Heart size={11} color={C.red}/>
                   <span style={{fontSize:11,color:C.red,fontWeight:700}}>{RARITY_HP[myChar.rarity]??75}</span>
@@ -766,7 +1018,54 @@ export default function RoguePage() {
                   <Layers size={11} color="#22c55e"/>
                   <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>{ko?"덱 10장":"デッキ10枚"}</span>
                 </div>
+                {(()=>{
+                  const rt = ROGUE_TYPE_MAP[myChar.type]??"energy";
+                  const tColor = rt==="energy"?"#38bdf8":rt==="attack"?"#ef4444":"#3b82f6";
+                  const tIcon = rt==="energy"?<Swords size={11}/>:rt==="attack"?<Swords size={11}/>:<Shield size={11}/>;
+                  const tLabel = rt==="energy"?(ko?"에너지형":"エナジー型"):rt==="attack"?(ko?"공격형":"アタック型"):(ko?"방어형":"ディフェンス型");
+                  const tBonus = rt==="energy"?(ko?"+1에너지":"+1エナジー"):rt==="attack"?(ko?"+1힘":"+1力"):(ko?"+5방어":"+5シールド");
+                  return (
+                    <div style={{display:"flex",alignItems:"center",gap:4,background:`${tColor}18`,borderRadius:6,padding:"3px 8px"}}>
+                      <span style={{color:tColor,display:"flex"}}>{tIcon}</span>
+                      <span style={{fontSize:11,color:tColor,fontWeight:700}}>{tLabel} {tBonus}</span>
+                    </div>
+                  );
+                })()}
               </div>
+            </div>
+          </div>
+
+          {/* Difficulty selector */}
+          <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.08s ease-out both"}}>
+            <p style={{margin:"0 0 10px",color:C.textBright,fontWeight:700,fontSize:13}}>
+              {ko?"난이도 선택":"難易度選択"}
+            </p>
+            <div style={{display:"flex",gap:8}}>
+              {([
+                ["normal", ko?"노말":"ノーマル", ko?"7스테이지 · 입문":"7ステージ・入門", "#22c55e", 7],
+                ["hard",   ko?"하드":"ハード",   ko?"10스테이지 · 고급":"10ステージ・上級","#f59e0b",10],
+                ["hell",   ko?"지옥":"ヘル",     ko?"15스테이지 · 극한":"15ステージ・極限","#ef4444",15],
+              ] as [Difficulty, string, string, string, number][]).map(([d, label, desc, col, stages]) => {
+                const active = difficulty === d;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDifficulty(d)}
+                    style={{
+                      flex:1, borderRadius:8, padding:"10px 6px",
+                      background: active ? `${col}22` : "transparent",
+                      border:`2px solid ${active ? col : C.border}`,
+                      cursor:"pointer", fontFamily:FONT, textAlign:"center" as const,
+                      boxShadow: active ? `0 0 12px ${col}44` : "none",
+                      transition:"all 0.15s",
+                    }}
+                  >
+                    <p style={{margin:"0 0 2px",fontSize:13,fontWeight:900,color: active ? col : C.textDim}}>{label}</p>
+                    <p style={{margin:"0 0 4px",fontSize:9,color:active?col:C.textDim,fontWeight:600}}>{stages}{ko?"스테이지":"ステージ"}</p>
+                    <p style={{margin:0,fontSize:9,color:C.textDim,lineHeight:1.3}}>{desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -774,7 +1073,6 @@ export default function RoguePage() {
           <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:16,fontSize:12,color:C.textDim,animation:"rogue-in 0.4s 0.1s ease-out both"}}>
             <p style={{margin:"0 0 8px",color:C.textBright,fontWeight:700}}>{ko?"규칙":"ルール"}</p>
             {[
-              ko?"10개의 방을 클리어해 최종 보스를 처치하세요":"10部屋をクリアして最終ボスを倒そう",
               ko?"전투 후 카드 3장 중 1장을 선택해 덱에 추가":"戦闘後、カード3枚から1枚をデッキに追加",
               ko?"에너지를 소비해 카드를 사용":"エナジーを消費してカードを使用",
               ko?"매 턴 방어력은 초기화됩니다":"毎ターン防御力はリセットされます",
@@ -814,9 +1112,11 @@ export default function RoguePage() {
       rest:     [ko?"휴식":"休憩",          "#60a5fa"],
       boss:     [ko?"최종 보스":"最終ボス", "#ec4899"],
     };
+    const eg = DIFF_GOLD_ELITE[gs.difficulty];
+    const fg = DIFF_GOLD_FIGHT[gs.difficulty];
     const nodeDesc: Record<NodeType,string> = {
-      fight:    ko?"카드 보상":"カード報酬",
-      elite:    ko?"35G + 카드":"35G+カード",
+      fight:    ko?`${fg}G + 카드`:`${fg}G+カード`,
+      elite:    ko?`${eg}G + 카드`:`${eg}G+カード`,
       treasure: ko?"카드 선택":"カード選択",
       shop:     ko?"카드 구매":"購入",
       rest:     ko?"HP 30% 회복":"HP30%回復",
@@ -832,6 +1132,15 @@ export default function RoguePage() {
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <Layers size={18} color={C.gold}/>
             <span style={{color:C.gold,fontWeight:800,fontSize:15}}>CARD EXPEDITION</span>
+            <span style={{
+              fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:4,
+              background: gs.difficulty==="hell"?"#ef444422":gs.difficulty==="hard"?"#f59e0b22":"#22c55e22",
+              color: gs.difficulty==="hell"?"#ef4444":gs.difficulty==="hard"?"#f59e0b":"#22c55e",
+              border:`1px solid ${gs.difficulty==="hell"?"#ef444444":gs.difficulty==="hard"?"#f59e0b44":"#22c55e44"}`,
+            }}>
+              {ko ? (gs.difficulty==="hell"?"지옥":gs.difficulty==="hard"?"하드":"노말")
+                  : (gs.difficulty==="hell"?"ヘル":gs.difficulty==="hard"?"ハード":"ノーマル")}
+            </span>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:4,background:"#f59e0b18",borderRadius:6,padding:"4px 8px"}}>
@@ -945,11 +1254,54 @@ export default function RoguePage() {
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",padding:12,gap:10,maxWidth:640,margin:"0 auto"}}>
         <style>{`${css} .rogue-card-hover{transition:transform 0.12s,box-shadow 0.12s}`}</style>
 
+        {/* 플레이어 피격 레드 플래시 */}
+        {playerHit&&(
+          <div style={{position:"fixed",inset:0,zIndex:50,background:"rgba(220,0,0,0.28)",animation:"ut-player-flash 0.38s ease-out forwards",pointerEvents:"none"}}/>
+        )}
+        {rogueDmgNums.filter(n=>n.side==="player").map(n=>(
+          <span key={n.id} style={{position:"fixed",top:"42%",left:"50%",transform:"translateX(-50%)",
+            fontWeight:900,fontSize:28,color:"#ff4444",
+            textShadow:"0 0 12px #ff0000,0 0 6px #ff8888,1px 1px 0 #000",
+            animation:"ut-dmg-pop 0.9s ease-out forwards",pointerEvents:"none",fontFamily:"monospace",zIndex:60,whiteSpace:"nowrap"}}>
+            -{n.dmg}
+          </span>
+        ))}
+
         {/* Enemy area */}
+        <div style={{position:"relative"}}>
+        {cardEffect?.effectType==="attack" && (
+          <div style={{
+            position:"absolute",inset:0,zIndex:25,borderRadius:12,overflow:"hidden",
+            pointerEvents:"none",
+            background:"rgba(239,68,68,0.18)",
+            animation:"ut-card-panel-flash 0.55s ease-out forwards",
+          }}>
+            <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+              <div style={{animation:"ut-card-icon 0.55s ease-out forwards",filter:"drop-shadow(0 0 10px rgba(239,68,68,0.95))",color:"rgba(239,68,68,0.95)",display:"flex"}}>
+                <Swords size={38}/>
+              </div>
+              {cardEffect.multiHit && cardEffect.multiHit > 1 && (
+                <span style={{fontSize:15,fontWeight:900,color:"#faff00",fontFamily:"monospace",
+                  textShadow:"0 0 8px #fff,1px 1px 0 #000",
+                  animation:"ut-multihit-badge 0.55s ease-out forwards"}}>×{cardEffect.multiHit}</span>
+              )}
+            </div>
+          </div>
+        )}
         <div style={{background:C.panelDark,border:`1px solid #3a0a0a`,borderRadius:12,padding:14,animation:"rogue-in 0.3s ease-out both"}}>
           <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
-            <div style={{flexShrink:0,animation:"rogue-float 2.5s ease-in-out infinite"}}>
-              <PixelSprite type={e.charType} colors={CHARACTERS.find(c=>c.type===e.charType)?.colors ?? {p:"#888",s:"#666",a:"#aaa"}} characterId={0} rarity="common" size={64}/>
+            <div style={{position:"relative",flexShrink:0}}>
+              <div style={{animation:enemyHit?"ut-enemy-hit 0.38s ease-out":"rogue-float 2.5s ease-in-out infinite"}}>
+                <PixelSprite type={e.charType} colors={CHARACTERS.find(c=>c.type===e.charType)?.colors ?? {p:"#888",s:"#666",a:"#aaa"}} characterId={0} rarity="common" size={64}/>
+              </div>
+              {rogueDmgNums.filter(n=>n.side==="enemy").map(n=>(
+                <span key={n.id} style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",
+                  fontWeight:900,fontSize:22,color:"#faff00",
+                  textShadow:"0 0 10px #fff,0 0 5px #ffd700,1px 1px 0 #000",
+                  animation:"ut-dmg-pop 0.9s ease-out forwards",pointerEvents:"none",fontFamily:"monospace",whiteSpace:"nowrap"}}>
+                  -{n.dmg}
+                </span>
+              ))}
             </div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -985,6 +1337,7 @@ export default function RoguePage() {
             <IntentBadge pattern={nextP} ko={ko}/>
           </div>
         </div>
+        </div>{/* /enemy wrapper */}
 
         {/* Battle log */}
         <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden"}}>
@@ -1022,6 +1375,28 @@ export default function RoguePage() {
         )}
 
         {/* Player status */}
+        <div style={{position:"relative"}}>
+        {cardEffect && cardEffect.effectType !== "attack" && (() => {
+          const cfg = {
+            shield: { bg:"rgba(96,165,250,0.20)",  icon:<Shield size={38}/>,  glow:"rgba(96,165,250,0.95)",  color:"rgba(96,165,250,0.95)"  },
+            heal:   { bg:"rgba(74,222,128,0.22)",   icon:<Heart size={38}/>,   glow:"rgba(74,222,128,0.95)",  color:"rgba(74,222,128,0.95)"  },
+            power:  { bg:"rgba(251,191,36,0.22)",   icon:<Star size={38}/>,    glow:"rgba(251,191,36,0.95)",  color:"rgba(251,191,36,0.95)"  },
+          }[cardEffect.effectType] ?? { bg:"rgba(96,165,250,0.20)", icon:<Shield size={38}/>, glow:"rgba(96,165,250,0.95)", color:"rgba(96,165,250,0.95)" };
+          return (
+            <div style={{
+              position:"absolute",inset:0,zIndex:25,borderRadius:10,overflow:"hidden",
+              pointerEvents:"none",
+              background:cfg.bg,
+              animation:"ut-card-panel-flash 0.55s ease-out forwards",
+            }}>
+              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{animation:"ut-card-icon 0.55s ease-out forwards",filter:`drop-shadow(0 0 10px ${cfg.glow})`,color:cfg.color,display:"flex"}}>
+                  {cfg.icon}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
             <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
@@ -1056,6 +1431,7 @@ export default function RoguePage() {
           </div>
           <HpBar hp={gs.playerHp} max={gs.playerMaxHp}/>
         </div>
+        </div>{/* /player status wrapper */}
 
         {/* How-to hint */}
         <div style={{display:"flex",flexDirection:"column",gap:4,padding:"4px 2px",opacity:0.45}}>
@@ -1074,8 +1450,19 @@ export default function RoguePage() {
                   card={card}
                   canPlay={gs.energy >= card.cost}
                   onClick={() => {
-                    if (selIdx===i) { playCard(i); setSelIdx(null); }
-                    else setSelIdx(i);
+                    if (selIdx===i) {
+                      if (gs.energy >= card.cost) {
+                        const effectType: "attack"|"shield"|"heal"|"power" =
+                          card.type === "power" ? "power"
+                          : card.heal ? "heal"
+                          : card.type === "skill" ? "shield"
+                          : "attack";
+                        const id = Date.now();
+                        setCardEffect({ effectType, multiHit: card.multiHit, id });
+                        setTimeout(() => setCardEffect(c => c?.id === id ? null : c), 600);
+                      }
+                      playCard(i); setSelIdx(null);
+                    } else setSelIdx(i);
                   }}
                   selected={selIdx===i}
                 />
@@ -1147,9 +1534,16 @@ export default function RoguePage() {
         <style>{css}</style>
         <div style={{textAlign:"center"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:4}}>
-            <ShoppingCart size={20} color="#22c55e"/>
-            <p style={{margin:0,fontSize:20,fontWeight:900,color:"#22c55e"}}>{ko?"상점":"商店"}</p>
+            <ShoppingCart size={20} color={gs.shopInflated?"#f59e0b":"#22c55e"}/>
+            <p style={{margin:0,fontSize:20,fontWeight:900,color:gs.shopInflated?"#f59e0b":"#22c55e"}}>
+              {gs.shopInflated?(ko?"바가지 상점 ⚠":"ぼったくり商店 ⚠"):(ko?"상점":"商店")}
+            </p>
           </div>
+          {gs.shopInflated && (
+            <p style={{margin:"0 0 4px",fontSize:12,color:"#fbbf24",fontWeight:700}}>
+              {ko?"상인이 가격을 올려놨다... 모든 가격 +50%":"商人が値段を上げた…全価格+50%"}
+            </p>
+          )}
           <p style={{margin:0,fontSize:13,color:C.gold,fontWeight:700}}>{ko?`보유 골드: ${gs.gold}G`:`所持ゴールド: ${gs.gold}G`}</p>
         </div>
         <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center"}}>
@@ -1185,20 +1579,27 @@ export default function RoguePage() {
   // REST
   // ════════════════════════════════════════════════════════════
   if (gs.phase === "rest") {
-    const healAmt = Math.floor(gs.playerMaxHp * 0.3);
+    const healAmt = Math.floor(gs.playerMaxHp * (gs.cursedRest ? 0.10 : 0.30));
     return (
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20,gap:20}}>
         <style>{css}</style>
-        <Flame size={48} color="#60a5fa" style={{animation:"rogue-float 2s ease-in-out infinite"}}/>
+        <Flame size={48} color={gs.cursedRest?"#a855f7":"#60a5fa"} style={{animation:"rogue-float 2s ease-in-out infinite"}}/>
         <div style={{textAlign:"center"}}>
-          <p style={{margin:0,fontSize:20,fontWeight:900,color:"#60a5fa"}}>{ko?"모닥불":"焚き火"}</p>
+          <p style={{margin:0,fontSize:20,fontWeight:900,color:gs.cursedRest?"#a855f7":"#60a5fa"}}>
+            {gs.cursedRest?(ko?"저주받은 모닥불":"呪われた焚き火"):(ko?"모닥불":"焚き火")}
+          </p>
+          {gs.cursedRest && (
+            <p style={{margin:"4px 0",fontSize:12,color:"#c084fc",fontWeight:700}}>
+              {ko?"불길한 기운... 회복량이 크게 감소했다":"不吉な気配…回復量が大幅に減少した"}
+            </p>
+          )}
           <p style={{margin:"4px 0",fontSize:13,color:C.textDim}}>{ko?`현재 HP: ${gs.playerHp} / ${gs.playerMaxHp}`:`現在HP: ${gs.playerHp} / ${gs.playerMaxHp}`}</p>
         </div>
         <button
           onClick={doRest}
-          style={{background:"#082030",border:"2px solid #60a5fa",borderRadius:10,padding:"12px 28px",color:"#60a5fa",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:FONT}}
+          style={{background:gs.cursedRest?"#1a0830":"#082030",border:`2px solid ${gs.cursedRest?"#a855f7":"#60a5fa"}`,borderRadius:10,padding:"12px 28px",color:gs.cursedRest?"#a855f7":"#60a5fa",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:FONT}}
         >
-          {ko?`HP ${healAmt} 회복하기 (30%)`:`HP ${healAmt} 回復する（30%）`}
+          {ko?`HP ${healAmt} 회복하기 (${gs.cursedRest?10:30}%)`:`HP ${healAmt} 回復する（${gs.cursedRest?10:30}%）`}
         </button>
       </div>
     );

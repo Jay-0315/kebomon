@@ -92,7 +92,7 @@ function MythicAnimatedText({ text, size }: { text: string; size: "xs" | "sm" | 
 // 인라인 keyframes는 global CSS에서 정의 필요 - index.css에 추가 필요
 // @keyframes titleShimmer { to { background-position: 200% center; } }
 
-// 칭호 선택 그리드 - MyPage / KabemonPage 내에서 사용
+// 칭호 선택 그리드 - MyPage / KebomonPage 내에서 사용
 export type TitleUserStats = {
   raid_count?: number;
   attendance?: number;
@@ -238,7 +238,7 @@ export function TitleSelector({
                         </button>
                       )}
                       {isEquipped && (
-                        <span className="shrink-0 text-[10px] font-semibold text-primary flex items-center gap-0.5"><Check className="w-2.5 h-2.5" />{t("kabemon.equipped")}</span>
+                        <span className="shrink-0 text-[10px] font-semibold text-primary flex items-center gap-0.5"><Check className="w-2.5 h-2.5" />{t("kebomon.equipped")}</span>
                       )}
                     </div>
                   );

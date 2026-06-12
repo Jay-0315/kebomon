@@ -141,6 +141,39 @@ export const GACHA_RATES: Record<CharacterRarity, number> = {
 export const GACHA_COST_SINGLE = 120;
 export const GACHA_COST_TEN = 1200;
 
+// ── Roguelike character archetype ─────────────────────────────────────────
+export type RogueArchetype = "energy" | "attack" | "defense";
+
+export const ROGUE_TYPE_MAP: Record<CharacterType, RogueArchetype> = {
+  // 에너지형 (+1 시작 에너지): 민첩·기술·지능 계열 10종
+  cat: "energy", fox: "energy", rabbit: "energy", monkey: "energy", raven: "energy",
+  deer: "energy", robot: "energy", slime: "energy", fish: "energy", unicorn: "energy",
+  // 공격형 (+1 시작 힘): 공격·사냥·마법 계열 10종
+  wolf: "attack", tiger: "attack", lion: "attack", bear: "attack", eagle: "attack",
+  boar: "attack", ghost: "attack", owl: "attack", dragon: "attack", demon: "attack",
+  // 방어형 (+5 시작 방어): 방어·자연·회복 계열 10종
+  turtle: "defense", elephant: "defense", whale: "defense", beetle: "defense", crocodile: "defense",
+  angel: "defense", phoenix: "defense", plant: "defense", snake: "defense", horse: "defense",
+};
+
+// ── Per-rarity base stats (for status display) ────────────────────────────
+export const RARITY_RAID_STATS: Record<CharacterRarity, { atk: number; crit: number }> = {
+  common:    { atk: 50,  crit: 5  },
+  uncommon:  { atk: 70,  crit: 8  },
+  rare:      { atk: 95,  crit: 12 },
+  epic:      { atk: 125, crit: 16 },
+  legendary: { atk: 160, crit: 22 },
+  mythic:    { atk: 200, crit: 30 },
+};
+export const RARITY_COL_STATS: Record<CharacterRarity, { hp: number; def: number; spd: number }> = {
+  common:    { hp: 400,  def: 30,  spd: 50  },
+  uncommon:  { hp: 520,  def: 45,  spd: 65  },
+  rare:      { hp: 660,  def: 65,  spd: 80  },
+  epic:      { hp: 820,  def: 90,  spd: 95  },
+  legendary: { hp: 1000, def: 120, spd: 110 },
+  mythic:    { hp: 1200, def: 160, spd: 130 },
+};
+
 export const CHARACTER_JP_NAMES: Record<number, string> = {
   1: "アモルフェクス",
   2: "シェイドヴェイル",

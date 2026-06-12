@@ -3,7 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { NotificationGateway } from "../gateway/notification.gateway";
 import * as webpush from "web-push";
 
-export type NotificationType = "comment" | "achievement";
+export type NotificationType = "comment" | "achievement" | "title";
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -49,8 +49,12 @@ export class NotificationsService implements OnModuleInit {
     type: NotificationType;
     title: string;
     body: string;
+    titleKey?: string;
+    bodyKey?: string;
     titleJa?: string;
     bodyJa?: string;
+    titleEn?: string;
+    bodyEn?: string;
     link?: string | null;
   }) {
     const settings = await this.prisma.appSetting.findUnique({
@@ -58,8 +62,14 @@ export class NotificationsService implements OnModuleInit {
       select: { language: true },
     });
     const lang = settings?.language ?? "ko";
-    const title = lang === "ja" && input.titleJa ? input.titleJa : input.title;
-    const body = lang === "ja" && input.bodyJa ? input.bodyJa : input.body;
+    const title =
+      lang === "ja" && input.titleJa ? input.titleJa
+      : lang === "en" && input.titleEn ? input.titleEn
+      : input.title;
+    const body =
+      lang === "ja" && input.bodyJa ? input.bodyJa
+      : lang === "en" && input.bodyEn ? input.bodyEn
+      : input.body;
 
     const notif = await this.prisma.notification.create({
       data: {
@@ -67,6 +77,9 @@ export class NotificationsService implements OnModuleInit {
         type: input.type,
         title: title.slice(0, 120),
         body: body.slice(0, 255),
+        // titleKey/bodyKey 저장 (마이그레이션 후 적용됨 — migration.sql 참조)
+        ...(input.titleKey ? { titleKey: input.titleKey } : {}),
+        ...(input.bodyKey ? { bodyKey: input.bodyKey } : {}),
         link: input.link ?? null,
       },
     });
@@ -149,13 +162,16 @@ export class NotificationsService implements OnModuleInit {
 
   private serialize(n: {
     id: bigint; userId: string; type: string; title: string;
-    body: string; link: string | null; isRead: boolean; createdAt: Date;
+    body: string; titleKey?: string | null; bodyKey?: string | null;
+    link: string | null; isRead: boolean; createdAt: Date;
   }) {
     return {
       id: n.id.toString(),
       type: n.type,
       title: n.title,
       body: n.body,
+      titleKey: n.titleKey ?? null,
+      bodyKey: n.bodyKey ?? null,
       link: n.link,
       isRead: n.isRead,
       createdAt: n.createdAt.toISOString(),

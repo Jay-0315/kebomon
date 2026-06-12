@@ -1136,9 +1136,13 @@ export class RewardsService {
           type: "achievement",
           title: "업적 달성!",
           body: "새로운 케보몬을 획득했어요. 도감에서 확인해보세요.",
+          titleKey: "notification.achievement_title",
+          bodyKey: "notification.achievement_body",
           titleJa: "実績達成！",
           bodyJa: "新しいケボモンを獲得しました。図鑑で確認してみてください。",
-          link: "/kabemon",
+          titleEn: "Achievement Unlocked!",
+          bodyEn: "New Kebomon obtained. Check your Pokédex!",
+          link: "/kebomon",
         }).catch(() => undefined);
       }
     }
@@ -1228,8 +1232,12 @@ export class RewardsService {
         type: "achievement",
         title: `시즌 ${seasonId} 랭킹 칭호 획득!`,
         body: "시즌 최종 랭킹 칭호가 지급되었습니다. 칭호 목록에서 확인하세요.",
+        titleKey: "notification.season_title",
+        bodyKey: "notification.season_body",
         titleJa: `シーズン${seasonId} ランキング称号獲得！`,
         bodyJa: "シーズン最終ランキング称号が付与されました。称号一覧で確認してください。",
+        titleEn: `Season ${seasonId} Ranking Title Earned!`,
+        bodyEn: "Season final ranking title awarded. Check your titles!",
         link: "/mypage?titles=1",
       }).catch(() => undefined);
     }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Map, Lock, Clock, Users, Star, CheckCircle2,
   ChevronRight, AlertCircle, RefreshCw, Package, X,
-  Castle, Landmark, Waves, Flame, HelpCircle,
+  Castle, Landmark, Waves, Flame, HelpCircle, Swords, Trophy,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -12,7 +12,7 @@ import { useLang } from "../context/LangContext";
 // ── Style constants ─────────────────────────────────────────────────────────
 const FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 
-const C = {
+const C_DARK = {
   bg:        "#07100a",
   panel:     "#0d1a12",
   panelDark: "#081010",
@@ -24,6 +24,33 @@ const C = {
   green:     "#22c55e",
   red:       "#ef4444",
 };
+const C_LIGHT = {
+  bg:        "#162218",
+  panel:     "#1e3020",
+  panelDark: "#111c14",
+  border:    "#2a4030",
+  gold:      "#f59e0b",
+  text:      "#c8d4c0",
+  textBright:"#e0eedd",
+  textDim:   "#7a9080",
+  green:     "#22c55e",
+  red:       "#ef4444",
+};
+// module-level alias for components defined outside the main function
+const C = C_DARK;
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+  );
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => setIsDark(el.classList.contains("dark")));
+    obs.observe(el, { attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
 
 const DIFF_COLOR: Record<string, string> = {
   low:    "#22c55e",
@@ -342,7 +369,7 @@ function RewardInfoPopup({ ko, onClose }: { ko: boolean; onClose: () => void }) 
         </div>
 
         {/* 원정 시간 배율 */}
-        <p style={sectionTitle}>{ko ? "⏱ 원정 시간 배율" : "⏱ 遠征時間倍率"}</p>
+        <p style={sectionTitle}><Clock size={12} style={{display:"inline",verticalAlign:"middle",marginRight:5}}/>{ko ? "원정 시간 배율" : "遠征時間倍率"}</p>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -363,7 +390,7 @@ function RewardInfoPopup({ ko, onClose }: { ko: boolean; onClose: () => void }) 
         </table>
 
         {/* 난이도 배율 */}
-        <p style={sectionTitle}>{ko ? "⚔ 난이도 배율" : "⚔ 難易度倍率"}</p>
+        <p style={sectionTitle}><Swords size={12} style={{display:"inline",verticalAlign:"middle",marginRight:5}}/>{ko ? "난이도 배율" : "難易度倍率"}</p>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -384,7 +411,7 @@ function RewardInfoPopup({ ko, onClose }: { ko: boolean; onClose: () => void }) 
         </table>
 
         {/* 파티 인원 보너스 */}
-        <p style={sectionTitle}>{ko ? "👥 파티 인원 보너스" : "👥 パーティー人数ボーナス"}</p>
+        <p style={sectionTitle}><Users size={12} style={{display:"inline",verticalAlign:"middle",marginRight:5}}/>{ko ? "파티 인원 보너스" : "パーティー人数ボーナス"}</p>
         <p style={{ margin: "0 0 6px", fontSize: 11, color: C.textDim, fontFamily: FONT }}>
           {ko ? "* 각 지역 최소 인원 초과 시 1마리당 +12% 가산" : "* 最低人数を超えると1匹ごとに+12%加算"}
         </p>
@@ -413,7 +440,7 @@ function RewardInfoPopup({ ko, onClose }: { ko: boolean; onClose: () => void }) 
           borderRadius: 8, padding: "10px 12px",
         }}>
           <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 800, color: C.gold }}>
-            {ko ? "🏆 최대 배율 조합 (6시간 + 최고난이도 + +4마리)" : "🏆 最大倍率 (6h + 最高難易度 + +4匹)"}
+            <Trophy size={12} style={{display:"inline",verticalAlign:"middle",marginRight:5}}/>{ko ? "최대 배율 조합 (6시간 + 최고난이도 + +4마리)" : "最大倍率 (6h + 最高難易度 + +4匹)"}
           </p>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 900, color: C.gold }}>
             2.1 × 1.5 × 1.48 ≈ <span style={{ fontSize: 17 }}>×4.66</span>
@@ -432,6 +459,8 @@ export default function ExpeditionPage() {
   const { rewardSummary, completeExpedition } = useAppData();
   const { lang } = useLang();
   const ko = lang === "ko";
+  const isDark = useIsDark();
+  const C = isDark ? C_DARK : C_LIGHT;
   const [showInfo, setShowInfo] = useState(false);
 
   const ownedIds = rewardSummary.ownedCharacterIds;

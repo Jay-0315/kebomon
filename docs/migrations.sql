@@ -66,3 +66,10 @@ ALTER TABLE user_rewards
 -- ============================================================
 ALTER TABLE app_settings
   DROP COLUMN auto_backup;
+
+-- notifications 테이블에 i18n 번역 키 컬럼 추가
+-- 클라이언트에서 이 키를 사용해 언어 변경 시 알림을 재번역합니다
+
+ALTER TABLE `notifications`
+  ADD COLUMN `title_key` VARCHAR(80) NULL AFTER `body`,
+  ADD COLUMN `body_key`  VARCHAR(80) NULL AFTER `title_key`;

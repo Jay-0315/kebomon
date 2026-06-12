@@ -64,9 +64,11 @@ model PushSubscription {
 model Notification {
   id        BigInt   @id @default(autoincrement())
   userId    String   @map("user_id")
-  type      String   @db.VarChar(20) // "comment" | "achievement"
+  type      String   @db.VarChar(20) // "comment" | "achievement" | "title"
   title     String   @db.VarChar(120)
   body      String   @db.VarChar(255)
+  titleKey  String?  @map("title_key") @db.VarChar(80)
+  bodyKey   String?  @map("body_key") @db.VarChar(80)
   link      String?  @db.VarChar(255)
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")

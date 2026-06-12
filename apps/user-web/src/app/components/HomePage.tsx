@@ -52,7 +52,7 @@ export default function HomePage() {
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} {t("kabemon.collection_count")} ·{" "}
+            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} {t("kebomon.collection_count")} ·{" "}
             {rewardSummary.missionPoints}P
           </p>
         </div>
@@ -68,15 +68,15 @@ export default function HomePage() {
       {/* ── Quick links ── */}
       <div className="grid grid-cols-2 gap-3">
         <Link
-          to="/kabemon"
+          to="/kebomon"
           className="bg-card rounded border border-border p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
         >
           <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
             <TrendingUp className="w-4 h-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-sm">{t("nav.kabemon")}</p>
-            <p className="text-xs text-muted-foreground">{t("home.kabemon_sub")}</p>
+            <p className="font-medium text-sm">{t("nav.kebomon")}</p>
+            <p className="text-xs text-muted-foreground">{t("home.kebomon_sub")}</p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         </Link>

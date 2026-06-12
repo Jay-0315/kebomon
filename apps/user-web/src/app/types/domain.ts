@@ -158,7 +158,7 @@ export interface AppSettings {
   notifications: boolean;
   darkMode: boolean;
 themeColor: string;
-  language?: "ko" | "ja";
+  language?: "ko" | "ja" | "en";
 }
 
 export interface AppData {

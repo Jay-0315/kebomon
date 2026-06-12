@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Swords, Trophy, Shield, RefreshCw, ChevronLeft, ChevronRight,
+  Swords, Shield, RefreshCw, ChevronLeft, ChevronRight,
   Dices, Crown, Medal, Dice6, Zap, Gift, X,
 } from "lucide-react";
 import { getBattleSocket, disconnectBattleSocket } from "../lib/socket";
@@ -711,6 +711,8 @@ export default function ColosseumPage(){
   const[rolling,setRolling]=useState(false);
   const[waitForNext,setWaitForNext]=useState(false);
   const[dmgNums,setDmgNums]=useState<{id:number;val:number;side:"player"|"opponent"}[]>([]);
+  const[enemyHit,setEnemyHit]=useState(false);
+  const[playerHit,setPlayerHit]=useState(false);
   const[battleHistory,setBattleHistory]=useState<BattleLogEntry[]>([]);
   const phaseRef=useRef<Phase>("lobby");
   const forfeitingRef=useRef(false);
@@ -795,6 +797,8 @@ export default function ColosseumPage(){
         ? t("col.dmg_player").replace("{rolls}",rolls).replace("{total}",String(d.total))
         : t("col.dmg_opponent").replace("{rolls}",rolls).replace("{total}",String(d.total)));
       spawnDmg(d.total,isP?"opponent":"player");
+      if(isP){setEnemyHit(true);setTimeout(()=>setEnemyHit(false),380);}
+      else{setPlayerHit(true);setTimeout(()=>setPlayerHit(false),380);}
       setBattle(prev=>prev?{...prev,player:{...prev.player,hp:d.playerHp},opponent:{...prev.opponent,hp:d.opponentHp}}:prev);
       setBattleHistory(prev=>[...prev,{
         id:Date.now()+Math.random(),
@@ -933,6 +937,8 @@ export default function ColosseumPage(){
     @keyframes col-active-glow{0%,100%{filter:drop-shadow(0 0 6px #c8a44a)}50%{filter:drop-shadow(0 0 18px #c8a44a)}}
     @keyframes col-stone-glow {0%,100%{opacity:0.55}50%{opacity:0.9}}
     @keyframes col-hp-flash   {0%{opacity:0.7}100%{opacity:0}}
+    @keyframes ut-char-hit    {0%{transform:translateX(0) scale(1.06);filter:brightness(50) saturate(0)}12%{transform:translateX(-8px);filter:brightness(14) saturate(0)}26%{transform:translateX(6px);filter:brightness(5) saturate(0.3)}44%{transform:translateX(-4px);filter:brightness(2.2) saturate(1)}62%{transform:translateX(3px);filter:brightness(1.3)}80%{transform:translateX(-1px);filter:brightness(1)}100%{transform:translateX(0);filter:brightness(1)}}
+    @keyframes ut-dmg-pop     {0%{opacity:1;transform:translateY(0) scale(1.8)}20%{opacity:1;transform:translateY(-8px) scale(1.3)}100%{opacity:0;transform:translateY(-48px) scale(0.85)}}
     @keyframes col-tier-up-bg {0%,100%{opacity:0.6}50%{opacity:1}}
     @keyframes col-tier-up-banner {0%{opacity:0;transform:scale(0.5) translateY(-30px)}60%{transform:scale(1.08) translateY(0)}100%{opacity:1;transform:scale(1) translateY(0)}}
     @keyframes col-tier-up-badge {0%{opacity:0;transform:scale(0.3) rotate(-20deg)}55%{transform:scale(1.18) rotate(4deg)}80%{transform:scale(0.96) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
@@ -1633,13 +1639,18 @@ export default function ColosseumPage(){
           </div>
           {/* 적 스프라이트 (오른쪽) */}
           <div style={{position:"relative",flexShrink:0,width:72,display:"flex",justifyContent:"center"}}>
-            <div style={{...turnGlowStyle("opponent","col-enemy-bob"),transform:"scaleX(-1)"}}>
+            <div style={{
+              ...(!enemyHit?turnGlowStyle("opponent","col-enemy-bob"):{}),
+              transform:"scaleX(-1)",
+              ...(enemyHit&&{animation:"ut-char-hit 0.38s ease-out"}),
+            }}>
               <PixelSprite type={oppChar.type} colors={oppChar.colors} characterId={oppChar.id} rarity={oppChar.rarity} size={64}/>
             </div>
             {dmgNums.filter(n=>n.side==="opponent").map(n=>(
-              <span key={n.id} style={{position:"absolute",top:-6,left:"50%",transform:"translateX(-50%)",
-                fontWeight:900,fontSize:20,color:C.gold,textShadow:`0 0 8px ${C.goldGlow}`,
-                animation:"col-dmg-up 0.9s ease-out forwards",pointerEvents:"none",fontFamily:"monospace"}}>
+              <span key={n.id} style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",
+                fontWeight:900,fontSize:22,color:"#faff00",
+                textShadow:"0 0 10px #fff,0 0 5px #ffd700,1px 1px 0 #000",
+                animation:"ut-dmg-pop 0.9s ease-out forwards",pointerEvents:"none",fontFamily:"monospace",whiteSpace:"nowrap"}}>
                 -{n.val}
               </span>
             ))}
@@ -1668,13 +1679,17 @@ export default function ColosseumPage(){
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           {/* 플레이어 스프라이트 (왼쪽) */}
           <div style={{position:"relative",flexShrink:0,width:72,display:"flex",justifyContent:"center"}}>
-            <div style={turnGlowStyle("player","col-idle-bob")}>
+            <div style={{
+              ...(!playerHit?turnGlowStyle("player","col-idle-bob"):{}),
+              ...(playerHit&&{animation:"ut-char-hit 0.38s ease-out"}),
+            }}>
               <PixelSprite type={plrChar.type} colors={plrChar.colors} characterId={plrChar.id} rarity={plrChar.rarity} size={64}/>
             </div>
             {dmgNums.filter(n=>n.side==="player").map(n=>(
-              <span key={n.id} style={{position:"absolute",top:-6,left:"50%",transform:"translateX(-50%)",
-                fontWeight:900,fontSize:20,color:"#f87171",textShadow:"0 0 8px #ef4444",
-                animation:"col-dmg-up 0.9s ease-out forwards",pointerEvents:"none",fontFamily:"monospace"}}>
+              <span key={n.id} style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",
+                fontWeight:900,fontSize:22,color:"#ff4444",
+                textShadow:"0 0 10px #ff0000,0 0 5px #ff8888,1px 1px 0 #000",
+                animation:"ut-dmg-pop 0.9s ease-out forwards",pointerEvents:"none",fontFamily:"monospace",whiteSpace:"nowrap"}}>
                 -{n.val}
               </span>
             ))}

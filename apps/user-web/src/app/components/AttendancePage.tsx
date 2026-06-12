@@ -101,9 +101,9 @@ export default function AttendancePage() {
       {/* 스탯 */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: <CalendarCheck className="w-4 h-4 text-primary" />, label: t("attendance.this_month"), value: monthDays, unit: t("kabemon.days") },
-          { icon: <Flame className="w-4 h-4 text-orange-400" />, label: t("kabemon.streak"), value: streakDays, unit: t("kabemon.days") },
-          { icon: <CalendarCheck className="w-4 h-4 text-muted-foreground" />, label: t("attendance.total"), value: attendanceDays, unit: t("kabemon.days") },
+          { icon: <CalendarCheck className="w-4 h-4 text-primary" />, label: t("attendance.this_month"), value: monthDays, unit: t("kebomon.days") },
+          { icon: <Flame className="w-4 h-4 text-orange-400" />, label: t("kebomon.streak"), value: streakDays, unit: t("kebomon.days") },
+          { icon: <CalendarCheck className="w-4 h-4 text-muted-foreground" />, label: t("attendance.total"), value: attendanceDays, unit: t("kebomon.days") },
         ].map(({ icon, label, value, unit }) => (
           <div key={label} className="bg-card border border-border rounded-xl p-3 text-center">
             <div className="flex justify-center mb-1">{icon}</div>

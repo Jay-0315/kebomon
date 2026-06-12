@@ -26,7 +26,10 @@ export interface EggOpenResult {
 import { CHARACTERS as _CHARS, ACHIEVEMENTS as _ACHIEVEMENTS } from "../data/characters";
 const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
 const _ACHIEVEMENT_CHAR_IDS = new Set(_ACHIEVEMENTS.map((a) => a.characterId));
-import { initialAppData } from "../data/seed";
+const initialAppData = {
+  profile: { id: "", name: "", email: "", baseCountryCode: "KR", baseCurrency: "KRW" as const },
+  settings: { notifications: true, darkMode: false, themeColor: "default", language: "ko" as const },
+};
 import { applyThemePreset } from "../lib/theme-presets";
 import { api } from "../lib/api";
 import { clearAuthSession, getStoredUser } from "../lib/auth";
@@ -249,7 +252,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         baseCurrency: p.baseCurrency as UserProfile["baseCurrency"],
         hasPassword: p.hasPassword ?? false,
       });
-      if (p.settings) setSettings((prev) => ({ ...prev, ...(p.settings as AppSettings) }));
+      if (p.settings) {
+        const srv = p.settings as AppSettings;
+        setSettings((prev) => ({
+          ...prev,
+          ...srv,
+          language: srv.language ?? prev.language,
+        }));
+      }
       if (p.profilePhoto !== undefined) {
         const key = profilePhotoKey(p.id);
         if (p.profilePhoto) {

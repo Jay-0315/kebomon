@@ -8,7 +8,7 @@ import ResetPasswordPage from "./components/ResetPasswordPage";
 import CommunityPage from "./components/CommunityPage";
 import PostDetailPage from "./components/PostDetailPage";
 import MyPage from "./components/MyPage";
-import KabemonPage from "./components/KabemonPage";
+import KebomonPage from "./components/KebomonPage";
 import LiveChatPage from "./components/LiveChatPage";
 import RaidPage from "./components/RaidPage";
 import ColosseumPage from "./components/ColosseumPage";
@@ -18,6 +18,7 @@ import ShopPage from "./components/ShopPage";
 import SettingsPage from "./components/SettingsPage";
 import StarterSelectionPage from "./components/StarterSelectionPage";
 import AttendancePage from "./components/AttendancePage";
+import MissionPage from "./components/MissionPage";
 import { useAppData } from "./context/AppDataContext";
 import { isAuthenticated } from "./lib/auth";
 import { LangProvider } from "./context/LangContext";
@@ -85,15 +86,16 @@ export default function App() {
           <Route path="community/:id" element={<PostDetailPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="mypage" element={<MyPage />} />
-          <Route path="kabemon" element={<KabemonPage />} />
+          <Route path="kebomon" element={<KebomonPage />} />
           <Route path="live" element={<LiveChatPage />} />
+          <Route path="mission" element={<MissionPage />} />
           <Route path="raid" element={<RaidPage />} />
           <Route path="colosseum" element={<ColosseumPage />} />
           <Route path="rogue" element={<RoguePage />} />
           <Route path="expedition" element={<ExpeditionPage />} />
           <Route path="shop" element={<ShopPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="mypage/character" element={<Navigate to="/kabemon" replace />} />
+          <Route path="mypage/character" element={<Navigate to="/kebomon" replace />} />
         </Route>
       </Routes>
       <NetworkErrorToast />

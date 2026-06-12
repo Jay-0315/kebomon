@@ -28,6 +28,7 @@ import { THEME_PRESETS } from "../lib/theme-presets";
 const LANGUAGES = [
   { code: "ko" as const, nativeName: "한국어", name: "Korean" },
   { code: "ja" as const, nativeName: "日本語", name: "Japanese" },
+  { code: "en" as const, nativeName: "English", name: "English" },
 ];
 
 type SocialProvider = "GOOGLE" | "KAKAO" | "LINE" | "APPLE";
