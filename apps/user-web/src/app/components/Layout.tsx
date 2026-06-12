@@ -112,7 +112,7 @@ export default function Layout() {
       <NavLink to="/" icon={Home}           label={ko?"홈":ja?"ホーム":"Home"} exact onNav={onNav} />
       <NavLink to="/community" icon={Newspaper} label={ko?"커뮤니티":ja?"コミュニティ":"Community"} onNav={onNav} />
       <NavLink to="/attendance" icon={CalendarCheck} label={ko?"출석":ja?"出席":"Attendance"} onNav={onNav} />
-      <NavLink to="/kebomon" icon={Zap} label={ko?"강화":ja?"強化":"Enhance"} onNav={onNav} />
+      <NavLink to="/gacha" icon={ShoppingBag} label={ko?"뽑기":ja?"ガチャ":"Gacha"} onNav={onNav} />
 
       {/* 케보몬 group */}
       <GroupHeader
@@ -123,8 +123,8 @@ export default function Layout() {
       />
       {kebomonOpen && (
         <div className="space-y-0.5">
+          <NavTabLink to="/kebomon" tab="character"   icon={Zap}         label={ko?"강화":ja?"強化":"Enhance"} onNav={onNav} />
           <NavTabLink to="/kebomon" tab="collection"  icon={BookOpen}    label={ko?"도감":ja?"図鑑":"Pokedex"} onNav={onNav} />
-          <NavLink    to="/gacha"                     icon={ShoppingBag} label={ko?"뽑기":ja?"ガチャ":"Gacha"} sub onNav={onNav} />
           <NavTabLink to="/kebomon" tab="achievement" icon={Star}        label={ko?"업적":ja?"業績":"Achieve"} onNav={onNav} />
         </div>
       )}
