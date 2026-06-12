@@ -9,9 +9,16 @@ const dict = {
     "nav.community": "커뮤니티",
     "nav.kebomon": "케보몬",
     "nav.attendance": "출석",
+    "nav.gacha": "뽑기",
+    "nav.kebomon_pokedex": "도감",
+    "nav.kebomon_achieve": "업적",
+    "nav.mission": "미션",
+    "nav.colosseum": "콜로세움",
+    "nav.raid": "보스레이드",
+    "nav.rogue": "로그라이크",
+    "nav.expedition": "원정",
     "nav.no_title": "장착중인 칭호 없음",
     "nav.live": "라이브",
-    "nav.raid": "미션",
     "nav.mypage": "마이페이지",
     "nav.settings": "설정",
     "nav.logout": "로그아웃",
@@ -52,8 +59,16 @@ const dict = {
       "포인트로 뽑기를 하고 업적을 달성해 케보몬을 모아보세요",
     "kebomon.equip": "장착하기",
     "kebomon.equipped": "장착 중",
+    // Footer
+    "footer.description": "커뮤니티 & 케보몬 서비스",
+    "footer.services": "서비스",
+    "footer.policies": "약관 및 정책",
+    "footer.privacy": "개인정보처리방침",
+    "footer.terms": "이용약관",
+    "footer.operational": "운영정책",
     // Kebomon - 수집
     "kebomon.collection_count": "수집",
+    "kebomon.all_filter": "전체",
     "kebomon.gacha_tab": "뽑기",
     "kebomon.achievement_tab": "업적",
     // Kebomon - 가챠
@@ -101,6 +116,8 @@ const dict = {
     // MyPage - 칭호
     "mypage.title_section": "칭호",
     "mypage.title_owned": "개 보유",
+    "mypage.border": "테두리",
+    "mypage.no_borders": "보유한 테두리가 없습니다.",
     "mypage.title_equipped_label": "장착 중인 칭호",
     "mypage.title_unequip": "해제",
     "mypage.title_equip": "장착",
@@ -132,6 +149,8 @@ const dict = {
     "mission.write_desc": "커뮤니티 글 작성 시",
     "mission.streak": "연속 출석",
     "mission.streak_desc": "연속 출석 1일당",
+    "mission.page_title": "미션",
+    "mission.page_desc": "다양한 콘텐츠에 도전하고 보상을 획득하세요",
     // Attendance
     "attendance.this_month": "이번 달 출석",
     "attendance.total": "누적 출석",
@@ -211,6 +230,7 @@ const dict = {
     "common.loading": "로딩 중...",
     "common.photo": "사진",
     "common.close": "닫기",
+    "common.back": "뒤로가기",
     // Signup
     "signup.title": "회원가입",
     "signup.subtitle": "가계부와 함께 시작해보세요",
@@ -339,9 +359,15 @@ const dict = {
     "notification.attendance_reminder_body":
       "오늘 출석 체크를 아직 하지 않았어요!",
     "notification.achievement_title": "업적 달성!",
-    "notification.achievement_body": "새로운 케보몬을 획득했어요. 도감에서 확인해보세요.",
+    "notification.achievement_body":
+      "새로운 케보몬을 획득했어요. 도감에서 확인해보세요.",
     "notification.season_title": "시즌 랭킹 칭호 획득!",
-    "notification.season_body": "시즌 최종 랭킹 칭호가 지급됐습니다. 칭호 목록에서 확인하세요.",
+    "notification.season_body":
+      "시즌 최종 랭킹 칭호가 지급됐습니다. 칭호 목록에서 확인하세요.",
+    "notification.time.just_now": "방금",
+    "notification.time.min_suffix": "{n}분 전",
+    "notification.time.hr_suffix": "{h}시간 전",
+    "notification.time.day_suffix": "{d}일 전",
     // Egg
     "egg.normal": "일반 알",
     "egg.big": "큰 알",
@@ -437,6 +463,8 @@ const dict = {
     "raid.eliminated": "탈락",
     "raid.banned_msg":
       "이미 이번 타임에 참여한 레이드입니다. 다음 타임에 참여해주세요.",
+    "raid.eliminated_msg":
+      "라이프가 모두 소진되어 퇴장되었습니다. 다음 타임에 재도전하세요.",
     "raid.ranking_title": "이번 타임 랭킹",
     "raid.my_rank": "내 순위: {r}위",
     // Colosseum
@@ -509,6 +537,11 @@ const dict = {
     "col.ticket_full": "충전 완료",
     "col.no_ticket": "입장권 없음",
     "col.tier_up": "티어 승급!",
+    "col.season": "시즌",
+    "col.rewards": "보상",
+    "col.season_desc":
+      "시즌 종료 시 달성 티어와 그 아래 모든 티어의 프로필 테두리가 함께 지급됩니다. 테두리는 다음 시즌에도 유지됩니다.",
+    "col.pts_and_above": "이상",
     // Shop
     "shop.title": "포인트 상점",
     "shop.my_points": "보유 포인트",
@@ -589,6 +622,7 @@ const dict = {
     "common.loading": "読み込み中...",
     "common.photo": "写真",
     "common.close": "閉じる",
+    "common.back": "戻る",
     // Nav
     "nav.menu": "メニュー",
     "nav.settings_section": "設定",
@@ -596,11 +630,19 @@ const dict = {
     "nav.community": "コミュニティ",
     "nav.kebomon": "ケボモン",
     "nav.attendance": "出席",
+    "nav.gacha": "ガチャ",
+    "nav.kebomon_pokedex": "図鑑",
+    "nav.kebomon_achieve": "業績",
+    "nav.mission": "ミッション",
+    "nav.colosseum": "コロシアム",
+    "nav.raid": "ボスレイド",
+    "nav.rogue": "ローグライク",
+    "nav.expedition": "遠征",
     "nav.no_title": "称号未装備",
     "nav.live": "ライブ",
-    "nav.raid": "ミッション",
     "nav.mypage": "マイページ",
     "nav.settings": "設定",
+    "nav.logout": "ログアウト",
     "nav.logout": "ログアウト",
     // Home
     "home.write": "投稿",
@@ -639,8 +681,16 @@ const dict = {
       "ポイントでガチャを引いて実績を達成してケボモンを集めよう",
     "kebomon.equip": "装備する",
     "kebomon.equipped": "装備中",
+    // Footer
+    "footer.description": "ゲームコミュニティ & ケボモンサービス",
+    "footer.services": "サービス",
+    "footer.policies": "ポリシー",
+    "footer.privacy": "プライバシーポリシー",
+    "footer.terms": "利用規約",
+    "footer.operational": "運営ポリシー",
     // Kebomon - コレクション
     "kebomon.collection_count": "コレクション",
+    "kebomon.all_filter": "全て",
     "kebomon.gacha_tab": "ガチャ",
     "kebomon.achievement_tab": "実績",
     // Kebomon - ガチャ
@@ -688,6 +738,8 @@ const dict = {
     // MyPage - 称号
     "mypage.title_section": "称号",
     "mypage.title_owned": "個所持",
+    "mypage.border": "フレーム",
+    "mypage.no_borders": "フレームを所持していません。",
     "mypage.title_equipped_label": "装備中の称号",
     "mypage.title_unequip": "解除",
     "mypage.title_equip": "装備",
@@ -720,6 +772,8 @@ const dict = {
     "mission.write_desc": "コミュニティ投稿作成時",
     "mission.streak": "連続出席",
     "mission.streak_desc": "連続出席1日ごと",
+    "mission.page_title": "ミッション",
+    "mission.page_desc": "さまざまなコンテンツに挑戦して報酬を獲得しよう",
     // Attendance
     "attendance.this_month": "今月の出席",
     "attendance.total": "累計出席",
@@ -912,9 +966,15 @@ const dict = {
     "notification.attendance_reminder_body":
       "今日の出席チェックがまだ済んでいません！",
     "notification.achievement_title": "実績達成！",
-    "notification.achievement_body": "新しいケボモンを獲得しました。図鑑で確認してみてください。",
+    "notification.achievement_body":
+      "新しいケボモンを獲得しました。図鑑で確認してみてください。",
     "notification.season_title": "シーズンランキング称号獲得！",
-    "notification.season_body": "シーズン最終ランキング称号が付与されました。称号一覧で確認してください。",
+    "notification.season_body":
+      "シーズン最終ランキング称号が付与されました。称号一覧で確認してください。",
+    "notification.time.just_now": "たった今",
+    "notification.time.min_suffix": "{n}分前",
+    "notification.time.hr_suffix": "{h}時間前",
+    "notification.time.day_suffix": "{d}日前",
     // Egg
     "egg.normal": "普通の卵",
     "egg.big": "大きな卵",
@@ -1154,9 +1214,16 @@ const dict = {
     "nav.community": "Community",
     "nav.kebomon": "Kebomon",
     "nav.attendance": "Attendance",
+    "nav.gacha": "Gacha",
+    "nav.kebomon_pokedex": "Pokedex",
+    "nav.kebomon_achieve": "Achievements",
+    "nav.mission": "Mission",
+    "nav.colosseum": "Colosseum",
+    "nav.raid": "Raid",
+    "nav.rogue": "Roguelike",
+    "nav.expedition": "Expedition",
     "nav.no_title": "No title equipped",
     "nav.live": "Live",
-    "nav.raid": "Mission",
     "nav.mypage": "My Page",
     "nav.settings": "Settings",
     "nav.logout": "Log out",
@@ -1178,7 +1245,8 @@ const dict = {
     "community.new_post": "New Post",
     "community.update": "Update",
     "community.submit": "Post",
-    "community.placeholder": "Share your adventures, achievements, and daily moments.",
+    "community.placeholder":
+      "Share your adventures, achievements, and daily moments.",
     "community.view_detail": "View details",
     // Kebomon
     "kebomon.title": "Kebomon Pokédex",
@@ -1192,11 +1260,20 @@ const dict = {
     "kebomon.days": "d",
     "kebomon.times": "x",
     "kebomon.mission_guide": "Mission Guide",
-    "kebomon.mission_footer": "Gacha with points and complete achievements to collect Kebomon",
+    "kebomon.mission_footer":
+      "Gacha with points and complete achievements to collect Kebomon",
     "kebomon.equip": "Equip",
     "kebomon.equipped": "Equipped",
+    // Footer
+    "footer.description": "Community & Kebomon service",
+    "footer.services": "Services",
+    "footer.policies": "Policies",
+    "footer.privacy": "Privacy Policy",
+    "footer.terms": "Terms of Service",
+    "footer.operational": "Operational Policy",
     // Kebomon - Collection
     "kebomon.collection_count": "Collected",
+    "kebomon.all_filter": "All",
     "kebomon.gacha_tab": "Gacha",
     "kebomon.achievement_tab": "Achievements",
     // Kebomon - Gacha
@@ -1244,6 +1321,8 @@ const dict = {
     // MyPage - Titles
     "mypage.title_section": "Titles",
     "mypage.title_owned": "owned",
+    "mypage.border": "Border",
+    "mypage.no_borders": "No borders owned.",
     "mypage.title_equipped_label": "Equipped Title",
     "mypage.title_unequip": "Unequip",
     "mypage.title_equip": "Equip",
@@ -1255,10 +1334,12 @@ const dict = {
     "signup.verify_code": "Verification Code",
     "signup.code_placeholder": "Enter 6-digit code",
     "signup.change_password": "Change Password",
-    "signup.change_password_desc": "Send a verification code to your email to change your password.",
+    "signup.change_password_desc":
+      "Send a verification code to your email to change your password.",
     "signup.forgot_password": "Forgot Password",
     "signup.forgot_title": "Reset Password",
-    "signup.forgot_desc": "A verification code will be sent to your registered email.",
+    "signup.forgot_desc":
+      "A verification code will be sent to your registered email.",
     "signup.new_password": "New Password",
     "signup.reset_submit": "Change Password",
     "signup.reset_success": "Password changed. Please log in.",
@@ -1274,6 +1355,8 @@ const dict = {
     "mission.write_desc": "Per community post",
     "mission.streak": "Streak",
     "mission.streak_desc": "Per consecutive day",
+    "mission.page_title": "Mission",
+    "mission.page_desc": "Challenge various content and earn rewards",
     // Attendance
     "attendance.this_month": "This Month",
     "attendance.total": "Total Attendance",
@@ -1282,7 +1365,8 @@ const dict = {
     "attendance.btn_done": "Checked in today!",
     "attendance.week_rewards": "Weekly Rewards",
     "attendance.stamp_title": "Attendance Stamps",
-    "attendance.stamp_desc": "Auto-awarded every 7 days — Wk 1&2: Large Egg / Wk 3&4: Golden Egg",
+    "attendance.stamp_desc":
+      "Auto-awarded every 7 days — Wk 1&2: Large Egg / Wk 3&4: Golden Egg",
     "attendance.week_label": "d —",
     // MyPage
     "mypage.title": "My Page",
@@ -1315,12 +1399,14 @@ const dict = {
     "settings.version": "Version",
     "settings.build": "Build",
     "settings.delete_modal_title": "Delete Account",
-    "settings.delete_modal_body": "Are you sure? All data will be permanently deleted and cannot be recovered.",
+    "settings.delete_modal_body":
+      "Are you sure? All data will be permanently deleted and cannot be recovered.",
     "settings.delete_confirm": "Delete",
     "settings.cancel": "Cancel",
     "settings.social": "Social Login",
     "settings.social_link": "Link Login Account",
-    "settings.social_link_desc": "You can link Google, Kakao, LINE, or Apple login to your current account.",
+    "settings.social_link_desc":
+      "You can link Google, Kakao, LINE, or Apple login to your current account.",
     "settings.social_loading": "Loading linked accounts…",
     "settings.social_linked": "Linked",
     "settings.social_available": "Available to link to your account.",
@@ -1350,6 +1436,7 @@ const dict = {
     "common.loading": "Loading...",
     "common.photo": "Photo",
     "common.close": "Close",
+    "common.back": "Back",
     // Signup
     "signup.title": "Sign Up",
     "signup.subtitle": "Join the community",
@@ -1476,9 +1563,15 @@ const dict = {
     "notification.attendance_reminder": "Attendance Not Checked",
     "notification.attendance_reminder_body": "You haven't checked in today!",
     "notification.achievement_title": "Achievement Unlocked!",
-    "notification.achievement_body": "New Kebomon obtained. Check your Pokédex!",
+    "notification.achievement_body":
+      "New Kebomon obtained. Check your Pokédex!",
     "notification.season_title": "Season Ranking Title Earned!",
-    "notification.season_body": "Season final ranking title awarded. Check your titles!",
+    "notification.season_body":
+      "Season final ranking title awarded. Check your titles!",
+    "notification.time.just_now": "just now",
+    "notification.time.min_suffix": "{n}m ago",
+    "notification.time.hr_suffix": "{h}h ago",
+    "notification.time.day_suffix": "{d}d ago",
     // Egg
     "egg.normal": "Normal Egg",
     "egg.big": "Large Egg",
@@ -1501,7 +1594,8 @@ const dict = {
     "egg.inventory": "Egg Inventory",
     // Live chat
     "live.title": "Live Channel",
-    "live.desc": "Enter a channel to chat anonymously in real time. Chats are not saved and disappear after 5 seconds.",
+    "live.desc":
+      "Enter a channel to chat anonymously in real time. Chats are not saved and disappear after 5 seconds.",
     "live.channel.1": "Ruins",
     "live.channel.2": "Plaza",
     "live.channel.3": "Beach",
@@ -1516,7 +1610,8 @@ const dict = {
     "live.muted_suffix": "s until you can chat again",
     // Raid
     "raid.title": "Mission Raid",
-    "raid.desc": "Up to 5 players clear missions via chat. Succeed to earn eggs and points.",
+    "raid.desc":
+      "Up to 5 players clear missions via chat. Succeed to earn eggs and points.",
     "raid.leave": "Leave",
     "raid.available": "Challenge now",
     "raid.full": "Full",
@@ -1544,19 +1639,23 @@ const dict = {
     "raid.type.1.desc": "Jump over incoming obstacles to attack the boss!",
     "raid.type.3.name": "Quiz Raid",
     "raid.type.3.boss": "Mysterious Sage",
-    "raid.type.3.desc": "Answer the boss's tricky quiz questions to deal damage!",
+    "raid.type.3.desc":
+      "Answer the boss's tricky quiz questions to deal damage!",
     "raid.type.4.name": "Dictation Raid",
     "raid.type.4.boss": "Omega Core",
-    "raid.type.4.desc": "Transcribe the boss's quotes perfectly to humble them!",
+    "raid.type.4.desc":
+      "Transcribe the boss's quotes perfectly to humble them!",
     "raid.contrib.3.title": "Submit a quiz question for Quiz Raid",
     "raid.contrib.3.field": "Question",
     "raid.contrib.3.placeholder": "e.g. What is the highest peak in the US?",
     "raid.contrib.3.answer_placeholder": "e.g. Denali",
     "raid.contrib.4.title": "Submit a quote for Dictation Raid",
     "raid.contrib.4.field": "Quote",
-    "raid.contrib.4.placeholder": "e.g. The journey of a thousand miles begins with a single step.",
+    "raid.contrib.4.placeholder":
+      "e.g. The journey of a thousand miles begins with a single step.",
     "raid.type.1.mission_label": "Jump over obstacles to attack the boss!",
-    "raid.type.1.mission_hint": "Space (or tap) to jump · each jump deals damage",
+    "raid.type.1.mission_hint":
+      "Space (or tap) to jump · each jump deals damage",
     "raid.type.3.mission_label": "Type the correct answer to the boss's quiz!",
     "raid.type.4.mission_label": "Transcribe the boss's quote exactly!",
     "raid.type.5.name": "Bullet Raid",
@@ -1568,7 +1667,8 @@ const dict = {
     "raid.bullet_dead": "Down!",
     "raid.bullet_revive": "Reviving in {s}s",
     "raid.eliminated": "Eliminated",
-    "raid.banned_msg": "You already participated in this raid this period. Join next time.",
+    "raid.banned_msg":
+      "You already participated in this raid this period. Join next time.",
     "raid.ranking_title": "This Period's Rankings",
     "raid.my_rank": "My rank: #{r}",
     // Colosseum

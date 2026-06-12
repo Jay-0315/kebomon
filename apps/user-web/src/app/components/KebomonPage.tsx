@@ -971,8 +971,8 @@ export default function KebomonPage() {
               const labels: Record<Tab, string> = {
                 character: t("kebomon.my_character"),
                 enhance: t("enhance.tab"),
-                collection: lang === "ja" ? "図鑑" : "도감",
-                achievement: lang === "ja" ? "実績" : "업적",
+                collection: t("kebomon.pokedex"),
+                achievement: t("kebomon.achievement_tab"),
               };
               return (
                 <button
@@ -1004,7 +1004,7 @@ export default function KebomonPage() {
                 }}
                 role="button"
                 tabIndex={0}
-                title={lang === "ja" ? "図鑑へ" : "도감으로 이동"}
+                title={t("kebomon.pokedex")}
                 className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]} cursor-pointer`}
               >
                 <div className="flex flex-col items-center gap-4">
@@ -1135,7 +1135,7 @@ export default function KebomonPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-border bg-muted p-4 text-center">
                           <p className="text-xs text-muted-foreground mb-1">
-                            {lang === "ja" ? "強化石" : "강화석"}
+                            {t("shop.stone_name")}
                           </p>
                           <p className="text-2xl font-bold flex items-center justify-center gap-2 mx-auto">
                             {enhancementStones}
@@ -1175,13 +1175,7 @@ export default function KebomonPage() {
                                   : "bg-secondary text-muted-foreground"
                               }`}
                             >
-                              {buying
-                                ? lang === "ja"
-                                  ? "購入中…"
-                                  : "구매중..."
-                                : lang === "ja"
-                                  ? "購入"
-                                  : "구매"}
+                              {buying ? t("shop.buying") : t("shop.buy")}
                             </button>
                           </div>
                           {buyFeedback && (
@@ -1189,30 +1183,22 @@ export default function KebomonPage() {
                               className={`text-sm mt-2 ${buyFeedback === "success" ? "text-emerald-400" : "text-rose-400"}`}
                             >
                               {buyFeedback === "success"
-                                ? lang === "ja"
-                                  ? "購入成功"
-                                  : "구매 성공"
-                                : lang === "ja"
-                                  ? "購入失敗"
-                                  : "구매 실패"}
+                                ? t("shop.buy_success")
+                                : t("shop.buy_fail")}
                             </p>
                           )}
                         </div>
                         <div className="rounded-2xl border border-border bg-muted p-4">
                           <p className="text-xs text-muted-foreground mb-1">
-                            {lang === "ja" ? "強化レベル" : "강화 레벨"}
+                            {t("enhance.level")}
                           </p>
                           <p className="text-2xl font-bold">
                             {currentEnhance > 0 ? `+${currentEnhance}` : "0"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
                             {currentEnhance >= MAX_ENHANCE[equippedChar.rarity]
-                              ? lang === "ja"
-                                ? "最大強化完了"
-                                : "최대 강화 완료"
-                              : lang === "ja"
-                                ? `次のコスト ${stoneCost}個 / 成功率 ${(successRate * 100).toFixed(0)}%`
-                                : `다음 비용 ${stoneCost}개 / 성공률 ${(successRate * 100).toFixed(0)}%`}
+                              ? t("enhance.max")
+                              : `${t("enhance.cost")} ${stoneCost} / ${t("enhance.rate")} ${(successRate * 100).toFixed(0)}%`}
                           </p>
                         </div>
                       </div>
@@ -1229,9 +1215,7 @@ export default function KebomonPage() {
                         {enhancing
                           ? t("enhance.enhancing")
                           : currentEnhance >= MAX_ENHANCE[equippedChar.rarity]
-                            ? lang === "ja"
-                              ? "最大強化"
-                              : "최대강화"
+                            ? t("enhance.max")
                             : t("enhance.btn")}
                       </button>
                       {enhanceResult && (
@@ -1371,9 +1355,7 @@ function CollectionTab({
             }`}
           >
             {r === "all"
-              ? lang === "ja"
-                ? "全て"
-                : "전체"
+              ? t("kebomon.all_filter")
               : getRarityLabel(r as CharacterRarity, lang)}
           </button>
         ))}
@@ -2722,6 +2704,15 @@ export function KeboStatusPanel({
   const ko = lang !== "ja" && lang !== "en";
   const ja = lang === "ja";
   const enhance = enhancements[char.id] ?? 0;
+  // local panel-facing max enhance (mirrors KebomonPage MAX_ENHANCE)
+  const MAX_ENHANCE_PANEL: Record<CharacterRarity, number> = {
+    common: 3,
+    uncommon: 3,
+    rare: 4,
+    epic: 4,
+    legendary: 5,
+    mythic: 6,
+  };
   const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
   const arch = ROGUE_ARCH[char.type] ?? "wild";
   const raid = RARITY_RAID_STATS[char.rarity];
@@ -2733,6 +2724,23 @@ export function KeboStatusPanel({
   const finalSpd = Math.round(col.spd * TYPE_SPD_MULT[rt]);
   const rogueHp = RARITY_HP_TABLE[char.rarity];
   const dps = Math.round(finalAtk * (1 + (raid.crit / 100) * 1.5));
+
+  // compute sensible maxima for the bars so percentages reflect applied ranges
+  const maxTypeAtkMult = Math.max(...Object.values(TYPE_ATK_MULT));
+  const maxTypeDefMult = Math.max(...Object.values(TYPE_DEF_MULT));
+  const maxTypeHpMult = Math.max(...Object.values(TYPE_HP_MULT));
+  const maxTypeSpdMult = Math.max(...Object.values(TYPE_SPD_MULT));
+  const maxEnhance = MAX_ENHANCE_PANEL[char.rarity] ?? 0;
+
+  const maxAtk = Math.round(raid.atk * maxTypeAtkMult + maxEnhance * 3);
+  const maxCrit = Math.max(
+    ...Object.values(RARITY_RAID_STATS).map((r) => r.crit),
+  );
+  const maxDps = Math.round(maxAtk * (1 + (maxCrit / 100) * 1.5));
+
+  const maxHp = Math.round(col.hp * maxTypeHpMult + maxEnhance * 20);
+  const maxDef = Math.round(col.def * maxTypeDefMult + maxEnhance * 2);
+  const maxSpd = Math.round(col.spd * maxTypeSpdMult);
 
   const rtColor =
     rt === "energy" ? "#00d4ff" : rt === "attack" ? "#ff5c5c" : "#60a5fa";
@@ -2866,15 +2874,20 @@ export function KeboStatusPanel({
           <HudSectionLabel>
             {ja ? "RAID" : ko ? "■ 레이드" : "■ RAID"}
           </HudSectionLabel>
-          <KeboStatRow label="ATK" value={finalAtk} max={260} color="#ff5c5c" />
+          <KeboStatRow
+            label="ATK"
+            value={finalAtk}
+            max={maxAtk}
+            color="#ff5c5c"
+          />
           <KeboStatRow
             label="CRIT"
             value={raid.crit}
-            max={30}
+            max={maxCrit}
             color="#ffd060"
             unit="%"
           />
-          <KeboStatRow label="DPS" value={dps} max={350} color="#ff9040" />
+          <KeboStatRow label="DPS" value={dps} max={maxDps} color="#ff9040" />
         </div>
 
         {/* ── COLOSSEUM panel ── */}
@@ -2883,9 +2896,14 @@ export function KeboStatusPanel({
           <HudSectionLabel>
             {ja ? "■ コロシアム" : ko ? "■ 콜로세움" : "■ COLOSSEUM"}
           </HudSectionLabel>
-          <KeboStatRow label="HP" value={finalHp} max={1500} color="#3dffb0" />
-          <KeboStatRow label="DEF" value={finalDef} max={230} color={CYN} />
-          <KeboStatRow label="SPD" value={finalSpd} max={170} color="#b080ff" />
+          <KeboStatRow label="HP" value={finalHp} max={maxHp} color="#3dffb0" />
+          <KeboStatRow label="DEF" value={finalDef} max={maxDef} color={CYN} />
+          <KeboStatRow
+            label="SPD"
+            value={finalSpd}
+            max={maxSpd}
+            color="#b080ff"
+          />
         </div>
 
         {/* ── ROGUELIKE panel ── */}

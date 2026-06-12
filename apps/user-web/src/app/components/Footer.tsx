@@ -11,7 +11,7 @@ export default function Footer() {
 }
 
 function FooterContent() {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const serviceLinks = [
@@ -25,17 +25,17 @@ function FooterContent() {
 
   const legalLinks = [
     {
-      label: lang === "ja" ? "プライバシーポリシー" : "개인정보처리방침",
+      label: t("footer.privacy"),
       icon: <Shield className="w-3.5 h-3.5" />,
       onClick: () => setPrivacyOpen(true),
     },
     {
-      label: lang === "ja" ? "利用規約" : "이용약관",
+      label: t("footer.terms"),
       icon: <FileText className="w-3.5 h-3.5" />,
       onClick: undefined,
     },
     {
-      label: lang === "ja" ? "運営ポリシー" : "운영정책",
+      label: t("footer.operational"),
       icon: <BookOpen className="w-3.5 h-3.5" />,
       onClick: undefined,
     },
@@ -60,9 +60,7 @@ function FooterContent() {
               </Link>
 
               <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
-                {lang === "ja"
-                  ? "ゲームコミュニティ & ケボモンサービス"
-                  : "커뮤니티 & 케보몬 서비스"}
+                {t("footer.description")}
               </p>
 
               <a
@@ -77,7 +75,7 @@ function FooterContent() {
             {/* Service column */}
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                {lang === "ja" ? "サービス" : "서비스"}
+                {t("footer.services")}
               </p>
               <ul className="space-y-2.5">
                 {serviceLinks.map((link) => (
@@ -96,7 +94,7 @@ function FooterContent() {
             {/* Legal column */}
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                {lang === "ja" ? "ポリシー" : "약관 및 정책"}
+                {t("footer.policies")}
               </p>
               <ul className="space-y-2.5">
                 {legalLinks.map((link) => (

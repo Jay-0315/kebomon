@@ -4,10 +4,20 @@ import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
 
-function PixelStamp({ size = 20, color = "#fff" }: { size?: number; color?: string }) {
+function PixelStamp({
+  size = 20,
+  color = "#fff",
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
-    <svg width={size} height={size} viewBox="0 0 10 10"
-      style={{ imageRendering: "pixelated", display: "block" }}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      style={{ imageRendering: "pixelated", display: "block" }}
+    >
       <rect x="1" y="5" width="2" height="2" fill={color} />
       <rect x="2" y="6" width="2" height="2" fill={color} />
       <rect x="3" y="7" width="2" height="2" fill={color} />
@@ -24,30 +34,41 @@ function daysInMonth(year: number, month: number) {
 }
 
 function PixelEggMini({ type }: { type: "big" | "golden" }) {
-  const C = type === "big"
-    ? { body: "#7dd3fc", hi: "#dbeafe", lo: "#1d4ed8" }
-    : { body: "#fbbf24", hi: "#fef9c3", lo: "#b45309" };
+  const C =
+    type === "big"
+      ? { body: "#7dd3fc", hi: "#dbeafe", lo: "#1d4ed8" }
+      : { body: "#fbbf24", hi: "#fef9c3", lo: "#b45309" };
   return (
-    <svg width={20} height={24} viewBox="0 0 16 20" style={{ imageRendering: "pixelated" }}>
-      <rect x="5" y="0"  width="6"  height="2" fill={C.body} />
-      <rect x="3" y="2"  width="10" height="2" fill={C.body} />
-      <rect x="2" y="4"  width="12" height="2" fill={C.body} />
-      <rect x="1" y="6"  width="14" height="2" fill={C.body} />
-      <rect x="0" y="8"  width="16" height="4" fill={C.body} />
+    <svg
+      width={20}
+      height={24}
+      viewBox="0 0 16 20"
+      style={{ imageRendering: "pixelated" }}
+    >
+      <rect x="5" y="0" width="6" height="2" fill={C.body} />
+      <rect x="3" y="2" width="10" height="2" fill={C.body} />
+      <rect x="2" y="4" width="12" height="2" fill={C.body} />
+      <rect x="1" y="6" width="14" height="2" fill={C.body} />
+      <rect x="0" y="8" width="16" height="4" fill={C.body} />
       <rect x="1" y="12" width="14" height="2" fill={C.body} />
       <rect x="2" y="14" width="12" height="2" fill={C.body} />
-      <rect x="4" y="16" width="8"  height="2" fill={C.body} />
-      <rect x="6" y="18" width="4"  height="2" fill={C.body} />
-      <rect x="4" y="2"  width="3"  height="2" fill={C.hi} />
-      <rect x="3" y="4"  width="2"  height="2" fill={C.hi} />
-      <rect x="4" y="14" width="4"  height="2" fill={C.lo} />
+      <rect x="4" y="16" width="8" height="2" fill={C.body} />
+      <rect x="6" y="18" width="4" height="2" fill={C.body} />
+      <rect x="4" y="2" width="3" height="2" fill={C.hi} />
+      <rect x="3" y="4" width="2" height="2" fill={C.hi} />
+      <rect x="4" y="14" width="4" height="2" fill={C.lo} />
     </svg>
   );
 }
 
-const WEEK_REWARDS: { week: number; day: number; type: "big" | "golden"; eggKey: TranslationKey }[] = [
-  { week: 1, day: 7,  type: "big",    eggKey: "egg.big" },
-  { week: 2, day: 14, type: "big",    eggKey: "egg.big" },
+const WEEK_REWARDS: {
+  week: number;
+  day: number;
+  type: "big" | "golden";
+  eggKey: TranslationKey;
+}[] = [
+  { week: 1, day: 7, type: "big", eggKey: "egg.big" },
+  { week: 2, day: 14, type: "big", eggKey: "egg.big" },
   { week: 3, day: 21, type: "golden", eggKey: "egg.golden" },
   { week: 4, day: 28, type: "golden", eggKey: "egg.golden" },
 ];
@@ -55,7 +76,13 @@ const WEEK_REWARDS: { week: number; day: number; type: "big" | "golden"; eggKey:
 export default function AttendancePage() {
   const { rewardSummary, claimAttendance } = useAppData();
   const { t, lang } = useLang();
-  const { attendanceDays, streakDays, attendanceClaimedToday, monthDays, monthWeekRewards } = rewardSummary;
+  const {
+    attendanceDays,
+    streakDays,
+    attendanceClaimedToday,
+    monthDays,
+    monthWeekRewards,
+  } = rewardSummary;
 
   const [claiming, setClaiming] = useState(false);
   const [lastPoints, setLastPoints] = useState<number | null>(null);
@@ -65,7 +92,10 @@ export default function AttendancePage() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
   const totalDays = daysInMonth(year, month);
-  const monthLabel = lang === "ja" ? `${year}年${month}月` : `${year}년 ${month}월`;
+  const monthLabel = new Intl.DateTimeFormat(
+    lang === "ja" ? "ja-JP" : lang === "ko" ? "ko-KR" : "en-US",
+    { year: "numeric", month: "long" },
+  ).format(new Date(year, month - 1));
 
   const handleClaim = async () => {
     if (claiming || attendanceClaimedToday) return;
@@ -101,14 +131,37 @@ export default function AttendancePage() {
       {/* 스탯 */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: <CalendarCheck className="w-4 h-4 text-primary" />, label: t("attendance.this_month"), value: monthDays, unit: t("kebomon.days") },
-          { icon: <Flame className="w-4 h-4 text-orange-400" />, label: t("kebomon.streak"), value: streakDays, unit: t("kebomon.days") },
-          { icon: <CalendarCheck className="w-4 h-4 text-muted-foreground" />, label: t("attendance.total"), value: attendanceDays, unit: t("kebomon.days") },
+          {
+            icon: <CalendarCheck className="w-4 h-4 text-primary" />,
+            label: t("attendance.this_month"),
+            value: monthDays,
+            unit: t("kebomon.days"),
+          },
+          {
+            icon: <Flame className="w-4 h-4 text-orange-400" />,
+            label: t("kebomon.streak"),
+            value: streakDays,
+            unit: t("kebomon.days"),
+          },
+          {
+            icon: <CalendarCheck className="w-4 h-4 text-muted-foreground" />,
+            label: t("attendance.total"),
+            value: attendanceDays,
+            unit: t("kebomon.days"),
+          },
         ].map(({ icon, label, value, unit }) => (
-          <div key={label} className="bg-card border border-border rounded-xl p-3 text-center">
+          <div
+            key={label}
+            className="bg-card border border-border rounded-xl p-3 text-center"
+          >
             <div className="flex justify-center mb-1">{icon}</div>
             <p className="text-[10px] text-muted-foreground">{label}</p>
-            <p className="text-xl font-extrabold">{value}<span className="text-xs font-normal text-muted-foreground ml-0.5">{unit}</span></p>
+            <p className="text-xl font-extrabold">
+              {value}
+              <span className="text-xs font-normal text-muted-foreground ml-0.5">
+                {unit}
+              </span>
+            </p>
           </div>
         ))}
       </div>
@@ -123,11 +176,16 @@ export default function AttendancePage() {
             : "bg-primary text-primary-foreground hover:brightness-105 active:scale-[0.98] shadow-md"
         }`}
       >
-        {claiming
-          ? t("attendance.btn_processing")
-          : attendanceClaimedToday
-          ? <span className="flex items-center justify-center gap-1.5"><Check className="w-4 h-4" />{t("attendance.btn_done")}</span>
-          : t("attendance.btn_check")}
+        {claiming ? (
+          t("attendance.btn_processing")
+        ) : attendanceClaimedToday ? (
+          <span className="flex items-center justify-center gap-1.5">
+            <Check className="w-4 h-4" />
+            {t("attendance.btn_done")}
+          </span>
+        ) : (
+          t("attendance.btn_check")
+        )}
       </button>
 
       {/* 출석 보상 팝업 — 화면 중앙 고정 */}
@@ -136,7 +194,9 @@ export default function AttendancePage() {
           <div className="bg-card border border-border rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-3 pointer-events-auto">
             <p className="text-lg font-extrabold text-foreground">출석 완료!</p>
             {lastPoints !== null && (
-              <p className="text-3xl font-extrabold text-primary">+{lastPoints}P</p>
+              <p className="text-3xl font-extrabold text-primary">
+                +{lastPoints}P
+              </p>
             )}
             {eggPopup && (
               <div className="flex items-center gap-2">
@@ -146,14 +206,18 @@ export default function AttendancePage() {
                 </span>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">3초 후 자동으로 닫힙니다</p>
+            <p className="text-xs text-muted-foreground">
+              3초 후 자동으로 닫힙니다
+            </p>
           </div>
         </div>
       )}
 
       {/* 주차별 알 보상 */}
       <div className="bg-card border border-border rounded-2xl p-4">
-        <p className="text-xs font-semibold text-muted-foreground mb-3">{t("attendance.week_rewards")}</p>
+        <p className="text-xs font-semibold text-muted-foreground mb-3">
+          {t("attendance.week_rewards")}
+        </p>
         <div className="grid grid-cols-4 gap-2">
           {WEEK_REWARDS.map(({ week, day, type, eggKey }) => {
             const claimed = !!(monthWeekRewards & (1 << (week - 1)));
@@ -162,7 +226,9 @@ export default function AttendancePage() {
                 key={week}
                 className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all ${
                   claimed
-                    ? type === "golden" ? "border-amber-400/60 bg-amber-500/10" : "border-sky-400/60 bg-sky-500/10"
+                    ? type === "golden"
+                      ? "border-amber-400/60 bg-amber-500/10"
+                      : "border-sky-400/60 bg-sky-500/10"
                     : "border-border bg-muted/40"
                 }`}
               >
@@ -170,7 +236,8 @@ export default function AttendancePage() {
                   <PixelEggMini type={type} />
                 </div>
                 <p className="text-[10px] font-semibold text-center leading-tight text-muted-foreground">
-                  {day}{t("attendance.week_label")} {t(eggKey)}
+                  {day}
+                  {t("attendance.week_label")} {t(eggKey)}
                 </p>
                 {claimed && <PixelStamp size={14} color="var(--primary)" />}
               </div>
@@ -184,7 +251,10 @@ export default function AttendancePage() {
         <p className="text-xs font-semibold text-muted-foreground mb-3 text-center">
           {monthLabel} {t("attendance.stamp_title")} — {monthDays} / {totalDays}
         </p>
-        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+        >
           {Array.from({ length: totalDays }, (_, i) => {
             const day = i + 1;
             const stamped = day <= monthDays;
@@ -202,8 +272,8 @@ export default function AttendancePage() {
                       ? "bg-primary/80 text-primary-foreground"
                       : "bg-primary/70 text-primary-foreground"
                     : isToday
-                    ? "border-2 border-primary/60 border-dashed bg-primary/5 text-primary animate-pulse"
-                    : "bg-muted/60 text-muted-foreground/50"
+                      ? "border-2 border-primary/60 border-dashed bg-primary/5 text-primary animate-pulse"
+                      : "bg-muted/60 text-muted-foreground/50"
                 }`}
               >
                 {stamped ? (

@@ -7,7 +7,7 @@ import { GachaTab, GachaCapsuleModal } from "./KebomonPage";
 
 export default function GachaPage() {
   const { rewardSummary, performGacha } = useAppData();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const [pulling, setPulling] = useState(false);
   const [gachaResult, setGachaResult] = useState<GachaResult | null>(null);
 
@@ -25,7 +25,7 @@ export default function GachaPage() {
     }
   };
 
-  const pageTitle = lang === "ja" ? "ガチャ" : lang === "ko" ? "뽑기" : "Gacha";
+  const pageTitle = t("kebomon.gacha_tab");
 
   return (
     <>

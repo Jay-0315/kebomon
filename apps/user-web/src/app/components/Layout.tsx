@@ -80,8 +80,6 @@ export default function Layout() {
     clearPendingAchievements,
   } = useAppData();
   const { lang, t } = useLang();
-  const ko = lang === "ko";
-  const ja = lang === "ja";
 
   const isActive = (path: string, exact = false) =>
     exact ? location.pathname === path : location.pathname.startsWith(path);
@@ -186,36 +184,30 @@ export default function Layout() {
 
   const NavLinks = ({ onNav }: { onNav?: () => void }) => (
     <div className="space-y-0.5">
-      <NavLink
-        to="/"
-        icon={Home}
-        label={ko ? "홈" : ja ? "ホーム" : "Home"}
-        exact
-        onNav={onNav}
-      />
+      <NavLink to="/" icon={Home} label={t("nav.home")} exact onNav={onNav} />
       <NavLink
         to="/community"
         icon={Newspaper}
-        label={ko ? "커뮤니티" : ja ? "コミュニティ" : "Community"}
+        label={t("nav.community")}
         onNav={onNav}
       />
       <NavLink
         to="/attendance"
         icon={CalendarCheck}
-        label={ko ? "출석" : ja ? "出席" : "Attendance"}
+        label={t("nav.attendance")}
         onNav={onNav}
       />
       <NavLink
         to="/gacha"
         icon={ShoppingBag}
-        label={ko ? "뽑기" : ja ? "ガチャ" : "Gacha"}
+        label={t("nav.gacha")}
         onNav={onNav}
       />
 
       {/* 케보몬 group */}
       <GroupHeader
         icon={Gamepad2}
-        label={ko ? "케보몬" : ja ? "ケボモン" : "Kebomon"}
+        label={t("nav.kebomon")}
         open={kebomonOpen}
         onToggle={toggleKebomon}
       />
@@ -239,14 +231,14 @@ export default function Layout() {
             to="/kebomon"
             tab="collection"
             icon={BookOpen}
-            label={ko ? "도감" : ja ? "図鑑" : "Pokedex"}
+            label={t("nav.kebomon_pokedex")}
             onNav={onNav}
           />
           <NavTabLink
             to="/kebomon"
             tab="achievement"
             icon={Star}
-            label={ko ? "업적" : ja ? "業績" : "Achieve"}
+            label={t("nav.kebomon_achieve")}
             onNav={onNav}
           />
         </div>
@@ -255,7 +247,7 @@ export default function Layout() {
       {/* 미션 group */}
       <GroupHeader
         icon={Swords}
-        label={ko ? "미션" : ja ? "ミッション" : "Mission"}
+        label={t("nav.mission")}
         open={missionOpen}
         onToggle={toggleMission}
       />
@@ -264,28 +256,28 @@ export default function Layout() {
           <NavLink
             to="/colosseum"
             icon={Trophy}
-            label={ko ? "콜로세움" : ja ? "コロシアム" : "Colosseum"}
+            label={t("nav.colosseum")}
             sub
             onNav={onNav}
           />
           <NavLink
             to="/raid"
             icon={Shield}
-            label={ko ? "보스레이드" : ja ? "ボスレイド" : "Raid"}
+            label={t("nav.raid")}
             sub
             onNav={onNav}
           />
           <NavLink
             to="/rogue"
             icon={Layers}
-            label={ko ? "로그라이크" : ja ? "ローグライク" : "Roguelike"}
+            label={t("nav.rogue")}
             sub
             onNav={onNav}
           />
           <NavLink
             to="/expedition"
             icon={Map}
-            label={ko ? "원정" : ja ? "遠征" : "Expedition"}
+            label={t("nav.expedition")}
             sub
             onNav={onNav}
           />
@@ -296,13 +288,13 @@ export default function Layout() {
         <NavLink
           to="/mypage"
           icon={User}
-          label={ko ? "마이페이지" : ja ? "マイページ" : "My Page"}
+          label={t("nav.mypage")}
           onNav={onNav}
         />
         <NavLink
           to="/settings"
           icon={Settings}
-          label={ko ? "설정" : ja ? "設定" : "Settings"}
+          label={t("nav.settings")}
           onNav={onNav}
         />
       </div>
@@ -385,7 +377,7 @@ export default function Layout() {
                   />
                 ) : (
                   <p className="text-xs text-muted-foreground/60 truncate">
-                    {ko ? "장착중인 칭호 없음" : ja ? "称号なし" : "No title"}
+                    {t("nav.no_title")}
                   </p>
                 )}
               </div>
@@ -395,7 +387,7 @@ export default function Layout() {
               className="w-full flex items-center gap-3 px-3 py-2 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
             >
               <LogOut className="w-4 h-4" />
-              {ko ? "로그아웃" : ja ? "ログアウト" : "Logout"}
+              {t("nav.logout")}
             </button>
           </div>
         </aside>
@@ -468,11 +460,7 @@ export default function Layout() {
                       />
                     ) : (
                       <p className="text-xs text-muted-foreground/60 truncate">
-                        {ko
-                          ? "장착중인 칭호 없음"
-                          : ja
-                            ? "称号なし"
-                            : "No title"}
+                        {t("nav.no_title")}
                       </p>
                     )}
                   </div>
@@ -485,7 +473,7 @@ export default function Layout() {
                   className="w-full flex items-center gap-3 px-3 py-2 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
                 >
                   <LogOut className="w-4 h-4" />
-                  {ko ? "로그아웃" : ja ? "ログアウト" : "Logout"}
+                  {t("nav.logout")}
                 </button>
               </div>
             </aside>

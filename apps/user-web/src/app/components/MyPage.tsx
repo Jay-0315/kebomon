@@ -54,28 +54,34 @@ export default function MyPage() {
   const [titleStats, setTitleStats] = useState<TitleUserStats>({});
 
   useEffect(() => {
-    api.get<{ tierPoints: number; wins: number; winStreak: number; bestStreak: number }>(
-      `/rewards/colosseum-stats?userId=${encodeURIComponent(profile.id)}`
-    ).then((s) => {
-      setTitleStats({
-        raid_count: rewardSummary.raidCount,
-        attendance: rewardSummary.attendanceDays,
-        streak: rewardSummary.streakDays,
-        post_count: 0,
-        points: rewardSummary.totalPointsUsed,
-        col_wins: s.wins,
-        col_streak: s.bestStreak,
-        col_points: s.tierPoints,
+    api
+      .get<{
+        tierPoints: number;
+        wins: number;
+        winStreak: number;
+        bestStreak: number;
+      }>(`/rewards/colosseum-stats?userId=${encodeURIComponent(profile.id)}`)
+      .then((s) => {
+        setTitleStats({
+          raid_count: rewardSummary.raidCount,
+          attendance: rewardSummary.attendanceDays,
+          streak: rewardSummary.streakDays,
+          post_count: 0,
+          points: rewardSummary.totalPointsUsed,
+          col_wins: s.wins,
+          col_streak: s.bestStreak,
+          col_points: s.tierPoints,
+        });
+      })
+      .catch(() => {
+        setTitleStats({
+          raid_count: rewardSummary.raidCount,
+          attendance: rewardSummary.attendanceDays,
+          streak: rewardSummary.streakDays,
+          points: rewardSummary.totalPointsUsed,
+        });
       });
-    }).catch(() => {
-      setTitleStats({
-        raid_count: rewardSummary.raidCount,
-        attendance: rewardSummary.attendanceDays,
-        streak: rewardSummary.streakDays,
-        points: rewardSummary.totalPointsUsed,
-      });
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEquipTitle = async (id: number) => {
@@ -153,26 +159,40 @@ export default function MyPage() {
       {/* ── Profile header ── */}
       <div className="flex items-center gap-4">
         {(() => {
-          const equippedBorder = rewardSummary.equippedBorderId ? BORDER_STYLES[rewardSummary.equippedBorderId] : null;
+          const equippedBorder = rewardSummary.equippedBorderId
+            ? BORDER_STYLES[rewardSummary.equippedBorderId]
+            : null;
           const FRAME_PAD = 10;
           const PHOTO_SIZE = 64;
-          const containerSize = equippedBorder ? PHOTO_SIZE + FRAME_PAD * 2 : PHOTO_SIZE;
+          const containerSize = equippedBorder
+            ? PHOTO_SIZE + FRAME_PAD * 2
+            : PHOTO_SIZE;
           return (
-            <div className="relative shrink-0" style={{ width: containerSize, height: containerSize }}>
+            <div
+              className="relative shrink-0"
+              style={{ width: containerSize, height: containerSize }}
+            >
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="rounded-full border-2 border-primary/40 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden bg-primary/10"
                 style={{
-                  width: PHOTO_SIZE, height: PHOTO_SIZE,
+                  width: PHOTO_SIZE,
+                  height: PHOTO_SIZE,
                   position: equippedBorder ? "absolute" : "relative",
                   top: equippedBorder ? FRAME_PAD : undefined,
                   left: equippedBorder ? FRAME_PAD : undefined,
                 }}
               >
                 {profilePhoto ? (
-                  <img src={profilePhoto} alt={profile.name} className="w-full h-full object-cover" />
+                  <img
+                    src={profilePhoto}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <span className="text-2xl font-bold text-primary">{profile.name[0]}</span>
+                  <span className="text-2xl font-bold text-primary">
+                    {profile.name[0]}
+                  </span>
                 )}
               </div>
               {equippedBorder && (
@@ -187,7 +207,11 @@ export default function MyPage() {
                 <button
                   onClick={() => updateProfilePhoto(null)}
                   className="absolute w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center hover:bg-destructive/80 transition-colors"
-                  style={{ top: equippedBorder ? FRAME_PAD - 4 : -4, right: equippedBorder ? FRAME_PAD - 4 : -4, zIndex: 20 }}
+                  style={{
+                    top: equippedBorder ? FRAME_PAD - 4 : -4,
+                    right: equippedBorder ? FRAME_PAD - 4 : -4,
+                    zIndex: 20,
+                  }}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -195,11 +219,21 @@ export default function MyPage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors"
-                style={{ bottom: equippedBorder ? FRAME_PAD - 4 : -4, right: equippedBorder ? FRAME_PAD - 4 : -4, zIndex: 20 }}
+                style={{
+                  bottom: equippedBorder ? FRAME_PAD - 4 : -4,
+                  right: equippedBorder ? FRAME_PAD - 4 : -4,
+                  zIndex: 20,
+                }}
               >
                 <Camera className="w-3 h-3" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoChange}
+              />
             </div>
           );
         })()}
@@ -274,7 +308,9 @@ export default function MyPage() {
           >
             {getCharName(displayChar, lang)}
             {(rewardSummary.characterEnhancements[displayChar.id] ?? 0) > 0 && (
-              <span className="text-amber-400 ml-1">+{rewardSummary.characterEnhancements[displayChar.id]}</span>
+              <span className="text-amber-400 ml-1">
+                +{rewardSummary.characterEnhancements[displayChar.id]}
+              </span>
             )}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -333,21 +369,20 @@ export default function MyPage() {
         >
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">
-              {lang === "ko" ? "테두리" : "フレーム"}
-            </span>
-            {rewardSummary.equippedBorderId && BORDER_STYLES[rewardSummary.equippedBorderId] && (
-              <img
-                src={BORDER_STYLES[rewardSummary.equippedBorderId].image}
-                alt=""
-                className="w-6 h-6 object-contain"
-              />
-            )}
+            <span className="text-sm font-semibold">{t("mypage.border")}</span>
+            {rewardSummary.equippedBorderId &&
+              BORDER_STYLES[rewardSummary.equippedBorderId] && (
+                <img
+                  src={BORDER_STYLES[rewardSummary.equippedBorderId].image}
+                  alt=""
+                  className="w-6 h-6 object-contain"
+                />
+              )}
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>
               {rewardSummary.ownedBorderIds.length}
-              {lang === "ko" ? "개 보유" : "個所持"}
+              {t("mypage.title_owned")}
             </span>
             <ChevronRight
               className={`w-4 h-4 transition-transform ${showBorderSelector ? "rotate-90" : ""}`}
@@ -358,7 +393,7 @@ export default function MyPage() {
           <div className="mt-3 pt-3 border-t border-border">
             {rewardSummary.ownedBorderIds.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">
-                {lang === "ko" ? "보유한 테두리가 없습니다." : "フレームを所持していません。"}
+                {t("mypage.no_borders")}
               </p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
@@ -367,23 +402,39 @@ export default function MyPage() {
                   if (!bs) return null;
                   const name = BORDER_NAMES[bId];
                   const isEquipped = rewardSummary.equippedBorderId === bId;
-                  const label = name ? (lang === "ko" ? name.ko : name.ja) : bId;
+                  const label = name
+                    ? lang === "ja"
+                      ? name.ja
+                      : lang === "ko"
+                        ? name.ko
+                        : name.en
+                    : bId;
                   return (
                     <button
                       key={bId}
                       disabled={borderLoading}
-                      onClick={() => isEquipped ? void handleUnequipBorder() : void handleEquipBorder(bId)}
+                      onClick={() =>
+                        isEquipped
+                          ? void handleUnequipBorder()
+                          : void handleEquipBorder(bId)
+                      }
                       className={`flex flex-col items-center gap-1 p-2 rounded border-2 transition-colors ${
                         isEquipped
                           ? "border-primary bg-primary/10"
                           : "border-border hover:border-primary/50"
                       }`}
                     >
-                      <img src={bs.image} alt={label} className="w-12 h-12 object-contain" />
-                      <span className="text-xs font-medium truncate w-full text-center">{label}</span>
+                      <img
+                        src={bs.image}
+                        alt={label}
+                        className="w-12 h-12 object-contain"
+                      />
+                      <span className="text-xs font-medium truncate w-full text-center">
+                        {label}
+                      </span>
                       {isEquipped && (
                         <span className="text-[10px] text-primary">
-                          {lang === "ko" ? "착용 중" : "装着中"}
+                          {t("kebomon.equipped")}
                         </span>
                       )}
                     </button>

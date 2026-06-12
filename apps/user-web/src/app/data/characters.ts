@@ -146,32 +146,62 @@ export type RogueArchetype = "energy" | "attack" | "defense";
 
 export const ROGUE_TYPE_MAP: Record<CharacterType, RogueArchetype> = {
   // 에너지형 (+1 시작 에너지): 민첩·기술·지능 계열 10종
-  cat: "energy", fox: "energy", rabbit: "energy", monkey: "energy", raven: "energy",
-  deer: "energy", robot: "energy", slime: "energy", fish: "energy", unicorn: "energy",
+  cat: "energy",
+  fox: "energy",
+  rabbit: "energy",
+  monkey: "energy",
+  raven: "energy",
+  deer: "energy",
+  robot: "energy",
+  slime: "energy",
+  fish: "energy",
+  unicorn: "energy",
   // 공격형 (+1 시작 힘): 공격·사냥·마법 계열 10종
-  wolf: "attack", tiger: "attack", lion: "attack", bear: "attack", eagle: "attack",
-  boar: "attack", ghost: "attack", owl: "attack", dragon: "attack", demon: "attack",
+  wolf: "attack",
+  tiger: "attack",
+  lion: "attack",
+  bear: "attack",
+  eagle: "attack",
+  boar: "attack",
+  ghost: "attack",
+  owl: "attack",
+  dragon: "attack",
+  demon: "attack",
   // 방어형 (+5 시작 방어): 방어·자연·회복 계열 10종
-  turtle: "defense", elephant: "defense", whale: "defense", beetle: "defense", crocodile: "defense",
-  angel: "defense", phoenix: "defense", plant: "defense", snake: "defense", horse: "defense",
+  turtle: "defense",
+  elephant: "defense",
+  whale: "defense",
+  beetle: "defense",
+  crocodile: "defense",
+  angel: "defense",
+  phoenix: "defense",
+  plant: "defense",
+  snake: "defense",
+  horse: "defense",
 };
 
 // ── Per-rarity base stats (for status display) ────────────────────────────
-export const RARITY_RAID_STATS: Record<CharacterRarity, { atk: number; crit: number }> = {
-  common:    { atk: 50,  crit: 5  },
-  uncommon:  { atk: 70,  crit: 8  },
-  rare:      { atk: 95,  crit: 12 },
-  epic:      { atk: 125, crit: 16 },
+export const RARITY_RAID_STATS: Record<
+  CharacterRarity,
+  { atk: number; crit: number }
+> = {
+  common: { atk: 50, crit: 5 },
+  uncommon: { atk: 70, crit: 8 },
+  rare: { atk: 95, crit: 12 },
+  epic: { atk: 125, crit: 16 },
   legendary: { atk: 160, crit: 22 },
-  mythic:    { atk: 200, crit: 30 },
+  mythic: { atk: 200, crit: 30 },
 };
-export const RARITY_COL_STATS: Record<CharacterRarity, { hp: number; def: number; spd: number }> = {
-  common:    { hp: 400,  def: 30,  spd: 50  },
-  uncommon:  { hp: 520,  def: 45,  spd: 65  },
-  rare:      { hp: 660,  def: 65,  spd: 80  },
-  epic:      { hp: 820,  def: 90,  spd: 95  },
+export const RARITY_COL_STATS: Record<
+  CharacterRarity,
+  { hp: number; def: number; spd: number }
+> = {
+  common: { hp: 400, def: 30, spd: 50 },
+  uncommon: { hp: 520, def: 45, spd: 65 },
+  rare: { hp: 660, def: 65, spd: 80 },
+  epic: { hp: 820, def: 90, spd: 95 },
   legendary: { hp: 1000, def: 120, spd: 110 },
-  mythic:    { hp: 1200, def: 160, spd: 130 },
+  mythic: { hp: 1200, def: 160, spd: 130 },
 };
 
 export const CHARACTER_JP_NAMES: Record<number, string> = {
@@ -991,7 +1021,8 @@ export const CHARACTER_JP_DESCRIPTIONS: Record<number, string> = {
 
 export function getCharName(char: CharacterDef, lang: string): string {
   if (lang === "ja") return CHARACTER_JP_NAMES[char.id] ?? char.name;
-  return char.korName;
+  if (lang === "ko") return char.korName;
+  return char.name;
 }
 
 export function getCharDesc(char: CharacterDef, lang: string): string {
@@ -1010,7 +1041,6 @@ export function getAchLabel(ach: AchievementDef, _lang: string): string {
 }
 
 export const CHARACTERS: CharacterDef[] = [
-
   c(
     8,
     "Gormrak",
@@ -3358,7 +3388,6 @@ export const GACHA_IDS = CHARACTERS.filter(
 
 // Achievement definitions – maps achievement condition to character reward
 export const ACHIEVEMENTS: AchievementDef[] = [
-
   {
     characterId: 4,
     type: "raid_count",

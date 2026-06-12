@@ -4,29 +4,42 @@ import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { PixelSprite } from "./PixelCharacter";
 import {
-  CHARACTERS, RARITY_COLOR, RARITY_BORDER,
-  getCharName, getRarityLabel,
+  CHARACTERS,
+  RARITY_COLOR,
+  RARITY_BORDER,
+  getCharName,
+  getRarityLabel,
 } from "../data/characters";
 import type { CharacterRarity } from "../data/characters";
 
 const RARITY_BG: Record<CharacterRarity, string> = {
-  common:    "bg-gray-500/10",
-  uncommon:  "bg-green-500/10",
-  rare:      "bg-blue-500/10",
-  epic:      "bg-purple-500/10",
+  common: "bg-gray-500/10",
+  uncommon: "bg-green-500/10",
+  rare: "bg-blue-500/10",
+  epic: "bg-purple-500/10",
   legendary: "bg-amber-500/10",
-  mythic:    "bg-pink-500/10",
+  mythic: "bg-pink-500/10",
 };
 
 const RARITY_ORDER: Record<CharacterRarity, number> = {
-  common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5,
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 4,
+  mythic: 5,
 };
 
 type SortMode = "enhancement" | "rarity";
 
 // ─── 강화 상수 ──────────────────────────────────────────────────────────────
 const MAX_ENHANCE: Record<CharacterRarity, number> = {
-  common: 3, uncommon: 3, rare: 4, epic: 4, legendary: 5, mythic: 6,
+  common: 3,
+  uncommon: 3,
+  rare: 4,
+  epic: 4,
+  legendary: 5,
+  mythic: 6,
 };
 const ENHANCE_RATES = [1.0, 0.9, 0.8, 0.6, 0.4, 0.2];
 const ENHANCE_EFFECTS: Record<number, string> = {
@@ -49,39 +62,43 @@ const ENHANCE_EFFECTS_JA: Record<number, string> = {
 // ─── 픽셀 강화석 SVG ─────────────────────────────────────────────────────────
 function EnhancementStoneSVG({ size = 64 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20"
-      style={{ imageRendering: "pixelated", display: "block" }}>
-      <rect x="6"  y="1"  width="8"  height="1" fill="#1e3a8a" />
-      <rect x="4"  y="2"  width="12" height="1" fill="#1e3a8a" />
-      <rect x="3"  y="3"  width="14" height="1" fill="#1e3a8a" />
-      <rect x="2"  y="4"  width="16" height="1" fill="#1e3a8a" />
-      <rect x="1"  y="5"  width="18" height="8" fill="#1e3a8a" />
-      <rect x="2"  y="13" width="16" height="1" fill="#1e3a8a" />
-      <rect x="3"  y="14" width="14" height="1" fill="#1e3a8a" />
-      <rect x="4"  y="15" width="12" height="1" fill="#1e3a8a" />
-      <rect x="6"  y="16" width="8"  height="1" fill="#1e3a8a" />
-      <rect x="7"  y="17" width="6"  height="1" fill="#1e3a8a" />
-      <rect x="6"  y="2"  width="8"  height="1" fill="#3b82f6" />
-      <rect x="4"  y="3"  width="12" height="1" fill="#3b82f6" />
-      <rect x="3"  y="4"  width="14" height="1" fill="#3b82f6" />
-      <rect x="2"  y="5"  width="16" height="7" fill="#3b82f6" />
-      <rect x="3"  y="12" width="14" height="1" fill="#3b82f6" />
-      <rect x="4"  y="13" width="12" height="1" fill="#2563eb" />
-      <rect x="5"  y="14" width="10" height="1" fill="#2563eb" />
-      <rect x="6"  y="15" width="8"  height="1" fill="#2563eb" />
-      <rect x="7"  y="16" width="6"  height="1" fill="#1d4ed8" />
-      <rect x="5"  y="3"  width="5"  height="1" fill="#93c5fd" />
-      <rect x="4"  y="4"  width="4"  height="1" fill="#93c5fd" />
-      <rect x="3"  y="5"  width="3"  height="3" fill="#93c5fd" />
-      <rect x="4"  y="8"  width="2"  height="1" fill="#bfdbfe" />
-      <rect x="9"  y="6"  width="2"  height="1" fill="#ffffff" />
-      <rect x="10" y="7"  width="1"  height="1" fill="#ffffff" />
-      <rect x="9"  y="8"  width="2"  height="1" fill="#ffffff" />
-      <rect x="8"  y="7"  width="1"  height="1" fill="#ffffff" />
-      <rect x="11" y="7"  width="1"  height="1" fill="#dbeafe" />
-      <rect x="7"  y="17" width="6"  height="1" fill="#1e3a8a" />
-      <rect x="6"  y="18" width="8"  height="1" fill="#1e40af" />
-      <rect x="7"  y="19" width="6"  height="1" fill="#1e3a8a" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      style={{ imageRendering: "pixelated", display: "block" }}
+    >
+      <rect x="6" y="1" width="8" height="1" fill="#1e3a8a" />
+      <rect x="4" y="2" width="12" height="1" fill="#1e3a8a" />
+      <rect x="3" y="3" width="14" height="1" fill="#1e3a8a" />
+      <rect x="2" y="4" width="16" height="1" fill="#1e3a8a" />
+      <rect x="1" y="5" width="18" height="8" fill="#1e3a8a" />
+      <rect x="2" y="13" width="16" height="1" fill="#1e3a8a" />
+      <rect x="3" y="14" width="14" height="1" fill="#1e3a8a" />
+      <rect x="4" y="15" width="12" height="1" fill="#1e3a8a" />
+      <rect x="6" y="16" width="8" height="1" fill="#1e3a8a" />
+      <rect x="7" y="17" width="6" height="1" fill="#1e3a8a" />
+      <rect x="6" y="2" width="8" height="1" fill="#3b82f6" />
+      <rect x="4" y="3" width="12" height="1" fill="#3b82f6" />
+      <rect x="3" y="4" width="14" height="1" fill="#3b82f6" />
+      <rect x="2" y="5" width="16" height="7" fill="#3b82f6" />
+      <rect x="3" y="12" width="14" height="1" fill="#3b82f6" />
+      <rect x="4" y="13" width="12" height="1" fill="#2563eb" />
+      <rect x="5" y="14" width="10" height="1" fill="#2563eb" />
+      <rect x="6" y="15" width="8" height="1" fill="#2563eb" />
+      <rect x="7" y="16" width="6" height="1" fill="#1d4ed8" />
+      <rect x="5" y="3" width="5" height="1" fill="#93c5fd" />
+      <rect x="4" y="4" width="4" height="1" fill="#93c5fd" />
+      <rect x="3" y="5" width="3" height="3" fill="#93c5fd" />
+      <rect x="4" y="8" width="2" height="1" fill="#bfdbfe" />
+      <rect x="9" y="6" width="2" height="1" fill="#ffffff" />
+      <rect x="10" y="7" width="1" height="1" fill="#ffffff" />
+      <rect x="9" y="8" width="2" height="1" fill="#ffffff" />
+      <rect x="8" y="7" width="1" height="1" fill="#ffffff" />
+      <rect x="11" y="7" width="1" height="1" fill="#dbeafe" />
+      <rect x="7" y="17" width="6" height="1" fill="#1e3a8a" />
+      <rect x="6" y="18" width="8" height="1" fill="#1e40af" />
+      <rect x="7" y="19" width="6" height="1" fill="#1e3a8a" />
     </svg>
   );
 }
@@ -92,32 +109,49 @@ export default function ShopPage() {
 
   // 상점
   const [buying, setBuying] = useState(false);
-  const [buyFeedback, setBuyFeedback] = useState<"success" | "fail" | null>(null);
+  const [buyFeedback, setBuyFeedback] = useState<"success" | "fail" | null>(
+    null,
+  );
   const [buyQty, setBuyQty] = useState(1);
 
   // 강화
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [enhancing, setEnhancing] = useState(false);
-  const [enhResult, setEnhResult] = useState<{ success: boolean; newLevel: number } | null>(null);
+  const [enhResult, setEnhResult] = useState<{
+    success: boolean;
+    newLevel: number;
+  } | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("enhancement");
 
-  const { missionPoints, enhancementStones, characterEnhancements, ownedCharacterIds } = rewardSummary;
+  const {
+    missionPoints,
+    enhancementStones,
+    characterEnhancements,
+    ownedCharacterIds,
+  } = rewardSummary;
   const ownedChars = CHARACTERS.filter((c) => ownedCharacterIds.includes(c.id));
 
   const sortedOwnedChars = [...ownedChars].sort((a, b) => {
     if (sortMode === "enhancement") {
-      const lvlDiff = (characterEnhancements[b.id] ?? 0) - (characterEnhancements[a.id] ?? 0);
+      const lvlDiff =
+        (characterEnhancements[b.id] ?? 0) - (characterEnhancements[a.id] ?? 0);
       if (lvlDiff !== 0) return lvlDiff;
       return RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity];
     } else {
       const rarityDiff = RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity];
       if (rarityDiff !== 0) return rarityDiff;
-      return (characterEnhancements[b.id] ?? 0) - (characterEnhancements[a.id] ?? 0);
+      return (
+        (characterEnhancements[b.id] ?? 0) - (characterEnhancements[a.id] ?? 0)
+      );
     }
   });
 
-  const selectedChar = selectedId ? CHARACTERS.find((c) => c.id === selectedId) : null;
-  const currentLevel = selectedId ? (characterEnhancements[selectedId] ?? 0) : 0;
+  const selectedChar = selectedId
+    ? CHARACTERS.find((c) => c.id === selectedId)
+    : null;
+  const currentLevel = selectedId
+    ? (characterEnhancements[selectedId] ?? 0)
+    : 0;
   const maxLevel = selectedChar ? MAX_ENHANCE[selectedChar.rarity] : 0;
   const isMax = currentLevel >= maxLevel;
   const nextLevel = currentLevel + 1;
@@ -163,13 +197,21 @@ export default function ShopPage() {
       {/* ── 현황 바 ── */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-border bg-card p-4 text-center">
-          <p className="text-xs text-muted-foreground mb-1">{t("shop.my_points")}</p>
-          <p className="text-xl font-bold text-primary">{missionPoints.toLocaleString()} P</p>
+          <p className="text-xs text-muted-foreground mb-1">
+            {t("shop.my_points")}
+          </p>
+          <p className="text-xl font-bold text-primary">
+            {missionPoints.toLocaleString()} P
+          </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 text-center">
-          <p className="text-xs text-muted-foreground mb-1">{t("shop.my_stones")}</p>
+          <p className="text-xs text-muted-foreground mb-1">
+            {t("shop.my_stones")}
+          </p>
           <p className="text-xl font-bold text-blue-400 flex items-center justify-center gap-1">
-            <span className="inline-block"><EnhancementStoneSVG size={20} /></span>
+            <span className="inline-block">
+              <EnhancementStoneSVG size={20} />
+            </span>
             {enhancementStones}
           </p>
         </div>
@@ -178,7 +220,9 @@ export default function ShopPage() {
       {/* ── 강화석 구매 ── */}
       <section className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border bg-muted/30">
-          <h2 className="text-sm font-semibold text-muted-foreground">{t("shop.title")}</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">
+            {t("shop.title")}
+          </h2>
         </div>
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-4">
@@ -186,13 +230,21 @@ export default function ShopPage() {
               <EnhancementStoneSVG size={44} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-foreground">{t("shop.stone_name")}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("shop.stone_desc")}</p>
-              <p className="text-sm font-semibold text-amber-400 mt-1">{t("shop.stone_price")}</p>
+              <p className="font-bold text-foreground">
+                {t("shop.stone_name")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("shop.stone_desc")}
+              </p>
+              <p className="text-sm font-semibold text-amber-400 mt-1">
+                {t("shop.stone_price")}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground shrink-0">{t("shop.qty_label")}</span>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {t("shop.qty_label")}
+            </span>
             <div className="flex items-center gap-1">
               {[1, 5, 10, 20].map((q) => (
                 <button
@@ -209,7 +261,10 @@ export default function ShopPage() {
               ))}
             </div>
             <span className="text-xs text-muted-foreground ml-auto shrink-0">
-              {t("shop.total_cost")} <span className="text-amber-400 font-bold">{(600 * buyQty).toLocaleString()}P</span>
+              {t("shop.total_cost")}{" "}
+              <span className="text-amber-400 font-bold">
+                {(600 * buyQty).toLocaleString()}P
+              </span>
             </span>
           </div>
           <button
@@ -222,8 +277,12 @@ export default function ShopPage() {
           </button>
         </div>
         {buyFeedback && (
-          <p className={`pb-3 text-sm text-center font-medium ${buyFeedback === "success" ? "text-green-400" : "text-red-400"}`}>
-            {buyFeedback === "success" ? t("shop.buy_success") : t("shop.buy_fail")}
+          <p
+            className={`pb-3 text-sm text-center font-medium ${buyFeedback === "success" ? "text-green-400" : "text-red-400"}`}
+          >
+            {buyFeedback === "success"
+              ? t("shop.buy_success")
+              : t("shop.buy_fail")}
           </p>
         )}
       </section>
@@ -231,14 +290,18 @@ export default function ShopPage() {
       {/* ── 케보몬 강화 ── */}
       <section className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border bg-muted/30">
-          <h2 className="text-sm font-semibold text-muted-foreground">{t("enhance.title")}</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">
+            {t("enhance.title")}
+          </h2>
         </div>
 
         {/* 캐릭터 선택 그리드 */}
         {!selectedId && (
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">{t("enhance.select_char")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("enhance.select_char")}
+              </p>
               <div className="flex gap-1">
                 {(["enhancement", "rarity"] as SortMode[]).map((mode) => (
                   <button
@@ -250,7 +313,9 @@ export default function ShopPage() {
                         : "bg-muted text-muted-foreground hover:bg-muted/70"
                     }`}
                   >
-                    {mode === "enhancement" ? t("enhance.sort_level") : t("enhance.sort_rarity")}
+                    {mode === "enhancement"
+                      ? t("enhance.sort_level")
+                      : t("enhance.sort_rarity")}
                   </button>
                 ))}
               </div>
@@ -265,14 +330,30 @@ export default function ShopPage() {
                     key={char.id}
                     onClick={() => setSelectedId(char.id)}
                     className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all
-                      ${atMax
-                        ? "border-amber-500/50 bg-amber-500/10"
-                        : "border-border bg-background hover:border-primary/50 hover:bg-primary/5"}`}
+                      ${
+                        atMax
+                          ? "border-amber-500/50 bg-amber-500/10"
+                          : "border-border bg-background hover:border-primary/50 hover:bg-primary/5"
+                      }`}
                   >
-                    <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={34} />
-                    {lvl > 0
-                      ? <span className={`text-[10px] font-bold ${atMax ? "text-amber-400" : "text-blue-400"}`}>+{lvl}</span>
-                      : <span className="text-[10px] text-muted-foreground/40">—</span>}
+                    <PixelSprite
+                      type={char.type}
+                      colors={char.colors}
+                      characterId={char.id}
+                      rarity={char.rarity}
+                      size={34}
+                    />
+                    {lvl > 0 ? (
+                      <span
+                        className={`text-[10px] font-bold ${atMax ? "text-amber-400" : "text-blue-400"}`}
+                      >
+                        +{lvl}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground/40">
+                        —
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -285,23 +366,38 @@ export default function ShopPage() {
           <div className="p-4 space-y-4">
             {/* 뒤로가기 버튼 */}
             <button
-              onClick={() => { setSelectedId(null); setEnhResult(null); }}
+              onClick={() => {
+                setSelectedId(null);
+                setEnhResult(null);
+              }}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft size={15} />
-              {lang === "ja" ? "戻る" : "뒤로가기"}
+              {t("common.back")}
             </button>
             {/* 캐릭터 정보 */}
             <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-xl ${RARITY_BG[selectedChar.rarity]} border ${RARITY_BORDER[selectedChar.rarity]} flex items-center justify-center shrink-0`}>
-                <PixelSprite type={selectedChar.type} colors={selectedChar.colors} characterId={selectedChar.id} rarity={selectedChar.rarity} size={52} />
+              <div
+                className={`w-16 h-16 rounded-xl ${RARITY_BG[selectedChar.rarity]} border ${RARITY_BORDER[selectedChar.rarity]} flex items-center justify-center shrink-0`}
+              >
+                <PixelSprite
+                  type={selectedChar.type}
+                  colors={selectedChar.colors}
+                  characterId={selectedChar.id}
+                  rarity={selectedChar.rarity}
+                  size={52}
+                />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-base font-bold truncate ${RARITY_COLOR[selectedChar.rarity]}`}>
+                <p
+                  className={`text-base font-bold truncate ${RARITY_COLOR[selectedChar.rarity]}`}
+                >
                   {getCharName(selectedChar, lang)}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs px-2 py-0.5 rounded ${RARITY_BG[selectedChar.rarity]} ${RARITY_COLOR[selectedChar.rarity]}`}>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${RARITY_BG[selectedChar.rarity]} ${RARITY_COLOR[selectedChar.rarity]}`}
+                  >
                     {getRarityLabel(selectedChar.rarity, lang)}
                   </span>
                   <span className="text-sm text-muted-foreground">
@@ -314,26 +410,47 @@ export default function ShopPage() {
             {/* 레벨 바 */}
             <div className="flex gap-1">
               {Array.from({ length: maxLevel }).map((_, i) => (
-                <div key={i} className={`flex-1 h-2 rounded-full transition-colors ${i < currentLevel ? "bg-blue-400" : "bg-muted"}`} />
+                <div
+                  key={i}
+                  className={`flex-1 h-2 rounded-full transition-colors ${i < currentLevel ? "bg-blue-400" : "bg-muted"}`}
+                />
               ))}
             </div>
 
             {isMax ? (
-              <p className="text-center text-amber-400 font-bold py-2">{t("enhance.max")}</p>
+              <p className="text-center text-amber-400 font-bold py-2">
+                {t("enhance.max")}
+              </p>
             ) : (
               <>
                 {/* 효과 테이블 */}
                 <div className="rounded-xl bg-muted/50 divide-y divide-border overflow-hidden text-xs">
                   {Array.from({ length: maxLevel }).map((_, i) => {
                     const lvl = i + 1;
-                    const fx = lang === "ja" ? ENHANCE_EFFECTS_JA[lvl] : ENHANCE_EFFECTS[lvl];
+                    const fx =
+                      lang === "ja"
+                        ? ENHANCE_EFFECTS_JA[lvl]
+                        : ENHANCE_EFFECTS[lvl];
                     const done = lvl <= currentLevel;
                     const isNext = lvl === nextLevel;
                     return (
-                      <div key={lvl} className={`flex items-center gap-2 px-3 py-2 ${done ? "opacity-40" : ""} ${isNext ? "bg-blue-500/10" : ""}`}>
-                        <span className={`font-bold w-6 shrink-0 ${isNext ? "text-blue-400" : "text-muted-foreground"}`}>+{lvl}</span>
-                        <span className={`flex-1 ${isNext ? "text-foreground" : "text-muted-foreground"}`}>{fx}</span>
-                        {done && <span className="text-green-400 shrink-0">✓</span>}
+                      <div
+                        key={lvl}
+                        className={`flex items-center gap-2 px-3 py-2 ${done ? "opacity-40" : ""} ${isNext ? "bg-blue-500/10" : ""}`}
+                      >
+                        <span
+                          className={`font-bold w-6 shrink-0 ${isNext ? "text-blue-400" : "text-muted-foreground"}`}
+                        >
+                          +{lvl}
+                        </span>
+                        <span
+                          className={`flex-1 ${isNext ? "text-foreground" : "text-muted-foreground"}`}
+                        >
+                          {fx}
+                        </span>
+                        {done && (
+                          <span className="text-green-400 shrink-0">✓</span>
+                        )}
                       </div>
                     );
                   })}
@@ -342,20 +459,31 @@ export default function ShopPage() {
                 {/* 비용 + 확률 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg bg-muted text-center py-3">
-                    <p className="text-xs text-muted-foreground">{t("enhance.cost")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("enhance.cost")}
+                    </p>
                     <p className="font-bold text-blue-400 text-lg mt-0.5 flex items-center justify-center gap-1">
-                      <EnhancementStoneSVG size={16} />{stoneCost}
+                      <EnhancementStoneSVG size={16} />
+                      {stoneCost}
                     </p>
                   </div>
                   <div className="rounded-lg bg-muted text-center py-3">
-                    <p className="text-xs text-muted-foreground">{t("enhance.rate")}</p>
-                    <p className="font-bold text-foreground text-lg mt-0.5">{Math.round(successRate * 100)}%</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("enhance.rate")}
+                    </p>
+                    <p className="font-bold text-foreground text-lg mt-0.5">
+                      {Math.round(successRate * 100)}%
+                    </p>
                   </div>
                 </div>
 
                 {enhResult && (
-                  <p className={`text-center font-bold text-sm ${enhResult.success ? "text-green-400" : "text-red-400"}`}>
-                    {enhResult.success ? t("enhance.success") : t("enhance.fail")}
+                  <p
+                    className={`text-center font-bold text-sm ${enhResult.success ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {enhResult.success
+                      ? t("enhance.success")
+                      : t("enhance.fail")}
                   </p>
                 )}
 
