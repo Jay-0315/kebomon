@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Layers, Swords, Shield, Heart, RefreshCw,
   ShoppingCart, Skull, Trophy, Star, X, Flame, ChevronRight, Crown,
+  Sparkles, Award,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -79,6 +80,13 @@ type CardRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 type NodeType   = "fight" | "elite" | "treasure" | "shop" | "rest" | "boss";
 type Phase      = "lobby" | "map" | "battle" | "reward" | "shop" | "rest" | "gameover" | "victory";
 type Intent     = "attack" | "defend" | "buff" | "poison";
+type RelicGrade    = "common" | "rare" | "unique";
+type RelicCategory = "combat" | "utility" | "reward";
+interface RelicDef {
+  id: string; name: string; nameJa: string; nameEn: string;
+  grade: RelicGrade; category: RelicCategory;
+  desc: string; descJa: string; descEn: string;
+}
 
 interface CardDef {
   id: string; name: string; nameJa: string; nameEn: string;
@@ -121,6 +129,8 @@ interface GameState {
   chainPending: EnemyState | null;
   cursedRest: boolean;
   shopInflated: boolean;
+  relics: RelicDef[];
+  relicPending: boolean;
 }
 
 // ── Card pool ─────────────────────────────────────────────────────────────
@@ -189,6 +199,39 @@ const CARDS: CardDef[] = [
   { id:"berserker",    name:"광전사",       nameJa:"バーサーカー",      nameEn:"Berserker",     cost:2,type:"attack",rarity:"legendary",desc:"6 데미지 × 4",       descJa:"6ダメージ×4",         descEn:"Deal 6 damage four times",        archetype:"warrior", damage:6,multiHit:4 },
   { id:"shadow_realm", name:"암흑 영역",    nameJa:"暗黒領域",          nameEn:"Shadow Realm",  cost:3,type:"attack",rarity:"legendary",desc:"20 데미지, 독 5",     descJa:"20ダメージ・毒5",     descEn:"Deal 20 damage, apply 5 poison",  archetype:"mage",    damage:20,poison:5 },
   { id:"ancient_armor",name:"고대의 갑옷",  nameJa:"古代の鎧",          nameEn:"Ancient Armor", cost:3,type:"skill", rarity:"legendary",desc:"방어력 25, 힘 +2",    descJa:"シールド25・力+2",   descEn:"Gain 25 shield, gain 2 strength", archetype:"tank",    shield:25,strength:2 },
+];
+
+// ── Relic pool ─────────────────────────────────────────────────────────────
+const RELICS: RelicDef[] = [
+  // ── Common / combat ──
+  { id:"blade_ring",     grade:"common", category:"combat",   name:"칼날 반지",       nameJa:"刃の指輪",         nameEn:"Blade Ring",       desc:"획득 시 힘 +1 (영구)",         descJa:"取得時、力+1（永続）",      descEn:"Gain +1 strength permanently" },
+  { id:"poison_bangle",  grade:"common", category:"combat",   name:"독침 팔찌",       nameJa:"毒針腕輪",         nameEn:"Poison Bangle",    desc:"매 턴 시작 시 적에게 독 1",    descJa:"ターン開始時、毒1付与",     descEn:"Apply 1 poison to enemy each turn" },
+  { id:"thorn_bracelet", grade:"common", category:"combat",   name:"가시 팔찌",       nameJa:"棘の腕輪",         nameEn:"Thorn Bracelet",   desc:"피격 시 반사 데미지 1",         descJa:"被撃時、反射1ダメージ",     descEn:"Reflect 1 damage when hit" },
+  // ── Common / utility ──
+  { id:"compass",        grade:"common", category:"utility",  name:"나침반",          nameJa:"コンパス",         nameEn:"Compass",          desc:"매 전투 시작 시 카드 1장 추가", descJa:"戦闘開始時、1枚追加ドロー", descEn:"Draw 1 extra card at battle start" },
+  { id:"bandage",        grade:"common", category:"utility",  name:"붕대",            nameJa:"包帯",             nameEn:"Bandage",          desc:"전투 승리 시 HP +5",           descJa:"戦闘勝利時、HP+5",         descEn:"Heal 5 HP on battle win" },
+  // ── Common / reward ──
+  { id:"old_wallet",     grade:"common", category:"reward",   name:"낡은 지갑",       nameJa:"古い財布",         nameEn:"Old Wallet",       desc:"전투 승리 시 골드 +15",        descJa:"戦闘勝利時、ゴールド+15",  descEn:"Gain 15 gold on battle win" },
+  { id:"lucky_coin",     grade:"common", category:"reward",   name:"행운의 동전",     nameJa:"幸運のコイン",     nameEn:"Lucky Coin",       desc:"보상 카드 4장 중 선택",        descJa:"報酬カード4枚から選択",     descEn:"Choose from 4 reward cards" },
+  // ── Rare / combat ──
+  { id:"dragon_scale",   grade:"rare",   category:"combat",   name:"용의 비늘",       nameJa:"竜の鱗",           nameEn:"Dragon Scale",     desc:"매 턴 시작 시 방어력 +3",      descJa:"ターン開始時、シールド+3",  descEn:"Gain 3 shield at turn start" },
+  { id:"berserker_axe",  grade:"rare",   category:"combat",   name:"광전사의 도끼",   nameJa:"狂戦士の斧",       nameEn:"Berserker Axe",    desc:"획득 시 힘 +2 (영구)",         descJa:"取得時、力+2（永続）",      descEn:"Gain +2 strength permanently" },
+  { id:"vampire_ring",   grade:"rare",   category:"combat",   name:"흡혈 반지",       nameJa:"吸血の指輪",       nameEn:"Vampire Ring",     desc:"전투 승리 시 HP +10",          descJa:"戦闘勝利時、HP+10",        descEn:"Heal 10 HP on battle win" },
+  { id:"health_potion",  grade:"rare",   category:"combat",   name:"체력 물약",       nameJa:"体力ポーション",   nameEn:"Health Potion",    desc:"매 전투 시작 시 HP +8",        descJa:"戦闘開始時、HP+8",         descEn:"Heal 8 HP at battle start" },
+  // ── Rare / utility ──
+  { id:"magic_cloak",    grade:"rare",   category:"utility",  name:"마법 망토",       nameJa:"魔法のマント",     nameEn:"Magic Cloak",      desc:"획득 시 최대 HP +20",          descJa:"取得時、最大HP+20",         descEn:"Gain +20 max HP" },
+  { id:"energy_crystal", grade:"rare",   category:"utility",  name:"에너지 결정체",   nameJa:"エナジークリスタル",nameEn:"Energy Crystal",   desc:"획득 시 최대 에너지 +1",       descJa:"取得時、最大エナジー+1",    descEn:"Gain +1 max energy" },
+  // ── Rare / reward ──
+  { id:"gold_pouch",     grade:"rare",   category:"reward",   name:"금화 주머니",     nameJa:"金貨袋",           nameEn:"Gold Pouch",       desc:"골드 획득량 +30%",             descJa:"ゴールド獲得量+30%",        descEn:"+30% gold from battles" },
+  // ── Unique / combat ──
+  { id:"immortal_heart", grade:"unique", category:"combat",   name:"불멸의 심장",     nameJa:"不滅の心臓",       nameEn:"Immortal Heart",   desc:"런 중 1회 치사 데미지 방어",    descJa:"1回だけ致死ダメージを無効", descEn:"Block lethal damage once per run" },
+  { id:"storm_sword",    grade:"unique", category:"combat",   name:"폭풍의 검",       nameJa:"嵐の剣",           nameEn:"Storm Sword",      desc:"매 전투 시작 시 에너지 +1",    descJa:"戦闘開始時、エナジー+1",    descEn:"Gain 1 energy at battle start" },
+  // ── Unique / utility ──
+  { id:"hourglass",      grade:"unique", category:"utility",  name:"시간의 모래시계", nameJa:"時の砂時計",       nameEn:"Hourglass",        desc:"매 전투 시작 시 카드 2장 추가", descJa:"戦闘開始時、2枚追加ドロー", descEn:"Draw 2 extra cards at battle start" },
+  { id:"philosopher",    grade:"unique", category:"utility",  name:"연금술사의 돌",   nameJa:"賢者の石",         nameEn:"Philosopher's Stone",desc:"상점 가격 -25%",              descJa:"ショップ価格-25%",          descEn:"Shop prices -25%" },
+  // ── Unique / reward ──
+  { id:"fate_dice",      grade:"unique", category:"reward",   name:"운명의 주사위",   nameJa:"運命のサイコロ",   nameEn:"Fate Dice",        desc:"보상 카드 4장, 레어 이상 위주", descJa:"報酬4枚・レア以上中心",     descEn:"4 reward cards, skewed rare+" },
+  { id:"master_key",     grade:"unique", category:"reward",   name:"마스터 열쇠",     nameJa:"マスターキー",     nameEn:"Master Key",       desc:"보물 노드 함정 없음",           descJa:"宝物ノードのトラップなし",  descEn:"No ambush trap in treasure nodes" },
 ];
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
@@ -383,6 +426,11 @@ function shuffle<T>(arr: T[]): T[] {
 }
 function uid() { return Math.random().toString(36).slice(2,9); }
 function toInst(d: CardDef): CardInstance { return { ...d, uid: uid() }; }
+function hasRelic(relics: RelicDef[], id: string): boolean { return relics.some(r => r.id === id); }
+function pickRelicOffer(owned: RelicDef[], count: number): RelicDef[] {
+  const ownedIds = new Set(owned.map(r => r.id));
+  return shuffle(RELICS.filter(r => !ownedIds.has(r.id))).slice(0, count);
+}
 
 function drawN(
   hand: CardInstance[], draw: CardInstance[], disc: CardInstance[], n: number
@@ -410,7 +458,8 @@ function makeStarterDeck(type: CharacterType): CardInstance[] {
   return shuffle(ids.map(id=>CARDS.find(c=>c.id===id)!).filter(Boolean)).map(toInst);
 }
 
-function pickRewards(floor: number, arch: string, diff: Difficulty = "normal"): CardDef[] {
+function pickRewards(floor: number, arch: string, diff: Difficulty = "normal", extraCard = false, fateDice = false): CardDef[] {
+  const count = extraCard ? 4 : 3;
   const allowLeg = floor >= DIFF_LEG_FLOOR[diff];
   const allowEpicFloor = DIFF_EPIC_FLOOR[diff];
   const pool = CARDS.filter(c => {
@@ -420,23 +469,24 @@ function pickRewards(floor: number, arch: string, diff: Difficulty = "normal"): 
   });
   const weighted: CardDef[] = [];
   for (const c of pool) {
-    const w = ({common:5,uncommon:4,rare:3,epic:2,legendary:1} as Record<string,number>)[c.rarity]??1;
+    const baseW = ({common:5,uncommon:4,rare:3,epic:2,legendary:1} as Record<string,number>)[c.rarity]??1;
+    const w = fateDice ? (c.rarity==="common"||c.rarity==="uncommon" ? 1 : baseW*3) : baseW;
     for (let i=0;i<w;i++) weighted.push(c);
   }
   const seen = new Set<string>(); const res: CardDef[] = [];
   for (const c of shuffle(weighted)) {
-    if (!seen.has(c.id)) { seen.add(c.id); res.push(c); if (res.length===3) break; }
+    if (!seen.has(c.id)) { seen.add(c.id); res.push(c); if (res.length===count) break; }
   }
-  while (res.length<3) {
+  while (res.length<count) {
     const fb = CARDS.find(c=>!seen.has(c.id));
     if (fb) { seen.add(fb.id); res.push(fb); } else break;
   }
   return res;
 }
 
-function makeShopItems(arch: string, inflated = false) {
+function makeShopItems(arch: string, inflated = false, discount = false) {
   const pool = shuffle(CARDS.filter(c=>c.archetype===arch||c.archetype==="all")).slice(0,3);
-  const mult = inflated ? 1.5 : 1.0;
+  const mult = (inflated ? 1.5 : 1.0) * (discount ? 0.75 : 1.0);
   return pool.map(card=>({ card, price: Math.ceil((CARD_PRICE[card.rarity]??60) * mult / 10) * 10, bought:false }));
 }
 
@@ -465,6 +515,45 @@ function spawnEnemyForFloor(floor: number, nodeType: "fight"|"elite"|"boss", dif
   }));
   const scaledHp = Math.round(def.hp * hpMult);
   return { ...def, hp:scaledHp, patterns:scaledPatterns, currentHp:scaledHp, currentShield:0, currentStrength:0, poisonStacks:0, patternIdx:0 };
+}
+
+// ── Relic category pixel art icons ────────────────────────────────────────
+function RelicCombatIcon({ size = 22, color = "#ef4444" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 8 9" style={{ imageRendering:"pixelated", display:"block", flexShrink:0 }}>
+      <rect x="3" y="0" width="2" height="4" fill={color}/>
+      <rect x="0" y="4" width="8" height="1" fill={color}/>
+      <rect x="3" y="5" width="2" height="2" fill={color} opacity="0.65"/>
+      <rect x="2" y="7" width="4" height="2" fill={color}/>
+      <rect x="4" y="1" width="1" height="2" fill="rgba(255,255,255,0.35)"/>
+    </svg>
+  );
+}
+function RelicUtilityIcon({ size = 22, color = "#22c55e" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 8 9" style={{ imageRendering:"pixelated", display:"block", flexShrink:0 }}>
+      <rect x="1" y="0" width="6" height="1" fill={color}/>
+      <rect x="0" y="1" width="8" height="4" fill={color}/>
+      <rect x="1" y="5" width="6" height="1" fill={color}/>
+      <rect x="2" y="6" width="4" height="1" fill={color}/>
+      <rect x="3" y="7" width="2" height="2" fill={color}/>
+      <rect x="3" y="2" width="2" height="1" fill="rgba(255,255,255,0.35)"/>
+      <rect x="2" y="2" width="1" height="1" fill="rgba(255,255,255,0.35)"/>
+    </svg>
+  );
+}
+function RelicRewardIcon({ size = 22, color = "#f59e0b" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 8 8" style={{ imageRendering:"pixelated", display:"block", flexShrink:0 }}>
+      <rect x="2" y="0" width="4" height="1" fill={color}/>
+      <rect x="1" y="1" width="6" height="1" fill={color}/>
+      <rect x="0" y="2" width="8" height="4" fill={color}/>
+      <rect x="1" y="6" width="6" height="1" fill={color}/>
+      <rect x="2" y="7" width="4" height="1" fill={color}/>
+      <rect x="2" y="3" width="1" height="2" fill="rgba(255,255,255,0.4)"/>
+      <rect x="5" y="3" width="1" height="2" fill="rgba(255,255,255,0.2)"/>
+    </svg>
+  );
 }
 
 // ── Card Component ─────────────────────────────────────────────────────────
@@ -642,6 +731,15 @@ export default function RoguePage() {
   const submitChallengeRef = useRef(submitChallenge);
   submitChallengeRef.current = submitChallenge;
 
+  const [sessionChallengeBest, setSessionChallengeBest] = useState(rewardSummary.challengeBest ?? 0);
+  const [relicOpen, setRelicOpen] = useState(false);
+  const [pendingRelicOffer, setPendingRelicOffer] = useState<RelicDef[] | null>(null);
+  const [pendingRelicSwap, setPendingRelicSwap] = useState<RelicDef | null>(null);
+  const [pendingCardSwap, setPendingCardSwap] = useState<CardInstance | null>(null);
+  const immortalHeartUsedRef = useRef(false);
+  const gsRef = useRef(gs);
+  gsRef.current = gs;
+
   // 피격 이펙트 — gs 변경 시 HP 델타 감지
   useEffect(() => {
     if (!gs || gs.phase !== "battle") {
@@ -704,6 +802,27 @@ export default function RoguePage() {
     }
   }, [gs?.phase]);
 
+  // Track session best for challenge mode (rewardSummary may not refresh)
+  useEffect(() => {
+    if (challengeResult?.challengeBest != null) {
+      setSessionChallengeBest(prev => Math.max(prev, challengeResult.challengeBest));
+    }
+  }, [challengeResult?.challengeBest]);
+
+  useEffect(() => {
+    setSessionChallengeBest(prev => Math.max(prev, rewardSummary.challengeBest ?? 0));
+  }, [rewardSummary.challengeBest]);
+
+  // Relic offer after elite/boss/treasure reward
+  useEffect(() => {
+    if (gs?.phase === "map" && gs.relicPending && !pendingRelicOffer && !pendingRelicSwap) {
+      const nodeType = gs.chosenPath[gs.floor];
+      const count = nodeType === "boss" ? 3 : 2;
+      setPendingRelicOffer(pickRelicOffer(gs.relics, count));
+      setGs(prev => prev ? { ...prev, relicPending: false } : prev);
+    }
+  }, [gs?.phase, gs?.relicPending]);
+
   // 도전 모드 랭킹 로드 (마운트 시 + 런 종료 후 갱신)
   const fetchRanksRef = useRef(fetchChallengeRankings);
   fetchRanksRef.current = fetchChallengeRankings;
@@ -733,8 +852,10 @@ export default function RoguePage() {
       gold:0, enemy:null, log:[],
       rewardCards:[], shopItems:[], turnCount:0,
       chainPending:null, cursedRest:false, shopInflated:false,
+      relics:[], relicPending:false,
     });
     setSelIdx(null);
+    immortalHeartUsedRef.current = false;
   }, [myChar, difficulty]);
 
   // ── Enter a map node ─────────────────────────────────────────────────────
@@ -746,7 +867,13 @@ export default function RoguePage() {
       if (nodeType==="fight"||nodeType==="elite"||nodeType==="boss") {
         const enemy = spawnEnemyForFloor(floorIdx, nodeType as "fight"|"elite"|"boss", prev.difficulty);
         const drawPile = shuffle([...prev.deck]);
-        const drawn = drawN([], drawPile, [], 5);
+        // Relic: extra draws at battle start
+        const extraDraw = (hasRelic(prev.relics,"compass")?1:0) + (hasRelic(prev.relics,"hourglass")?2:0);
+        const drawn = drawN([], drawPile, [], 5 + extraDraw);
+        // Relic: extra energy at battle start (storm_sword)
+        const extraEnergy = hasRelic(prev.relics,"storm_sword") ? 1 : 0;
+        // Relic: heal at battle start (health_potion)
+        const startHeal = hasRelic(prev.relics,"health_potion") ? Math.min(8, prev.playerMaxHp - prev.playerHp) : 0;
         // 억까: 연전 - elite floor4+ 20% 확률로 2연전
         const chainPending = (nodeType==="elite" && floorIdx >= 4 && Math.random() < 0.20)
           ? spawnEnemyForFloor(floorIdx, "fight", prev.difficulty)
@@ -754,32 +881,39 @@ export default function RoguePage() {
         return {
           ...prev, phase:"battle", floor:floorIdx,
           chosenPath:newChosenPath,
-          shield:0, energy:prev.maxEnergy, enemy,
+          shield:0, energy:prev.maxEnergy + extraEnergy,
+          playerHp: prev.playerHp + startHeal,
+          enemy,
           hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
           log:[ko?"전투 시작!":ja?"バトル開始！":"Battle start!"], turnCount:1,
           chainPending, cursedRest:false, shopInflated:false,
         };
       }
       if (nodeType==="treasure") {
-        // 억까: 함정 보물 - 25% 확률로 적 매복
-        if (Math.random() < 0.25) {
+        // 억까: 함정 보물 - 25% 확률로 적 매복 (master_key 기물로 방지)
+        if (!hasRelic(prev.relics,"master_key") && Math.random() < 0.25) {
           const enemy = spawnEnemyForFloor(floorIdx, "fight", prev.difficulty);
           const drawPile = shuffle([...prev.deck]);
-          const drawn = drawN([], drawPile, [], 5);
+          const extraDraw = (hasRelic(prev.relics,"compass")?1:0) + (hasRelic(prev.relics,"hourglass")?2:0);
+          const drawn = drawN([], drawPile, [], 5 + extraDraw);
+          const extraEnergy = hasRelic(prev.relics,"storm_sword") ? 1 : 0;
           return {
             ...prev, phase:"battle", floor:floorIdx, chosenPath:newChosenPath,
-            shield:0, energy:prev.maxEnergy, enemy,
+            shield:0, energy:prev.maxEnergy + extraEnergy, enemy,
             hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
             log:[ko?"⚠ 함정이다! 적이 숨어 있었다!":ja?"⚠ トラップ！敵が潜んでいた！":"⚠ Ambush! An enemy was hiding!"], turnCount:1,
             chainPending:null, cursedRest:false, shopInflated:false,
           };
         }
-        return { ...prev, phase:"reward", floor:floorIdx, chosenPath:newChosenPath, rewardCards:pickRewards(floorIdx, arch, prev.difficulty) };
+        const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
+        const fateDice = hasRelic(prev.relics,"fate_dice");
+        return { ...prev, phase:"reward", floor:floorIdx, chosenPath:newChosenPath, rewardCards:pickRewards(floorIdx, arch, prev.difficulty, extraCard, fateDice), relicPending:true };
       }
       if (nodeType==="shop") {
         // 억까: 바가지 상점 - 30% 확률로 가격 1.5배
         const inflated = Math.random() < 0.30;
-        return { ...prev, phase:"shop", floor:floorIdx, chosenPath:newChosenPath, shopItems:makeShopItems(arch, inflated), shopInflated:inflated };
+        const discount = hasRelic(prev.relics,"philosopher");
+        return { ...prev, phase:"shop", floor:floorIdx, chosenPath:newChosenPath, shopItems:makeShopItems(arch, inflated, discount), shopInflated:inflated };
       }
       if (nodeType==="rest") {
         // 억까: 저주받은 휴식소 - floor4+ 25% 확률
@@ -866,26 +1000,38 @@ export default function RoguePage() {
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
+        // Relic: kill heals
+        const killHeal = (hasRelic(prev.relics,"bandage")?5:0) + (hasRelic(prev.relics,"vampire_ring")?10:0);
+        const hpAfterKill = Math.min(prev.playerMaxHp, playerHp + killHeal);
         if (nodeType==="boss" && isFinal) {
-          return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":ja?"クリア！":"Victory!"], phase:"victory" };
+          return { ...prev, playerHp:hpAfterKill, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":ja?"クリア！":"Victory!"], phase:"victory" };
         }
-        // 억까: 연전 처리
         if (prev.chainPending) {
           const chainDrawPile = shuffle([...prev.deck]);
-          const chainDrawn = drawN([], chainDrawPile, [], 5);
-          return { ...prev, playerHp, shield:0, strength, energy:prev.maxEnergy, enemy:prev.chainPending, chainPending:null,
+          const extraDraw = (hasRelic(prev.relics,"compass")?1:0)+(hasRelic(prev.relics,"hourglass")?2:0);
+          const chainDrawn = drawN([], chainDrawPile, [], 5+extraDraw);
+          return { ...prev, playerHp:hpAfterKill, shield:0, strength, energy:prev.maxEnergy+(hasRelic(prev.relics,"storm_sword")?1:0), enemy:prev.chainPending, chainPending:null,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
             log:[...newLog, ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
           };
         }
-        const goldGain = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
-        const rewards = pickRewards(prev.floor, arch, prev.difficulty);
-        return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":ja?"撃破！":"Defeated!"], phase:"reward", gold:prev.gold+goldGain, rewardCards:rewards };
+        const baseGold = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
+        const finalGold = hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold;
+        const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
+        const rewards = pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice"));
+        const newRelicPending = nodeType==="elite" || nodeType==="boss";
+        return { ...prev, playerHp:hpAfterKill, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":ja?"撃破！":"Defeated!"], phase:"reward", gold:prev.gold+finalGold, rewardCards:rewards, relicPending:newRelicPending };
       }
 
       // Player dead?
       if (playerHp<=0) {
-        return { ...prev, playerHp:0, phase:"gameover", log:newLog, hand:finalHand, drawPile, discardPile };
+        if (hasRelic(prev.relics,"immortal_heart") && !immortalHeartUsedRef.current) {
+          immortalHeartUsedRef.current = true;
+          playerHp = 1;
+          logs.push(ko?"[불멸의 심장] 치사 데미지 무효!":ja?"[不滅の心臓] 致死無効！":"[Immortal Heart] Lethal blocked!");
+        } else {
+          return { ...prev, playerHp:0, phase:"gameover", log:newLog, hand:finalHand, drawPile, discardPile };
+        }
       }
 
       return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:newLog };
@@ -915,21 +1061,26 @@ export default function RoguePage() {
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
+        const killHeal = (hasRelic(prev.relics,"bandage")?5:0)+(hasRelic(prev.relics,"vampire_ring")?10:0);
+        const hpAfterKill = Math.min(prev.playerMaxHp, playerHp + killHeal);
         if (nodeType==="boss" && isFinal) {
-          return { ...prev, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":ja?"クリア！":"Victory!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+          return { ...prev, playerHp:hpAfterKill, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":ja?"クリア！":"Victory!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
         }
-        // 억까: 연전 처리
         if (prev.chainPending) {
           const chainDrawPile = shuffle([...prev.deck]);
-          const chainDrawn = drawN([], chainDrawPile, [], 5);
-          return { ...prev, enemy:prev.chainPending, chainPending:null,
-            shield:0, energy:prev.maxEnergy,
+          const extraDraw = (hasRelic(prev.relics,"compass")?1:0)+(hasRelic(prev.relics,"hourglass")?2:0);
+          const chainDrawn = drawN([], chainDrawPile, [], 5+extraDraw);
+          return { ...prev, playerHp:hpAfterKill, enemy:prev.chainPending, chainPending:null,
+            shield:0, energy:prev.maxEnergy+(hasRelic(prev.relics,"storm_sword")?1:0),
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
             log:[...prev.log.slice(-3),...logs,ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
           };
         }
-        const goldGain = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
-        return { ...prev, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+goldGain, rewardCards:pickRewards(prev.floor, arch, prev.difficulty), log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        const baseGold = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
+        const finalGold = hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold;
+        const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
+        const newRelicPending = nodeType==="elite" || nodeType==="boss";
+        return { ...prev, playerHp:hpAfterKill, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+finalGold, rewardCards:pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice")), relicPending:newRelicPending, log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
       }
 
       // Enemy action
@@ -942,6 +1093,11 @@ export default function RoguePage() {
         const abs = Math.min(prev.shield, atk);
         const direct = atk - abs;
         playerHp = Math.max(0, playerHp - direct);
+        // Relic: thorn bracelet reflects 1 damage when hit
+        if (direct > 0 && hasRelic(prev.relics,"thorn_bracelet")) {
+          enemy.currentHp = Math.max(0, enemy.currentHp - 1);
+          logs.push(ko?"[가시 팔찌] 반사 1":ja?"[棘腕輪] 反射1":"[Thorn Bracelet] Reflect 1");
+        }
         logs.push(`[${eName}] ${ko?"공격":ja?"攻撃":"Attack"} ${atk}${direct<atk?` (${ko?"방어":ja?"盾":"Block"} ${abs})`:""}${direct>0?` → -${direct}HP`:""}`);
         if (pattern.poison) { playerPoison += pattern.poison; logs.push(ko?`독 ${pattern.poison} 적용`:ja?`毒${pattern.poison}`:`Poison ${pattern.poison} applied`); }
       }
@@ -958,7 +1114,13 @@ export default function RoguePage() {
 
       // Player death check
       if (playerHp <= 0) {
-        return { ...prev, playerHp:0, poison:playerPoison, enemy, phase:"gameover", log:[...prev.log.slice(-5),...logs], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        if (hasRelic(prev.relics,"immortal_heart") && !immortalHeartUsedRef.current) {
+          immortalHeartUsedRef.current = true;
+          playerHp = 1;
+          logs.push(ko?"[불멸의 심장] 치사 데미지 무효!":ja?"[不滅の心臓] 致死無効！":"[Immortal Heart] Lethal blocked!");
+        } else {
+          return { ...prev, playerHp:0, poison:playerPoison, enemy, phase:"gameover", log:[...prev.log.slice(-5),...logs], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        }
       }
 
       // Player poison tick
@@ -968,21 +1130,38 @@ export default function RoguePage() {
         playerPoison = Math.max(0, playerPoison - 1);
         logs.push(ko?`[나] 독 -${pd} HP`:ja?`[自分] 毒-${pd}HP`:`[You] Poison -${pd} HP`);
         if (playerHp <= 0) {
-          return { ...prev, playerHp:0, poison:playerPoison, enemy, phase:"gameover", log:[...prev.log.slice(-5),...logs], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+          if (hasRelic(prev.relics,"immortal_heart") && !immortalHeartUsedRef.current) {
+            immortalHeartUsedRef.current = true;
+            playerHp = 1;
+            logs.push(ko?"[불멸의 심장] 치사 데미지 무효!":ja?"[不滅の心臓] 致死無効！":"[Immortal Heart] Lethal blocked!");
+          } else {
+            return { ...prev, playerHp:0, poison:playerPoison, enemy, phase:"gameover", log:[...prev.log.slice(-5),...logs], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+          }
         }
       }
 
       // Start new player turn: reset shield, draw 5
       const newDisc = [...prev.discardPile, ...prev.hand];
-      const drawn = drawN([], prev.drawPile, newDisc, 5);
+      const extraDraw = (hasRelic(prev.relics,"compass")?1:0)+(hasRelic(prev.relics,"hourglass")?2:0);
+      const drawn = drawN([], prev.drawPile, newDisc, 5 + extraDraw);
+
+      // Relic: dragon scale - shield on turn start
+      const dragonShield = hasRelic(prev.relics,"dragon_scale") ? 3 : 0;
+      // Relic: poison bangle - apply poison to enemy on turn start
+      let turnStartEnemy = { ...enemy };
+      const turnLogs: string[] = [];
+      if (hasRelic(prev.relics,"poison_bangle") && turnStartEnemy.currentHp > 0) {
+        turnStartEnemy.poisonStacks += 1;
+        turnLogs.push(ko?"[독침 팔찌] 독 1":ja?"[毒針腕輪] 毒1":"[Poison Bangle] +1 poison");
+      }
 
       return {
         ...prev,
         playerHp, poison:playerPoison,
-        shield:0, energy:prev.maxEnergy,
-        enemy,
+        shield:dragonShield, energy:prev.maxEnergy,
+        enemy:turnStartEnemy,
         hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
-        log:[...prev.log.slice(-4),...logs, ko?`— 턴 ${prev.turnCount+1}`:ja?`— ターン${prev.turnCount+1}`:`— Turn ${prev.turnCount+1}`],
+        log:[...prev.log.slice(-4),...logs,...turnLogs, ko?`— 턴 ${prev.turnCount+1}`:ja?`— ターン${prev.turnCount+1}`:`— Turn ${prev.turnCount+1}`],
         turnCount:prev.turnCount+1,
       };
     });
@@ -991,9 +1170,13 @@ export default function RoguePage() {
 
   // ── Pick reward ──────────────────────────────────────────────────────────
   const pickReward = useCallback((card: CardDef) => {
+    const newCard = toInst(card);
+    if (gsRef.current && gsRef.current.deck.length >= 20) {
+      setPendingCardSwap(newCard);
+      return;
+    }
     setGs(prev => {
       if (!prev) return prev;
-      const newCard = toInst(card);
       return { ...prev, deck:[...prev.deck, newCard], phase:"map", rewardCards:[] };
     });
   }, []);
@@ -1001,11 +1184,20 @@ export default function RoguePage() {
 
   // ── Shop ─────────────────────────────────────────────────────────────────
   const buyCard = useCallback((idx: number) => {
+    const cur = gsRef.current;
+    if (!cur) return;
+    const item = cur.shopItems[idx];
+    if (!item || item.bought || cur.gold < item.price) return;
+    if (cur.deck.length >= 20) {
+      const newCard = toInst(item.card);
+      const newItems = cur.shopItems.map((it,i) => i===idx ? {...it,bought:true} : it);
+      setGs(prev => prev ? { ...prev, gold:prev.gold-item.price, shopItems:newItems } : prev);
+      setPendingCardSwap(newCard);
+      return;
+    }
+    const newItems = cur.shopItems.map((it,i) => i===idx ? {...it,bought:true} : it);
     setGs(prev => {
       if (!prev) return prev;
-      const item = prev.shopItems[idx];
-      if (!item || item.bought || prev.gold < item.price) return prev;
-      const newItems = prev.shopItems.map((it,i) => i===idx ? {...it,bought:true} : it);
       return { ...prev, deck:[...prev.deck, toInst(item.card)], gold:prev.gold-item.price, shopItems:newItems };
     });
   }, []);
@@ -1021,7 +1213,83 @@ export default function RoguePage() {
     });
   }, []);
 
-  const abandonRun = useCallback(() => { setGs(null); setSelIdx(null); }, []);
+  const abandonRun = useCallback(() => {
+    setGs(null); setSelIdx(null);
+    setPendingRelicOffer(null); setPendingRelicSwap(null); setPendingCardSwap(null);
+  }, []);
+
+  // ── Relic offer handlers ──────────────────────────────────────────────────
+  const handlePickRelic = useCallback((relic: RelicDef) => {
+    if (!gsRef.current) return;
+    if (gsRef.current.relics.length >= 5) {
+      setPendingRelicSwap(relic);
+      return;
+    }
+    setGs(prev => {
+      if (!prev) return prev;
+      let next = { ...prev, relics: [...prev.relics, relic] };
+      if (relic.id==="blade_ring")     next = { ...next, strength: next.strength + 1 };
+      if (relic.id==="berserker_axe")  next = { ...next, strength: next.strength + 2 };
+      if (relic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 20, playerHp: Math.min(next.playerMaxHp + 20, next.playerHp + 20) };
+      if (relic.id==="energy_crystal") next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
+      return next;
+    });
+    setPendingRelicOffer(null);
+  }, []);
+
+  const handleSkipRelic = useCallback(() => {
+    setPendingRelicOffer(null);
+  }, []);
+
+  const handleRelicSwap = useCallback((slotIdx: number) => {
+    if (!pendingRelicSwap) return;
+    const newRelic = pendingRelicSwap;
+    setGs(prev => {
+      if (!prev) return prev;
+      const oldRelic = prev.relics[slotIdx];
+      const newRelics = [...prev.relics]; newRelics[slotIdx] = newRelic;
+      let next = { ...prev, relics: newRelics };
+      // Reverse old relic immediate effects
+      if (oldRelic.id==="blade_ring")     next = { ...next, strength: Math.max(0, next.strength - 1) };
+      if (oldRelic.id==="berserker_axe")  next = { ...next, strength: Math.max(0, next.strength - 2) };
+      if (oldRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp - 20, playerHp: Math.min(next.playerHp, next.playerMaxHp - 20) };
+      if (oldRelic.id==="energy_crystal") next = { ...next, maxEnergy: Math.max(1, next.maxEnergy - 1), energy: Math.max(1, next.energy - 1) };
+      // Apply new relic immediate effects
+      if (newRelic.id==="blade_ring")     next = { ...next, strength: next.strength + 1 };
+      if (newRelic.id==="berserker_axe")  next = { ...next, strength: next.strength + 2 };
+      if (newRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 20, playerHp: Math.min(next.playerMaxHp + 20, next.playerHp + 20) };
+      if (newRelic.id==="energy_crystal") next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
+      return next;
+    });
+    setPendingRelicSwap(null); setPendingRelicOffer(null);
+  }, [pendingRelicSwap]);
+
+  const handleRelicSwapSkip = useCallback(() => {
+    setPendingRelicSwap(null); setPendingRelicOffer(null);
+  }, []);
+
+  // ── Card swap handlers (deck full) ────────────────────────────────────────
+  const handleCardSwap = useCallback((replaceIdx: number) => {
+    if (!pendingCardSwap) return;
+    const newCard = pendingCardSwap;
+    setGs(prev => {
+      if (!prev) return prev;
+      const newDeck = [...prev.deck]; newDeck[replaceIdx] = newCard;
+      // If we're in reward phase, go back to map; if in shop, stay in shop
+      const nextPhase = prev.phase === "reward" ? "map" : prev.phase;
+      return { ...prev, deck: newDeck, phase: nextPhase as Phase, rewardCards: nextPhase==="map"?[]:prev.rewardCards };
+    });
+    setPendingCardSwap(null);
+  }, [pendingCardSwap]);
+
+  const handleCardSwapSkip = useCallback(() => {
+    setGs(prev => {
+      if (!prev) return prev;
+      const nextPhase = prev.phase === "reward" ? "map" : prev.phase;
+      return { ...prev, phase: nextPhase as Phase, rewardCards: nextPhase==="map"?[]:prev.rewardCards };
+    });
+    setPendingCardSwap(null);
+  }, []);
 
   // ── CSS ───────────────────────────────────────────────────────────────────
   const css = `
@@ -1059,12 +1327,157 @@ export default function RoguePage() {
     );
   };
 
+  // ── Relic grade colors ───────────────────────────────────────────────────
+  const RELIC_GRADE_COLOR: Record<RelicGrade,string> = { common:"#64748b", rare:"#2563eb", unique:"#a855f7" };
+  const RELIC_GRADE_LABEL = (g: RelicGrade) =>
+    g==="common" ? (ko?"커먼":ja?"コモン":"Common") :
+    g==="rare"   ? (ko?"레어":ja?"レア":"Rare") :
+                   (ko?"유니크":ja?"ユニーク":"Unique");
+  const RELIC_CAT_LABEL = (c: RelicCategory) =>
+    c==="combat"  ? (ko?"전투형":ja?"戦闘型":"Combat") :
+    c==="utility" ? (ko?"유틸형":ja?"ユーティリティ":"Utility") :
+                    (ko?"보상형":ja?"報酬型":"Reward");
+
+  // ── Relic card view ──────────────────────────────────────────────────────
+  const RelicCard = ({ relic, size="md", onClick, selected }: { relic:RelicDef; size?:"sm"|"md"; onClick?:()=>void; selected?:boolean }) => {
+    const gc = RELIC_GRADE_COLOR[relic.grade];
+    const relicName = ko ? relic.name : ja ? relic.nameJa : relic.nameEn;
+    const relicDesc = ko ? relic.desc : ja ? relic.descJa : relic.descEn;
+    const CatIcon = relic.category==="combat"
+      ? () => <RelicCombatIcon size={size==="sm"?18:22} color={gc}/>
+      : relic.category==="utility"
+      ? () => <RelicUtilityIcon size={size==="sm"?18:22} color={gc}/>
+      : () => <RelicRewardIcon size={size==="sm"?18:22} color={gc}/>;
+    return (
+      <div onClick={onClick} style={{
+        borderRadius:10, border:`2px solid ${selected?"#facc15":gc}`,
+        background:`${gc}14`, padding: size==="sm"?"8px 10px":"12px 14px",
+        cursor:onClick?"pointer":"default",
+        boxShadow: selected?`0 0 16px #facc1566`:`0 0 8px ${gc}33`,
+        transition:"all 0.12s", minWidth: size==="sm"?120:160,
+        flex:1,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+          <CatIcon/>
+          <div>
+            <p style={{margin:0,fontSize:size==="sm"?11:13,fontWeight:800,color:"#e2e8f0",lineHeight:1.2}}>{relicName}</p>
+            <div style={{display:"flex",gap:4,marginTop:2}}>
+              <span style={{fontSize:9,fontWeight:700,color:gc,background:`${gc}22`,borderRadius:3,padding:"1px 5px"}}>{RELIC_GRADE_LABEL(relic.grade)}</span>
+              <span style={{fontSize:9,fontWeight:700,color:"#94a3b8",background:"#94a3b822",borderRadius:3,padding:"1px 5px"}}>{RELIC_CAT_LABEL(relic.category)}</span>
+            </div>
+          </div>
+        </div>
+        <p style={{margin:0,fontSize:size==="sm"?10:11,color:"#94a3b8",lineHeight:1.4}}>{relicDesc}</p>
+      </div>
+    );
+  };
+
+  // ── Relic modal (view owned) ──────────────────────────────────────────────
+  const RelicModal = () => {
+    if (!gs || !relicOpen) return null;
+    return (
+      <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setRelicOpen(false)}>
+        <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:12,padding:20,width:"min(540px,94vw)",maxHeight:"80vh",overflow:"auto",fontFamily:FONT}} onClick={e=>e.stopPropagation()}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <p style={{margin:0,color:"#a855f7",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",gap:6}}><Sparkles size={15}/>{ko?"기물 보기":ja?"遺物確認":"Relics"} ({gs.relics.length}/5)</p>
+            <button onClick={()=>setRelicOpen(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim}}><X size={18}/></button>
+          </div>
+          {gs.relics.length === 0
+            ? <p style={{color:C.textDim,fontSize:13,textAlign:"center",padding:"20px 0"}}>{ko?"보유한 기물이 없습니다":ja?"所持している遺物がありません":"No relics held"}</p>
+            : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {gs.relics.map(r=><RelicCard key={r.id} relic={r}/>)}
+              </div>
+          }
+        </div>
+      </div>
+    );
+  };
+
+  // ── Relic offer modal ─────────────────────────────────────────────────────
+  const RelicOfferModal = () => {
+    if (!pendingRelicOffer || pendingRelicSwap) return null;
+    return (
+      <div style={{position:"fixed",inset:0,zIndex:998,background:"#000c",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
+        <div style={{background:C.panel,border:"2px solid #a855f744",borderRadius:14,padding:24,width:"min(500px,94vw)",animation:"rogue-in 0.25s ease-out both"}}>
+          <p style={{margin:"0 0 4px",fontSize:20,fontWeight:900,color:"#a855f7",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Sparkles size={20} color="#a855f7"/>{ko?"기물 획득":ja?"遺物獲得":"Relic Found"}</p>
+          <p style={{margin:"0 0 16px",fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"1개를 선택해 보유하세요 (최대 5개)":ja?"1つ選んで所持してください（最大5個）":"Pick 1 to keep (max 5 relics)"}</p>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {pendingRelicOffer.map(r => <RelicCard key={r.id} relic={r} onClick={()=>handlePickRelic(r)}/>)}
+          </div>
+          <button onClick={handleSkipRelic} style={{marginTop:14,width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 0",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
+            {ko?"획득 포기":ja?"取得スキップ":"Skip"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Relic swap modal (when holding 5 relics) ──────────────────────────────
+  const RelicSwapModal = () => {
+    if (!pendingRelicSwap || !gs) return null;
+    return (
+      <div style={{position:"fixed",inset:0,zIndex:999,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
+        <div style={{background:C.panel,border:"2px solid #f59e0b44",borderRadius:14,padding:24,width:"min(560px,94vw)",maxHeight:"90vh",overflow:"auto",animation:"rogue-in 0.25s ease-out both"}}>
+          <p style={{margin:"0 0 4px",fontSize:18,fontWeight:900,color:C.gold,textAlign:"center"}}>{ko?"기물 교체":ja?"遺物交換":"Swap Relic"}</p>
+          <p style={{margin:"0 0 10px",fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"새 기물:":ja?"新遺物:":"New relic:"}</p>
+          <div style={{marginBottom:14}}><RelicCard relic={pendingRelicSwap}/></div>
+          <p style={{margin:"0 0 8px",fontSize:12,color:C.textDim}}>{ko?"교체할 기물을 선택하세요 (최대 5개 초과)":ja?"交換する遺物を選択してください":"Choose a relic to replace:"}</p>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {gs.relics.map((r,i)=><RelicCard key={r.id} relic={r} onClick={()=>handleRelicSwap(i)}/>)}
+          </div>
+          <button onClick={handleRelicSwapSkip} style={{marginTop:14,width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 0",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
+            {ko?"획득 포기":ja?"取得スキップ":"Skip"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Card swap modal (deck full = 20 cards) ────────────────────────────────
+  const CardSwapModal = () => {
+    if (!pendingCardSwap || !gs) return null;
+    return (
+      <div style={{position:"fixed",inset:0,zIndex:999,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
+        <div style={{background:C.panel,border:"2px solid #f59e0b44",borderRadius:14,padding:20,width:"min(600px,96vw)",maxHeight:"90vh",overflow:"auto",animation:"rogue-in 0.25s ease-out both"}}>
+          <p style={{margin:"0 0 4px",fontSize:18,fontWeight:900,color:C.gold,textAlign:"center"}}>{ko?"덱이 가득 찼습니다 (20/20)":ja?"デッキが満杯です（20/20）":"Deck Full (20/20)"}</p>
+          <p style={{margin:"0 0 10px",fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"새 카드:":ja?"新カード:":"New card:"}</p>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+            <CardView card={pendingCardSwap} canPlay={false} lang={lang}/>
+          </div>
+          <p style={{margin:"0 0 8px",fontSize:12,color:C.textDim}}>{ko?"교체할 카드를 선택하세요":ja?"交換するカードを選択":"Click a card in your deck to replace it:"}</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxHeight:"320px",overflowY:"auto"}}>
+            {gs.deck.map((c,i)=>(
+              <div key={c.uid??i} onClick={()=>handleCardSwap(i)} style={{cursor:"pointer",opacity:1,transition:"opacity 0.12s"}}
+                onMouseEnter={e=>(e.currentTarget.style.opacity="0.7")}
+                onMouseLeave={e=>(e.currentTarget.style.opacity="1")}>
+                <CardView card={c} canPlay={false} lang={lang}/>
+              </div>
+            ))}
+          </div>
+          <button onClick={handleCardSwapSkip} style={{marginTop:14,width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 0",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
+            {ko?"획득 포기":ja?"取得スキップ":"Skip"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Global overlays (shown on top of any phase) ───────────────────────────
+  const GlobalModals = () => (
+    <>
+      <CardSwapModal/>
+      <RelicSwapModal/>
+      <RelicOfferModal/>
+      <RelicModal/>
+    </>
+  );
+
   // 마일스톤 보상 목록 (도전/스토리 공용)
   const MilestoneList = ({ milestones, labelOf }: { milestones: RogueMilestone[]; labelOf: (n: number) => string }) => (
     <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:360,animation:"rogue-in 0.4s 0.1s ease-out both"}}>
       {milestones.map((m, i) => (
         <div key={i} style={{background:"#0a1a0a",border:"1px solid #22c55e44",borderRadius:10,padding:"10px 14px"}}>
-          <p style={{margin:"0 0 7px",fontSize:13,fontWeight:800,color:"#22c55e"}}>🎉 {labelOf(m.clears)}</p>
+          <p style={{margin:"0 0 7px",fontSize:13,fontWeight:800,color:"#22c55e",display:"flex",alignItems:"center",gap:5}}><Award size={14} color="#22c55e"/>{labelOf(m.clears)}</p>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {m.points>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"포인트":ja?"ポイント":"Points"} ×{m.points.toLocaleString()}</span>}
             {m.stones>0&&<span style={{fontSize:11,fontWeight:700,color:"#60a5fa",background:"#60a5fa15",border:"1px solid #60a5fa44",borderRadius:5,padding:"2px 8px"}}>{ko?"강화석":ja?"強化石":"Upgrade Stone"} ×{m.stones}</span>}
@@ -1203,10 +1616,10 @@ export default function RoguePage() {
                 <Crown size={16} color="#a855f7"/>
                 <span style={{color:"#c084fc",fontWeight:800,fontSize:14}}>{ko?"도전 모드":ja?"チャレンジモード":"Challenge"}</span>
               </div>
-              <span style={{fontSize:11,color:C.textDim}}>{ko?"최고":ja?"最高":"Best"} <b style={{color:"#c084fc"}}>{rewardSummary.challengeBest}</b>/100</span>
+              <span style={{fontSize:11,color:C.textDim}}>{ko?"최고":ja?"最高":"Best"} <b style={{color:"#c084fc"}}>{sessionChallengeBest}</b>/100</span>
             </div>
             <p style={{margin:"0 0 10px",fontSize:11,color:C.textDim,lineHeight:1.5}}>
-              {ko?"100스테이지까지 점점 강해지는 적! 몇 칸까지 갈 수 있나? (사망 시 종료)":ja?"100ステージ、敵がどんどん強化！どこまで行ける？（死亡で終了）":"100 stages of ever-stronger foes. How far can you go? (ends on death)"}
+              {ko?"100스테이지까지 점점 강해지는 적! 몇 스테이지까지 갈 수 있나? (사망 시 종료)":ja?"100ステージ、敵がどんどん強化！何ステージまで行ける？（死亡で終了）":"100 stages of ever-stronger foes. How far can you go? (ends on death)"}
             </p>
             <button
               onClick={() => startRun("challenge")}
@@ -1214,12 +1627,12 @@ export default function RoguePage() {
             >{ko?"도전 시작!":ja?"挑戦開始！":"Start Challenge!"}</button>
             {challengeRanks.length > 0 && (
               <div style={{marginTop:12,borderTop:`1px solid ${C.border}`,paddingTop:10}}>
-                <p style={{margin:"0 0 6px",fontSize:11,fontWeight:700,color:C.textBright}}>{ko?"🏆 역대 랭킹":ja?"🏆 ランキング":"🏆 Rankings"}</p>
+                <p style={{margin:"0 0 6px",fontSize:11,fontWeight:700,color:C.textBright,display:"flex",alignItems:"center",gap:4}}><Trophy size={12} color={C.gold}/>{ko?"역대 랭킹":ja?"ランキング":"Rankings"}</p>
                 {challengeRanks.slice(0,5).map(r => (
                   <div key={r.userId} style={{display:"flex",alignItems:"center",gap:8,padding:"3px 0",fontSize:12}}>
                     <span style={{width:18,textAlign:"right",fontWeight:800,color:r.rank<=3?"#fbbf24":C.textDim}}>{r.rank}</span>
                     <span style={{flex:1,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nickname}</span>
-                    <span style={{color:"#c084fc",fontWeight:700}}>{r.best}{ko?"칸":ja?"":""}</span>
+                    <span style={{color:"#c084fc",fontWeight:700}}>{r.best}{ko?"스테이지":ja?"ステージ":" stages"}</span>
                   </div>
                 ))}
               </div>
@@ -1305,9 +1718,17 @@ export default function RoguePage() {
           </div>
         </div>
 
-        {/* deck */}
-        <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 0",color:C.textDim,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:FONT}}>{ko?"덱 보기":ja?"デッキ確認":"View Deck"} ({gs.deck.length})</button>
+        {/* deck + relic buttons */}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setDeckOpen(true)} style={{flex:1,background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 0",color:C.textDim,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:FONT}}>
+            {ko?`덱 (${gs.deck.length})`:ja?`デッキ(${gs.deck.length})`:`Deck (${gs.deck.length})`}
+          </button>
+          <button onClick={()=>setRelicOpen(true)} style={{background:"#a855f718",border:"1px solid #a855f744",borderRadius:10,padding:"11px 14px",color:"#a855f7",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5}}>
+            <Sparkles size={14}/>{gs.relics.length}
+          </button>
+        </div>
         <DeckModal/>
+        <GlobalModals/>
       </div>
     );
   }
@@ -1359,8 +1780,11 @@ export default function RoguePage() {
             <div style={{display:"flex",alignItems:"center",gap:4,background:`${C.red}18`,borderRadius:6,padding:"4px 8px"}}>
               <Heart size={12} color={C.red}/><span style={{fontSize:12,color:C.red,fontWeight:700}}>{gs.playerHp}/{gs.playerMaxHp}</span>
             </div>
-            <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 10px",color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:FONT}}>
-              {ko?`덱 (${gs.deck.length}장)`:ja?`デッキ(${gs.deck.length}枚)`:`Deck (${gs.deck.length})`}
+            <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 8px",color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:FONT}}>
+              {ko?`덱(${gs.deck.length})`:ja?`デッキ(${gs.deck.length})`:`Deck(${gs.deck.length})`}
+            </button>
+            <button onClick={()=>setRelicOpen(true)} style={{background:"#a855f718",border:"1px solid #a855f744",borderRadius:6,padding:"4px 8px",color:"#a855f7",cursor:"pointer",fontSize:11,fontFamily:FONT}}>
+              ✨{gs.relics.length}
             </button>
             <button onClick={abandonRun} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:11,fontFamily:FONT,padding:"4px 6px"}}>
               {ko?"포기":ja?"放棄":"Quit"}
@@ -1449,6 +1873,7 @@ export default function RoguePage() {
         </div>
 
         <DeckModal/>
+        <GlobalModals/>
       </div>
     );
   }
@@ -1463,6 +1888,28 @@ export default function RoguePage() {
     return (
       <div style={{height:"100dvh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",padding:"8px 10px",gap:6,maxWidth:640,margin:"0 auto",overflow:"hidden"}}>
         <style>{`${css} .rogue-card-hover{transition:transform 0.12s,box-shadow 0.12s}`}</style>
+
+        {/* Battle top bar */}
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:4,background:`${C.red}18`,borderRadius:6,padding:"3px 8px",fontSize:11,color:C.red,fontWeight:700,flexShrink:0}}>
+            <Heart size={11} color={C.red}/>{gs.playerHp}/{gs.playerMaxHp}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:4,background:"#f59e0b18",borderRadius:6,padding:"3px 8px",fontSize:11,color:C.gold,fontWeight:700,flexShrink:0}}>
+            <Star size={11} color={C.gold}/>{gs.gold}G
+          </div>
+          <div style={{flex:1}}/>
+          <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:6,padding:"3px 8px",color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:FONT,flexShrink:0}}>
+            {ko?`덱(${gs.deck.length})`:ja?`デッキ(${gs.deck.length})`:`Deck(${gs.deck.length})`}
+          </button>
+          {gs.relics.length > 0 && (
+            <button onClick={()=>setRelicOpen(true)} style={{background:"#a855f718",border:"1px solid #a855f744",borderRadius:6,padding:"3px 8px",color:"#a855f7",cursor:"pointer",fontSize:11,fontFamily:FONT,flexShrink:0,display:"flex",alignItems:"center",gap:3}}>
+              <Sparkles size={11}/>{gs.relics.length}
+            </button>
+          )}
+          <button onClick={abandonRun} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"3px 8px",color:C.textDim,fontSize:11,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>
+            {ko?"포기":ja?"放棄":"Quit"}
+          </button>
+        </div>
 
         {/* 플레이어 피격 레드 플래시 */}
         {playerHit&&(
@@ -1705,6 +2152,7 @@ export default function RoguePage() {
           </p>
         )}
         <DeckModal/>
+        <GlobalModals/>
       </div>
     );
   }
@@ -1730,6 +2178,7 @@ export default function RoguePage() {
         <button onClick={skipReward} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 20px",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
           {ko?"건너뛰기":ja?"スキップ":"Skip"}
         </button>
+        <CardSwapModal/>
       </div>
     );
   }
@@ -1780,6 +2229,7 @@ export default function RoguePage() {
         <button onClick={leaveShop} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 24px",color:C.textDim,cursor:"pointer",fontFamily:FONT,fontSize:13}}>
           {ko?"상점 나가기":ja?"商店を出る":"Leave Shop"}
         </button>
+        <CardSwapModal/>
       </div>
     );
   }
@@ -1827,13 +2277,13 @@ export default function RoguePage() {
             <>
               <p style={{margin:0,fontSize:26,fontWeight:900,color:C.red}}>{ko?"도전 종료":ja?"挑戦終了":"Challenge Over"}</p>
               <p style={{margin:"8px 0 0",fontSize:16,fontWeight:900,color:"#c084fc"}}>
-                {ko?`${gs.floor}칸 도달`:ja?`${gs.floor}マス到達`:`Reached ${gs.floor}`} <span style={{color:C.textDim,fontWeight:700}}>/ {CHALLENGE_FLOORS}</span>
+                {ko?`${gs.floor}스테이지 도달`:ja?`${gs.floor}ステージ到達`:`Reached Stage ${gs.floor}`} <span style={{color:C.textDim,fontWeight:700}}>/ {CHALLENGE_FLOORS}</span>
               </p>
               {challengeResult?.isNewRecord && (
-                <p style={{margin:"4px 0 0",fontSize:13,fontWeight:800,color:C.gold}}>🎉 {ko?"신기록 달성!":ja?"新記録達成！":"New Record!"}</p>
+                <p style={{margin:"4px 0 0",fontSize:13,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:5}}><Award size={14} color={C.gold}/>{ko?"신기록 달성!":ja?"新記録達成！":"New Record!"}</p>
               )}
               <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>
-                {ko?`역대 최고: ${challengeResult?.challengeBest ?? rewardSummary.challengeBest}칸`:ja?`最高: ${challengeResult?.challengeBest ?? rewardSummary.challengeBest}マス`:`Best: ${challengeResult?.challengeBest ?? rewardSummary.challengeBest}`}
+                {ko?`역대 최고: ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}스테이지`:ja?`最高: ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}ステージ`:`Best: Stage ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}`}
               </p>
             </>
           ) : (
@@ -1849,7 +2299,7 @@ export default function RoguePage() {
           )}
         </div>
         {gs.mode === "challenge" && (challengeResult?.milestones.length ?? 0) > 0 && (
-          <MilestoneList milestones={challengeResult!.milestones} labelOf={(n)=>ko?`${n}칸 돌파 보상!`:ja?`${n}マス突破報酬！`:`Stage ${n} Reward!`}/>
+          <MilestoneList milestones={challengeResult!.milestones} labelOf={(n)=>ko?`${n}스테이지 돌파 보상!`:ja?`${n}ステージ突破報酬！`:`Stage ${n} Reward!`}/>
         )}
         <div style={{display:"flex",gap:10,animation:"rogue-in 0.4s 0.2s ease-out both"}}>
           <button
@@ -1877,7 +2327,7 @@ export default function RoguePage() {
         <style>{css}</style>
         <Trophy size={72} color={C.gold} style={{animation:"rogue-float 2s ease-in-out infinite"}}/>
         <div style={{textAlign:"center",animation:"rogue-in 0.4s ease-out both"}}>
-          <p style={{margin:0,fontSize:28,fontWeight:900,color:C.gold,letterSpacing:"0.08em"}}>{gs.mode==="challenge"?(ko?"100칸 완주!":ja?"100マス完走！":"100 Stages Cleared!"):(ko?"탐험 성공!":ja?"探検成功！":"Expedition Clear!")}</p>
+          <p style={{margin:0,fontSize:28,fontWeight:900,color:C.gold,letterSpacing:"0.08em"}}>{gs.mode==="challenge"?(ko?"100스테이지 완주!":ja?"100ステージ完走！":"100 Stages Cleared!"):(ko?"탐험 성공!":ja?"探検成功！":"Expedition Clear!")}</p>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:8}}>
             <Skull size={16} color="#4ade80"/>
             <p style={{margin:0,fontSize:14,color:"#4ade80"}}>
@@ -1897,7 +2347,7 @@ export default function RoguePage() {
         {/* 마일스톤 보상 */}
         {gs.mode==="challenge"
           ? (challengeResult?.milestones.length ?? 0) > 0 && (
-              <MilestoneList milestones={challengeResult!.milestones} labelOf={(n)=>ko?`${n}칸 돌파 보상!`:ja?`${n}マス突破報酬！`:`Stage ${n} Reward!`}/>
+              <MilestoneList milestones={challengeResult!.milestones} labelOf={(n)=>ko?`${n}스테이지 돌파 보상!`:ja?`${n}ステージ突破報酬！`:`Stage ${n} Reward!`}/>
             )
           : rogueMilestones.length > 0 && (
               <MilestoneList milestones={rogueMilestones} labelOf={(n)=>ko?`${n}회 달성 보상!`:ja?`${n}回達成報酬！`:`${n}-Clear Reward!`}/>

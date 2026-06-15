@@ -5,7 +5,7 @@ import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getStoredUser } from "../lib/auth";
 import { api } from "../lib/api";
-import { CHARACTERS, getCharName } from "../data/characters";
+import { CHARACTERS, getCharName, getRarityLabel } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
 import type { TranslationKey } from "../lib/i18n";
 
@@ -33,27 +33,19 @@ const REGION_NAME: Record<string, { ko: string; ja: string }> = {
 };
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
-const TIERS = [
-  { ko:"브론즈",    ja:"ブロンズ",     min:0,    color:"#cd7f32", glow:"#8B4513" },
-  { ko:"실버",      ja:"シルバー",     min:1000, color:"#c0c0c0", glow:"#708090" },
-  { ko:"골드",      ja:"ゴールド",     min:2000, color:"#ffd700", glow:"#b8860b" },
-  { ko:"플레티넘",  ja:"プラチナ",     min:3000, color:"#40e0d0", glow:"#008b8b" },
-  { ko:"다이아",    ja:"ダイヤ",       min:4000, color:"#b9f2ff", glow:"#4169e1" },
-  { ko:"마스터",    ja:"マスター",     min:5000, color:"#da70d6", glow:"#800080" },
-  { ko:"챌린저",    ja:"チャレンジャー",min:6000, color:"#ff4500", glow:"#8b0000" },
-] as const;
+const TIERS: Array<{ min: number; color: string; glow: string; tKey: TranslationKey }> = [
+  { min:0,    color:"#cd7f32", glow:"#8B4513", tKey: "battle.tier.bronze" },
+  { min:1000, color:"#c0c0c0", glow:"#708090", tKey: "battle.tier.silver" },
+  { min:2000, color:"#ffd700", glow:"#b8860b", tKey: "battle.tier.gold" },
+  { min:3000, color:"#40e0d0", glow:"#008b8b", tKey: "battle.tier.platinum" },
+  { min:4000, color:"#b9f2ff", glow:"#4169e1", tKey: "battle.tier.diamond" },
+  { min:5000, color:"#da70d6", glow:"#800080", tKey: "battle.tier.master" },
+  { min:6000, color:"#ff4500", glow:"#8b0000", tKey: "battle.tier.challenger" },
+];
 
 const RARITY_COLOR: Record<string, string> = {
   common: "#94a3b8", uncommon: "#4ade80", rare: "#60a5fa",
   epic: "#c084fc", legendary: "#fbbf24", mythic: "#f472b6",
-};
-const RARITY_KO: Record<string, string> = {
-  common:"커먼", uncommon:"언커먼", rare:"레어",
-  epic:"에픽", legendary:"레전더리", mythic:"신화",
-};
-const RARITY_JA: Record<string, string> = {
-  common:"コモン", uncommon:"アンコモン", rare:"レア",
-  epic:"エピック", legendary:"レジェンダリー", mythic:"ミシック",
 };
 
 const RAID_IDS = [1, 3, 4, 5] as const;
@@ -173,7 +165,6 @@ export default function StatusPanel() {
   const { rewardSummary } = useAppData();
   const { lang, t } = useLang();
   const navigate = useNavigate();
-  const ko = lang === "ko";
   const user = getStoredUser();
 
   const charId = rewardSummary.equippedCharacterId;
@@ -282,7 +273,7 @@ export default function StatusPanel() {
                     className="text-xs font-semibold mt-0.5"
                     style={{ color: RARITY_COLOR[charDef.rarity] ?? "#94a3b8" }}
                   >
-                    {ko ? (RARITY_KO[charDef.rarity] ?? charDef.rarity) : (RARITY_JA[charDef.rarity] ?? charDef.rarity)}
+                    {getRarityLabel(charDef.rarity, lang)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 font-mono">
                     {rewardSummary.ownedCharacterIds.length}
@@ -307,7 +298,7 @@ export default function StatusPanel() {
               <TierPixelBadge idx={tierIdx} size={28} />
               <div>
                 <p className="font-black text-sm leading-none" style={{ color: tier.color }}>
-                  {ko ? tier.ko : tier.ja}
+                  {t(tier.tKey)}
                 </p>
                 <p className="text-xs font-mono mt-0.5" style={{ color: `${tier.color}bb` }}>
                   {battleStats.tierPoints.toLocaleString()} pts
@@ -355,13 +346,13 @@ export default function StatusPanel() {
             <p className="font-black text-xl leading-none tabular-nums">
               {rewardSummary.rogueClears}
               <span className="text-xs font-normal text-muted-foreground ml-1">
-                {ko ? "클리어" : "クリア"}
+                {t("rogue.clears")}
               </span>
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {rewardSummary.rogueClears === 0
-                ? (ko ? "아직 도전 기록이 없어요" : "まだ記録がありません")
-                : (ko ? "도전을 이어가세요!" : "挑戦を続けましょう！")}
+                ? t("rogue.no_record")
+                : t("rogue.keep_going")}
             </p>
           </div>
           {(() => {
@@ -383,19 +374,15 @@ export default function StatusPanel() {
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className={`inline-block w-1.5 h-1.5 rounded-full ${expDone ? "bg-primary" : "bg-amber-400"} animate-pulse`} />
                       <span className={`text-xs font-semibold ${expDone ? "text-primary" : "text-amber-400"}`}>
-                        {expDone
-                          ? (ko ? "수령 대기중" : "受取待ち")
-                          : (ko ? "원정 진행 중" : "遠征進行中")}
+                        {expDone ? t("status.exp_pending") : t("status.exp_ongoing")}
                       </span>
                     </div>
                     <p className="text-xs font-bold leading-tight truncate">
-                      {REGION_NAME[activeExp.regionId]?.[ko ? "ko" : "ja"] ?? activeExp.regionId}
+                      {REGION_NAME[activeExp.regionId]?.[lang as "ko" | "ja"] ?? activeExp.regionId}
                     </p>
                     <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                      {expDone
-                        ? (ko ? "완료!" : "完了！")
-                        : fmtTimer(expRemaining)}
-                      <span className="ml-1 opacity-60">{activeExp.partyIds.length}{ko ? "마리" : "匹"}</span>
+                      {expDone ? t("status.exp_done") : fmtTimer(expRemaining)}
+                      <span className="ml-1 opacity-60">{activeExp.partyIds.length}{t("status.units")}</span>
                     </p>
                     <div className="flex gap-1 mt-1.5">
                       {activeExp.partyIds.slice(0, 5).map(id => {
@@ -412,13 +399,13 @@ export default function StatusPanel() {
                     <p className="font-black text-xl leading-none tabular-nums">
                       {rewardSummary.expeditionCount}
                       <span className="text-xs font-normal text-muted-foreground ml-1">
-                        {ko ? "회" : "回"}
+                        {t("expedition.count")}
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {rewardSummary.expeditionCount === 0
-                        ? (ko ? "아직 원정 기록이 없어요" : "まだ遠征記録がありません")
-                        : (ko ? "다시 출발해볼까요?" : "また出発しましょう！")}
+                        ? t("expedition.no_record")
+                        : t("expedition.keep_going")}
                     </p>
                   </>
                 )}

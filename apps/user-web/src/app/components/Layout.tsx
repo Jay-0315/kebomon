@@ -79,7 +79,7 @@ export default function Layout() {
     pendingAchievements,
     clearPendingAchievements,
   } = useAppData();
-  const { lang, t } = useLang();
+  const { t } = useLang();
 
   const isActive = (path: string, exact = false) =>
     exact ? location.pathname === path : location.pathname.startsWith(path);

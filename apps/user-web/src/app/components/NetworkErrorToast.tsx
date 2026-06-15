@@ -14,14 +14,29 @@ let nextId = 0;
 
 const MESSAGES = {
   timeout: {
-    ko: { line1: "요청 시간이 초과됐어요.", line2: "잠시 후 다시 시도해주세요." },
-    ja: { line1: "リクエストがタイムアウトしました。", line2: "しばらくしてからお試しください。" },
+    ko: {
+      line1: "요청 시간이 초과됐어요.",
+      line2: "잠시 후 다시 시도해주세요.",
+    },
+    ja: {
+      line1: "リクエストがタイムアウトしました。",
+      line2: "しばらくしてからお試しください。",
+    },
     en: { line1: "Request timed out.", line2: "Please try again later." },
   },
   offline: {
-    ko: { line1: "인터넷 연결 상태가 좋지 않아요.", line2: "잠시 후 다시 시도해주세요." },
-    ja: { line1: "インターネット接続が不安定です。", line2: "しばらくしてからお試しください。" },
-    en: { line1: "Poor internet connection.", line2: "Please try again later." },
+    ko: {
+      line1: "인터넷 연결 상태가 좋지 않아요.",
+      line2: "잠시 후 다시 시도해주세요.",
+    },
+    ja: {
+      line1: "インターネット接続が不安定です。",
+      line2: "しばらくしてからお試しください。",
+    },
+    en: {
+      line1: "Poor internet connection.",
+      line2: "Please try again later.",
+    },
   },
 } as const;
 
@@ -90,7 +105,8 @@ export default function NetworkErrorToast() {
                 flex: 1,
                 fontSize: 13,
                 color: "#e2e8f0",
-                fontFamily: "'Noto Sans KR','Noto Sans JP','Malgun Gothic',sans-serif",
+                fontFamily:
+                  "'Noto Sans KR','Noto Sans JP','Malgun Gothic',sans-serif",
                 lineHeight: 1.5,
               }}
             >
