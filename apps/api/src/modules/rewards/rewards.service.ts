@@ -404,6 +404,20 @@ function getRogueMilestones(prev: number, next: number): RogueMilestone[] {
   return hit;
 }
 
+// 도전 모드 마일스톤 (clears = 도달 스테이지). 신기록 갱신 시 새로 넘은 구간만 지급
+const CHALLENGE_MILESTONES: RogueMilestone[] = [
+  { clears:   5, points:  500, stones: 0, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:  10, points: 1000, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:  20, points: 1800, stones: 1, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  30, points: 2600, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  50, points: 4000, stones: 3, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  75, points: 5500, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 100, points: 9000, stones: 6, normalEgg: 0, bigEgg: 0, goldEgg: 2 },
+];
+function getChallengeMilestones(prev: number, next: number): RogueMilestone[] {
+  return CHALLENGE_MILESTONES.filter(m => m.clears > prev && m.clears <= next);
+}
+
 interface RankingRow {
   rank: number;
   userId: string;
@@ -493,6 +507,66 @@ export class RewardsService {
     ]).catch(() => undefined);
 
     return { rogueClears: newClears, milestones };
+  }
+
+  /** 도전 모드 결과 제출 — 도달 스테이지가 신기록이면 갱신 + 마일스톤 보상 */
+  async submitChallenge(userId: string, stage: number) {
+    const s = Math.max(0, Math.min(100, Math.floor(Number(stage) || 0)));
+    const reward = await this.getOrCreateReward(userId);
+    const prevBest = reward.challengeBest;
+    let challengeBest = prevBest;
+    let milestones: RogueMilestone[] = [];
+
+    if (s > prevBest) {
+      const updated = await this.prisma.userReward.update({
+        where: { userId },
+        data: { challengeBest: s },
+      });
+      challengeBest = updated.challengeBest;
+      milestones = getChallengeMilestones(prevBest, s);
+      if (milestones.length > 0) {
+        const pts     = milestones.reduce((a, m) => a + m.points,    0);
+        const stones  = milestones.reduce((a, m) => a + m.stones,    0);
+        const normals = milestones.reduce((a, m) => a + m.normalEgg, 0);
+        const bigs    = milestones.reduce((a, m) => a + m.bigEgg,    0);
+        const golds   = milestones.reduce((a, m) => a + m.goldEgg,   0);
+        await this.prisma.userReward.update({
+          where: { userId },
+          data: {
+            missionPoints:     { increment: pts },
+            enhancementStones: { increment: stones },
+            normalEggs:        { increment: normals },
+            bigEggs:           { increment: bigs },
+            goldenEggs:        { increment: golds },
+          },
+        });
+      }
+    }
+
+    return { challengeBest, prevBest, stage: s, isNewRecord: s > prevBest, milestones };
+  }
+
+  /** 도전 모드 역대 최고 기록 랭킹 (상위 20명) */
+  async getChallengeRankings() {
+    const rows = await this.prisma.userReward.findMany({
+      where: { challengeBest: { gt: 0 } },
+      take: 20,
+      orderBy: { challengeBest: "desc" },
+      select: {
+        userId: true,
+        challengeBest: true,
+        equippedCharacterId: true,
+        user: { select: { name: true } },
+      },
+    });
+    const rankings = rows.map((r, i) => ({
+      rank: i + 1,
+      userId: r.userId,
+      nickname: r.user?.name ?? "???",
+      best: r.challengeBest,
+      characterId: r.equippedCharacterId ?? null,
+    }));
+    return { rankings };
   }
 
   async incrementLiveCount(userId: string): Promise<void> {

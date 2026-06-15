@@ -131,6 +131,7 @@ export interface RewardSummary {
   liveCount: number;
   expeditionCount: number;
   rogueClears: number;
+  challengeBest: number;
   attendanceClaimedToday: boolean;
   monthDays: number;
   monthWeekRewards: number;
@@ -143,6 +144,22 @@ export interface RogueMilestone {
   normalEgg: number;
   bigEgg: number;
   goldEgg: number;
+}
+
+export interface ChallengeRankRow {
+  rank: number;
+  userId: string;
+  nickname: string;
+  best: number;
+  characterId: number | null;
+}
+
+export interface ChallengeResult {
+  challengeBest: number;
+  prevBest: number;
+  stage: number;
+  isNewRecord: boolean;
+  milestones: RogueMilestone[];
 }
 
 export interface UserProfile {

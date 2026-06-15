@@ -7,7 +7,7 @@ import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS, ROGUE_TYPE_MAP, type CharacterType, type CharacterRarity, getCharName } from "../data/characters";
 import { useLang } from "../context/LangContext";
-import type { RogueMilestone } from "../types/domain";
+import type { RogueMilestone, ChallengeResult, ChallengeRankRow } from "../types/domain";
 
 const FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 
@@ -105,6 +105,7 @@ interface EnemyState extends EnemyDef {
 }
 interface GameState {
   phase: Phase; floor: number;
+  mode: RunMode;
   difficulty: Difficulty;
   mapLayout: { options: NodeType[] }[];
   chosenPath: NodeType[];
@@ -180,14 +181,33 @@ const CARDS: CardDef[] = [
 ];
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
-type Difficulty = "normal" | "hard" | "hell";
-const DIFF_HP_MULT:  Record<Difficulty, number> = { normal:1.0, hard:1.5, hell:2.2 };
-const DIFF_ATK_BONUS:Record<Difficulty, number> = { normal:0,   hard:4,   hell:10  };
-const DIFF_STR_BONUS:Record<Difficulty, number> = { normal:0,   hard:0,   hell:2   };
-const DIFF_GOLD_FIGHT:Record<Difficulty,number> = { normal:50,  hard:65,  hell:80  };
-const DIFF_GOLD_ELITE:Record<Difficulty,number> = { normal:75,  hard:95,  hell:115 };
-const DIFF_LEG_FLOOR: Record<Difficulty, number> = { normal:5,  hard:4,   hell:3   };
-const DIFF_EPIC_FLOOR:Record<Difficulty, number> = { normal:3,  hard:2,   hell:1   };
+type Difficulty = "normal" | "hard" | "hell" | "challenge";
+type RunMode = "story" | "challenge";
+const DIFF_HP_MULT:  Record<Difficulty, number> = { normal:1.0, hard:1.5, hell:2.2, challenge:1.6 };
+const DIFF_ATK_BONUS:Record<Difficulty, number> = { normal:0,   hard:4,   hell:10,  challenge:6   };
+const DIFF_STR_BONUS:Record<Difficulty, number> = { normal:0,   hard:0,   hell:2,   challenge:1   };
+const DIFF_GOLD_FIGHT:Record<Difficulty,number> = { normal:50,  hard:65,  hell:80,  challenge:90  };
+const DIFF_GOLD_ELITE:Record<Difficulty,number> = { normal:75,  hard:95,  hell:115, challenge:130 };
+const DIFF_LEG_FLOOR: Record<Difficulty, number> = { normal:5,  hard:4,   hell:3,   challenge:1   };
+const DIFF_EPIC_FLOOR:Record<Difficulty, number> = { normal:3,  hard:2,   hell:1,   challenge:1   };
+
+// ── Challenge mode ───────────────────────────────────────────────────────────
+const CHALLENGE_FLOORS = 100;
+// 스테이지가 올라갈수록 적 HP·공격력이 계속 증가 (floor = 0-index)
+function challengeHpMult(floor: number): number { return 1 + floor * 0.10; }   // stage100 ≈ ×10.9
+function challengeAtkBonus(floor: number): number { return Math.floor(floor * 0.6); } // stage100 ≈ +59
+// 일직선 100칸: 5칸마다 엘리트, 10칸마다 보스, 7칸마다 휴식, 11칸마다 상점, 마지막은 최종보스
+function challengeNodeType(i: number): NodeType {
+  if (i >= CHALLENGE_FLOORS - 1) return "boss";
+  if ((i + 1) % 10 === 0) return "boss";
+  if ((i + 1) % 5 === 0) return "elite";
+  if (i > 0 && (i + 1) % 7 === 0) return "rest";
+  if (i > 0 && (i + 1) % 11 === 0) return "shop";
+  return "fight";
+}
+function generateChallengeMap(): { options: NodeType[] }[] {
+  return Array.from({ length: CHALLENGE_FLOORS }, (_, i) => ({ options: [challengeNodeType(i)] }));
+}
 
 // ── Enemies ────────────────────────────────────────────────────────────────
 const ENEMY_DEFS: EnemyDef[] = [
@@ -408,24 +428,27 @@ function makeShopItems(arch: string, inflated = false) {
 }
 
 function spawnEnemyForFloor(floor: number, nodeType: "fight"|"elite"|"boss", diff: Difficulty = "normal"): EnemyState {
+  const hardTier = diff === "hell" || diff === "challenge";
   let pool: string[];
   if (nodeType==="boss") {
-    pool = diff === "hell" ? ["infernodragon"] : ["chaosboss"];
+    pool = hardTier ? ["infernodragon"] : ["chaosboss"];
   } else if (nodeType==="elite") {
-    const p = diff==="hell" ? HELL_ELITE_POOL : diff==="hard" ? HARD_ELITE_POOL : ELITE_POOL;
+    const p = hardTier ? HELL_ELITE_POOL : diff==="hard" ? HARD_ELITE_POOL : ELITE_POOL;
     pool = p[Math.min(floor, p.length-1)];
   } else {
-    const p = diff==="hell" ? HELL_FIGHT_POOL : diff==="hard" ? HARD_FIGHT_POOL : FIGHT_POOL;
+    const p = hardTier ? HELL_FIGHT_POOL : diff==="hard" ? HARD_FIGHT_POOL : FIGHT_POOL;
     pool = p[Math.min(floor, p.length-1)];
   }
   const id = pool[Math.floor(Math.random()*pool.length)];
   const def = ENEMY_DEFS.find(e=>e.id===id) ?? ENEMY_DEFS[0];
-  const hpMult = DIFF_HP_MULT[diff];
-  const atkBonus = DIFF_ATK_BONUS[diff];
+  // 도전 모드는 스테이지에 따라 계속 강해짐 (연속 스케일링)
+  const hpMult = DIFF_HP_MULT[diff] * (diff==="challenge" ? challengeHpMult(floor) : 1);
+  const atkBonus = DIFF_ATK_BONUS[diff] + (diff==="challenge" ? challengeAtkBonus(floor) : 0);
+  const strBonus = DIFF_STR_BONUS[diff] + (diff==="challenge" ? Math.floor(floor/20) : 0);
   const scaledPatterns = def.patterns.map(p => ({
     ...p,
     value: (p.intent==="attack"||p.intent==="poison") ? p.value+atkBonus : p.value,
-    strength: p.strength !== undefined ? p.strength+DIFF_STR_BONUS[diff] : p.strength,
+    strength: p.strength !== undefined ? p.strength+strBonus : p.strength,
   }));
   const scaledHp = Math.round(def.hp * hpMult);
   return { ...def, hp:scaledHp, patterns:scaledPatterns, currentHp:scaledHp, currentShield:0, currentStrength:0, poisonStacks:0, patternIdx:0 };
@@ -574,7 +597,7 @@ function NodeIcon({ type, size=20 }: { type: NodeType; size?:number }) {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function RoguePage() {
-  const { rewardSummary, completeRogue } = useAppData();
+  const { rewardSummary, completeRogue, submitChallenge, fetchChallengeRankings } = useAppData();
   const { lang } = useLang();
   const ko = lang === "ko";
   const ja = lang === "ja";
@@ -600,6 +623,11 @@ export default function RoguePage() {
   const victoryCountedRef = useRef(false);
   const completeRogueRef = useRef(completeRogue);
   completeRogueRef.current = completeRogue;
+  const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(null);
+  const [challengeRanks, setChallengeRanks] = useState<ChallengeRankRow[]>([]);
+  const challengeSubmittedRef = useRef(false);
+  const submitChallengeRef = useRef(submitChallenge);
+  submitChallengeRef.current = submitChallenge;
 
   // 피격 이펙트 — gs 변경 시 HP 델타 감지
   useEffect(() => {
@@ -638,7 +666,8 @@ export default function RoguePage() {
   }, [gs]);
 
   useEffect(() => {
-    if (gs?.phase === "victory" && !victoryCountedRef.current) {
+    // 스토리 모드 클리어 → 로그라이크 클리어 카운트
+    if (gs?.phase === "victory" && gs.mode === "story" && !victoryCountedRef.current) {
       victoryCountedRef.current = true;
       const prev = parseInt(localStorage.getItem("kebo_rogue_clears") ?? "0", 10);
       localStorage.setItem("kebo_rogue_clears", String(prev + 1));
@@ -646,24 +675,43 @@ export default function RoguePage() {
         .then(result => { if (result?.milestones.length) setRogueMilestones(result.milestones); })
         .catch(() => undefined);
     }
+    // 도전 모드 종료(사망/완주) → 도달 스테이지 제출
+    if (gs && gs.mode === "challenge" && (gs.phase === "gameover" || gs.phase === "victory") && !challengeSubmittedRef.current) {
+      challengeSubmittedRef.current = true;
+      const cleared = Math.max(0, gs.phase === "victory" ? gs.floor + 1 : gs.floor);
+      submitChallengeRef.current(cleared)
+        .then(res => { if (res) setChallengeResult(res); })
+        .catch(() => undefined);
+    }
     if (gs === null) {
       victoryCountedRef.current = false;
+      challengeSubmittedRef.current = false;
       setRogueMilestones([]);
+      setChallengeResult(null);
     }
   }, [gs?.phase]);
 
+  // 도전 모드 랭킹 로드 (마운트 시 + 런 종료 후 갱신)
+  const fetchRanksRef = useRef(fetchChallengeRankings);
+  fetchRanksRef.current = fetchChallengeRankings;
+  useEffect(() => {
+    fetchRanksRef.current().then(setChallengeRanks).catch(() => undefined);
+  }, [challengeResult]);
+
   // ── Start run ────────────────────────────────────────────────────────────
-  const startRun = useCallback(() => {
+  const startRun = useCallback((mode: RunMode = "story") => {
     const maxHp = RARITY_HP[myChar.rarity] ?? 75;
     const deck = makeStarterDeck(myChar.type);
     const rogueType = ROGUE_TYPE_MAP[myChar.type] ?? "energy";
     const startEnergy    = rogueType === "energy"  ? 4 : 3;
     const startStrength  = rogueType === "attack"  ? 1 : 0;
     const startShield    = rogueType === "defense" ? 5 : 0;
+    const diff: Difficulty = mode === "challenge" ? "challenge" : difficulty;
     setGs({
       phase:"map", floor:-1,
-      difficulty,
-      mapLayout: generateMap(difficulty),
+      mode,
+      difficulty: diff,
+      mapLayout: mode === "challenge" ? generateChallengeMap() : generateMap(diff),
       chosenPath: [],
       playerHp:maxHp, playerMaxHp:maxHp,
       shield:startShield, strength:startStrength, poison:0,
@@ -804,7 +852,8 @@ export default function RoguePage() {
       // Enemy dead?
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
-        if (nodeType==="boss") {
+        const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
+        if (nodeType==="boss" && isFinal) {
           return { ...prev, playerHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":ja?"クリア！":"Victory!"], phase:"victory" };
         }
         // 억까: 연전 처리
@@ -852,7 +901,8 @@ export default function RoguePage() {
 
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
-        if (nodeType==="boss") {
+        const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
+        if (nodeType==="boss" && isFinal) {
           return { ...prev, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":ja?"クリア！":"Victory!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
         }
         // 억까: 연전 처리
@@ -996,6 +1046,24 @@ export default function RoguePage() {
     );
   };
 
+  // 마일스톤 보상 목록 (도전/스토리 공용)
+  const MilestoneList = ({ milestones, labelOf }: { milestones: RogueMilestone[]; labelOf: (n: number) => string }) => (
+    <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:360,animation:"rogue-in 0.4s 0.1s ease-out both"}}>
+      {milestones.map((m, i) => (
+        <div key={i} style={{background:"#0a1a0a",border:"1px solid #22c55e44",borderRadius:10,padding:"10px 14px"}}>
+          <p style={{margin:"0 0 7px",fontSize:13,fontWeight:800,color:"#22c55e"}}>🎉 {labelOf(m.clears)}</p>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {m.points>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"포인트":ja?"ポイント":"Points"} ×{m.points.toLocaleString()}</span>}
+            {m.stones>0&&<span style={{fontSize:11,fontWeight:700,color:"#60a5fa",background:"#60a5fa15",border:"1px solid #60a5fa44",borderRadius:5,padding:"2px 8px"}}>{ko?"강화석":ja?"強化石":"Upgrade Stone"} ×{m.stones}</span>}
+            {m.normalEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#94a3b8",background:"#94a3b815",border:"1px solid #94a3b844",borderRadius:5,padding:"2px 8px"}}>{ko?"일반 알":ja?"通常卵":"Normal Egg"} ×{m.normalEgg}</span>}
+            {m.bigEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#4ade80",background:"#4ade8015",border:"1px solid #4ade8044",borderRadius:5,padding:"2px 8px"}}>{ko?"고급 알":ja?"上級卵":"Premium Egg"} ×{m.bigEgg}</span>}
+            {m.goldEgg>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"황금 알":ja?"黄金卵":"Golden Egg"} ×{m.goldEgg}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   // ════════════════════════════════════════════════════════════
   // LOBBY
   // ════════════════════════════════════════════════════════════
@@ -1105,7 +1173,7 @@ export default function RoguePage() {
 
           {/* Start button */}
           <button
-            onClick={startRun}
+            onClick={() => startRun("story")}
             style={{
               background:`linear-gradient(135deg,${C.gold}cc,${C.gold}88)`,
               border:`2px solid ${C.gold}`,borderRadius:10,padding:"14px 0",
@@ -1114,6 +1182,36 @@ export default function RoguePage() {
               animation:"rogue-in 0.4s 0.15s ease-out both",
             }}
           >{ko?"탐험 시작!":ja?"探検開始！":"Start Expedition!"}</button>
+
+          {/* 도전 모드 */}
+          <div style={{background:C.panelDark,border:"1px solid #7c3aed55",borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.18s ease-out both"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <Crown size={16} color="#a855f7"/>
+                <span style={{color:"#c084fc",fontWeight:800,fontSize:14}}>{ko?"도전 모드":ja?"チャレンジモード":"Challenge"}</span>
+              </div>
+              <span style={{fontSize:11,color:C.textDim}}>{ko?"최고":ja?"最高":"Best"} <b style={{color:"#c084fc"}}>{rewardSummary.challengeBest}</b>/100</span>
+            </div>
+            <p style={{margin:"0 0 10px",fontSize:11,color:C.textDim,lineHeight:1.5}}>
+              {ko?"100스테이지까지 점점 강해지는 적! 몇 칸까지 갈 수 있나? (사망 시 종료)":ja?"100ステージ、敵がどんどん強化！どこまで行ける？（死亡で終了）":"100 stages of ever-stronger foes. How far can you go? (ends on death)"}
+            </p>
+            <button
+              onClick={() => startRun("challenge")}
+              style={{width:"100%",background:"linear-gradient(135deg,#7c3aedcc,#a855f7aa)",border:"2px solid #a855f7",borderRadius:10,padding:"12px 0",color:"#fff",fontWeight:900,fontSize:14,cursor:"pointer",fontFamily:FONT}}
+            >{ko?"도전 시작!":ja?"挑戦開始！":"Start Challenge!"}</button>
+            {challengeRanks.length > 0 && (
+              <div style={{marginTop:12,borderTop:`1px solid ${C.border}`,paddingTop:10}}>
+                <p style={{margin:"0 0 6px",fontSize:11,fontWeight:700,color:C.textBright}}>{ko?"🏆 역대 랭킹":ja?"🏆 ランキング":"🏆 Rankings"}</p>
+                {challengeRanks.slice(0,5).map(r => (
+                  <div key={r.userId} style={{display:"flex",alignItems:"center",gap:8,padding:"3px 0",fontSize:12}}>
+                    <span style={{width:18,textAlign:"right",fontWeight:800,color:r.rank<=3?"#fbbf24":C.textDim}}>{r.rank}</span>
+                    <span style={{flex:1,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nickname}</span>
+                    <span style={{color:"#c084fc",fontWeight:700}}>{r.best}{ko?"칸":ja?"":""}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1122,6 +1220,70 @@ export default function RoguePage() {
   // ════════════════════════════════════════════════════════════
   // MAP
   // ════════════════════════════════════════════════════════════
+  // ── Challenge mode: 일직선 진행 화면 ──
+  if (gs.phase === "map" && gs.mode === "challenge") {
+    const nextFloor = gs.floor + 1;
+    const nt = challengeNodeType(nextFloor);
+    const cleared = gs.floor + 1;
+    const ntMeta: Record<string,[string,string]> = {
+      fight:    [ko?"전투":ja?"戦闘":"Fight", "#ef4444"],
+      elite:    [ko?"엘리트":ja?"エリート":"Elite", "#f97316"],
+      boss:     [ko?"보스":ja?"ボス":"Boss", "#ec4899"],
+      rest:     [ko?"휴식":ja?"休憩":"Rest", "#60a5fa"],
+      shop:     [ko?"상점":ja?"商店":"Shop", "#22c55e"],
+      treasure: [ko?"보물":ja?"宝物":"Treasure", "#f59e0b"],
+    };
+    const [ntLabel, ntColor] = ntMeta[nt] ?? ntMeta.fight;
+    return (
+      <div style={{height:"100dvh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",padding:"14px 16px",gap:14,maxWidth:520,margin:"0 auto",overflow:"hidden"}}>
+        <style>{css}</style>
+        {/* header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <Crown size={18} color="#a855f7"/>
+            <span style={{color:"#c084fc",fontWeight:800,fontSize:15}}>{ko?"도전 모드":ja?"チャレンジ":"Challenge"}</span>
+          </div>
+          <button onClick={abandonRun} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,cursor:"pointer",fontFamily:FONT}}>{ko?"포기":ja?"放棄":"Abandon"}</button>
+        </div>
+
+        {/* progress */}
+        <div style={{textAlign:"center"}}>
+          <p style={{margin:"6px 0 2px",fontSize:13,color:C.textDim}}>{ko?"클리어":ja?"クリア":"Cleared"}</p>
+          <p style={{margin:0,fontSize:44,fontWeight:900,color:"#c084fc",lineHeight:1}}>{cleared}<span style={{fontSize:20,color:C.textDim}}> / {CHALLENGE_FLOORS}</span></p>
+          <div style={{height:8,background:C.panelDark,borderRadius:6,overflow:"hidden",margin:"12px 0 0"}}>
+            <div style={{height:"100%",width:`${(cleared/CHALLENGE_FLOORS)*100}%`,background:"linear-gradient(90deg,#7c3aed,#c084fc)",borderRadius:6,transition:"width 0.3s"}}/>
+          </div>
+        </div>
+
+        {/* HP */}
+        <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:C.textDim}}><Heart size={13} color={C.red}/>HP</span>
+            <span style={{fontSize:13,fontWeight:800,color:C.text}}>{gs.playerHp}/{gs.playerMaxHp}</span>
+          </div>
+          <HpBar hp={gs.playerHp} max={gs.playerMaxHp}/>
+        </div>
+
+        {/* next node */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}>
+          <p style={{margin:0,fontSize:12,color:C.textDim}}>{ko?"다음":ja?"次":"Next"} · {ko?"스테이지":ja?"ステージ":"Stage"} {nextFloor+1}</p>
+          <div style={{border:`2px solid ${ntColor}`,background:`${ntColor}18`,borderRadius:14,padding:"16px 28px",textAlign:"center",minWidth:160}}>
+            <p style={{margin:0,fontSize:20,fontWeight:900,color:ntColor}}>{ntLabel}</p>
+          </div>
+        </div>
+
+        {/* actions */}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px",color:C.textDim,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:FONT}}>{ko?"덱":ja?"デッキ":"Deck"} {gs.deck.length}</button>
+          <button onClick={()=>enterNode(nextFloor, nt)} style={{flex:1,background:"linear-gradient(135deg,#7c3aedcc,#a855f7aa)",border:"2px solid #a855f7",borderRadius:10,padding:"12px 0",color:"#fff",fontWeight:900,fontSize:15,cursor:"pointer",fontFamily:FONT}}>
+            {ko?"진행 ▶":ja?"進む ▶":"Advance ▶"}
+          </button>
+        </div>
+        <DeckModal/>
+      </div>
+    );
+  }
+
   if (gs.phase === "map") {
     const nodeLabel: Record<NodeType,[string,string]> = {
       fight:    [ko?"전투":ja?"戦闘":"Fight",              "#ef4444"],
@@ -1633,17 +1795,37 @@ export default function RoguePage() {
         <style>{css}</style>
         <Skull size={64} color={C.red} style={{animation:"rogue-in 0.5s ease-out both"}}/>
         <div style={{textAlign:"center",animation:"rogue-in 0.4s 0.1s ease-out both"}}>
-          <p style={{margin:0,fontSize:26,fontWeight:900,color:C.red}}>{ko?"탐험 실패":ja?"探検失敗":"Expedition Failed"}</p>
-          <p style={{margin:"6px 0 0",fontSize:13,color:C.textDim}}>
-            {ko?`${gs.floor+1}번째 방에서 쓰러졌습니다`:ja?`${gs.floor+1}部屋目で倒れました`:`Fell on floor ${gs.floor+1}`}
-          </p>
-          <p style={{margin:"4px 0 0",fontSize:13,color:C.textDim}}>
-            {ko?`덱: ${gs.deck.length}장`:ja?`デッキ: ${gs.deck.length}枚`:`Deck: ${gs.deck.length} cards`}
-          </p>
+          {gs.mode === "challenge" ? (
+            <>
+              <p style={{margin:0,fontSize:26,fontWeight:900,color:C.red}}>{ko?"도전 종료":ja?"挑戦終了":"Challenge Over"}</p>
+              <p style={{margin:"8px 0 0",fontSize:16,fontWeight:900,color:"#c084fc"}}>
+                {ko?`${gs.floor}칸 도달`:ja?`${gs.floor}マス到達`:`Reached ${gs.floor}`} <span style={{color:C.textDim,fontWeight:700}}>/ {CHALLENGE_FLOORS}</span>
+              </p>
+              {challengeResult?.isNewRecord && (
+                <p style={{margin:"4px 0 0",fontSize:13,fontWeight:800,color:C.gold}}>🎉 {ko?"신기록 달성!":ja?"新記録達成！":"New Record!"}</p>
+              )}
+              <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>
+                {ko?`역대 최고: ${challengeResult?.challengeBest ?? rewardSummary.challengeBest}칸`:ja?`最高: ${challengeResult?.challengeBest ?? rewardSummary.challengeBest}マス`:`Best: ${challengeResult?.challengeBest ?? rewardSummary.challengeBest}`}
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{margin:0,fontSize:26,fontWeight:900,color:C.red}}>{ko?"탐험 실패":ja?"探検失敗":"Expedition Failed"}</p>
+              <p style={{margin:"6px 0 0",fontSize:13,color:C.textDim}}>
+                {ko?`${gs.floor+1}번째 방에서 쓰러졌습니다`:ja?`${gs.floor+1}部屋目で倒れました`:`Fell on floor ${gs.floor+1}`}
+              </p>
+              <p style={{margin:"4px 0 0",fontSize:13,color:C.textDim}}>
+                {ko?`덱: ${gs.deck.length}장`:ja?`デッキ: ${gs.deck.length}枚`:`Deck: ${gs.deck.length} cards`}
+              </p>
+            </>
+          )}
         </div>
+        {gs.mode === "challenge" && (challengeResult?.milestones.length ?? 0) > 0 && (
+          <MilestoneList milestones={challengeResult!.milestones} labelOf={(n)=>ko?`${n}칸 돌파 보상!`:ja?`${n}マス突破報酬！`:`Stage ${n} Reward!`}/>
+        )}
         <div style={{display:"flex",gap:10,animation:"rogue-in 0.4s 0.2s ease-out both"}}>
           <button
-            onClick={startRun}
+            onClick={() => startRun(gs.mode)}
             style={{background:"#1c0a0a",border:`2px solid ${C.red}`,borderRadius:10,padding:"12px 24px",color:C.red,fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:FONT}}
           >
             <div style={{display:"flex",alignItems:"center",gap:6}}><RefreshCw size={16}/>{ko?"다시 도전":ja?"再挑戦":"Try Again"}</div>
@@ -1667,47 +1849,35 @@ export default function RoguePage() {
         <style>{css}</style>
         <Trophy size={72} color={C.gold} style={{animation:"rogue-float 2s ease-in-out infinite"}}/>
         <div style={{textAlign:"center",animation:"rogue-in 0.4s ease-out both"}}>
-          <p style={{margin:0,fontSize:28,fontWeight:900,color:C.gold,letterSpacing:"0.08em"}}>{ko?"탐험 성공!":ja?"探検成功！":"Expedition Clear!"}</p>
+          <p style={{margin:0,fontSize:28,fontWeight:900,color:C.gold,letterSpacing:"0.08em"}}>{gs.mode==="challenge"?(ko?"100칸 완주!":ja?"100マス完走！":"100 Stages Cleared!"):(ko?"탐험 성공!":ja?"探検成功！":"Expedition Clear!")}</p>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:8}}>
             <Skull size={16} color="#4ade80"/>
             <p style={{margin:0,fontSize:14,color:"#4ade80"}}>
-              {ko?"카오스 드래곤을 처치했습니다":ja?"カオスドラゴンを撃破しました":"You defeated the Chaos Dragon"}
+              {gs.mode==="challenge"?(ko?"도전 모드를 완전 정복했습니다!":ja?"チャレンジを完全制覇！":"You conquered the Challenge!"):(ko?"카오스 드래곤을 처치했습니다":ja?"カオスドラゴンを撃破しました":"You defeated the Chaos Dragon")}
             </p>
           </div>
           <p style={{margin:"4px 0 0",fontSize:13,color:C.textDim}}>
             {ko?`HP ${gs.playerHp} / ${gs.playerMaxHp} · 덱 ${gs.deck.length}장`:ja?`HP ${gs.playerHp} / ${gs.playerMaxHp} · デッキ${gs.deck.length}枚`:`HP ${gs.playerHp} / ${gs.playerMaxHp} · Deck ${gs.deck.length} cards`}
           </p>
-          <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>
-            {ko?`누적 클리어: ${totalClears}회`:ja?`累計クリア: ${totalClears}回`:`Total Clears: ${totalClears}`}
-          </p>
+          {gs.mode!=="challenge" && (
+            <p style={{margin:"4px 0 0",fontSize:12,color:C.textDim}}>
+              {ko?`누적 클리어: ${totalClears}회`:ja?`累計クリア: ${totalClears}回`:`Total Clears: ${totalClears}`}
+            </p>
+          )}
         </div>
 
         {/* 마일스톤 보상 */}
-        {rogueMilestones.length > 0 && (
-          <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:360,animation:"rogue-in 0.4s 0.1s ease-out both"}}>
-            {rogueMilestones.map((m, i) => (
-              <div key={i} style={{
-                background:"#0a1a0a", border:"1px solid #22c55e44",
-                borderRadius:10, padding:"10px 14px",
-              }}>
-                <p style={{margin:"0 0 7px",fontSize:13,fontWeight:800,color:"#22c55e"}}>
-                  🎉 {ko?`${m.clears}회 달성 보상!`:ja?`${m.clears}回達成報酬！`:`${m.clears}-Clear Reward!`}
-                </p>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {m.points>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"포인트":ja?"ポイント":"Points"} ×{m.points.toLocaleString()}</span>}
-                  {m.stones>0&&<span style={{fontSize:11,fontWeight:700,color:"#60a5fa",background:"#60a5fa15",border:"1px solid #60a5fa44",borderRadius:5,padding:"2px 8px"}}>{ko?"강화석":ja?"強化石":"Upgrade Stone"} ×{m.stones}</span>}
-                  {m.normalEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#94a3b8",background:"#94a3b815",border:"1px solid #94a3b844",borderRadius:5,padding:"2px 8px"}}>{ko?"일반 알":ja?"通常卵":"Normal Egg"} ×{m.normalEgg}</span>}
-                  {m.bigEgg>0&&<span style={{fontSize:11,fontWeight:700,color:"#4ade80",background:"#4ade8015",border:"1px solid #4ade8044",borderRadius:5,padding:"2px 8px"}}>{ko?"고급 알":ja?"上級卵":"Premium Egg"} ×{m.bigEgg}</span>}
-                  {m.goldEgg>0&&<span style={{fontSize:11,fontWeight:700,color:C.gold,background:`${C.gold}15`,border:`1px solid ${C.gold}44`,borderRadius:5,padding:"2px 8px"}}>{ko?"황금 알":ja?"黄金卵":"Golden Egg"} ×{m.goldEgg}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {gs.mode==="challenge"
+          ? (challengeResult?.milestones.length ?? 0) > 0 && (
+              <MilestoneList milestones={challengeResult!.milestones} labelOf={(n)=>ko?`${n}칸 돌파 보상!`:ja?`${n}マス突破報酬！`:`Stage ${n} Reward!`}/>
+            )
+          : rogueMilestones.length > 0 && (
+              <MilestoneList milestones={rogueMilestones} labelOf={(n)=>ko?`${n}회 달성 보상!`:ja?`${n}回達成報酬！`:`${n}-Clear Reward!`}/>
+            )}
 
         <div style={{display:"flex",gap:10,animation:"rogue-in 0.4s 0.2s ease-out both"}}>
           <button
-            onClick={startRun}
+            onClick={() => startRun(gs.mode)}
             style={{background:`linear-gradient(135deg,${C.gold}cc,${C.gold}88)`,border:`2px solid ${C.gold}`,borderRadius:10,padding:"12px 28px",color:"#1c1500",fontWeight:900,fontSize:15,cursor:"pointer",fontFamily:FONT}}
           >
             <div style={{display:"flex",alignItems:"center",gap:6}}><RefreshCw size={16}/>{ko?"다시 하기":ja?"もう一度":"Play Again"}</div>

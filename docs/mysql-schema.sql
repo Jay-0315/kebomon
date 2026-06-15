@@ -97,6 +97,7 @@ CREATE TABLE user_rewards (
   live_count            INT          NOT NULL DEFAULT 0,
   expedition_count      INT          NOT NULL DEFAULT 0,
   rogue_clears          INT          NOT NULL DEFAULT 0,
+  challenge_best        INT          NOT NULL DEFAULT 0,
   last_attendance_date  VARCHAR(10)  NULL,
   month_key             VARCHAR(7)   NULL,
   month_days            INT          NOT NULL DEFAULT 0,

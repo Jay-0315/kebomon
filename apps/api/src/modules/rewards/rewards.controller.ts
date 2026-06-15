@@ -116,6 +116,16 @@ export class RewardsController {
     return this.rewardsService.completeRogue(body.userId);
   }
 
+  @Post("challenge/submit")
+  submitChallenge(@Body() body: { userId: string; stage: number }) {
+    return this.rewardsService.submitChallenge(body.userId, body.stage);
+  }
+
+  @Get("challenge-rankings")
+  getChallengeRankings() {
+    return this.rewardsService.getChallengeRankings();
+  }
+
   @Post("season/grant-rank-titles")
   grantSeasonRankTitles(@Body() body: { seasonId: number }) {
     return this.rewardsService.grantSeasonRankTitles(body.seasonId ?? 1);

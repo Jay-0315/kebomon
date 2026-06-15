@@ -40,6 +40,8 @@ import type {
   PostCategory,
   RewardSummary,
   RogueMilestone,
+  ChallengeResult,
+  ChallengeRankRow,
   UserProfile,
 } from "../types/domain";
 
@@ -78,6 +80,8 @@ interface AppDataContextValue {
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
   completeExpedition: (rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }) => Promise<void>;
   completeRogue: () => Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null>;
+  submitChallenge: (stage: number) => Promise<ChallengeResult | null>;
+  fetchChallengeRankings: () => Promise<ChallengeRankRow[]>;
   refreshData: () => Promise<void>;
   profilePhoto: string | null;
   updateProfilePhoto: (photo: string | null) => void;
@@ -109,6 +113,7 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     liveCount: summary?.liveCount ?? 0,
     expeditionCount: summary?.expeditionCount ?? 0,
     rogueClears: summary?.rogueClears ?? 0,
+    challengeBest: summary?.challengeBest ?? 0,
     attendanceClaimedToday: summary?.attendanceClaimedToday ?? false,
     monthDays: summary?.monthDays ?? 0,
     monthWeekRewards: summary?.monthWeekRewards ?? 0,
@@ -576,6 +581,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const submitChallenge = async (stage: number): Promise<ChallengeResult | null> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return null;
+    const result = await api.post<ChallengeResult>("/rewards/challenge/submit", {
+      userId: currentUser.id,
+      stage,
+    });
+    const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
+    setRewardSummary(normalizeRewardSummary(summary));
+    return result;
+  };
+
+  const fetchChallengeRankings = async (): Promise<ChallengeRankRow[]> => {
+    try {
+      const res = await api.get<{ rankings: ChallengeRankRow[] }>("/rewards/challenge-rankings");
+      return res.rankings ?? [];
+    } catch {
+      return [];
+    }
+  };
+
   const enhanceCharacter = async (characterId: number): Promise<{ success: boolean; newLevel: number; remainingStones: number }> => {
     const currentUser = getStoredUser();
     if (!currentUser) throw new Error("로그인이 필요합니다.");
@@ -638,6 +664,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     enhanceCharacter,
     completeExpedition,
     completeRogue,
+    submitChallenge,
+    fetchChallengeRankings,
     refreshData,
     profilePhoto,
     updateProfilePhoto,

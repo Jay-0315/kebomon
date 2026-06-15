@@ -115,6 +115,7 @@ model UserReward {
   liveCount           Int      @default(0) @map("live_count")
   expeditionCount     Int      @default(0) @map("expedition_count")
   rogueClears         Int      @default(0) @map("rogue_clears")
+  challengeBest       Int      @default(0) @map("challenge_best")
   lastAttendanceDate  String?  @map("last_attendance_date") @db.VarChar(10)
   monthKey            String?  @map("month_key") @db.VarChar(7)
   monthDays           Int      @default(0) @map("month_days")
