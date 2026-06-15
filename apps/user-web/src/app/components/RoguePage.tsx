@@ -209,14 +209,14 @@ const RELICS: RelicDef[] = [
   { id:"thorn_bracelet", grade:"common", category:"combat",   name:"가시 팔찌",       nameJa:"棘の腕輪",         nameEn:"Thorn Bracelet",   desc:"피격 시 반사 데미지 1",         descJa:"被撃時、反射1ダメージ",     descEn:"Reflect 1 damage when hit" },
   // ── Common / utility ──
   { id:"compass",        grade:"common", category:"utility",  name:"나침반",          nameJa:"コンパス",         nameEn:"Compass",          desc:"매 전투 시작 시 카드 1장 추가", descJa:"戦闘開始時、1枚追加ドロー", descEn:"Draw 1 extra card at battle start" },
-  { id:"bandage",        grade:"common", category:"utility",  name:"붕대",            nameJa:"包帯",             nameEn:"Bandage",          desc:"전투 승리 시 HP +5",           descJa:"戦闘勝利時、HP+5",         descEn:"Heal 5 HP on battle win" },
+  { id:"bandage",        grade:"common", category:"utility",  name:"붕대",            nameJa:"包帯",             nameEn:"Bandage",          desc:"전투 승리 시 최대 HP +5",      descJa:"戦闘勝利時、最大HP+5",     descEn:"+5 max HP on battle win" },
   // ── Common / reward ──
   { id:"old_wallet",     grade:"common", category:"reward",   name:"낡은 지갑",       nameJa:"古い財布",         nameEn:"Old Wallet",       desc:"전투 승리 시 골드 +15",        descJa:"戦闘勝利時、ゴールド+15",  descEn:"Gain 15 gold on battle win" },
   { id:"lucky_coin",     grade:"common", category:"reward",   name:"행운의 동전",     nameJa:"幸運のコイン",     nameEn:"Lucky Coin",       desc:"보상 카드 4장 중 선택",        descJa:"報酬カード4枚から選択",     descEn:"Choose from 4 reward cards" },
   // ── Rare / combat ──
   { id:"dragon_scale",   grade:"rare",   category:"combat",   name:"용의 비늘",       nameJa:"竜の鱗",           nameEn:"Dragon Scale",     desc:"매 턴 시작 시 방어력 +3",      descJa:"ターン開始時、シールド+3",  descEn:"Gain 3 shield at turn start" },
   { id:"berserker_axe",  grade:"rare",   category:"combat",   name:"광전사의 도끼",   nameJa:"狂戦士の斧",       nameEn:"Berserker Axe",    desc:"획득 시 힘 +2 (영구)",         descJa:"取得時、力+2（永続）",      descEn:"Gain +2 strength permanently" },
-  { id:"vampire_ring",   grade:"rare",   category:"combat",   name:"흡혈 반지",       nameJa:"吸血の指輪",       nameEn:"Vampire Ring",     desc:"전투 승리 시 HP +10",          descJa:"戦闘勝利時、HP+10",        descEn:"Heal 10 HP on battle win" },
+  { id:"vampire_ring",   grade:"rare",   category:"combat",   name:"흡혈 반지",       nameJa:"吸血の指輪",       nameEn:"Vampire Ring",     desc:"전투 승리 시 최대 HP +10",     descJa:"戦闘勝利時、最大HP+10",    descEn:"+10 max HP on battle win" },
   { id:"health_potion",  grade:"rare",   category:"combat",   name:"체력 물약",       nameJa:"体力ポーション",   nameEn:"Health Potion",    desc:"매 전투 시작 시 HP +8",        descJa:"戦闘開始時、HP+8",         descEn:"Heal 8 HP at battle start" },
   // ── Rare / utility ──
   { id:"magic_cloak",    grade:"rare",   category:"utility",  name:"마법 망토",       nameJa:"魔法のマント",     nameEn:"Magic Cloak",      desc:"획득 시 최대 HP +20",          descJa:"取得時、最大HP+20",         descEn:"Gain +20 max HP" },
@@ -225,7 +225,7 @@ const RELICS: RelicDef[] = [
   { id:"gold_pouch",     grade:"rare",   category:"reward",   name:"금화 주머니",     nameJa:"金貨袋",           nameEn:"Gold Pouch",       desc:"골드 획득량 +30%",             descJa:"ゴールド獲得量+30%",        descEn:"+30% gold from battles" },
   // ── Unique / combat ──
   { id:"immortal_heart", grade:"unique", category:"combat",   name:"불멸의 심장",     nameJa:"不滅の心臓",       nameEn:"Immortal Heart",   desc:"런 중 1회 치사 데미지 방어",    descJa:"1回だけ致死ダメージを無効", descEn:"Block lethal damage once per run" },
-  { id:"storm_sword",    grade:"unique", category:"combat",   name:"폭풍의 검",       nameJa:"嵐の剣",           nameEn:"Storm Sword",      desc:"매 전투 시작 시 에너지 +1",    descJa:"戦闘開始時、エナジー+1",    descEn:"Gain 1 energy at battle start" },
+  { id:"storm_sword",    grade:"unique", category:"combat",   name:"폭풍의 검",       nameJa:"嵐の剣",           nameEn:"Storm Sword",      desc:"획득 시 최대 에너지 +1 (영구)", descJa:"取得時、最大エナジー+1（永続）",descEn:"Gain +1 max energy permanently" },
   // ── Unique / utility ──
   { id:"hourglass",      grade:"unique", category:"utility",  name:"시간의 모래시계", nameJa:"時の砂時計",       nameEn:"Hourglass",        desc:"매 전투 시작 시 카드 2장 추가", descJa:"戦闘開始時、2枚追加ドロー", descEn:"Draw 2 extra cards at battle start" },
   { id:"philosopher",    grade:"unique", category:"utility",  name:"연금술사의 돌",   nameJa:"賢者の石",         nameEn:"Philosopher's Stone",desc:"상점 가격 -25%",              descJa:"ショップ価格-25%",          descEn:"Shop prices -25%" },
@@ -870,8 +870,6 @@ export default function RoguePage() {
         // Relic: extra draws at battle start
         const extraDraw = (hasRelic(prev.relics,"compass")?1:0) + (hasRelic(prev.relics,"hourglass")?2:0);
         const drawn = drawN([], drawPile, [], 5 + extraDraw);
-        // Relic: extra energy at battle start (storm_sword)
-        const extraEnergy = hasRelic(prev.relics,"storm_sword") ? 1 : 0;
         // Relic: heal at battle start (health_potion)
         const startHeal = hasRelic(prev.relics,"health_potion") ? Math.min(8, prev.playerMaxHp - prev.playerHp) : 0;
         // 억까: 연전 - elite floor4+ 20% 확률로 2연전
@@ -881,7 +879,7 @@ export default function RoguePage() {
         return {
           ...prev, phase:"battle", floor:floorIdx,
           chosenPath:newChosenPath,
-          shield:0, energy:prev.maxEnergy + extraEnergy,
+          shield:0, energy:prev.maxEnergy,
           playerHp: prev.playerHp + startHeal,
           enemy,
           hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
@@ -896,10 +894,9 @@ export default function RoguePage() {
           const drawPile = shuffle([...prev.deck]);
           const extraDraw = (hasRelic(prev.relics,"compass")?1:0) + (hasRelic(prev.relics,"hourglass")?2:0);
           const drawn = drawN([], drawPile, [], 5 + extraDraw);
-          const extraEnergy = hasRelic(prev.relics,"storm_sword") ? 1 : 0;
           return {
             ...prev, phase:"battle", floor:floorIdx, chosenPath:newChosenPath,
-            shield:0, energy:prev.maxEnergy + extraEnergy, enemy,
+            shield:0, energy:prev.maxEnergy, enemy,
             hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
             log:[ko?"⚠ 함정이다! 적이 숨어 있었다!":ja?"⚠ トラップ！敵が潜んでいた！":"⚠ Ambush! An enemy was hiding!"], turnCount:1,
             chainPending:null, cursedRest:false, shopInflated:false,
@@ -1000,17 +997,18 @@ export default function RoguePage() {
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
-        // Relic: kill heals
-        const killHeal = (hasRelic(prev.relics,"bandage")?5:0) + (hasRelic(prev.relics,"vampire_ring")?10:0);
-        const hpAfterKill = Math.min(prev.playerMaxHp, playerHp + killHeal);
+        // Relic: permanent max HP gain on kill
+        const killMaxHpGain = (hasRelic(prev.relics,"bandage")?5:0) + (hasRelic(prev.relics,"vampire_ring")?10:0);
+        const newMaxHp = prev.playerMaxHp + killMaxHpGain;
+        const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
         if (nodeType==="boss" && isFinal) {
-          return { ...prev, playerHp:hpAfterKill, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":ja?"クリア！":"Victory!"], phase:"victory" };
+          return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"승리!":ja?"クリア！":"Victory!"], phase:"victory" };
         }
         if (prev.chainPending) {
           const chainDrawPile = shuffle([...prev.deck]);
           const extraDraw = (hasRelic(prev.relics,"compass")?1:0)+(hasRelic(prev.relics,"hourglass")?2:0);
           const chainDrawn = drawN([], chainDrawPile, [], 5+extraDraw);
-          return { ...prev, playerHp:hpAfterKill, shield:0, strength, energy:prev.maxEnergy+(hasRelic(prev.relics,"storm_sword")?1:0), enemy:prev.chainPending, chainPending:null,
+          return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, shield:0, strength, energy:prev.maxEnergy, enemy:prev.chainPending, chainPending:null,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
             log:[...newLog, ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
           };
@@ -1020,7 +1018,7 @@ export default function RoguePage() {
         const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
         const rewards = pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice"));
         const newRelicPending = nodeType==="elite" || nodeType==="boss";
-        return { ...prev, playerHp:hpAfterKill, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":ja?"撃破！":"Defeated!"], phase:"reward", gold:prev.gold+finalGold, rewardCards:rewards, relicPending:newRelicPending };
+        return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, shield, strength, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":ja?"撃破！":"Defeated!"], phase:"reward", gold:prev.gold+finalGold, rewardCards:rewards, relicPending:newRelicPending };
       }
 
       // Player dead?
@@ -1061,17 +1059,18 @@ export default function RoguePage() {
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
-        const killHeal = (hasRelic(prev.relics,"bandage")?5:0)+(hasRelic(prev.relics,"vampire_ring")?10:0);
-        const hpAfterKill = Math.min(prev.playerMaxHp, playerHp + killHeal);
+        const killMaxHpGain = (hasRelic(prev.relics,"bandage")?5:0)+(hasRelic(prev.relics,"vampire_ring")?10:0);
+        const newMaxHp = prev.playerMaxHp + killMaxHpGain;
+        const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
         if (nodeType==="boss" && isFinal) {
-          return { ...prev, playerHp:hpAfterKill, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":ja?"クリア！":"Victory!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+          return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, enemy:{...enemy,currentHp:0}, phase:"victory", log:[...prev.log.slice(-5), ko?"승리!":ja?"クリア！":"Victory!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
         }
         if (prev.chainPending) {
           const chainDrawPile = shuffle([...prev.deck]);
           const extraDraw = (hasRelic(prev.relics,"compass")?1:0)+(hasRelic(prev.relics,"hourglass")?2:0);
           const chainDrawn = drawN([], chainDrawPile, [], 5+extraDraw);
-          return { ...prev, playerHp:hpAfterKill, enemy:prev.chainPending, chainPending:null,
-            shield:0, energy:prev.maxEnergy+(hasRelic(prev.relics,"storm_sword")?1:0),
+          return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, enemy:prev.chainPending, chainPending:null,
+            shield:0, energy:prev.maxEnergy,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
             log:[...prev.log.slice(-3),...logs,ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
           };
@@ -1080,7 +1079,7 @@ export default function RoguePage() {
         const finalGold = hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold;
         const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
         const newRelicPending = nodeType==="elite" || nodeType==="boss";
-        return { ...prev, playerHp:hpAfterKill, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+finalGold, rewardCards:pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice")), relicPending:newRelicPending, log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+finalGold, rewardCards:pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice")), relicPending:newRelicPending, log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
       }
 
       // Enemy action
@@ -1232,6 +1231,7 @@ export default function RoguePage() {
       if (relic.id==="berserker_axe")  next = { ...next, strength: next.strength + 2 };
       if (relic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 20, playerHp: Math.min(next.playerMaxHp + 20, next.playerHp + 20) };
       if (relic.id==="energy_crystal") next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
+      if (relic.id==="storm_sword")    next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
       return next;
     });
     setPendingRelicOffer(null);
@@ -1254,11 +1254,13 @@ export default function RoguePage() {
       if (oldRelic.id==="berserker_axe")  next = { ...next, strength: Math.max(0, next.strength - 2) };
       if (oldRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp - 20, playerHp: Math.min(next.playerHp, next.playerMaxHp - 20) };
       if (oldRelic.id==="energy_crystal") next = { ...next, maxEnergy: Math.max(1, next.maxEnergy - 1), energy: Math.max(1, next.energy - 1) };
+      if (oldRelic.id==="storm_sword")    next = { ...next, maxEnergy: Math.max(1, next.maxEnergy - 1), energy: Math.max(1, next.energy - 1) };
       // Apply new relic immediate effects
       if (newRelic.id==="blade_ring")     next = { ...next, strength: next.strength + 1 };
       if (newRelic.id==="berserker_axe")  next = { ...next, strength: next.strength + 2 };
       if (newRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 20, playerHp: Math.min(next.playerMaxHp + 20, next.playerHp + 20) };
       if (newRelic.id==="energy_crystal") next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
+      if (newRelic.id==="storm_sword")    next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
       return next;
     });
     setPendingRelicSwap(null); setPendingRelicOffer(null);
@@ -2059,7 +2061,7 @@ export default function RoguePage() {
             <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
               {/* Energy */}
               <div style={{display:"flex",gap:3}}>
-                {Array.from({length:gs.maxEnergy},(_,i)=>(
+                {Array.from({length:Math.max(gs.maxEnergy,gs.energy)},(_,i)=>(
                   <div key={i} style={{width:18,height:18,borderRadius:"50%",background:i<gs.energy?"#f59e0b":"#1c1500",border:`2px solid ${i<gs.energy?"#f59e0b":"#374151"}`}}/>
                 ))}
               </div>
