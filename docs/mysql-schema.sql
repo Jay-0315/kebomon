@@ -134,11 +134,12 @@ CREATE TABLE push_subscriptions (
 CREATE TABLE raid_contents (
   id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
   raid_type  INT          NOT NULL,
-  text       TEXT         NOT NULL,
-  answer     TEXT         NULL,
-  active     TINYINT(1)   NOT NULL DEFAULT 1,
-  created_by VARCHAR(36)  NULL,
-  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  text         TEXT         NOT NULL,
+  answer       TEXT         NULL,
+  active       TINYINT(1)   NOT NULL DEFAULT 1,
+  report_count INT          NOT NULL DEFAULT 0,
+  created_by   VARCHAR(36)  NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_raid_contents_type (raid_type, active)
 );
 

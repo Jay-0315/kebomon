@@ -10,6 +10,7 @@ import {
   Clock,
   Heart,
   Medal,
+  Flag,
 } from "lucide-react";
 import {
   useAppData,
@@ -1703,6 +1704,10 @@ export default function RaidPage() {
   const emitDied = useCallback(() => {
     getRaidSocket().emit("raid:died");
   }, []);
+  const reportProblem = useCallback(() => {
+    if (!window.confirm(t("raid.report_confirm"))) return;
+    getRaidSocket().emit("raid:report");
+  }, [t]);
   const submitContribution = () => {
     const meta = CONTRIBUTE_META[raidType];
     const text = contribText.trim();
@@ -2117,10 +2122,21 @@ export default function RaidPage() {
         </div>
         {/* boss-issued mission */}
         <div className="mt-2 rounded-lg bg-primary/10 px-3 py-2">
-          <p className="text-xs font-semibold text-primary">
-            「{bossName(state?.boss.characterId)}」{" "}
-            {t(RAID_MISSION_LABELS[raidType])}
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs font-semibold text-primary">
+              「{bossName(state?.boss.characterId)}」{" "}
+              {t(RAID_MISSION_LABELS[raidType])}
+            </p>
+            {(raidType === 3 || raidType === 4) && !state?.cleared && (
+              <button
+                onClick={reportProblem}
+                title={t("raid.report")}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-red-500/15 hover:text-red-500 dark:bg-white/10"
+              >
+                <Flag className="h-3 w-3" /> {t("raid.report")}
+              </button>
+            )}
+          </div>
           <p
             className={`mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-50 ${raidType === 4 ? "select-none" : ""}`}
             style={

@@ -185,9 +185,10 @@ model RaidContent {
   raidType  Int      @map("raid_type")
   text      String   @db.Text
   answer    String?  @db.Text
-  active    Boolean  @default(true)
-  createdBy String?  @map("created_by") @db.VarChar(36)
-  createdAt DateTime @default(now()) @map("created_at")
+  active      Boolean  @default(true)
+  reportCount Int      @default(0) @map("report_count")
+  createdBy   String?  @map("created_by") @db.VarChar(36)
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([raidType, active])
   @@map("raid_contents")

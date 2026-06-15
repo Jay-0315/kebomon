@@ -334,6 +334,53 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     }
   }
 
+  /** 부적절한 퀴즈·받아쓰기 문제 신고 → 다음 문제로 스킵, 10회 누적 시 삭제 */
+  @SubscribeMessage("raid:report")
+  async report(@ConnectedSocket() client: Socket) {
+    const player = this.findPlayer(client.id);
+    if (!player || (player.raidType !== 3 && player.raidType !== 4)) return;
+    const type = player.raidType;
+    const r = this.getRoom(type);
+    if (r.cleared) return;
+
+    // 현재 출제 중인 문제
+    const text = type === 3 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q : r.typingSentence;
+
+    // 기여 문제(DB 행 존재)면 신고 누적 → 10회 이상 시 삭제 + 출제 풀에서 제거
+    if (text) {
+      try {
+        const row = await this.prisma.raidContent.findFirst({ where: { raidType: type, text, active: true } });
+        if (row) {
+          const updated = await this.prisma.raidContent.update({
+            where: { id: row.id },
+            data: { reportCount: { increment: 1 } },
+          });
+          if (updated.reportCount >= 10) {
+            await this.prisma.raidContent.delete({ where: { id: row.id } }).catch(() => undefined);
+            if (type === 3) {
+              const idx = QUIZ_BANK.findIndex((q) => q.q === text);
+              if (idx >= 0) QUIZ_BANK.splice(idx, 1);
+            } else {
+              const idx = TYPING_SENTENCES.indexOf(text);
+              if (idx >= 0) TYPING_SENTENCES.splice(idx, 1);
+            }
+          }
+        }
+      } catch {
+        // DB 미연결/컬럼 없음 등은 무시 (스킵은 그대로 동작)
+      }
+    }
+
+    // 다음 문제로 스킵
+    if (type === 3) {
+      r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
+    } else {
+      r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
+    }
+    this.broadcastState(type);
+    this.server.to(room(type)).emit("raid:feedback", { text: "🚩 신고 접수 · 다음 문제로" });
+  }
+
   @SubscribeMessage("raid:gem")
   gem(@ConnectedSocket() client: Socket) {
     const player = this.findPlayer(client.id);

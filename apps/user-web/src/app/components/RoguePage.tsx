@@ -1271,7 +1271,7 @@ export default function RoguePage() {
     const nextP = e.patterns[e.patternIdx % e.patterns.length];
     const pHpPct = gs.playerHp / gs.playerMaxHp;
     return (
-      <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",padding:12,gap:10,maxWidth:640,margin:"0 auto"}}>
+      <div style={{height:"100dvh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",padding:"8px 10px",gap:6,maxWidth:640,margin:"0 auto",overflow:"hidden"}}>
         <style>{`${css} .rogue-card-hover{transition:transform 0.12s,box-shadow 0.12s}`}</style>
 
         {/* 플레이어 피격 레드 플래시 */}
@@ -1308,11 +1308,11 @@ export default function RoguePage() {
             </div>
           </div>
         )}
-        <div style={{background:C.panelDark,border:`1px solid #3a0a0a`,borderRadius:12,padding:14,animation:"rogue-in 0.3s ease-out both"}}>
+        <div style={{background:C.panelDark,border:`1px solid #3a0a0a`,borderRadius:12,padding:10,animation:"rogue-in 0.3s ease-out both"}}>
           <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
             <div style={{position:"relative",flexShrink:0}}>
               <div style={{animation:enemyHit?"ut-enemy-hit 0.38s ease-out":"rogue-float 2.5s ease-in-out infinite"}}>
-                <PixelSprite type={e.charType} colors={CHARACTERS.find(c=>c.type===e.charType)?.colors ?? {p:"#888",s:"#666",a:"#aaa"}} characterId={0} rarity="common" size={64}/>
+                <PixelSprite type={e.charType} colors={CHARACTERS.find(c=>c.type===e.charType)?.colors ?? {p:"#888",s:"#666",a:"#aaa"}} characterId={0} rarity="common" size={52}/>
               </div>
               {rogueDmgNums.filter(n=>n.side==="enemy").map(n=>(
                 <span key={n.id} style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",
@@ -1361,9 +1361,9 @@ export default function RoguePage() {
 
         {/* Battle log */}
         <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden"}}>
-          <div style={{padding:"8px 12px"}}>
-            {gs.log.slice(-3).map((l,i,arr)=>(
-              <p key={i} style={{margin:0,fontSize:11,color:i===arr.length-1?C.text:C.textDim,lineHeight:1.7}}>{l}</p>
+          <div style={{padding:"5px 10px"}}>
+            {gs.log.slice(-2).map((l,i,arr)=>(
+              <p key={i} style={{margin:0,fontSize:11,color:i===arr.length-1?C.text:C.textDim,lineHeight:1.45}}>{l}</p>
             ))}
           </div>
           {gs.log.length > 0 && (
@@ -1417,8 +1417,8 @@ export default function RoguePage() {
             </div>
           );
         })()}
-        <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
             <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
               {/* Energy */}
               <div style={{display:"flex",gap:3}}>
@@ -1453,12 +1453,10 @@ export default function RoguePage() {
         </div>
         </div>{/* /player status wrapper */}
 
-        {/* How-to hint */}
-        <div style={{display:"flex",flexDirection:"column",gap:4,padding:"4px 2px",opacity:0.45}}>
-          <p style={{margin:0,fontSize:10,color:C.textDim,textAlign:"center"}}>
-            {ko?"카드 클릭 → 즉시 사용  ·  흐린 카드는 에너지 부족  ·  턴 종료하면 적이 행동":ja?"カードタップ→即使用  ·  暗いカードはエナジー不足  ·  ターン終了で敵行動":"Tap a card to play it  ·  Dimmed = not enough energy  ·  End turn to trigger enemy action"}
-          </p>
-        </div>
+        {/* How-to hint (모바일 절약: 한 줄) */}
+        <p style={{margin:0,padding:"0 2px",opacity:0.4,fontSize:10,color:C.textDim,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+          {ko?"카드 클릭 → 사용 · 턴 종료 시 적 행동":ja?"カードタップ→使用 · ターン終了で敵行動":"Tap card to play · End turn for enemy"}
+        </p>
 
         {/* Hand */}
         <div style={{flex:1,overflowX:"auto",display:"flex",gap:8,padding:"4px 0 8px",alignItems:"flex-end"}}>
