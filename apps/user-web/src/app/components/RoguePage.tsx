@@ -196,17 +196,19 @@ const CHALLENGE_FLOORS = 100;
 // 스테이지가 올라갈수록 적 HP·공격력이 계속 증가 (floor = 0-index)
 function challengeHpMult(floor: number): number { return 1 + floor * 0.10; }   // stage100 ≈ ×10.9
 function challengeAtkBonus(floor: number): number { return Math.floor(floor * 0.6); } // stage100 ≈ +59
-// 일직선 100칸: 5칸마다 엘리트, 10칸마다 보스, 7칸마다 휴식, 11칸마다 상점, 마지막은 최종보스
-function challengeNodeType(i: number): NodeType {
-  if (i >= CHALLENGE_FLOORS - 1) return "boss";
-  if ((i + 1) % 10 === 0) return "boss";
-  if ((i + 1) % 5 === 0) return "elite";
-  if (i > 0 && (i + 1) % 7 === 0) return "rest";
-  if (i > 0 && (i + 1) % 11 === 0) return "shop";
-  return "fight";
+// 매 칸 랜덤 선택지 2개 (기존 로그라이크처럼). 10칸마다 엘리트 보장, 마지막은 최종 보스
+function challengeFloorOptions(i: number): NodeType[] {
+  if (i >= CHALLENGE_FLOORS - 1) return ["boss"];
+  if ((i + 1) % 10 === 0) return shuffle(["elite", Math.random() < 0.5 ? "rest" : "treasure"] as NodeType[]);
+  const PAIRS: NodeType[][] = [
+    ["fight", "treasure"], ["fight", "rest"], ["fight", "shop"],
+    ["fight", "elite"],    ["elite", "treasure"], ["elite", "rest"],
+    ["fight", "rest"],     ["fight", "treasure"], ["rest", "shop"],
+  ];
+  return shuffle([...PAIRS[(Math.random() * PAIRS.length) | 0]]);
 }
 function generateChallengeMap(): { options: NodeType[] }[] {
-  return Array.from({ length: CHALLENGE_FLOORS }, (_, i) => ({ options: [challengeNodeType(i)] }));
+  return Array.from({ length: CHALLENGE_FLOORS }, (_, i) => ({ options: challengeFloorOptions(i) }));
 }
 
 // ── Enemies ────────────────────────────────────────────────────────────────
@@ -1223,8 +1225,9 @@ export default function RoguePage() {
   // ── Challenge mode: 일직선 진행 화면 ──
   if (gs.phase === "map" && gs.mode === "challenge") {
     const nextFloor = gs.floor + 1;
-    const nt = challengeNodeType(nextFloor);
     const cleared = gs.floor + 1;
+    const options = gs.mapLayout[nextFloor]?.options ?? (["fight"] as NodeType[]);
+    const cfg = DIFF_GOLD_FIGHT.challenge, ceg = DIFF_GOLD_ELITE.challenge;
     const ntMeta: Record<string,[string,string]> = {
       fight:    [ko?"전투":ja?"戦闘":"Fight", "#ef4444"],
       elite:    [ko?"엘리트":ja?"エリート":"Elite", "#f97316"],
@@ -1233,7 +1236,14 @@ export default function RoguePage() {
       shop:     [ko?"상점":ja?"商店":"Shop", "#22c55e"],
       treasure: [ko?"보물":ja?"宝物":"Treasure", "#f59e0b"],
     };
-    const [ntLabel, ntColor] = ntMeta[nt] ?? ntMeta.fight;
+    const ntDesc: Record<string,string> = {
+      fight:    ko?`${cfg}G + 카드`:ja?`${cfg}G+カード`:`${cfg}G + card`,
+      elite:    ko?`${ceg}G + 카드`:ja?`${ceg}G+カード`:`${ceg}G + card`,
+      boss:     ko?"최종 보스":ja?"最終ボス":"Final Boss",
+      rest:     ko?"HP 30% 회복":ja?"HP30%回復":"Heal 30%",
+      shop:     ko?"카드 구매":ja?"購入":"Buy cards",
+      treasure: ko?"카드 선택":ja?"カード選択":"Pick a card",
+    };
     return (
       <div style={{height:"100dvh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",padding:"14px 16px",gap:14,maxWidth:520,margin:"0 auto",overflow:"hidden"}}>
         <style>{css}</style>
@@ -1264,21 +1274,28 @@ export default function RoguePage() {
           <HpBar hp={gs.playerHp} max={gs.playerMaxHp}/>
         </div>
 
-        {/* next node */}
-        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}>
-          <p style={{margin:0,fontSize:12,color:C.textDim}}>{ko?"다음":ja?"次":"Next"} · {ko?"스테이지":ja?"ステージ":"Stage"} {nextFloor+1}</p>
-          <div style={{border:`2px solid ${ntColor}`,background:`${ntColor}18`,borderRadius:14,padding:"16px 28px",textAlign:"center",minWidth:160}}>
-            <p style={{margin:0,fontSize:20,fontWeight:900,color:ntColor}}>{ntLabel}</p>
+        {/* 선택지 (랜덤 2갈래) */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}>
+          <p style={{margin:0,fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"다음 길을 선택":ja?"次の道を選択":"Choose your path"} · {ko?"스테이지":ja?"ステージ":"Stage"} {nextFloor+1}</p>
+          <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+            {options.map((opt, idx) => {
+              const [label, color] = ntMeta[opt] ?? ntMeta.fight;
+              return (
+                <button
+                  key={idx}
+                  onClick={()=>enterNode(nextFloor, opt)}
+                  style={{flex:1,maxWidth:200,border:`2px solid ${color}`,background:`${color}18`,borderRadius:14,padding:"20px 12px",textAlign:"center",cursor:"pointer",fontFamily:FONT,transition:"transform 0.12s",boxShadow:`0 0 12px ${color}33`}}
+                >
+                  <p style={{margin:"0 0 5px",fontSize:18,fontWeight:900,color}}>{label}</p>
+                  <p style={{margin:0,fontSize:11,color:C.textDim}}>{ntDesc[opt] ?? ""}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* actions */}
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px",color:C.textDim,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:FONT}}>{ko?"덱":ja?"デッキ":"Deck"} {gs.deck.length}</button>
-          <button onClick={()=>enterNode(nextFloor, nt)} style={{flex:1,background:"linear-gradient(135deg,#7c3aedcc,#a855f7aa)",border:"2px solid #a855f7",borderRadius:10,padding:"12px 0",color:"#fff",fontWeight:900,fontSize:15,cursor:"pointer",fontFamily:FONT}}>
-            {ko?"진행 ▶":ja?"進む ▶":"Advance ▶"}
-          </button>
-        </div>
+        {/* deck */}
+        <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 0",color:C.textDim,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:FONT}}>{ko?"덱 보기":ja?"デッキ確認":"View Deck"} ({gs.deck.length})</button>
         <DeckModal/>
       </div>
     );
