@@ -172,8 +172,19 @@ const CARDS: CardDef[] = [
   { id:"absorb",       name:"흡수",         nameJa:"吸収",              nameEn:"Absorb",        cost:1,type:"skill", rarity:"uncommon", desc:"방어력 8",            descJa:"シールド8",           descEn:"Gain 8 shield",                   archetype:"wild",    shield:8 },
   { id:"replicate",    name:"복제",         nameJa:"複製",              nameEn:"Replicate",     cost:2,type:"skill", rarity:"epic",     desc:"드로우 3",            descJa:"ドロー3",             descEn:"Draw 3 cards",                    archetype:"wild",    draw:3 },
   { id:"shock_blast",  name:"충격 파동",    nameJa:"衝撃波",            nameEn:"Shock Blast",   cost:2,type:"attack",rarity:"rare",     desc:"12 데미지, 독 2",     descJa:"12ダメージ・毒2",     descEn:"Deal 12 damage, apply 2 poison",  archetype:"wild",    damage:12,poison:2 },
+  // Extra (만능) — 종류 보강
+  { id:"heavy_blow",   name:"묵직한 일격",  nameJa:"重い一撃",          nameEn:"Heavy Blow",    cost:2,type:"attack",rarity:"common",   desc:"11 데미지",           descJa:"11ダメージ",          descEn:"Deal 11 damage",                  archetype:"all",     damage:11 },
+  { id:"twin_fang",    name:"쌍날 송곳니",  nameJa:"双牙",              nameEn:"Twin Fang",     cost:1,type:"attack",rarity:"uncommon", desc:"5 데미지 × 2",       descJa:"5ダメージ×2",         descEn:"Deal 5 damage twice",             archetype:"all",     damage:5,multiHit:2 },
+  { id:"bulwark",      name:"방벽",         nameJa:"防壁",              nameEn:"Bulwark",       cost:2,type:"skill", rarity:"uncommon", desc:"방어력 14",           descJa:"シールド14",          descEn:"Gain 14 shield",                  archetype:"all",     shield:14 },
+  { id:"adrenaline",   name:"아드레날린",   nameJa:"アドレナリン",      nameEn:"Adrenaline",    cost:0,type:"power", rarity:"uncommon", desc:"에너지 +1, 드로우 1", descJa:"エナジー+1・ドロー1", descEn:"Gain 1 energy, draw 1",           archetype:"all",     bonusEnergy:1,draw:1 },
+  { id:"toxic_blade",  name:"맹독 칼날",    nameJa:"猛毒の刃",          nameEn:"Toxic Blade",   cost:1,type:"attack",rarity:"uncommon", desc:"7 데미지, 독 2",      descJa:"7ダメージ・毒2",      descEn:"Deal 7 damage, apply 2 poison",   archetype:"all",     damage:7,poison:2 },
+  { id:"shield_bash",  name:"방패 강타",    nameJa:"シールドバッシュ",  nameEn:"Shield Bash",   cost:1,type:"attack",rarity:"uncommon", desc:"6 데미지, 방어력 6",  descJa:"6ダメージ・シールド6",descEn:"Deal 6 damage, gain 6 shield",    archetype:"all",     damage:6,shield:6 },
+  { id:"vampiric",     name:"흡혈 일격",    nameJa:"吸血の一撃",        nameEn:"Vampiric Strike",cost:2,type:"attack",rarity:"rare",    desc:"14 데미지, HP +6",    descJa:"14ダメージ・HP+6",   descEn:"Deal 14 damage, heal 6 HP",       archetype:"all",     damage:14,heal:6 },
+  { id:"focus",        name:"집중",         nameJa:"集中",              nameEn:"Focus",         cost:1,type:"power", rarity:"rare",     desc:"힘 +2, 드로우 1",     descJa:"力+2・ドロー1",       descEn:"Gain 2 strength, draw 1",         archetype:"all",     strength:2,draw:1 },
+  { id:"cataclysm",    name:"대재앙",       nameJa:"大災厄",            nameEn:"Cataclysm",     cost:3,type:"attack",rarity:"epic",     desc:"28 데미지",           descJa:"28ダメージ",          descEn:"Deal 28 damage",                  archetype:"all",     damage:28 },
+  { id:"fortress_wall",name:"성벽",         nameJa:"城壁",              nameEn:"Fortress Wall", cost:3,type:"skill", rarity:"epic",     desc:"방어력 22, 드로우 1", descJa:"シールド22・ドロー1", descEn:"Gain 22 shield, draw 1",          archetype:"all",     shield:22,draw:1 },
   // Legendary
-  { id:"final_strike", name:"최후의 일격",  nameJa:"最後の一撃",        nameEn:"Final Strike",  cost:3,type:"attack",rarity:"legendary",desc:"25 데미지",           descJa:"25ダメージ",          descEn:"Deal 25 damage",                  archetype:"all",     damage:25 },
+  { id:"final_strike", name:"최후의 일격",  nameJa:"最後の一撃",        nameEn:"Final Strike",  cost:3,type:"attack",rarity:"legendary",desc:"40 데미지",           descJa:"40ダメージ",          descEn:"Deal 40 damage",                  archetype:"all",     damage:40 },
   { id:"immortal",     name:"불멸",         nameJa:"不滅",              nameEn:"Immortal",      cost:3,type:"skill", rarity:"legendary",desc:"방어력 20, HP +20",   descJa:"シールド20・HP+20",  descEn:"Gain 20 shield, heal 20 HP",      archetype:"all",     shield:20,heal:20 },
   { id:"berserker",    name:"광전사",       nameJa:"バーサーカー",      nameEn:"Berserker",     cost:2,type:"attack",rarity:"legendary",desc:"6 데미지 × 4",       descJa:"6ダメージ×4",         descEn:"Deal 6 damage four times",        archetype:"warrior", damage:6,multiHit:4 },
   { id:"shadow_realm", name:"암흑 영역",    nameJa:"暗黒領域",          nameEn:"Shadow Realm",  cost:3,type:"attack",rarity:"legendary",desc:"20 데미지, 독 5",     descJa:"20ダメージ・毒5",     descEn:"Deal 20 damage, apply 5 poison",  archetype:"mage",    damage:20,poison:5 },
@@ -183,9 +194,9 @@ const CARDS: CardDef[] = [
 // ── Difficulty ─────────────────────────────────────────────────────────────
 type Difficulty = "normal" | "hard" | "hell" | "challenge";
 type RunMode = "story" | "challenge";
-const DIFF_HP_MULT:  Record<Difficulty, number> = { normal:1.0, hard:1.5, hell:2.2, challenge:1.6 };
-const DIFF_ATK_BONUS:Record<Difficulty, number> = { normal:0,   hard:4,   hell:10,  challenge:6   };
-const DIFF_STR_BONUS:Record<Difficulty, number> = { normal:0,   hard:0,   hell:2,   challenge:1   };
+const DIFF_HP_MULT:  Record<Difficulty, number> = { normal:0.85, hard:1.25, hell:1.85, challenge:1.3 };
+const DIFF_ATK_BONUS:Record<Difficulty, number> = { normal:0,    hard:3,    hell:8,    challenge:4   };
+const DIFF_STR_BONUS:Record<Difficulty, number> = { normal:0,    hard:0,    hell:2,    challenge:1   };
 const DIFF_GOLD_FIGHT:Record<Difficulty,number> = { normal:50,  hard:65,  hell:80,  challenge:90  };
 const DIFF_GOLD_ELITE:Record<Difficulty,number> = { normal:75,  hard:95,  hell:115, challenge:130 };
 const DIFF_LEG_FLOOR: Record<Difficulty, number> = { normal:5,  hard:4,   hell:3,   challenge:1   };
@@ -194,8 +205,8 @@ const DIFF_EPIC_FLOOR:Record<Difficulty, number> = { normal:3,  hard:2,   hell:1
 // ── Challenge mode ───────────────────────────────────────────────────────────
 const CHALLENGE_FLOORS = 100;
 // 스테이지가 올라갈수록 적 HP·공격력이 계속 증가 (floor = 0-index)
-function challengeHpMult(floor: number): number { return 1 + floor * 0.10; }   // stage100 ≈ ×10.9
-function challengeAtkBonus(floor: number): number { return Math.floor(floor * 0.6); } // stage100 ≈ +59
+function challengeHpMult(floor: number): number { return 1 + floor * 0.08; }   // stage100 ≈ ×8.9
+function challengeAtkBonus(floor: number): number { return Math.floor(floor * 0.45); } // stage100 ≈ +44
 // 매 칸 랜덤 선택지 2개 (기존 로그라이크처럼). 10칸마다 엘리트 보장, 마지막은 최종 보스
 function challengeFloorOptions(i: number): NodeType[] {
   if (i >= CHALLENGE_FLOORS - 1) return ["boss"];
