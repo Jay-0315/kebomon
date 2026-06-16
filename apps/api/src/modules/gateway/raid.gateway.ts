@@ -107,29 +107,8 @@ const BOSS_LINES = [
 ];
 const randomBossLine = (nick: string) => BOSS_LINES[(Math.random() * BOSS_LINES.length) | 0](nick);
 
-// ─── 퀴즈 뱅크 ──────────────────────────────────────────────────
-const QUIZ_BANK: { q: string; a: string[] }[] = [
-  { q: "1부터 100까지 모든 자연수의 합은?", a: ["5050"] },
-  { q: "물의 화학식은? (영문)", a: ["H2O"] },
-  { q: "원주율을 소수점 둘째 자리까지 쓰면?", a: ["3.14"] },
-  { q: "지구에서 가장 깊은 해구의 이름은?", a: ["마리아나해구", "마리아나"] },
-  { q: "피보나치 수열에서 13 다음 수는?", a: ["21"] },
-  { q: "13 × 7 = ?", a: ["91"] },
-  { q: "정육면체의 모서리 개수는?", a: ["12", "12개"] },
-  { q: "셰익스피어 4대 비극 중 덴마크 왕자가 주인공인 작품은?", a: ["햄릿"] },
-  { q: "2의 10제곱은?", a: ["1024"] },
-  { q: "빛의 속도는 초속 약 몇 km? (숫자만)", a: ["300000", "30만"] },
-  { q: "삼각형 내각의 합은 몇 도?", a: ["180", "180도"] },
-  { q: "DNA 이중나선 구조를 발견한 과학자 한 명은?", a: ["왓슨", "크릭"] },
-  { q: "144의 양의 제곱근은?", a: ["12"] },
-  { q: "조선을 건국한 왕의 이름은?", a: ["이성계", "태조", "태조이성계"] },
-  { q: "1바이트는 몇 비트?", a: ["8", "8비트"] },
-  { q: "세계에서 가장 큰 대륙은?", a: ["아시아"] },
-  { q: "지구의 자전 주기는 약 몇 시간?", a: ["24", "24시간"] },
-  { q: "가장 가벼운 원소는?", a: ["수소"] },
-  { q: "한국의 국화는?", a: ["무궁화"] },
-  { q: "소설 '어린 왕자'의 작가는?", a: ["생텍쥐페리"] },
-];
+// ─── 퀴즈 뱅크 (DB에서 onModuleInit에 로드됨) ───────────────────
+const QUIZ_BANK: { q: string; a: string[] }[] = [];
 
 // ─── 받아쓰기 문장 ────────────────────────────────────────────────
 const TYPING_SENTENCES = [
@@ -220,6 +199,10 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   private lastRankings = new Map<number, { rank: number; nickname: string; damage: number }[]>();
   /** 현재 레이드 슬롯에서 입장 제한된 userId 목록 (레이드 타입 → 금지 userId Set) */
   private entryBans = new Map<number, Set<string>>();
+  /** 신고 중복 방지: socketId → 이미 신고한 문제 텍스트 Set */
+  private reportedBy = new Map<string, Set<string>>();
+  /** 신고 쿨다운: socketId → 마지막 신고 timestamp */
+  private reportCooldown = new Map<string, number>();
 
   async onModuleInit() {
     try {
@@ -321,15 +304,19 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (type === 3) {
       const a = String(data?.answer ?? "").trim().slice(0, 40);
       if (text.length >= 3 && a.length >= 1 && !QUIZ_BANK.some((q) => q.q === text)) {
-        QUIZ_BANK.push({ q: text, a: [a] });
-        if (QUIZ_BANK.length > 500) QUIZ_BANK.splice(0, QUIZ_BANK.length - 500);
-        await this.prisma.raidContent.create({ data: { raidType: 3, text, answer: a, createdBy } }).catch(() => undefined);
+        try {
+          await this.prisma.raidContent.create({ data: { raidType: 3, text, answer: a, createdBy } });
+          QUIZ_BANK.push({ q: text, a: [a] });
+          if (QUIZ_BANK.length > 500) QUIZ_BANK.splice(0, QUIZ_BANK.length - 500);
+        } catch { /* DB 저장 실패 시 메모리에도 추가하지 않음 */ }
       }
     } else if (type === 4) {
       if (text.length >= 4 && !TYPING_SENTENCES.includes(text)) {
-        TYPING_SENTENCES.push(text);
-        if (TYPING_SENTENCES.length > 500) TYPING_SENTENCES.splice(0, TYPING_SENTENCES.length - 500);
-        await this.prisma.raidContent.create({ data: { raidType: 4, text, createdBy } }).catch(() => undefined);
+        try {
+          await this.prisma.raidContent.create({ data: { raidType: 4, text, createdBy } });
+          TYPING_SENTENCES.push(text);
+          if (TYPING_SENTENCES.length > 500) TYPING_SENTENCES.splice(0, TYPING_SENTENCES.length - 500);
+        } catch { /* DB 저장 실패 시 메모리에도 추가하지 않음 */ }
       }
     }
   }
@@ -343,42 +330,77 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     const r = this.getRoom(type);
     if (r.cleared) return;
 
-    // 현재 출제 중인 문제
-    const text = type === 3 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q : r.typingSentence;
+    // 신고 쿨다운 체크 (30초)
+    const now = Date.now();
+    const lastReport = this.reportCooldown.get(client.id) ?? 0;
+    if (now - lastReport < 30_000) {
+      client.emit("raid:feedback", { text: "신고는 30초에 한 번만 가능합니다" });
+      return;
+    }
 
-    // 기여 문제(DB 행 존재)면 신고 누적 → 10회 이상 시 삭제 + 출제 풀에서 제거
-    if (text) {
-      try {
-        const row = await this.prisma.raidContent.findFirst({ where: { raidType: type, text, active: true } });
-        if (row) {
-          const updated = await this.prisma.raidContent.update({
-            where: { id: row.id },
-            data: { reportCount: { increment: 1 } },
-          });
-          if (updated.reportCount >= 10) {
-            await this.prisma.raidContent.delete({ where: { id: row.id } }).catch(() => undefined);
-            if (type === 3) {
-              const idx = QUIZ_BANK.findIndex((q) => q.q === text);
-              if (idx >= 0) QUIZ_BANK.splice(idx, 1);
-            } else {
-              const idx = TYPING_SENTENCES.indexOf(text);
-              if (idx >= 0) TYPING_SENTENCES.splice(idx, 1);
-            }
+    // 현재 출제 중인 문제
+    const text = type === 3
+      ? (QUIZ_BANK.length > 0 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q : undefined)
+      : r.typingSentence;
+
+    if (!text) return;
+
+    // 같은 유저가 같은 문제를 중복 신고하는 것 방지
+    const alreadyReported = this.reportedBy.get(client.id) ?? new Set<string>();
+    if (alreadyReported.has(text)) {
+      client.emit("raid:feedback", { text: "이미 신고한 문제입니다" });
+      return;
+    }
+    alreadyReported.add(text);
+    this.reportedBy.set(client.id, alreadyReported);
+    this.reportCooldown.set(client.id, now);
+
+    // 신고 누적 → 10회 이상 시 출제 풀에서 제거
+    // active:true = 기여 문제, active:false = 하드코딩 문제 신고 기록용
+    try {
+      const row = await this.prisma.raidContent.findFirst({ where: { raidType: type, text } });
+      if (row) {
+        // 기존 행 있으면 신고 수 증가
+        const updated = await this.prisma.raidContent.update({
+          where: { id: row.id },
+          data: { reportCount: { increment: 1 } },
+        });
+        if (updated.reportCount >= 10 && row.active) {
+          // 기여 문제만 삭제 (active:true인 행만 제거)
+          await this.prisma.raidContent.delete({ where: { id: row.id } }).catch(() => undefined);
+          if (type === 3) {
+            const idx = QUIZ_BANK.findIndex((q) => q.q === text);
+            if (idx >= 0) QUIZ_BANK.splice(idx, 1);
+          } else {
+            const idx = TYPING_SENTENCES.indexOf(text);
+            if (idx >= 0) TYPING_SENTENCES.splice(idx, 1);
           }
         }
-      } catch {
-        // DB 미연결/컬럼 없음 등은 무시 (스킵은 그대로 동작)
+      } else {
+        // DB에 없는 문제(하드코딩) → 신고 기록 생성 (active:false = 출제 풀에 추가 안 됨)
+        const quizAnswer = type === 3 ? (QUIZ_BANK.find((q) => q.q === text)?.a[0] ?? null) : null;
+        await this.prisma.raidContent.create({
+          data: { raidType: type, text, answer: quizAnswer, reportCount: 1, active: false },
+        });
+      }
+    } catch {
+      // DB 오류는 무시 (스킵은 그대로 동작)
+    }
+
+    // 다음 문제로 스킵 (뱅크가 비어있으면 스킵 생략)
+    if (type === 3) {
+      if (QUIZ_BANK.length > 0) {
+        r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
+      }
+    } else {
+      if (TYPING_SENTENCES.length > 0) {
+        r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
       }
     }
 
-    // 다음 문제로 스킵
-    if (type === 3) {
-      r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
-    } else {
-      r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
-    }
+    // 신고한 본인에게만 피드백, 방 전체엔 상태 갱신
+    client.emit("raid:feedback", { text: "🚩 신고 접수 · 다음 문제로 넘어갑니다" });
     this.broadcastState(type);
-    this.server.to(room(type)).emit("raid:feedback", { text: "🚩 신고 접수 · 다음 문제로" });
   }
 
   @SubscribeMessage("raid:gem")
@@ -512,7 +534,8 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     let dmg = 0;
 
     if (player.raidType === 3) {
-      const cur = QUIZ_BANK[r.quizIndex % QUIZ_BANK.length];
+      const cur = QUIZ_BANK.length > 0 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length] : undefined;
+      if (!cur) return;
       if (cur.a.some((ans) =>
         text.replace(/\s/g, "").toLowerCase() === ans.replace(/\s/g, "").toLowerCase()
       )) {
@@ -563,6 +586,8 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   handleDisconnect(client: Socket) {
     this.removePlayer(client, false);
+    this.reportedBy.delete(client.id);
+    this.reportCooldown.delete(client.id);
   }
 
   private findPlayer(socketId: string): Player | undefined {
@@ -596,9 +621,12 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   private missionView(r: RaidRoom) {
     if (r.type === 1) return { label: "장애물을 점프로 넘어라!", target: "SPACE ↑", hint: "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지" };
-    if (r.type === 3) return { label: "퀴즈를 맞혀라!", target: QUIZ_BANK[r.quizIndex % QUIZ_BANK.length].q, hint: "" };
+    if (r.type === 3) {
+      const q = QUIZ_BANK.length > 0 ? (QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q ?? "문제를 불러오는 중...") : "문제를 불러오는 중...";
+      return { label: "퀴즈를 맞혀라!", target: q, hint: "" };
+    }
     if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −데미지" };
-    return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence, hint: "" };
+    return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence ?? "문장을 불러오는 중...", hint: "" };
   }
 
   private broadcastState(type: number) {

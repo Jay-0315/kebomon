@@ -19,6 +19,11 @@ import {
   Layers,
   Map as MapIcon,
   Star,
+  Sword,
+  Wind,
+  Wand2,
+  Leaf,
+  Cpu,
 } from "lucide-react";
 import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -47,6 +52,22 @@ import type {
   AchievementType,
   RogueArchetype,
 } from "../data/characters";
+
+const CARD_ARCH_MAP: Partial<Record<string, string>> = {
+  wolf:"warrior", tiger:"warrior", lion:"warrior", bear:"warrior", eagle:"warrior", boar:"warrior",
+  cat:"rogue",    fox:"rogue",     rabbit:"rogue", monkey:"rogue", raven:"rogue",   deer:"rogue",
+  ghost:"mage",   owl:"mage",      dragon:"mage",  demon:"mage",   angel:"mage",    phoenix:"mage",
+  turtle:"tank",  elephant:"tank", whale:"tank",   beetle:"tank",  crocodile:"tank",
+  plant:"nature", fish:"nature",   snake:"nature", unicorn:"nature", horse:"nature",
+  robot:"wild",   slime:"wild",
+};
+function CardArchIcon({ type, className }: { type: string; className?: string }) {
+  const ca = CARD_ARCH_MAP[type];
+  if (!ca) return null;
+  const color = ca==="warrior"?"#f97316":ca==="rogue"?"#c084fc":ca==="mage"?"#60a5fa":ca==="tank"?"#94a3b8":ca==="nature"?"#4ade80":"#2dd4bf";
+  const Icon = ca==="warrior"?Sword:ca==="rogue"?Wind:ca==="mage"?Wand2:ca==="tank"?Layers:ca==="nature"?Leaf:Cpu;
+  return <Icon className={className} style={{ color }} />;
+}
 
 const CHAR_DISPLAY_NUM = new Map(CHARACTERS.map((c, i) => [c.id, i + 1]));
 const charNum = (id: number) =>
@@ -1409,8 +1430,9 @@ function CollectionTab({
                   </div>
                 )}
               </div>
-              {/* name row: type icon left + name text */}
+              {/* name row: job icon + type icon + name text */}
               <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
+                {isOwned && <CardArchIcon type={char.type} className="w-2 h-2 shrink-0" />}
                 {isOwned && (() => {
                   const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
                   const rtColor = rt === "energy" ? "#38bdf8" : rt === "attack" ? "#f87171" : "#60a5fa";
