@@ -192,7 +192,7 @@ export default function AttendancePage() {
       {(lastPoints !== null || eggPopup) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-card border border-border rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-3 pointer-events-auto">
-            <p className="text-lg font-extrabold text-foreground">출석 완료!</p>
+            <p className="text-lg font-extrabold text-foreground">{t("attendance.done")}</p>
             {lastPoints !== null && (
               <p className="text-3xl font-extrabold text-primary">
                 +{lastPoints}P
@@ -202,7 +202,7 @@ export default function AttendancePage() {
               <div className="flex items-center gap-2">
                 <PixelEggMini type={eggPopup} />
                 <span className="text-base font-bold text-primary">
-                  {t(eggPopup === "big" ? "egg.big" : "egg.golden")} 획득!
+                  {t(eggPopup === "big" ? "egg.big" : "egg.golden")} {t("attendance.egg_obtained")}
                 </span>
               </div>
             )}

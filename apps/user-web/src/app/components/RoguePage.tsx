@@ -10,7 +10,7 @@ import { CHARACTERS, ROGUE_TYPE_MAP, type CharacterType, type CharacterRarity, g
 import { useLang } from "../context/LangContext";
 import type { RogueMilestone, ChallengeResult, ChallengeRankRow } from "../types/domain";
 
-const FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
 
 const C_DARK = {
   bg:        "#060d1a",
@@ -1839,12 +1839,15 @@ export default function RoguePage() {
             ))}
           </div>
 
+          {/* Start + Challenge side by side */}
+          <div style={{display:"flex",gap:10,alignItems:"stretch"}}>
           {/* Start button */}
           <button
             onClick={() => startRun("story")}
             style={{
+              flex:1,
               background:`linear-gradient(135deg,${C.gold}cc,${C.gold}88)`,
-              border:`2px solid ${C.gold}`,borderRadius:10,padding:"14px 0",
+              border:`2px solid ${C.gold}`,borderRadius:10,padding:"14px 6px",
               color:"#1c1500",fontWeight:900,fontSize:16,cursor:"pointer",
               fontFamily:FONT,letterSpacing:"0.05em",
               animation:"rogue-in 0.4s 0.15s ease-out both",
@@ -1852,7 +1855,7 @@ export default function RoguePage() {
           >{ko?"탐험 시작!":ja?"探検開始！":"Start Expedition!"}</button>
 
           {/* 도전 모드 */}
-          <div style={{background:C.panelDark,border:"1px solid #7c3aed55",borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.18s ease-out both"}}>
+          <div style={{flex:1,background:C.panelDark,border:"1px solid #7c3aed55",borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.18s ease-out both"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <Crown size={16} color="#a855f7"/>
@@ -1882,6 +1885,7 @@ export default function RoguePage() {
               </div>
             )}
           </div>
+          </div>{/* end flex row */}
         </div>
       </div>
 

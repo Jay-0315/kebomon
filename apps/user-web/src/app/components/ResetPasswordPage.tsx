@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
             {emailFromParam && (
               <span className="text-primary font-medium">{emailFromParam}</span>
             )}
-            {emailFromParam ? "로 발송된 인증번호를 입력하세요." : t("signup.forgot_desc")}
+            {emailFromParam ? t("signup.code_sent_to") : t("signup.forgot_desc")}
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
           {success ? (
             <div className="text-center space-y-4 py-4">
               <p className="text-primary font-medium">{t("signup.reset_success")}</p>
-              <p className="text-sm text-muted-foreground">로그인 페이지로 이동합니다...</p>
+              <p className="text-sm text-muted-foreground">{t("signup.redirecting")}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

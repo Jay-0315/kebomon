@@ -13,7 +13,7 @@ import { api } from "../lib/api";
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 const MAX_HP = 150;
-const FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
 
 // 중세 색상 팔레트
 const C = {
@@ -128,7 +128,6 @@ const nextHourStartMs=(now=Date.now())=>{
   next.setHours(next.getHours()+1,0,0,0);
   return next.getTime();
 };
-const BATTLE_EXIT_WARNING="지금 나가시면 자동으로 패배처리 됩니다. 정말로 나가시겠습니까?";
 
 // ─── 입장권 시스템 ────────────────────────────────────────────────────────────
 const MAX_TICKETS=5;
@@ -303,6 +302,62 @@ function Torch({flip}:{flip?:boolean}){
         <rect x="1" y="4" width="1" height="1" fill="#451a03"/>
       </svg>
     </div>
+  );
+}
+
+// ─── 콜로세움 경기장 픽셀아트 ─────────────────────────────────────────────────
+function ArenaFlag({ flip }: { flip?: boolean }) {
+  return (
+    <svg width="28" height="60" viewBox="0 0 7 15" style={{imageRendering:"pixelated",display:"block",transform:flip?"scaleX(-1)":undefined}}>
+      <rect x="3" y="0" width="1" height="15" fill="#6b3a0a"/>
+      <rect x="2" y="0" width="1" height="15" fill="#7c4010"/>
+      <rect x="2" y="0" width="2" height="1" fill="#c8a44a"/>
+      <rect x="4" y="1" width="3" height="6" fill="#b45309"/>
+      <rect x="4" y="1" width="3" height="1" fill="#d97706"/>
+      <rect x="4" y="3" width="3" height="1" fill="#c8a44a" opacity="0.5"/>
+      <rect x="5" y="5" width="2" height="1" fill="#c8a44a" opacity="0.3"/>
+      <rect x="4" y="7" width="2" height="1" fill="#b45309"/>
+      <rect x="4" y="8" width="1" height="1" fill="#b45309"/>
+      <rect x="0" y="13" width="7" height="2" fill="#3a2008"/>
+      <rect x="1" y="12" width="5" height="2" fill="#4a2c10"/>
+    </svg>
+  );
+}
+function ArenaGate() {
+  return (
+    <svg width="104" height="56" viewBox="0 0 26 14" style={{imageRendering:"pixelated",display:"block",filter:"drop-shadow(0 0 8px #c8a44a2a)"}}>
+      {/* 왼쪽 기둥 */}
+      <rect x="0" y="2" width="6" height="12" fill="#2a1608"/>
+      <rect x="1" y="2" width="4" height="12" fill="#3a2010"/>
+      <rect x="0" y="0" width="7" height="3" fill="#4a2c14"/>
+      <rect x="1" y="0" width="5" height="1" fill="#c8a44a" opacity="0.4"/>
+      {/* 오른쪽 기둥 */}
+      <rect x="20" y="2" width="6" height="12" fill="#2a1608"/>
+      <rect x="21" y="2" width="4" height="12" fill="#3a2010"/>
+      <rect x="19" y="0" width="7" height="3" fill="#4a2c14"/>
+      <rect x="20" y="0" width="5" height="1" fill="#c8a44a" opacity="0.4"/>
+      {/* 아치 상단 */}
+      <rect x="6" y="0" width="14" height="3" fill="#4a2c14"/>
+      <rect x="5" y="1" width="16" height="2" fill="#3a2010"/>
+      <rect x="11" y="0" width="4" height="1" fill="#c8a44a" opacity="0.5"/>
+      {/* 게이트 내부 */}
+      <rect x="6" y="3" width="14" height="11" fill="#0c0603"/>
+      {/* 철창 */}
+      <rect x="7"  y="3" width="1" height="10" fill="#2a1a08"/>
+      <rect x="10" y="3" width="1" height="10" fill="#2a1a08"/>
+      <rect x="13" y="3" width="1" height="10" fill="#2a1a08"/>
+      <rect x="16" y="3" width="1" height="10" fill="#2a1a08"/>
+      <rect x="19" y="3" width="1" height="10" fill="#2a1a08"/>
+      <rect x="7"  y="7" width="13" height="1" fill="#2a1a08"/>
+      {/* 경기장 안쪽 빛 */}
+      <rect x="8"  y="4" width="2" height="3" fill="#c8a44a" opacity="0.06"/>
+      <rect x="11" y="4" width="2" height="3" fill="#c8a44a" opacity="0.06"/>
+      <rect x="14" y="4" width="2" height="3" fill="#c8a44a" opacity="0.06"/>
+      <rect x="17" y="4" width="2" height="3" fill="#c8a44a" opacity="0.06"/>
+      {/* 기둥 금 장식선 */}
+      <rect x="1" y="5" width="1" height="4" fill="#c8a44a" opacity="0.2"/>
+      <rect x="24" y="5" width="1" height="4" fill="#c8a44a" opacity="0.2"/>
+    </svg>
   );
 }
 
@@ -890,7 +945,7 @@ export default function ColosseumPage(){
       resetBattleUi();
       return true;
     }
-    if(!window.confirm(BATTLE_EXIT_WARNING))return false;
+    if(!window.confirm(t("col.exit_warning")))return false;
     forfeitBattle();
     return true;
   },[forfeitBattle,resetBattleUi]);
@@ -907,7 +962,7 @@ export default function ColosseumPage(){
         historyGuardRef.current=false;
         return;
       }
-      if(window.confirm(BATTLE_EXIT_WARNING)){
+      if(window.confirm(t("col.exit_warning"))){
         forfeitBattle();
         historyGuardRef.current=false;
         window.history.back();
@@ -992,14 +1047,21 @@ export default function ColosseumPage(){
       <div style={{minHeight:"100vh",background:C.bg,padding:"0 0 40px",fontFamily:FONT}}>
         <style>{cssStyles}</style>
 
-        {/* 헤더 */}
-        <div style={{position:"relative",background:"linear-gradient(180deg,#1e1208 0%,#0c0905 100%)",
-          borderBottom:`4px solid ${C.border}`,padding:"18px 16px 14px",textAlign:"center",
-          boxShadow:`0 4px 32px ${C.goldGlow}66`}}>
-          {/* 석재 질감 오버레이 */}
-          <div style={{position:"absolute",inset:0,opacity:0.06,
-            backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(255,255,255,0.5) 31px,rgba(255,255,255,0.5) 32px)",
-            pointerEvents:"none"}}/>
+        {/* ── 콜로세움 경기장 배너 ── */}
+        <div style={{
+          position:"relative",
+          background:"linear-gradient(180deg,#1e1006 0%,#120a04 55%,#0c0703 100%)",
+          borderBottom:"3px solid #6b3a0e",
+          padding:"18px 16px 16px",
+          textAlign:"center",
+          boxShadow:`0 4px 32px ${C.goldGlow}44`,
+        }}>
+          {/* 석재 질감 */}
+          <div style={{position:"absolute",inset:0,opacity:0.06,pointerEvents:"none",
+            backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(255,255,255,0.5) 31px,rgba(255,255,255,0.5) 32px)"}}/>
+          {/* 금빛 방사광 */}
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",
+            background:`radial-gradient(ellipse 70% 50% at 50% 100%,${C.goldGlow}14 0%,transparent 70%)`}}/>
           {/* 시즌보상 버튼 (우상단) */}
           <button onClick={()=>setShowSeason(true)} style={{
             position:"absolute",top:12,right:14,zIndex:2,
@@ -1012,34 +1074,31 @@ export default function ColosseumPage(){
             <Gift size={13} color={C.gold}/>
             {ko?`시즌 ${SEASON.number} 보상`:ja?`シーズン${SEASON.number}報酬`:`Season ${SEASON.number} Rewards`}
           </button>
-          <p style={{fontFamily:FONT,fontSize:11,letterSpacing:"0.4em",color:C.stone,marginBottom:2,fontWeight:900}}>
+          <p style={{margin:"0 0 6px",fontFamily:FONT,fontSize:10,letterSpacing:"0.5em",color:C.stone,fontWeight:900,position:"relative",zIndex:1}}>
             {t("col.kebomon")}
           </p>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14}}>
-            <Torch/><Torch flip/>
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:12,marginBottom:6,position:"relative",zIndex:1}}>
+            <ArenaFlag/><ArenaGate/><ArenaFlag flip/>
           </div>
-          <h1 style={{fontFamily:"'Courier New',monospace",fontSize:28,fontWeight:900,
+          <h1 style={{
+            margin:"0 0 8px",position:"relative",zIndex:1,
+            fontFamily:"'Courier New',monospace",fontSize:28,fontWeight:900,
             letterSpacing:"0.22em",color:C.gold,
             textShadow:`0 0 24px ${C.goldGlow}, 2px 2px 0 #3a2508, -1px -1px 0 #3a2508`,
-            margin:"6px 0 4px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+            display:"flex",alignItems:"center",justifyContent:"center",gap:12,
+          }}>
             <Swords size={22} color={C.gold} strokeWidth={2.5}/>
             COLOSSEUM
             <Swords size={22} color={C.gold} strokeWidth={2.5}/>
           </h1>
-          {/* 시즌 로고 */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:6}}>
+          {/* 시즌 배지 */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,position:"relative",zIndex:1}}>
             <div style={{height:1,width:40,background:`linear-gradient(90deg,transparent,${C.gold}88)`}}/>
-            <div style={{
-              display:"flex",alignItems:"center",gap:6,
-              background:"rgba(200,164,74,0.08)",
-              border:`1px solid ${C.gold}44`,
-              borderRadius:20,padding:"3px 14px",
-            }}>
+            <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(200,164,74,0.08)",border:`1px solid ${C.gold}44`,borderRadius:20,padding:"3px 14px"}}>
               <svg width="14" height="14" viewBox="0 0 14 14">
                 <polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/>
               </svg>
-              <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,letterSpacing:"0.12em",
-                color:C.gold,textShadow:`0 0 10px ${C.goldGlow}`}}>
+              <span style={{fontFamily:FONT,fontSize:11,fontWeight:900,letterSpacing:"0.12em",color:C.gold,textShadow:`0 0 10px ${C.goldGlow}`}}>
                 {ko?`시즌 ${SEASON.number}  ·  영광의 시작`:ja?`シーズン${SEASON.number}  ·  栄光の始まり`:`Season ${SEASON.number}  ·  Glory Begins`}
               </span>
               <svg width="14" height="14" viewBox="0 0 14 14">

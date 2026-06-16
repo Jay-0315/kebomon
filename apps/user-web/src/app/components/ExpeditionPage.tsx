@@ -10,7 +10,7 @@ import { CHARACTERS, getCharName, type CharacterRarity } from "../data/character
 import { useLang } from "../context/LangContext";
 
 // ── Style constants ─────────────────────────────────────────────────────────
-const FONT = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
 
 const C_DARK = {
   bg:        "#07100a",
