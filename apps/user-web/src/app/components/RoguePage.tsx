@@ -55,6 +55,46 @@ function useIsDark() {
   return isDark;
 }
 
+function MagicOrb({ flip }: { flip?: boolean }) {
+  return (
+    <svg width="32" height="44" viewBox="0 0 8 11" style={{imageRendering:"pixelated",display:"block",filter:"drop-shadow(0 0 4px #9333ea)",transform:flip?"scaleX(-1)":undefined}}>
+      <rect x="3" y="0" width="2" height="1" fill="#4a1a88"/>
+      <rect x="3" y="1" width="2" height="3" fill="#3a1270"/>
+      <rect x="2" y="3" width="4" height="1" fill="#5a2299"/>
+      <rect x="1" y="4" width="6" height="5" fill="#1a0830"/>
+      <rect x="2" y="5" width="4" height="3" fill="#2d0d50"/>
+      <rect x="3" y="5" width="2" height="1" fill="#7a2acc"/>
+      <rect x="2" y="6" width="1" height="1" fill="#5a1a99"/>
+      <rect x="3" y="6" width="2" height="1" fill="#cc88ff"/>
+      <rect x="5" y="6" width="1" height="1" fill="#4a1280"/>
+      <rect x="3" y="7" width="2" height="1" fill="#7a2acc"/>
+      <rect x="3" y="9" width="2" height="2" fill="#3a0a60" opacity="0.6"/>
+    </svg>
+  );
+}
+
+function DungeonGate() {
+  return (
+    <svg width="96" height="52" viewBox="0 0 24 13" style={{imageRendering:"pixelated",display:"block",filter:"drop-shadow(0 0 8px #7a1aee44)"}}>
+      <rect x="0" y="2" width="5" height="11" fill="#1a0a38"/>
+      <rect x="1" y="2" width="3" height="11" fill="#240e4a"/>
+      <rect x="0" y="1" width="5" height="2" fill="#2e1460"/>
+      <rect x="19" y="2" width="5" height="11" fill="#1a0a38"/>
+      <rect x="20" y="2" width="3" height="11" fill="#240e4a"/>
+      <rect x="19" y="1" width="5" height="2" fill="#2e1460"/>
+      <rect x="4" y="0" width="16" height="3" fill="#2e1460"/>
+      <rect x="3" y="1" width="18" height="2" fill="#240e4a"/>
+      <rect x="5" y="3" width="14" height="10" fill="#08001c"/>
+      <rect x="6" y="4" width="12" height="8" fill="#0e0028"/>
+      <rect x="8" y="5" width="8" height="6" fill="#160038"/>
+      <rect x="10" y="7" width="4" height="3" fill="#3a0a7a" opacity="0.8"/>
+      <rect x="11" y="8" width="2" height="1" fill="#cc55ff" opacity="0.7"/>
+      <rect x="2" y="5" width="1" height="2" fill="#6a1a99" opacity="0.4"/>
+      <rect x="21" y="6" width="1" height="3" fill="#6a1a99" opacity="0.3"/>
+    </svg>
+  );
+}
+
 const RARITY_STYLE: Record<string, { border: string; glow: string; badge: string }> = {
   common:    { border:"#475569", glow:"#1e293b44", badge:"#64748b" },
   uncommon:  { border:"#15803d", glow:"#052e1644", badge:"#16a34a" },
@@ -1616,37 +1656,57 @@ export default function RoguePage() {
     const rarityLabel = ko ? RARITY_KO[myChar.rarity] : ja ? RARITY_JA[myChar.rarity] : RARITY_EN_L[myChar.rarity];
     return (
       <>
-      <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,padding:"0 0 40px"}}>
         <style>{css}</style>
-        <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:24}}>
-          {/* Header */}
-          <div style={{animation:"rogue-in 0.4s ease-out both"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-              <Layers size={28} color={C.gold}/>
-              <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
-            </div>
-            <p style={{margin:"0 0 10px",fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
-            <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
-              <button
-                onClick={() => setShowRewardGuide(true)}
-                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-              >
-                <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
-              </button>
-              <button
-                onClick={() => setShowRelicGuide(true)}
-                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-              >
-                <Sparkles size={12}/>{ko?"기물 도감":ja?"遺物図鑑":"Relics"}
-              </button>
-              <button
-                onClick={() => setShowCardGuide(true)}
-                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-              >
-                <BookOpen size={12}/>{ko?"카드 도감":ja?"カード図鑑":"Cards"}
-              </button>
-            </div>
+        {/* ── 미궁 입구 배너 ── */}
+        <div style={{
+          position:"relative",
+          background:"linear-gradient(180deg,#0e0025 0%,#0a001c 55%,#080018 100%)",
+          borderBottom:"2px solid #4a1a88",
+          padding:"18px 16px 16px",
+          textAlign:"center",
+          boxShadow:"0 4px 32px #5a0a9933",
+        }}>
+          <div style={{position:"absolute",inset:0,opacity:0.04,pointerEvents:"none",
+            backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 23px,rgba(255,255,255,0.35) 23px,rgba(255,255,255,0.35) 24px)"}}/>
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",
+            background:"radial-gradient(ellipse 70% 50% at 50% 100%,#5a0aaa18 0%,transparent 70%)"}}/>
+          <p style={{margin:"0 0 6px",fontFamily:FONT,fontSize:10,letterSpacing:"0.5em",color:"#7a3aaa",fontWeight:900,position:"relative",zIndex:1}}>
+            {ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"CARD BATTLE ROGUELIKE"}
+          </p>
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:12,marginBottom:6,position:"relative",zIndex:1}}>
+            <MagicOrb/><DungeonGate/><MagicOrb flip/>
           </div>
+          <h1 style={{
+            margin:"0 0 8px",position:"relative",zIndex:1,
+            fontFamily:"'Courier New',monospace",fontSize:26,fontWeight:900,
+            letterSpacing:"0.18em",color:"#c084fc",
+            textShadow:"0 0 20px #9333ea, 2px 2px 0 #1a0040, -1px -1px 0 #1a0040",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:10,
+          }}>
+            <Layers size={20} color="#c084fc" strokeWidth={2.5}/>
+            CARD EXPEDITION
+            <Layers size={20} color="#c084fc" strokeWidth={2.5}/>
+          </h1>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:12,position:"relative",zIndex:1}}>
+            <div style={{height:1,width:32,background:"linear-gradient(90deg,transparent,#9333ea77)"}}/>
+            <span style={{fontSize:11,color:"#c084fc",opacity:0.6}}>◈</span>
+            <div style={{height:1,width:32,background:"linear-gradient(90deg,#9333ea77,transparent)"}}/>
+          </div>
+          <div style={{display:"flex",gap:6,justifyContent:"center",position:"relative",zIndex:1}}>
+            <button onClick={() => setShowRewardGuide(true)} style={{background:"rgba(42,10,74,0.7)",border:"1px solid #6a1a99",borderRadius:8,padding:"5px 10px",color:"#c084fc",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}>
+              <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
+            </button>
+            <button onClick={() => setShowRelicGuide(true)} style={{background:"rgba(42,10,74,0.7)",border:"1px solid #6a1a99",borderRadius:8,padding:"5px 10px",color:"#c084fc",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}>
+              <Sparkles size={12}/>{ko?"기물 도감":ja?"遺物図鑑":"Relics"}
+            </button>
+            <button onClick={() => setShowCardGuide(true)} style={{background:"rgba(42,10,74,0.7)",border:"1px solid #6a1a99",borderRadius:8,padding:"5px 10px",color:"#c084fc",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}>
+              <BookOpen size={12}/>{ko?"카드 도감":ja?"カード図鑑":"Cards"}
+            </button>
+          </div>
+        </div>
+        <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:24,margin:"0 auto",padding:"20px 20px 0"}}>
+
 
           {/* Character card */}
           {(()=>{

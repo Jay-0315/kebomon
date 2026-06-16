@@ -52,6 +52,48 @@ function useIsDark() {
   return isDark;
 }
 
+function RuneStone({ flip }: { flip?: boolean }) {
+  return (
+    <svg width="28" height="52" viewBox="0 0 7 13" style={{imageRendering:"pixelated",display:"block",filter:"drop-shadow(0 0 3px #22c55e44)",transform:flip?"scaleX(-1)":undefined}}>
+      <rect x="0" y="0" width="7" height="2" fill="#1e3010"/>
+      <rect x="1" y="2" width="5" height="1" fill="#263818"/>
+      <rect x="1" y="3" width="5" height="7" fill="#182610"/>
+      <rect x="2" y="3" width="3" height="7" fill="#1e3014"/>
+      <rect x="3" y="4" width="1" height="5" fill="#22c55e" opacity="0.5"/>
+      <rect x="2" y="6" width="3" height="1" fill="#22c55e" opacity="0.45"/>
+      <rect x="3" y="6" width="1" height="1" fill="#4ade80" opacity="0.9"/>
+      <rect x="5" y="4" width="1" height="5" fill="#166534" opacity="0.7"/>
+      <rect x="6" y="5" width="1" height="2" fill="#166534" opacity="0.5"/>
+      <rect x="0" y="10" width="7" height="3" fill="#1e3010"/>
+      <rect x="1" y="12" width="2" height="1" fill="#166534" opacity="0.6"/>
+      <rect x="4" y="12" width="1" height="1" fill="#166534" opacity="0.5"/>
+    </svg>
+  );
+}
+
+function RuinsArch() {
+  return (
+    <svg width="100" height="52" viewBox="0 0 25 13" style={{imageRendering:"pixelated",display:"block",filter:"drop-shadow(0 0 6px #22c55e22)"}}>
+      <rect x="0" y="3" width="5" height="10" fill="#182610"/>
+      <rect x="1" y="3" width="3" height="10" fill="#1e3014"/>
+      <rect x="0" y="1" width="6" height="3" fill="#1e3010"/>
+      <rect x="19" y="3" width="6" height="10" fill="#182610"/>
+      <rect x="20" y="3" width="4" height="10" fill="#1e3014"/>
+      <rect x="19" y="1" width="6" height="3" fill="#1e3010"/>
+      <rect x="5" y="0" width="15" height="3" fill="#1e3010"/>
+      <rect x="4" y="1" width="17" height="2" fill="#263818"/>
+      <rect x="5" y="3" width="14" height="10" fill="#07100a"/>
+      <rect x="8" y="1" width="1" height="1" fill="#4ade80" opacity="0.7"/>
+      <rect x="12" y="0" width="1" height="2" fill="#22c55e" opacity="0.6"/>
+      <rect x="16" y="1" width="1" height="1" fill="#4ade80" opacity="0.7"/>
+      <rect x="2" y="5" width="1" height="3" fill="#4ade80" opacity="0.3"/>
+      <rect x="24" y="4" width="1" height="5" fill="#166534" opacity="0.7"/>
+      <rect x="23" y="6" width="1" height="2" fill="#166534" opacity="0.5"/>
+      <rect x="19" y="3" width="1" height="1" fill="#07100a"/>
+    </svg>
+  );
+}
+
 const DIFF_COLOR: Record<string, string> = {
   low:    "#22c55e",
   medium: "#f59e0b",
@@ -625,32 +667,52 @@ export default function ExpeditionPage() {
         />
       )}
 
-      {/* Header */}
-      <div style={{ padding:"16px 16px 0", maxWidth:800, margin:"0 auto" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-          <Map size={22} color={C.green}/>
-          <h1 style={{ margin:0, fontSize:20, fontWeight:900, color:C.green, fontFamily:FONT, flex:1 }}>
-            {ko ? "케보몬 원정" : ja ? "ケボモン遠征" : "Kebomon Expedition"}
-          </h1>
+      {/* ── 유적 배너 ── */}
+      <div style={{
+        position:"relative",
+        background:"linear-gradient(180deg,#060f04 0%,#0a1806 55%,#060f04 100%)",
+        borderBottom:"2px solid #1a4020",
+        padding:"18px 16px 16px",
+        textAlign:"center",
+        boxShadow:"0 4px 24px #0a2a0820",
+      }}>
+        <div style={{position:"absolute",inset:0,opacity:0.05,pointerEvents:"none",
+          backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 11px,#fff 11px,#fff 12px),repeating-linear-gradient(90deg,transparent,transparent 19px,rgba(255,255,255,0.3) 19px,rgba(255,255,255,0.3) 20px)"}}/>
+        <div style={{position:"absolute",inset:0,pointerEvents:"none",
+          background:"radial-gradient(ellipse 70% 50% at 50% 100%,#22c55e0c 0%,transparent 70%)"}}/>
+        <p style={{margin:"0 0 6px",fontFamily:FONT,fontSize:10,letterSpacing:"0.5em",color:"#4a7a3a",fontWeight:900,position:"relative",zIndex:1}}>
+          {ko?"케보몬 원정대":ja?"ケボモン遠征隊":"KEBOMON EXPEDITION"}
+        </p>
+        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:14,marginBottom:6,position:"relative",zIndex:1}}>
+          <RuneStone/><RuinsArch/><RuneStone flip/>
+        </div>
+        <h1 style={{
+          margin:"0 0 8px",position:"relative",zIndex:1,
+          fontFamily:"'Courier New',monospace",fontSize:26,fontWeight:900,
+          letterSpacing:"0.18em",color:"#4ade80",
+          textShadow:"0 0 20px #22c55e, 2px 2px 0 #0a1806, -1px -1px 0 #0a1806",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:10,
+        }}>
+          <Landmark size={20} color="#4ade80" strokeWidth={2.5}/>
+          {ko?"케보몬 원정":ja?"ケボモン遠征":"EXPEDITION"}
+          <Landmark size={20} color="#4ade80" strokeWidth={2.5}/>
+        </h1>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10,position:"relative",zIndex:1}}>
+          <div style={{height:1,width:32,background:"linear-gradient(90deg,transparent,#22c55e55)"}}/>
+          <span style={{fontSize:11,color:"#4ade80",opacity:0.6}}>◈</span>
+          <div style={{height:1,width:32,background:"linear-gradient(90deg,#22c55e55,transparent)"}}/>
+        </div>
+        <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,position:"relative",zIndex:1}}>
+          <span style={{fontSize:11,color:"#4a7a3a",fontFamily:FONT}}>
+            {ko?`누적 원정 ${totalCount}회`:ja?`累計遠征 ${totalCount}回`:`${totalCount} expeditions`}
+          </span>
           <button
             onClick={() => setShowInfo(true)}
-            style={{
-              background: `${C.green}18`, border: `1px solid ${C.green}44`,
-              borderRadius: 8, padding: "5px 10px", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 5,
-              color: C.green, fontFamily: FONT, fontSize: 11, fontWeight: 700,
-            }}
+            style={{background:"rgba(10,30,10,0.7)",border:"1px solid #2a6030",borderRadius:8,padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,color:"#4ade80",fontFamily:FONT,fontSize:11,fontWeight:700}}
           >
-            <HelpCircle size={13}/>
-            {ko ? "보상 안내" : ja ? "報酬ガイド" : "Reward Guide"}
+            <HelpCircle size={13}/>{ko?"보상 안내":ja?"報酬ガイド":"Reward Guide"}
           </button>
         </div>
-        <p style={{ margin:0, fontSize:12, color:C.textDim }}>
-          {ko ? "원정대를 꾸려 지역을 탐험하고 보상을 획득하세요" : ja ? "遠征隊を編成してエリアを探索し報酬を獲得しよう" : "Form a party, explore regions, and collect rewards"}
-        </p>
-        <p style={{ margin:"4px 0 0", fontSize:11, color:C.textDim }}>
-          {ko ? `누적 원정: ${totalCount}회` : ja ? `累計遠征: ${totalCount}回` : `Total expeditions: ${totalCount}`}
-        </p>
       </div>
 
       {/* Active expedition banner */}
