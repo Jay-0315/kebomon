@@ -1501,6 +1501,13 @@ function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: num
       : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "+5 Shield";
   const rtColor = rt === "energy" ? "#60a5fa" : rt === "attack" ? "#f87171" : "#4ade80";
 
+  const ca = CARD_ARCH_MAP[char.type];
+  const archLabel = ko
+    ? ca === "warrior" ? "전사" : ca === "rogue" ? "로그" : ca === "mage" ? "마법사" : ca === "tank" ? "탱커" : ca === "nature" ? "자연" : ca === "wild" ? "야생" : "공용"
+    : ja
+      ? ca === "warrior" ? "戦士" : ca === "rogue" ? "ローグ" : ca === "mage" ? "魔法使い" : ca === "tank" ? "タンク" : ca === "nature" ? "自然" : ca === "wild" ? "ワイルド" : "全"
+      : ca === "warrior" ? "Warrior" : ca === "rogue" ? "Rogue" : ca === "mage" ? "Mage" : ca === "tank" ? "Tank" : ca === "nature" ? "Nature" : ca === "wild" ? "Wild" : "All";
+
   const sectionCls = "rounded-lg bg-muted/60 border border-border px-2.5 py-2 space-y-1";
   const labelCls   = "text-[9px] font-bold uppercase tracking-wider text-muted-foreground";
   const valueCls   = "text-[11px] font-bold text-foreground";
@@ -1520,7 +1527,7 @@ function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: num
         <p className={labelCls}>{ko ? "로그라이크" : ja ? "ローグライク" : "ROGUELIKE"}</p>
         <div className="flex items-center justify-between gap-2">
           <span className={valueCls}>HP {rogueHp}</span>
-          <span className="text-[10px] font-semibold" style={{ color: rtColor }}>{rtLabel} {rtBonus}</span>
+          <span className="text-[10px] font-semibold" style={{ color: rtColor }}>{rtLabel} · {archLabel} · {rtBonus}</span>
         </div>
       </div>
       {/* 보스레이드 */}

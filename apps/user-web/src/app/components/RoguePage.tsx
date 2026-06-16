@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Layers, Swords, Shield, Heart, RefreshCw,
   ShoppingCart, Skull, Trophy, Star, X, Flame, ChevronRight, Crown,
-  Sparkles, Award, AlertCircle,
+  Sparkles, Award, AlertCircle, BookOpen,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -794,6 +794,7 @@ export default function RoguePage() {
   const [showRewardGuide, setShowRewardGuide] = useState(false);
   const [guideDiff, setGuideDiff] = useState<"normal"|"hard"|"hell">("normal");
   const [showRelicGuide, setShowRelicGuide] = useState(false);
+  const [showCardGuide, setShowCardGuide] = useState(false);
   const [showStarterCards, setShowStarterCards] = useState(false);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
@@ -1625,7 +1626,13 @@ export default function RoguePage() {
                 <Layers size={28} color={C.gold}/>
                 <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
               </div>
-              <div style={{display:"flex",gap:6}}>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <button
+                  onClick={() => setShowRewardGuide(true)}
+                  style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+                >
+                  <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
+                </button>
                 <button
                   onClick={() => setShowRelicGuide(true)}
                   style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
@@ -1633,10 +1640,10 @@ export default function RoguePage() {
                   <Sparkles size={12}/>{ko?"기물 도감":ja?"遺物図鑑":"Relics"}
                 </button>
                 <button
-                  onClick={() => setShowRewardGuide(true)}
+                  onClick={() => setShowCardGuide(true)}
                   style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
                 >
-                  <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
+                  <BookOpen size={12}/>{ko?"카드 도감":ja?"カード図鑑":"Cards"}
                 </button>
               </div>
             </div>
@@ -1968,6 +1975,62 @@ export default function RoguePage() {
                 ))}
                 <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>{ko?"※ 신기록 갱신 시에만 지급됩니다":ja?"※ 自己記録更新時のみ支給されます":"※ Paid only when you break your personal best"}</p>
               </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── 카드 도감 모달 ── */}
+      {showCardGuide && (() => {
+        const CARD_RARITY_ORDER: CardRarity[] = ["common","uncommon","rare","epic","legendary"];
+        const CARD_RARITY_COLOR: Record<string,string> = {common:"#64748b",uncommon:"#16a34a",rare:"#2563eb",epic:"#9333ea",legendary:"#d97706"};
+        const CARD_RARITY_LABEL = (r:string) =>
+          r==="common"    ? (ko?"커먼":ja?"コモン":"Common") :
+          r==="uncommon"  ? (ko?"언커먼":ja?"アンコモン":"Uncommon") :
+          r==="rare"      ? (ko?"레어":ja?"レア":"Rare") :
+          r==="epic"      ? (ko?"에픽":ja?"エピック":"Epic") :
+                            (ko?"레전드":ja?"レジェンド":"Legendary");
+        const CARD_TYPE_COLOR: Record<string,string> = {attack:"#ef4444",skill:"#3b82f6",power:"#f59e0b"};
+        const CARD_TYPE_LABEL = (t:string) =>
+          t==="attack" ? (ko?"공격":ja?"攻撃":"Atk") :
+          t==="skill"  ? (ko?"스킬":ja?"スキル":"Skill") :
+                         (ko?"파워":ja?"パワー":"Pwr");
+        const ARCH_LIST = [
+          {key:"all",     label:ko?"공용":ja?"汎用":"Universal",  color:"#f59e0b"},
+          {key:"warrior", label:ko?"전사":ja?"戦士":"Warrior",    color:"#f97316"},
+          {key:"rogue",   label:ko?"로그":ja?"ローグ":"Rogue",    color:"#c084fc"},
+          {key:"mage",    label:ko?"마법사":ja?"魔法使い":"Mage",  color:"#60a5fa"},
+          {key:"tank",    label:ko?"탱커":ja?"タンク":"Tank",      color:"#94a3b8"},
+          {key:"nature",  label:ko?"자연":ja?"自然":"Nature",      color:"#4ade80"},
+          {key:"wild",    label:ko?"야생":ja?"野生":"Wild",        color:"#2dd4bf"},
+        ];
+        return (
+          <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowCardGuide(false)}>
+            <div className="rogue-reward-guide" style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:14,padding:20,width:"min(540px,96vw)",maxHeight:"88vh",overflowY:"auto",fontFamily:FONT,animation:"rogue-in 0.22s ease-out both"}} onClick={e=>e.stopPropagation()}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <p style={{margin:0,fontSize:16,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:6}}><BookOpen size={16} color={C.gold}/>{ko?"카드 도감":ja?"カード図鑑":"Card Encyclopedia"}</p>
+                <button onClick={()=>setShowCardGuide(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1}}>×</button>
+              </div>
+              {ARCH_LIST.map(arch => {
+                const archCards = CARDS.filter(c => c.archetype === arch.key);
+                const sorted = [...archCards].sort((a,b)=>CARD_RARITY_ORDER.indexOf(a.rarity)-CARD_RARITY_ORDER.indexOf(b.rarity));
+                return (
+                  <div key={arch.key} style={{marginBottom:18}}>
+                    <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:arch.color,borderBottom:`1px solid ${arch.color}33`,paddingBottom:6}}>{arch.label} ({archCards.length})</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      {sorted.map(c => (
+                        <div key={c.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",borderRadius:7,background:`${CARD_RARITY_COLOR[c.rarity]}10`,border:`1px solid ${CARD_RARITY_COLOR[c.rarity]}30`}}>
+                          <span style={{fontSize:9,fontWeight:800,color:CARD_RARITY_COLOR[c.rarity],background:`${CARD_RARITY_COLOR[c.rarity]}20`,borderRadius:4,padding:"1px 5px",minWidth:38,textAlign:"center" as const}}>{CARD_RARITY_LABEL(c.rarity)}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:CARD_TYPE_COLOR[c.type],background:`${CARD_TYPE_COLOR[c.type]}18`,borderRadius:4,padding:"1px 4px",minWidth:28,textAlign:"center" as const}}>{CARD_TYPE_LABEL(c.type)}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:"#94a3b8",minWidth:12,textAlign:"center" as const}}>{c.cost}</span>
+                          <span style={{fontSize:11,fontWeight:700,color:C.text,flex:1,minWidth:0}}>{ko?c.name:ja?c.nameJa:c.nameEn}</span>
+                          <span style={{fontSize:9,color:C.textDim,textAlign:"right" as const,flexShrink:0}}>{ko?c.desc:ja?c.descJa:c.descEn}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
