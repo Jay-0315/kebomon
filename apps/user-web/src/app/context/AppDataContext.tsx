@@ -79,7 +79,7 @@ interface AppDataContextValue {
   buyShopItem: (itemId: string, quantity?: number) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
   completeExpedition: (rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }) => Promise<void>;
-  completeRogue: () => Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null>;
+  completeRogue: (difficulty?: string) => Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null>;
   submitChallenge: (stage: number) => Promise<ChallengeResult | null>;
   fetchChallengeRankings: () => Promise<ChallengeRankRow[]>;
   refreshData: () => Promise<void>;
@@ -561,13 +561,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeRogue = async (): Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null> => {
+  const completeRogue = async (difficulty = "normal"): Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null> => {
     const currentUser = getStoredUser();
     if (!currentUser) return null;
     const prevOwnedIds = new Set(rewardSummary.ownedCharacterIds);
     const result = await api.post<{ rogueClears: number; milestones: RogueMilestone[] }>(
       "/rewards/rogue/complete",
-      { userId: currentUser.id },
+      { userId: currentUser.id, difficulty },
     );
     const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
     const newSummary = normalizeRewardSummary(summary);

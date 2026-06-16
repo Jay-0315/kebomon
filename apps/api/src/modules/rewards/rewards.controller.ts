@@ -112,8 +112,8 @@ export class RewardsController {
   }
 
   @Post("rogue/complete")
-  completeRogue(@Body() body: { userId: string }) {
-    return this.rewardsService.completeRogue(body.userId);
+  completeRogue(@Body() body: { userId: string; difficulty?: string }) {
+    return this.rewardsService.completeRogue(body.userId, body.difficulty);
   }
 
   @Post("challenge/submit")

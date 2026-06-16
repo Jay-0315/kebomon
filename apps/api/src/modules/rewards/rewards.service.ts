@@ -378,7 +378,7 @@ interface RogueMilestone {
   goldEgg: number;
 }
 
-const ROGUE_MILESTONES: RogueMilestone[] = [
+const ROGUE_MILESTONES_NORMAL: RogueMilestone[] = [
   { clears:   1, points:   500, stones: 0, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
   { clears:   3, points:  1000, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
   { clears:   5, points:  1500, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
@@ -392,14 +392,46 @@ const ROGUE_MILESTONES: RogueMilestone[] = [
   { clears: 125, points:  5500, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
   { clears: 150, points:  5000, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
 ];
+const ROGUE_MILESTONES_HARD: RogueMilestone[] = [
+  { clears:   1, points:   800, stones: 0, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:   3, points:  1500, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:   5, points:  2000, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  10, points:  3000, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  20, points:  4500, stones: 3, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  30, points:  5000, stones: 3, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  40, points:  6000, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears:  50, points:  6500, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears:  75, points:  7500, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 100, points:  7500, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 125, points:  8000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 150, points:  7500, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+];
+const ROGUE_MILESTONES_HELL: RogueMilestone[] = [
+  { clears:   1, points:  1000, stones: 0, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  { clears:   3, points:  2000, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:   5, points:  3000, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  10, points:  4000, stones: 3, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  { clears:  20, points:  6000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears:  30, points:  7000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears:  40, points:  8000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears:  50, points:  9000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears:  75, points: 10000, stones: 5, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 100, points: 10000, stones: 5, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 125, points: 11000, stones: 5, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  { clears: 150, points: 10000, stones: 5, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+];
 
-function getRogueMilestones(prev: number, next: number): RogueMilestone[] {
-  const hit = ROGUE_MILESTONES.filter(m => m.clears > prev && m.clears <= next);
-  // 150회 이후 매 50회 반복
+function getRogueMilestones(prev: number, next: number, difficulty = "normal"): RogueMilestone[] {
+  const table =
+    difficulty === "hell" ? ROGUE_MILESTONES_HELL :
+    difficulty === "hard" ? ROGUE_MILESTONES_HARD :
+    ROGUE_MILESTONES_NORMAL;
+  const hit = table.filter(m => m.clears > prev && m.clears <= next);
+  // 150회 이후 매 50회 반복 보상 (난이도별 차등)
+  const repeatPts   = difficulty === "hell" ? 10000 : difficulty === "hard" ? 7500 : 5000;
+  const repeatSt    = difficulty === "hell" ? 6 : difficulty === "hard" ? 5 : 4;
   for (let n = 200; n <= next; n += 50) {
-    if (n > prev) {
-      hit.push({ clears: n, points: 5000, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 });
-    }
+    if (n > prev) hit.push({ clears: n, points: repeatPts, stones: repeatSt, normalEgg: 0, bigEgg: 0, goldEgg: 1 });
   }
   return hit;
 }
@@ -472,7 +504,7 @@ export class RewardsService {
     return { expeditionCount: updated.expeditionCount };
   }
 
-  async completeRogue(userId: string) {
+  async completeRogue(userId: string, difficulty = "normal") {
     const reward = await this.getOrCreateReward(userId);
     const prevClears = reward.rogueClears;
 
@@ -482,7 +514,7 @@ export class RewardsService {
     });
     const newClears = updated.rogueClears;
 
-    const milestones = getRogueMilestones(prevClears, newClears);
+    const milestones = getRogueMilestones(prevClears, newClears, difficulty);
     if (milestones.length > 0) {
       const pts     = milestones.reduce((s, m) => s + m.points,    0);
       const stones  = milestones.reduce((s, m) => s + m.stones,    0);

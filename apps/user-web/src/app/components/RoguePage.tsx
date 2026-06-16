@@ -746,6 +746,7 @@ export default function RoguePage() {
   const [pendingRelicSwap, setPendingRelicSwap] = useState<RelicDef | null>(null);
   const [pendingCardSwap, setPendingCardSwap] = useState<CardInstance | null>(null);
   const [showRewardGuide, setShowRewardGuide] = useState(false);
+  const [guideDiff, setGuideDiff] = useState<"normal"|"hard"|"hell">("normal");
   const [showStarterCards, setShowStarterCards] = useState(false);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
@@ -793,7 +794,7 @@ export default function RoguePage() {
       victoryCountedRef.current = true;
       const prev = parseInt(localStorage.getItem("kebo_rogue_clears") ?? "0", 10);
       localStorage.setItem("kebo_rogue_clears", String(prev + 1));
-      completeRogueRef.current()
+      completeRogueRef.current(gs.difficulty ?? "normal")
         .then(result => { if (result?.milestones.length) setRogueMilestones(result.milestones); })
         .catch(() => undefined);
     }
@@ -1318,6 +1319,8 @@ export default function RoguePage() {
     .rogue-card-hover:hover{transform:translateY(-6px)!important;box-shadow:0 8px 24px #00000055!important}
     .rogue-log::-webkit-scrollbar{display:none}
     .rogue-log{scrollbar-width:none;-ms-overflow-style:none}
+    .rogue-reward-guide::-webkit-scrollbar{display:none}
+    .rogue-reward-guide{scrollbar-width:none;-ms-overflow-style:none}
   `;
 
   // ── Deck modal ────────────────────────────────────────────────────────────
@@ -1712,73 +1715,130 @@ export default function RoguePage() {
       </div>
 
       {/* ── 보상 안내 모달 ── */}
-      {showRewardGuide && (
-        <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowRewardGuide(false)}>
-          <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:14,padding:20,width:"min(480px,94vw)",maxHeight:"85vh",overflow:"auto",fontFamily:FONT,animation:"rogue-in 0.22s ease-out both"}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <p style={{margin:0,fontSize:16,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:6}}><Award size={16} color={C.gold}/>{ko?"보상 안내":ja?"報酬案内":"Reward Guide"}</p>
-              <button onClick={()=>setShowRewardGuide(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1}}>×</button>
-            </div>
+      {showRewardGuide && (() => {
+        const GUIDE_TABS = [
+          {id:"normal" as const, label:ko?"노말":ja?"ノーマル":"Normal", color:"#22c55e"},
+          {id:"hard"   as const, label:ko?"하드":ja?"ハード":"Hard",     color:"#f97316"},
+          {id:"hell"   as const, label:ko?"지옥":ja?"ヘル":"Hell",       color:"#ef4444"},
+        ] as const;
+        const NORMAL_MS = [
+          {c:1,   pts:500,  st:0, ne:1, be:0, ge:0},
+          {c:3,   pts:1000, st:1, ne:1, be:0, ge:0},
+          {c:5,   pts:1500, st:1, ne:1, be:0, ge:0},
+          {c:10,  pts:2000, st:1, ne:0, be:1, ge:0},
+          {c:20,  pts:3000, st:2, ne:0, be:1, ge:0},
+          {c:30,  pts:3500, st:2, ne:0, be:1, ge:0},
+          {c:40,  pts:4000, st:2, ne:0, be:1, ge:0},
+          {c:50,  pts:4500, st:2, ne:0, be:1, ge:0},
+          {c:75,  pts:5000, st:3, ne:0, be:0, ge:1},
+          {c:100, pts:5000, st:3, ne:0, be:0, ge:1},
+          {c:125, pts:5500, st:3, ne:0, be:0, ge:1},
+          {c:150, pts:5000, st:3, ne:0, be:0, ge:1},
+        ];
+        const HARD_MS = [
+          {c:1,   pts:800,  st:0, ne:1, be:0, ge:0},
+          {c:3,   pts:1500, st:1, ne:1, be:0, ge:0},
+          {c:5,   pts:2000, st:2, ne:0, be:1, ge:0},
+          {c:10,  pts:3000, st:2, ne:0, be:1, ge:0},
+          {c:20,  pts:4500, st:3, ne:0, be:1, ge:0},
+          {c:30,  pts:5000, st:3, ne:0, be:1, ge:0},
+          {c:40,  pts:6000, st:3, ne:0, be:0, ge:1},
+          {c:50,  pts:6500, st:3, ne:0, be:0, ge:1},
+          {c:75,  pts:7500, st:4, ne:0, be:0, ge:1},
+          {c:100, pts:7500, st:4, ne:0, be:0, ge:1},
+          {c:125, pts:8000, st:4, ne:0, be:0, ge:1},
+          {c:150, pts:7500, st:4, ne:0, be:0, ge:1},
+        ];
+        const HELL_MS = [
+          {c:1,   pts:1000,  st:0, ne:1, be:0, ge:0},
+          {c:3,   pts:2000,  st:2, ne:0, be:1, ge:0},
+          {c:5,   pts:3000,  st:2, ne:0, be:1, ge:0},
+          {c:10,  pts:4000,  st:3, ne:0, be:1, ge:0},
+          {c:20,  pts:6000,  st:4, ne:0, be:0, ge:1},
+          {c:30,  pts:7000,  st:4, ne:0, be:0, ge:1},
+          {c:40,  pts:8000,  st:4, ne:0, be:0, ge:1},
+          {c:50,  pts:9000,  st:4, ne:0, be:0, ge:1},
+          {c:75,  pts:10000, st:5, ne:0, be:0, ge:1},
+          {c:100, pts:10000, st:5, ne:0, be:0, ge:1},
+          {c:125, pts:11000, st:5, ne:0, be:0, ge:1},
+          {c:150, pts:10000, st:5, ne:0, be:0, ge:1},
+        ];
+        const msMap = {normal:NORMAL_MS, hard:HARD_MS, hell:HELL_MS};
+        const repeatMap = {
+          normal:{pts:5000,st:4},
+          hard:  {pts:7500,st:5},
+          hell:  {pts:10000,st:6},
+        };
+        const tab = GUIDE_TABS.find(t=>t.id===guideDiff)!;
+        const ms = msMap[guideDiff];
+        const rep = repeatMap[guideDiff];
+        return (
+          <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowRewardGuide(false)}>
+            <div className="rogue-reward-guide" style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:14,padding:20,width:"min(480px,94vw)",maxHeight:"85vh",overflowY:"auto",fontFamily:FONT,animation:"rogue-in 0.22s ease-out both"}} onClick={e=>e.stopPropagation()}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <p style={{margin:0,fontSize:16,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:6}}><Award size={16} color={C.gold}/>{ko?"보상 안내":ja?"報酬案内":"Reward Guide"}</p>
+                <button onClick={()=>setShowRewardGuide(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1}}>×</button>
+              </div>
 
-            {/* 일반 모드 */}
-            <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:"#22c55e",display:"flex",alignItems:"center",gap:5}}><Star size={12} color="#22c55e"/>{ko?"일반 모드 누적 클리어 보상":ja?"通常モード累計クリア報酬":"Normal Mode Milestone Rewards"}</p>
-            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-              {([
-                {c:1,   pts:500,  st:0, ne:1, be:0, ge:0},
-                {c:3,   pts:1000, st:1, ne:1, be:0, ge:0},
-                {c:5,   pts:1500, st:1, ne:1, be:0, ge:0},
-                {c:10,  pts:2000, st:1, ne:0, be:1, ge:0},
-                {c:20,  pts:3000, st:2, ne:0, be:1, ge:0},
-                {c:30,  pts:3500, st:2, ne:0, be:1, ge:0},
-                {c:40,  pts:4000, st:2, ne:0, be:1, ge:0},
-                {c:50,  pts:4500, st:2, ne:0, be:1, ge:0},
-                {c:75,  pts:5000, st:3, ne:0, be:0, ge:1},
-                {c:100, pts:5000, st:3, ne:0, be:0, ge:1},
-                {c:125, pts:5500, st:3, ne:0, be:0, ge:1},
-                {c:150, pts:5000, st:3, ne:0, be:0, ge:1},
-              ] as {c:number;pts:number;st:number;ne:number;be:number;ge:number}[]).map(m => (
-                <div key={m.c} style={{background:"#0a1a0a",border:"1px solid #22c55e33",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,fontWeight:800,color:"#22c55e",minWidth:44}}>{ko?`${m.c}회`:ja?`${m.c}回`:`×${m.c}`}</span>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap" as const,flex:1}}>
-                    {m.pts>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{m.pts.toLocaleString()}P</span>}
-                    {m.st>0&&<span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"#60a5fa18",borderRadius:4,padding:"2px 6px"}}>{ko?"강화석":ja?"強化石":"Stone"} ×{m.st}</span>}
-                    {m.ne>0&&<span style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"#94a3b818",borderRadius:4,padding:"2px 6px"}}>{ko?"일반알":ja?"通常卵":"Normal Egg"} ×{m.ne}</span>}
-                    {m.be>0&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80",background:"#4ade8018",borderRadius:4,padding:"2px 6px"}}>{ko?"고급알":ja?"上級卵":"Prem.Egg"} ×{m.be}</span>}
-                    {m.ge>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{ko?"황금알":ja?"黄金卵":"Gold Egg"} ×{m.ge}</span>}
-                  </div>
-                </div>
-              ))}
-              <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>{ko?"※ 150회 이후 매 50회마다 5000P + 강화석×4 + 황금알×1":ja?"※ 150回以降、50回ごとに5000P+強化石×4+黄金卵×1":"※ After 150: every 50 clears → 5000P + Stone×4 + Gold Egg×1"}</p>
-            </div>
+              {/* ── 일반 모드 ── */}
+              <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:"#22c55e",display:"flex",alignItems:"center",gap:5}}><Star size={12} color="#22c55e"/>{ko?"일반 모드 누적 클리어 보상":ja?"通常モード累計クリア報酬":"Normal Mode Milestone Rewards"}</p>
 
-            {/* 도전 모드 */}
-            <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:"#c084fc",display:"flex",alignItems:"center",gap:5}}><Crown size={12} color="#c084fc"/>{ko?"도전 모드 신기록 달성 보상":ja?"チャレンジモード新記録報酬":"Challenge Mode Best Record Rewards"}</p>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {([
-                {c:5,   pts:500,  st:0, ne:1, be:0, ge:0},
-                {c:10,  pts:1000, st:1, ne:1, be:0, ge:0},
-                {c:20,  pts:1800, st:1, ne:0, be:1, ge:0},
-                {c:30,  pts:2600, st:2, ne:0, be:1, ge:0},
-                {c:50,  pts:4000, st:3, ne:0, be:1, ge:0},
-                {c:75,  pts:5500, st:4, ne:0, be:0, ge:1},
-                {c:100, pts:9000, st:6, ne:0, be:0, ge:2},
-              ] as {c:number;pts:number;st:number;ne:number;be:number;ge:number}[]).map(m => (
-                <div key={m.c} style={{background:"#140a20",border:"1px solid #a855f733",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,fontWeight:800,color:"#c084fc",minWidth:52}}>{ko?`${m.c}스테이지`:ja?`${m.c}ステージ`:`Stage ${m.c}`}</span>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap" as const,flex:1}}>
-                    {m.pts>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{m.pts.toLocaleString()}P</span>}
-                    {m.st>0&&<span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"#60a5fa18",borderRadius:4,padding:"2px 6px"}}>{ko?"강화석":ja?"強化石":"Stone"} ×{m.st}</span>}
-                    {m.ne>0&&<span style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"#94a3b818",borderRadius:4,padding:"2px 6px"}}>{ko?"일반알":ja?"通常卵":"Normal Egg"} ×{m.ne}</span>}
-                    {m.be>0&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80",background:"#4ade8018",borderRadius:4,padding:"2px 6px"}}>{ko?"고급알":ja?"上級卵":"Prem.Egg"} ×{m.be}</span>}
-                    {m.ge>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{ko?"황금알":ja?"黄金卵":"Gold Egg"} ×{m.ge}</span>}
+              {/* 난이도 탭 */}
+              <div style={{display:"flex",gap:6,marginBottom:10}}>
+                {GUIDE_TABS.map(t=>(
+                  <button key={t.id} onClick={()=>setGuideDiff(t.id)} style={{flex:1,padding:"5px 0",border:`1px solid ${guideDiff===t.id?t.color:C.border}`,borderRadius:7,background:guideDiff===t.id?`${t.color}22`:"transparent",color:guideDiff===t.id?t.color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,transition:"all 0.15s"}}>{t.label}</button>
+                ))}
+              </div>
+
+              <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+                {ms.map(m => (
+                  <div key={m.c} style={{background:`${tab.color}08`,border:`1px solid ${tab.color}33`,borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,fontWeight:800,color:tab.color,minWidth:44}}>{ko?`${m.c}회`:ja?`${m.c}回`:`×${m.c}`}</span>
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap" as const,flex:1}}>
+                      {m.pts>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{m.pts.toLocaleString()}P</span>}
+                      {m.st>0&&<span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"#60a5fa18",borderRadius:4,padding:"2px 6px"}}>{ko?"강화석":ja?"強化石":"Stone"} ×{m.st}</span>}
+                      {m.ne>0&&<span style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"#94a3b818",borderRadius:4,padding:"2px 6px"}}>{ko?"일반알":ja?"通常卵":"Normal Egg"} ×{m.ne}</span>}
+                      {m.be>0&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80",background:"#4ade8018",borderRadius:4,padding:"2px 6px"}}>{ko?"고급알":ja?"上級卵":"Prem.Egg"} ×{m.be}</span>}
+                      {m.ge>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{ko?"황금알":ja?"黄金卵":"Gold Egg"} ×{m.ge}</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
-              <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>{ko?"※ 신기록 갱신 시에만 지급됩니다":ja?"※ 自己記録更新時のみ支給されます":"※ Paid only when you break your personal best"}</p>
+                ))}
+                <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>
+                  {ko?`※ 150회 이후 매 50회마다 ${rep.pts.toLocaleString()}P + 강화석×${rep.st} + 황금알×1`
+                    :ja?`※ 150回以降、50回ごとに${rep.pts.toLocaleString()}P+強化石×${rep.st}+黄金卵×1`
+                    :`※ After 150: every 50 clears → ${rep.pts.toLocaleString()}P + Stone×${rep.st} + Gold Egg×1`}
+                </p>
+              </div>
+
+              {/* ── 도전 모드 ── */}
+              <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:"#c084fc",display:"flex",alignItems:"center",gap:5}}><Crown size={12} color="#c084fc"/>{ko?"도전 모드 신기록 달성 보상":ja?"チャレンジモード新記録報酬":"Challenge Mode Best Record Rewards"}</p>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {([
+                  {c:5,   pts:500,  st:0, ne:1, be:0, ge:0},
+                  {c:10,  pts:1000, st:1, ne:1, be:0, ge:0},
+                  {c:20,  pts:1800, st:1, ne:0, be:1, ge:0},
+                  {c:30,  pts:2600, st:2, ne:0, be:1, ge:0},
+                  {c:50,  pts:4000, st:3, ne:0, be:1, ge:0},
+                  {c:75,  pts:5500, st:4, ne:0, be:0, ge:1},
+                  {c:100, pts:9000, st:6, ne:0, be:0, ge:2},
+                ] as {c:number;pts:number;st:number;ne:number;be:number;ge:number}[]).map(m => (
+                  <div key={m.c} style={{background:"#140a20",border:"1px solid #a855f733",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,fontWeight:800,color:"#c084fc",minWidth:52}}>{ko?`${m.c}스테이지`:ja?`${m.c}ステージ`:`Stage ${m.c}`}</span>
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap" as const,flex:1}}>
+                      {m.pts>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{m.pts.toLocaleString()}P</span>}
+                      {m.st>0&&<span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"#60a5fa18",borderRadius:4,padding:"2px 6px"}}>{ko?"강화석":ja?"強化石":"Stone"} ×{m.st}</span>}
+                      {m.ne>0&&<span style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"#94a3b818",borderRadius:4,padding:"2px 6px"}}>{ko?"일반알":ja?"通常卵":"Normal Egg"} ×{m.ne}</span>}
+                      {m.be>0&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80",background:"#4ade8018",borderRadius:4,padding:"2px 6px"}}>{ko?"고급알":ja?"上級卵":"Prem.Egg"} ×{m.be}</span>}
+                      {m.ge>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{ko?"황금알":ja?"黄金卵":"Gold Egg"} ×{m.ge}</span>}
+                    </div>
+                  </div>
+                ))}
+                <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>{ko?"※ 신기록 갱신 시에만 지급됩니다":ja?"※ 自己記録更新時のみ支給されます":"※ Paid only when you break your personal best"}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       </>
     );
   }
