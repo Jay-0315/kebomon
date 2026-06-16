@@ -1621,33 +1621,31 @@ export default function RoguePage() {
         <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:24}}>
           {/* Header */}
           <div style={{animation:"rogue-in 0.4s ease-out both"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <Layers size={28} color={C.gold}/>
-                <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                <button
-                  onClick={() => setShowRewardGuide(true)}
-                  style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-                >
-                  <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
-                </button>
-                <button
-                  onClick={() => setShowRelicGuide(true)}
-                  style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-                >
-                  <Sparkles size={12}/>{ko?"기물 도감":ja?"遺物図鑑":"Relics"}
-                </button>
-                <button
-                  onClick={() => setShowCardGuide(true)}
-                  style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-                >
-                  <BookOpen size={12}/>{ko?"카드 도감":ja?"カード図鑑":"Cards"}
-                </button>
-              </div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+              <Layers size={28} color={C.gold}/>
+              <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
             </div>
-            <p style={{margin:0,fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
+            <p style={{margin:"0 0 10px",fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
+            <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+              <button
+                onClick={() => setShowRewardGuide(true)}
+                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+              >
+                <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
+              </button>
+              <button
+                onClick={() => setShowRelicGuide(true)}
+                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+              >
+                <Sparkles size={12}/>{ko?"기물 도감":ja?"遺物図鑑":"Relics"}
+              </button>
+              <button
+                onClick={() => setShowCardGuide(true)}
+                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+              >
+                <BookOpen size={12}/>{ko?"카드 도감":ja?"カード図鑑":"Cards"}
+              </button>
+            </div>
           </div>
 
           {/* Character card */}
