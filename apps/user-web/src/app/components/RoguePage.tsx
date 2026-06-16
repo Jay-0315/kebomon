@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Layers, Swords, Shield, Heart, RefreshCw,
   ShoppingCart, Skull, Trophy, Star, X, Flame, ChevronRight, Crown,
-  Sparkles, Award, AlertCircle, BookOpen,
+  Sparkles, Award, AlertCircle, BookOpen, Info,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -835,6 +835,7 @@ export default function RoguePage() {
   const [guideDiff, setGuideDiff] = useState<"normal"|"hard"|"hell">("normal");
   const [showRelicGuide, setShowRelicGuide] = useState(false);
   const [showCardGuide, setShowCardGuide] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [showStarterCards, setShowStarterCards] = useState(false);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
@@ -1703,6 +1704,9 @@ export default function RoguePage() {
             <button onClick={() => setShowCardGuide(true)} style={{background:"rgba(42,10,74,0.7)",border:"1px solid #6a1a99",borderRadius:8,padding:"5px 10px",color:"#c084fc",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}>
               <BookOpen size={12}/>{ko?"카드 도감":ja?"カード図鑑":"Cards"}
             </button>
+            <button onClick={() => setShowRulesModal(true)} style={{background:"rgba(42,10,74,0.7)",border:"1px solid #6a1a99",borderRadius:8,padding:"5px 10px",color:"#c084fc",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}>
+              <Info size={12}/>{ko?"규칙":ja?"ルール":"Rules"}
+            </button>
           </div>
         </div>
         <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:24,margin:"0 auto",padding:"20px 20px 0"}}>
@@ -1824,59 +1828,46 @@ export default function RoguePage() {
             </div>
           </div>
 
-          {/* Rules */}
-          <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:16,fontSize:12,color:C.textDim,animation:"rogue-in 0.4s 0.1s ease-out both"}}>
-            <p style={{margin:"0 0 8px",color:C.textBright,fontWeight:700}}>{ko?"규칙":ja?"ルール":"Rules"}</p>
-            {[
-              ko?"전투 후 카드 3장 중 1장을 선택해 덱에 추가":ja?"戦闘後、カード3枚から1枚をデッキに追加":"After each battle, pick 1 of 3 cards to add to your deck",
-              ko?"에너지를 소비해 카드를 사용":ja?"エナジーを消費してカードを使用":"Spend energy to play cards",
-              ko?"매 턴 방어력은 초기화됩니다":ja?"毎ターン防御力はリセットされます":"Shield resets at the start of every turn",
-            ].map((rule, i) => (
-              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,lineHeight:1.7}}>
-                <ChevronRight size={11} color={C.textDim} style={{flexShrink:0,marginTop:3}}/>
-                <span>{rule}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Start + Challenge side by side */}
-          <div style={{display:"flex",gap:10,alignItems:"stretch"}}>
           {/* Start button */}
           <button
             onClick={() => startRun("story")}
             style={{
-              flex:1,
+              width:"100%",
               background:`linear-gradient(135deg,${C.gold}cc,${C.gold}88)`,
-              border:`2px solid ${C.gold}`,borderRadius:10,padding:"14px 6px",
-              color:"#1c1500",fontWeight:900,fontSize:16,cursor:"pointer",
+              border:`2px solid ${C.gold}`,borderRadius:10,padding:"15px 0",
+              color:"#1c1500",fontWeight:900,fontSize:17,cursor:"pointer",
               fontFamily:FONT,letterSpacing:"0.05em",
-              animation:"rogue-in 0.4s 0.15s ease-out both",
+              animation:"rogue-in 0.4s 0.1s ease-out both",
             }}
           >{ko?"탐험 시작!":ja?"探検開始！":"Start Expedition!"}</button>
 
           {/* 도전 모드 */}
-          <div style={{flex:1,background:C.panelDark,border:"1px solid #7c3aed55",borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.18s ease-out both"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <Crown size={16} color="#a855f7"/>
-                <span style={{color:"#c084fc",fontWeight:800,fontSize:14}}>{ko?"도전 모드":ja?"チャレンジモード":"Challenge"}</span>
+          <div style={{background:C.panelDark,border:"1px solid #7c3aed55",borderRadius:10,padding:"12px 14px",animation:"rogue-in 0.4s 0.13s ease-out both"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              {/* 좌: 타이틀 + 설명 */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <Crown size={14} color="#a855f7"/>
+                  <span style={{color:"#c084fc",fontWeight:800,fontSize:13}}>{ko?"도전 모드":ja?"チャレンジモード":"Challenge"}</span>
+                  <span style={{fontSize:10,color:C.textDim,marginLeft:"auto"}}>{ko?"최고":ja?"最高":"Best"} <b style={{color:"#c084fc"}}>{sessionChallengeBest}</b>/100</span>
+                </div>
+                <p style={{margin:0,fontSize:11,color:C.textDim,lineHeight:1.5}}>
+                  {ko?"점점 강해지는 적과 싸우며 100스테이지에 도전! 사망 시 즉시 종료."
+                    :ja?"強化し続ける敵と戦い、100ステージに挑戦！死亡で即終了。"
+                    :"Fight ever-stronger foes up to Stage 100. Death ends the run."}
+                </p>
               </div>
-              <span style={{fontSize:11,color:C.textDim}}>{ko?"최고":ja?"最高":"Best"} <b style={{color:"#c084fc"}}>{sessionChallengeBest}</b>/100</span>
+              {/* 우: 도전 시작 버튼 */}
+              <button
+                onClick={() => startRun("challenge")}
+                style={{flexShrink:0,background:"linear-gradient(135deg,#7c3aedcc,#a855f7aa)",border:"2px solid #a855f7",borderRadius:10,padding:"10px 16px",color:"#fff",fontWeight:900,fontSize:13,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap" as const}}
+              >{ko?"도전 시작!":ja?"挑戦開始！":"Challenge!"}</button>
             </div>
-            <p style={{margin:"0 0 10px",fontSize:11,color:C.textDim,lineHeight:1.6}}>
-              {ko?"점점 강해지는 적과 싸우며 100스테이지에 도전! 사망 시 즉시 종료."
-                :ja?"強化し続ける敵と戦い、100ステージに挑戦！死亡で即終了。"
-                :"Fight ever-stronger foes up to Stage 100. Death ends the run."}
-            </p>
-            <button
-              onClick={() => startRun("challenge")}
-              style={{width:"100%",background:"linear-gradient(135deg,#7c3aedcc,#a855f7aa)",border:"2px solid #a855f7",borderRadius:10,padding:"12px 0",color:"#fff",fontWeight:900,fontSize:14,cursor:"pointer",fontFamily:FONT}}
-            >{ko?"도전 시작!":ja?"挑戦開始！":"Start Challenge!"}</button>
             {challengeRanks.length > 0 && (
-              <div style={{marginTop:12,borderTop:`1px solid ${C.border}`,paddingTop:10}}>
-                <p style={{margin:"0 0 6px",fontSize:11,fontWeight:700,color:C.textBright,display:"flex",alignItems:"center",gap:4}}><Trophy size={12} color={C.gold}/>{ko?"역대 랭킹":ja?"ランキング":"Rankings"}</p>
+              <div style={{marginTop:10,borderTop:`1px solid ${C.border}`,paddingTop:8}}>
+                <p style={{margin:"0 0 4px",fontSize:11,fontWeight:700,color:C.textBright,display:"flex",alignItems:"center",gap:4}}><Trophy size={12} color={C.gold}/>{ko?"역대 랭킹":ja?"ランキング":"Rankings"}</p>
                 {challengeRanks.slice(0,5).map(r => (
-                  <div key={r.userId} style={{display:"flex",alignItems:"center",gap:8,padding:"3px 0",fontSize:12}}>
+                  <div key={r.userId} style={{display:"flex",alignItems:"center",gap:8,padding:"2px 0",fontSize:12}}>
                     <span style={{width:18,textAlign:"right",fontWeight:800,color:r.rank<=3?"#fbbf24":C.textDim}}>{r.rank}</span>
                     <span style={{flex:1,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nickname}</span>
                     <span style={{color:"#c084fc",fontWeight:700}}>{r.best}{ko?"스테이지":ja?"ステージ":" stages"}</span>
@@ -1885,7 +1876,6 @@ export default function RoguePage() {
               </div>
             )}
           </div>
-          </div>{/* end flex row */}
         </div>
       </div>
 
@@ -2097,6 +2087,32 @@ export default function RoguePage() {
           </div>
         );
       })()}
+
+      {/* ── 규칙 모달 ── */}
+      {showRulesModal && (
+        <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowRulesModal(false)}>
+          <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:14,padding:20,width:"min(380px,92vw)",fontFamily:FONT,animation:"rogue-in 0.22s ease-out both"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <p style={{margin:0,fontSize:16,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:6}}>
+                <Info size={16} color={C.gold}/>{ko?"규칙":ja?"ルール":"Rules"}
+              </p>
+              <button onClick={()=>setShowRulesModal(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1}}>×</button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,fontSize:13,color:C.textDim,lineHeight:1.7}}>
+              {[
+                [ko?"전투 후 카드 3장 중 1장을 선택해 덱에 추가":ja?"戦闘後、カード3枚から1枚をデッキに追加":"After each battle, pick 1 of 3 cards to add to your deck", "🃏"],
+                [ko?"에너지를 소비해 카드를 사용":ja?"エナジーを消費してカードを使用":"Spend energy to play cards", "⚡"],
+                [ko?"매 턴 방어력은 초기화됩니다":ja?"毎ターン防御力はリセットされます":"Shield resets at the start of every turn", "🛡️"],
+              ].map(([rule, icon], i) => (
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 10px",background:C.panelDark,borderRadius:8,border:`1px solid ${C.border}`}}>
+                  <span style={{fontSize:16,flexShrink:0,lineHeight:1.5}}>{icon}</span>
+                  <span style={{color:C.textBright}}>{rule}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       </>
     );
   }
