@@ -247,9 +247,18 @@ const DIFF_EPIC_FLOOR:Record<Difficulty, number> = { normal:3,  hard:2,   hell:1
 
 // ── Challenge mode ───────────────────────────────────────────────────────────
 const CHALLENGE_FLOORS = 100;
-// 스테이지가 올라갈수록 적 HP·공격력이 계속 증가 (floor = 0-index)
-function challengeHpMult(floor: number): number { return 1 + floor * 0.08; }   // stage100 ≈ ×8.9
-function challengeAtkBonus(floor: number): number { return Math.floor(floor * 0.45); } // stage100 ≈ +44
+// 스테이지가 올라갈수록 적 HP·공격력이 계속 증가 (floor = 0-index, 3단계 가속)
+// Phase1(1~50): 완만 / Phase2(51~75): 기울기 2배 / Phase3(76~100): 기울기 3.5배
+function challengeHpMult(floor: number): number {
+  if (floor < 50) return 1 + floor * 0.08;                   // ×1.0 → ×4.92  (stage50 ≈ ×6.4)
+  if (floor < 75) return 4.92 + (floor - 49) * 0.16;         // ×4.92 → ×8.92 (stage75 ≈ ×11.6)
+  return 8.92 + (floor - 74) * 0.28;                         // ×8.92 → ×15.92 (stage100 ≈ ×20.7)
+}
+function challengeAtkBonus(floor: number): number {
+  if (floor < 50) return Math.floor(floor * 0.45);            // +0 → +22
+  if (floor < 75) return Math.floor(22 + (floor - 49) * 0.9); // +22 → +44
+  return Math.floor(44 + (floor - 74) * 1.5);                 // +44 → +81  (base +4 포함 시 +85)
+}
 // 매 칸 랜덤 선택지 2개. 20스테이지마다 보스만 등장, 10스테이지마다 엘리트 보장, 마지막은 최종 보스.
 // 1~2스테이지: 상점·휴식 미등장 / 3스테이지: 상점만 미등장 / 4스테이지~: 전체 등장
 function challengeFloorOptions(i: number): NodeType[] {
