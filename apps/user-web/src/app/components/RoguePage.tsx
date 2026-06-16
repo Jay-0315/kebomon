@@ -95,6 +95,7 @@ interface CardDef {
   damage?: number; shield?: number; draw?: number;
   poison?: number; strength?: number; heal?: number;
   multiHit?: number; bonusEnergy?: number; selfDamage?: number;
+  shieldStrike?: number;
 }
 interface CardInstance extends CardDef { uid: string }
 
@@ -140,65 +141,68 @@ const CARDS: CardDef[] = [
   { id:"defend",       name:"방어",         nameJa:"ディフェンス",      nameEn:"Defend",        cost:1,type:"skill", rarity:"common",   desc:"방어력 5",            descJa:"シールド5",           descEn:"Gain 5 shield",                   archetype:"all",     shield:5 },
   { id:"bash",         name:"강타",         nameJa:"バッシュ",          nameEn:"Bash",          cost:2,type:"attack",rarity:"uncommon", desc:"14 데미지",           descJa:"14ダメージ",          descEn:"Deal 14 damage",                  archetype:"all",     damage:14 },
   { id:"fortify",      name:"요새화",       nameJa:"フォーティファイ",  nameEn:"Fortify",       cost:2,type:"skill", rarity:"uncommon", desc:"방어력 12",           descJa:"シールド12",          descEn:"Gain 12 shield",                  archetype:"all",     shield:12 },
-  { id:"dual_strike",  name:"연타",         nameJa:"二連打",            nameEn:"Dual Strike",   cost:1,type:"attack",rarity:"uncommon", desc:"4 데미지 × 2",       descJa:"4ダメージ×2",         descEn:"Deal 4 damage twice",             archetype:"all",     damage:4, multiHit:2 },
+  { id:"dual_strike",  name:"연타",         nameJa:"二連打",            nameEn:"Dual Strike",   cost:2,type:"attack",rarity:"uncommon", desc:"5 데미지 × 2",       descJa:"5ダメージ×2",         descEn:"Deal 5 damage twice",             archetype:"all",     damage:5, multiHit:2 },
   { id:"quick_guard",  name:"속방어",       nameJa:"素早い防御",        nameEn:"Quick Guard",   cost:1,type:"skill", rarity:"common",   desc:"방어력 3, 드로우 1",  descJa:"シールド3・ドロー1",  descEn:"Gain 3 shield, draw 1",           archetype:"all",     shield:3,draw:1 },
-  { id:"power_surge",  name:"파워 서지",    nameJa:"パワーサージ",      nameEn:"Power Surge",   cost:3,type:"attack",rarity:"rare",     desc:"20 데미지",           descJa:"20ダメージ",          descEn:"Deal 20 damage",                  archetype:"all",     damage:20 },
-  { id:"iron_wall",    name:"철벽",         nameJa:"鉄壁",              nameEn:"Iron Wall",     cost:3,type:"skill", rarity:"rare",     desc:"방어력 18",           descJa:"シールド18",          descEn:"Gain 18 shield",                  archetype:"all",     shield:18 },
-  { id:"battle_cry",   name:"전투 함성",    nameJa:"バトルクライ",      nameEn:"Battle Cry",    cost:1,type:"power", rarity:"rare",     desc:"힘 +2 (영구)",        descJa:"力+2（永続）",        descEn:"Gain 2 strength (permanent)",     archetype:"all",     strength:2 },
-  { id:"second_wind",  name:"재기",         nameJa:"セカンドウィンド",  nameEn:"Second Wind",   cost:2,type:"skill", rarity:"epic",     desc:"방어력 8, 드로우 2",  descJa:"シールド8・ドロー2",  descEn:"Gain 8 shield, draw 2",           archetype:"all",     shield:8,draw:2 },
+  { id:"power_surge",  name:"파워 서지",    nameJa:"パワーサージ",      nameEn:"Power Surge",   cost:3,type:"attack",rarity:"rare",     desc:"8 데미지 × 3",        descJa:"8ダメージ×3",         descEn:"Deal 8 damage three times",       archetype:"all",     damage:8,multiHit:3 },
+  { id:"iron_wall",    name:"철벽",         nameJa:"鉄壁",              nameEn:"Iron Wall",     cost:3,type:"skill", rarity:"rare",     desc:"방어력 28",           descJa:"シールド28",          descEn:"Gain 28 shield",                  archetype:"all",     shield:28 },
+  { id:"battle_cry",   name:"전투 함성",    nameJa:"バトルクライ",      nameEn:"Battle Cry",    cost:1,type:"power", rarity:"rare",     desc:"힘 +1, 방어력 3",      descJa:"力+1・シールド3",     descEn:"Gain 1 strength, gain 3 shield",  archetype:"all",     strength:1,shield:3 },
+  { id:"second_wind",  name:"재기",         nameJa:"セカンドウィンド",  nameEn:"Second Wind",   cost:2,type:"skill", rarity:"epic",     desc:"방어력 16, 드로우 2", descJa:"シールド16・ドロー2", descEn:"Gain 16 shield, draw 2",          archetype:"all",     shield:16,draw:2 },
   // Warrior
   { id:"war_howl",     name:"전쟁의 외침",  nameJa:"戦の咆哮",          nameEn:"War Howl",      cost:1,type:"power", rarity:"uncommon", desc:"힘 +1, 드로우 1",     descJa:"力+1・ドロー1",      descEn:"Gain 1 strength, draw 1",         archetype:"warrior", strength:1,draw:1 },
-  { id:"feral_strike", name:"야성 연타",    nameJa:"野性連打",          nameEn:"Feral Strike",  cost:1,type:"attack",rarity:"rare",     desc:"5 데미지 × 2",       descJa:"5ダメージ×2",         descEn:"Deal 5 damage twice",             archetype:"warrior", damage:5,multiHit:2 },
-  { id:"alpha_wrath",  name:"알파의 분노",  nameJa:"アルファの怒り",    nameEn:"Alpha's Wrath", cost:2,type:"attack",rarity:"epic",     desc:"18 데미지, 힘 +1",    descJa:"18ダメージ・力+1",   descEn:"Deal 18 damage, gain 1 strength", archetype:"warrior", damage:18,strength:1 },
-  { id:"war_cry",      name:"전쟁의 함성",  nameJa:"戦いの叫び",        nameEn:"War Cry",       cost:2,type:"power", rarity:"rare",     desc:"힘 +3",               descJa:"力+3",               descEn:"Gain 3 strength",                 archetype:"warrior", strength:3 },
+  { id:"feral_strike", name:"야성 연타",    nameJa:"野性連打",          nameEn:"Feral Strike",  cost:2,type:"attack",rarity:"rare",     desc:"6 데미지 × 2",       descJa:"6ダメージ×2",         descEn:"Deal 6 damage twice",             archetype:"warrior", damage:6,multiHit:2 },
+  { id:"alpha_wrath",  name:"알파의 분노",  nameJa:"アルファの怒り",    nameEn:"Alpha's Wrath", cost:2,type:"attack",rarity:"epic",     desc:"10 데미지 × 2, 힘 +1",descJa:"10ダメージ×2・力+1", descEn:"Deal 10 damage twice, gain 1 str",archetype:"warrior", damage:10,multiHit:2,strength:1 },
+  { id:"war_cry",      name:"전쟁의 함성",  nameJa:"戦いの叫び",        nameEn:"War Cry",       cost:2,type:"power", rarity:"rare",     desc:"힘 +2",               descJa:"力+2",               descEn:"Gain 2 strength",                 archetype:"warrior", strength:2 },
   { id:"reckless",     name:"무모한 공격",  nameJa:"無謀な攻撃",        nameEn:"Reckless Swing",cost:0,type:"attack",rarity:"uncommon", desc:"7 데미지, 자신 2 피해",descJa:"7ダメージ・自身2",   descEn:"Deal 7 damage, take 2",           archetype:"warrior", damage:7,selfDamage:2 },
   // Rogue
   { id:"scratch",      name:"할퀴기",       nameJa:"引っ掻き",          nameEn:"Scratch",       cost:0,type:"attack",rarity:"common",   desc:"4 데미지",            descJa:"4ダメージ",           descEn:"Deal 4 damage",                   archetype:"rogue",   damage:4 },
   { id:"pounce",       name:"도약 공격",    nameJa:"飛び掛かり",        nameEn:"Pounce",        cost:1,type:"attack",rarity:"uncommon", desc:"8 데미지, 에너지 +1", descJa:"8ダメージ・エナジー+1",descEn:"Deal 8 damage, gain 1 energy",   archetype:"rogue", damage:8,bonusEnergy:1 },
-  { id:"smoke_bomb",   name:"연막탄",       nameJa:"煙幕弾",            nameEn:"Smoke Bomb",    cost:1,type:"skill", rarity:"rare",     desc:"방어력 10, 드로우 1", descJa:"シールド10・ドロー1", descEn:"Gain 10 shield, draw 1",          archetype:"rogue",  shield:10,draw:1 },
+  { id:"smoke_bomb",   name:"연막탄",       nameJa:"煙幕弾",            nameEn:"Smoke Bomb",    cost:1,type:"skill", rarity:"rare",     desc:"방어력 14, 드로우 1", descJa:"シールド14・ドロー1", descEn:"Gain 14 shield, draw 1",          archetype:"rogue",  shield:14,draw:1 },
   { id:"swift_strike", name:"신속 공격",    nameJa:"迅速打",            nameEn:"Swift Strike",  cost:1,type:"attack",rarity:"common",   desc:"5 데미지, 드로우 1",  descJa:"5ダメージ・ドロー1",  descEn:"Deal 5 damage, draw 1",           archetype:"rogue",   damage:5,draw:1 },
   { id:"backflip",     name:"백플립",       nameJa:"バックフリップ",    nameEn:"Backflip",      cost:1,type:"skill", rarity:"uncommon", desc:"방어력 6, 드로우 2",  descJa:"シールド6・ドロー2",  descEn:"Gain 6 shield, draw 2",           archetype:"rogue",   shield:6,draw:2 },
   // Mage
   { id:"soul_drain",   name:"영혼 흡수",    nameJa:"魂の吸収",          nameEn:"Soul Drain",    cost:2,type:"attack",rarity:"uncommon", desc:"10 데미지, HP +5",    descJa:"10ダメージ・HP+5",   descEn:"Deal 10 damage, heal 5 HP",       archetype:"mage",    damage:10,heal:5 },
   { id:"haunt",        name:"저주",         nameJa:"呪い",              nameEn:"Haunt",         cost:1,type:"attack",rarity:"uncommon", desc:"6 데미지, 독 2",      descJa:"6ダメージ・毒2",      descEn:"Deal 6 damage, apply 2 poison",   archetype:"mage",    damage:6,poison:2 },
-  { id:"arcane_surge", name:"비전 서지",    nameJa:"アーケインサージ",  nameEn:"Arcane Surge",  cost:2,type:"attack",rarity:"rare",     desc:"16 데미지, 드로우 1", descJa:"16ダメージ・ドロー1", descEn:"Deal 16 damage, draw 1",          archetype:"mage",   damage:16,draw:1 },
-  { id:"phantom_ward", name:"환영 방벽",    nameJa:"幻影の防壁",        nameEn:"Phantom Ward",  cost:1,type:"skill", rarity:"rare",     desc:"방어력 12",           descJa:"シールド12",          descEn:"Gain 12 shield",                  archetype:"mage",    shield:12 },
-  { id:"curse_bolt",   name:"저주 번개",    nameJa:"呪いの稲妻",        nameEn:"Curse Bolt",    cost:2,type:"attack",rarity:"epic",     desc:"18 데미지, 독 3",     descJa:"18ダメージ・毒3",     descEn:"Deal 18 damage, apply 3 poison",  archetype:"mage",    damage:18,poison:3 },
+  { id:"arcane_surge", name:"비전 서지",    nameJa:"アーケインサージ",  nameEn:"Arcane Surge",  cost:2,type:"attack",rarity:"rare",     desc:"9 데미지 × 2, 드로우 1",descJa:"9ダメージ×2・ドロー1",descEn:"Deal 9 damage twice, draw 1",    archetype:"mage",   damage:9,multiHit:2,draw:1 },
+  { id:"phantom_ward", name:"환영 방벽",    nameJa:"幻影の防壁",        nameEn:"Phantom Ward",  cost:1,type:"skill", rarity:"rare",     desc:"방어력 16",           descJa:"シールド16",          descEn:"Gain 16 shield",                  archetype:"mage",    shield:16 },
+  { id:"curse_bolt",   name:"저주 번개",    nameJa:"呪いの稲妻",        nameEn:"Curse Bolt",    cost:2,type:"attack",rarity:"epic",     desc:"10 데미지 × 2, 독 5", descJa:"10ダメージ×2・毒5",  descEn:"Deal 10 damage twice, poison 5",  archetype:"mage",    damage:10,multiHit:2,poison:5 },
   // Tank
   { id:"shell_block",  name:"등껍질 방어",  nameJa:"甲羅防御",          nameEn:"Shell Block",   cost:1,type:"skill", rarity:"common",   desc:"방어력 9",            descJa:"シールド9",           descEn:"Gain 9 shield",                   archetype:"tank",    shield:9 },
   { id:"crush_bite",   name:"분쇄 물기",    nameJa:"砕く噛みつき",      nameEn:"Crush Bite",    cost:2,type:"attack",rarity:"uncommon", desc:"13 데미지",           descJa:"13ダメージ",          descEn:"Deal 13 damage",                  archetype:"tank",    damage:13 },
-  { id:"fortress",     name:"요새",         nameJa:"要塞",              nameEn:"Fortress",      cost:2,type:"skill", rarity:"rare",     desc:"방어력 16, 힘 +1",    descJa:"シールド16・力+1",   descEn:"Gain 16 shield, gain 1 strength", archetype:"tank",    shield:16,strength:1 },
-  { id:"body_slam",    name:"몸통 박치기",  nameJa:"体当たり",          nameEn:"Body Slam",     cost:2,type:"attack",rarity:"rare",     desc:"10 데미지, 방어력 8", descJa:"10ダメージ・シールド8",descEn:"Deal 10 damage, gain 8 shield",  archetype:"tank",  damage:10,shield:8 },
-  { id:"endure",       name:"인내",         nameJa:"忍耐",              nameEn:"Endure",        cost:0,type:"skill", rarity:"rare",     desc:"방어력 7",            descJa:"シールド7",           descEn:"Gain 7 shield",                   archetype:"tank",    shield:7 },
+  { id:"fortress",     name:"요새",         nameJa:"要塞",              nameEn:"Fortress",      cost:2,type:"skill", rarity:"rare",     desc:"방어력 20, 힘 +1",    descJa:"シールド20・力+1",   descEn:"Gain 20 shield, gain 1 strength", archetype:"tank",    shield:20,strength:1 },
+  { id:"body_slam",    name:"몸통 박치기",  nameJa:"体当たり",          nameEn:"Body Slam",     cost:2,type:"attack",rarity:"rare",     desc:"7 데미지 × 2, 방어력 10",descJa:"7ダメージ×2・シールド10",descEn:"Deal 7 damage twice, gain 10 shield",archetype:"tank", damage:7,multiHit:2,shield:10 },
+  { id:"endure",       name:"인내",         nameJa:"忍耐",              nameEn:"Endure",        cost:0,type:"skill", rarity:"rare",     desc:"방어력 10",           descJa:"シールド10",          descEn:"Gain 10 shield",                  archetype:"tank",    shield:10 },
   // Nature
   { id:"thorn_strike", name:"가시 공격",    nameJa:"棘攻撃",            nameEn:"Thorn Strike",  cost:1,type:"attack",rarity:"common",   desc:"7 데미지",            descJa:"7ダメージ",           descEn:"Deal 7 damage",                   archetype:"nature",  damage:7 },
   { id:"spore_cloud",  name:"포자 구름",    nameJa:"胞子の雲",          nameEn:"Spore Cloud",   cost:1,type:"skill", rarity:"uncommon", desc:"독 3, 방어력 4",      descJa:"毒3・シールド4",      descEn:"Apply 3 poison, gain 4 shield",   archetype:"nature",  poison:3,shield:4 },
-  { id:"rejuvenate",   name:"재생",         nameJa:"再生",              nameEn:"Rejuvenate",    cost:2,type:"skill", rarity:"rare",     desc:"HP +14",              descJa:"HP+14",               descEn:"Heal 14 HP",                      archetype:"nature",  heal:14 },
+  { id:"rejuvenate",   name:"재생",         nameJa:"再生",              nameEn:"Rejuvenate",    cost:2,type:"skill", rarity:"rare",     desc:"HP +22",              descJa:"HP+22",               descEn:"Heal 22 HP",                      archetype:"nature",  heal:22 },
   { id:"vine_lash",    name:"넝쿨 채찍",    nameJa:"蔓の鞭",            nameEn:"Vine Lash",     cost:1,type:"attack",rarity:"uncommon", desc:"8 데미지, 독 1",      descJa:"8ダメージ・毒1",      descEn:"Deal 8 damage, apply 1 poison",   archetype:"nature",  damage:8,poison:1 },
-  { id:"photosyn",     name:"광합성",       nameJa:"光合成",            nameEn:"Photosynthesis",cost:2,type:"skill", rarity:"epic",     desc:"HP +8, 드로우 2",     descJa:"HP+8・ドロー2",       descEn:"Heal 8 HP, draw 2",               archetype:"nature",  heal:8,draw:2 },
+  { id:"photosyn",     name:"광합성",       nameJa:"光合成",            nameEn:"Photosynthesis",cost:2,type:"skill", rarity:"epic",     desc:"HP +18, 드로우 2",    descJa:"HP+18・ドロー2",      descEn:"Heal 18 HP, draw 2",              archetype:"nature",  heal:18,draw:2 },
   // Wild
   { id:"overclock",    name:"오버클록",     nameJa:"オーバークロック",  nameEn:"Overclock",     cost:1,type:"power", rarity:"uncommon", desc:"에너지 +2",           descJa:"エナジー+2",          descEn:"Gain 2 energy",                   archetype:"wild",    bonusEnergy:2 },
-  { id:"self_repair",  name:"자가 수리",    nameJa:"自己修復",          nameEn:"Self-Repair",   cost:2,type:"skill", rarity:"rare",     desc:"방어력 8, HP +8",     descJa:"シールド8・HP+8",     descEn:"Gain 8 shield, heal 8 HP",        archetype:"wild",    shield:8,heal:8 },
+  { id:"self_repair",  name:"자가 수리",    nameJa:"自己修復",          nameEn:"Self-Repair",   cost:2,type:"skill", rarity:"rare",     desc:"방어력 12, HP +14",   descJa:"シールド12・HP+14",   descEn:"Gain 12 shield, heal 14 HP",      archetype:"wild",    shield:12,heal:14 },
   { id:"absorb",       name:"흡수",         nameJa:"吸収",              nameEn:"Absorb",        cost:1,type:"skill", rarity:"uncommon", desc:"방어력 8",            descJa:"シールド8",           descEn:"Gain 8 shield",                   archetype:"wild",    shield:8 },
   { id:"replicate",    name:"복제",         nameJa:"複製",              nameEn:"Replicate",     cost:2,type:"skill", rarity:"epic",     desc:"드로우 3",            descJa:"ドロー3",             descEn:"Draw 3 cards",                    archetype:"wild",    draw:3 },
-  { id:"shock_blast",  name:"충격 파동",    nameJa:"衝撃波",            nameEn:"Shock Blast",   cost:2,type:"attack",rarity:"rare",     desc:"12 데미지, 독 2",     descJa:"12ダメージ・毒2",     descEn:"Deal 12 damage, apply 2 poison",  archetype:"wild",    damage:12,poison:2 },
+  { id:"shock_blast",  name:"충격 파동",    nameJa:"衝撃波",            nameEn:"Shock Blast",   cost:2,type:"attack",rarity:"rare",     desc:"7 데미지 × 2, 독 3",  descJa:"7ダメージ×2・毒3",    descEn:"Deal 7 damage twice, poison 3",   archetype:"wild",    damage:7,multiHit:2,poison:3 },
   // Extra (만능) — 종류 보강
   { id:"heavy_blow",   name:"묵직한 일격",  nameJa:"重い一撃",          nameEn:"Heavy Blow",    cost:2,type:"attack",rarity:"common",   desc:"11 데미지",           descJa:"11ダメージ",          descEn:"Deal 11 damage",                  archetype:"all",     damage:11 },
-  { id:"twin_fang",    name:"쌍날 송곳니",  nameJa:"双牙",              nameEn:"Twin Fang",     cost:1,type:"attack",rarity:"uncommon", desc:"5 데미지 × 2",       descJa:"5ダメージ×2",         descEn:"Deal 5 damage twice",             archetype:"all",     damage:5,multiHit:2 },
+  { id:"twin_fang",    name:"쌍날 송곳니",  nameJa:"双牙",              nameEn:"Twin Fang",     cost:2,type:"attack",rarity:"uncommon", desc:"6 데미지 × 2",       descJa:"6ダメージ×2",         descEn:"Deal 6 damage twice",             archetype:"all",     damage:6,multiHit:2 },
   { id:"bulwark",      name:"방벽",         nameJa:"防壁",              nameEn:"Bulwark",       cost:2,type:"skill", rarity:"uncommon", desc:"방어력 14",           descJa:"シールド14",          descEn:"Gain 14 shield",                  archetype:"all",     shield:14 },
-  { id:"adrenaline",   name:"아드레날린",   nameJa:"アドレナリン",      nameEn:"Adrenaline",    cost:0,type:"power", rarity:"uncommon", desc:"에너지 +1, 드로우 1", descJa:"エナジー+1・ドロー1", descEn:"Gain 1 energy, draw 1",           archetype:"all",     bonusEnergy:1,draw:1 },
+  { id:"adrenaline",   name:"아드레날린",   nameJa:"アドレナリン",      nameEn:"Adrenaline",    cost:0,type:"power", rarity:"uncommon", desc:"에너지 +1",           descJa:"エナジー+1",          descEn:"Gain 1 energy",                   archetype:"all",     bonusEnergy:1 },
   { id:"toxic_blade",  name:"맹독 칼날",    nameJa:"猛毒の刃",          nameEn:"Toxic Blade",   cost:1,type:"attack",rarity:"uncommon", desc:"7 데미지, 독 2",      descJa:"7ダメージ・毒2",      descEn:"Deal 7 damage, apply 2 poison",   archetype:"all",     damage:7,poison:2 },
   { id:"shield_bash",  name:"방패 강타",    nameJa:"シールドバッシュ",  nameEn:"Shield Bash",   cost:1,type:"attack",rarity:"uncommon", desc:"6 데미지, 방어력 6",  descJa:"6ダメージ・シールド6",descEn:"Deal 6 damage, gain 6 shield",    archetype:"all",     damage:6,shield:6 },
-  { id:"vampiric",     name:"흡혈 일격",    nameJa:"吸血の一撃",        nameEn:"Vampiric Strike",cost:2,type:"attack",rarity:"rare",    desc:"14 데미지, HP +6",    descJa:"14ダメージ・HP+6",   descEn:"Deal 14 damage, heal 6 HP",       archetype:"all",     damage:14,heal:6 },
-  { id:"focus",        name:"집중",         nameJa:"集中",              nameEn:"Focus",         cost:1,type:"power", rarity:"rare",     desc:"힘 +2, 드로우 1",     descJa:"力+2・ドロー1",       descEn:"Gain 2 strength, draw 1",         archetype:"all",     strength:2,draw:1 },
-  { id:"cataclysm",    name:"대재앙",       nameJa:"大災厄",            nameEn:"Cataclysm",     cost:3,type:"attack",rarity:"epic",     desc:"28 데미지",           descJa:"28ダメージ",          descEn:"Deal 28 damage",                  archetype:"all",     damage:28 },
-  { id:"fortress_wall",name:"성벽",         nameJa:"城壁",              nameEn:"Fortress Wall", cost:3,type:"skill", rarity:"epic",     desc:"방어력 22, 드로우 1", descJa:"シールド22・ドロー1", descEn:"Gain 22 shield, draw 1",          archetype:"all",     shield:22,draw:1 },
+  { id:"vampiric",     name:"흡혈 일격",    nameJa:"吸血の一撃",        nameEn:"Vampiric Strike",cost:2,type:"attack",rarity:"rare",    desc:"8 데미지 × 2, HP +10", descJa:"8ダメージ×2・HP+10", descEn:"Deal 8 damage twice, heal 10 HP", archetype:"all",     damage:8,multiHit:2,heal:10 },
+  { id:"focus",        name:"집중",         nameJa:"集中",              nameEn:"Focus",         cost:1,type:"power", rarity:"rare",     desc:"힘 +1, 드로우 1",     descJa:"力+1・ドロー1",       descEn:"Gain 1 strength, draw 1",         archetype:"all",     strength:1,draw:1 },
+  { id:"cataclysm",    name:"대재앙",       nameJa:"大災厄",            nameEn:"Cataclysm",     cost:3,type:"attack",rarity:"epic",     desc:"10 데미지 × 3",       descJa:"10ダメージ×3",        descEn:"Deal 10 damage three times",      archetype:"all",     damage:10,multiHit:3 },
+  { id:"fortress_wall",name:"성벽",         nameJa:"城壁",              nameEn:"Fortress Wall", cost:3,type:"skill", rarity:"epic",     desc:"방어력 32, 드로우 1", descJa:"シールド32・ドロー1", descEn:"Gain 32 shield, draw 1",          archetype:"all",     shield:32,draw:1 },
+  // Shield-proportional
+  { id:"bulwark_strike",name:"방패 맹격",   nameJa:"盾の猛撃",          nameEn:"Bulwark Strike",cost:2,type:"attack",rarity:"rare",     desc:"현재 방어력만큼 피해",  descJa:"現在のシールド分ダメージ",descEn:"Deal damage equal to current shield", archetype:"all",   shieldStrike:1 },
+  { id:"iron_surge",   name:"철갑 질주",    nameJa:"鉄甲突進",          nameEn:"Iron Surge",    cost:1,type:"attack",rarity:"rare",     desc:"방어력 절반만큼 피해, 방어력 +6",descJa:"シールド半分ダメージ・シールド+6",descEn:"Deal half-shield damage, gain 6 shield",archetype:"tank", shieldStrike:0.5,shield:6 },
   // Legendary
-  { id:"final_strike", name:"최후의 일격",  nameJa:"最後の一撃",        nameEn:"Final Strike",  cost:3,type:"attack",rarity:"legendary",desc:"40 데미지",           descJa:"40ダメージ",          descEn:"Deal 40 damage",                  archetype:"all",     damage:40 },
-  { id:"immortal",     name:"불멸",         nameJa:"不滅",              nameEn:"Immortal",      cost:3,type:"skill", rarity:"legendary",desc:"방어력 20, HP +20",   descJa:"シールド20・HP+20",  descEn:"Gain 20 shield, heal 20 HP",      archetype:"all",     shield:20,heal:20 },
-  { id:"berserker",    name:"광전사",       nameJa:"バーサーカー",      nameEn:"Berserker",     cost:2,type:"attack",rarity:"legendary",desc:"6 데미지 × 4",       descJa:"6ダメージ×4",         descEn:"Deal 6 damage four times",        archetype:"warrior", damage:6,multiHit:4 },
-  { id:"shadow_realm", name:"암흑 영역",    nameJa:"暗黒領域",          nameEn:"Shadow Realm",  cost:3,type:"attack",rarity:"legendary",desc:"20 데미지, 독 5",     descJa:"20ダメージ・毒5",     descEn:"Deal 20 damage, apply 5 poison",  archetype:"mage",    damage:20,poison:5 },
-  { id:"ancient_armor",name:"고대의 갑옷",  nameJa:"古代の鎧",          nameEn:"Ancient Armor", cost:3,type:"skill", rarity:"legendary",desc:"방어력 25, 힘 +2",    descJa:"シールド25・力+2",   descEn:"Gain 25 shield, gain 2 strength", archetype:"tank",    shield:25,strength:2 },
+  { id:"final_strike", name:"최후의 일격",  nameJa:"最後の一撃",        nameEn:"Final Strike",  cost:3,type:"attack",rarity:"legendary",desc:"15 데미지 × 3",       descJa:"15ダメージ×3",        descEn:"Deal 15 damage three times",      archetype:"all",     damage:15,multiHit:3 },
+  { id:"immortal",     name:"불멸",         nameJa:"不滅",              nameEn:"Immortal",      cost:3,type:"skill", rarity:"legendary",desc:"방어력 28, HP +30",   descJa:"シールド28・HP+30",  descEn:"Gain 28 shield, heal 30 HP",      archetype:"all",     shield:28,heal:30 },
+  { id:"berserker",    name:"광전사",       nameJa:"バーサーカー",      nameEn:"Berserker",     cost:3,type:"attack",rarity:"legendary",desc:"10 데미지 × 4",      descJa:"10ダメージ×4",        descEn:"Deal 10 damage four times",       archetype:"warrior", damage:10,multiHit:4 },
+  { id:"shadow_realm", name:"암흑 영역",    nameJa:"暗黒領域",          nameEn:"Shadow Realm",  cost:3,type:"attack",rarity:"legendary",desc:"8 데미지 × 3, 독 10",  descJa:"8ダメージ×3・毒10",  descEn:"Deal 8 damage three times, poison 10",archetype:"mage",damage:8,multiHit:3,poison:10 },
+  { id:"ancient_armor",name:"고대의 갑옷",  nameJa:"古代の鎧",          nameEn:"Ancient Armor", cost:3,type:"skill", rarity:"legendary",desc:"방어력 32, 힘 +3",    descJa:"シールド32・力+3",   descEn:"Gain 32 shield, gain 3 strength", archetype:"tank",    shield:32,strength:3 },
 ];
 
 // ── Relic pool ─────────────────────────────────────────────────────────────
@@ -209,17 +213,17 @@ const RELICS: RelicDef[] = [
   { id:"thorn_bracelet", grade:"common", category:"combat",   name:"가시 팔찌",       nameJa:"棘の腕輪",         nameEn:"Thorn Bracelet",   desc:"피격 시 반사 데미지 1",         descJa:"被撃時、反射1ダメージ",     descEn:"Reflect 1 damage when hit" },
   // ── Common / utility ──
   { id:"compass",        grade:"common", category:"utility",  name:"나침반",          nameJa:"コンパス",         nameEn:"Compass",          desc:"매 전투 시작 시 카드 1장 추가", descJa:"戦闘開始時、1枚追加ドロー", descEn:"Draw 1 extra card at battle start" },
-  { id:"bandage",        grade:"common", category:"utility",  name:"붕대",            nameJa:"包帯",             nameEn:"Bandage",          desc:"전투 승리 시 최대 HP +5",      descJa:"戦闘勝利時、最大HP+5",     descEn:"+5 max HP on battle win" },
+  { id:"bandage",        grade:"common", category:"utility",  name:"붕대",            nameJa:"包帯",             nameEn:"Bandage",          desc:"전투 승리 시 최대 HP +1",      descJa:"戦闘勝利時、最大HP+1",     descEn:"+1 max HP on battle win" },
   // ── Common / reward ──
   { id:"old_wallet",     grade:"common", category:"reward",   name:"낡은 지갑",       nameJa:"古い財布",         nameEn:"Old Wallet",       desc:"전투 승리 시 골드 +15",        descJa:"戦闘勝利時、ゴールド+15",  descEn:"Gain 15 gold on battle win" },
   { id:"lucky_coin",     grade:"common", category:"reward",   name:"행운의 동전",     nameJa:"幸運のコイン",     nameEn:"Lucky Coin",       desc:"보상 카드 4장 중 선택",        descJa:"報酬カード4枚から選択",     descEn:"Choose from 4 reward cards" },
   // ── Rare / combat ──
   { id:"dragon_scale",   grade:"rare",   category:"combat",   name:"용의 비늘",       nameJa:"竜の鱗",           nameEn:"Dragon Scale",     desc:"매 턴 시작 시 방어력 +3",      descJa:"ターン開始時、シールド+3",  descEn:"Gain 3 shield at turn start" },
   { id:"berserker_axe",  grade:"rare",   category:"combat",   name:"광전사의 도끼",   nameJa:"狂戦士の斧",       nameEn:"Berserker Axe",    desc:"전투 종료마다 힘 +2 (영구)",   descJa:"戦闘終了ごとに力+2（永続）", descEn:"+2 strength permanently after each battle" },
-  { id:"vampire_ring",   grade:"rare",   category:"combat",   name:"흡혈 반지",       nameJa:"吸血の指輪",       nameEn:"Vampire Ring",     desc:"전투 승리 시 최대 HP +10",     descJa:"戦闘勝利時、最大HP+10",    descEn:"+10 max HP on battle win" },
-  { id:"health_potion",  grade:"rare",   category:"combat",   name:"체력 물약",       nameJa:"体力ポーション",   nameEn:"Health Potion",    desc:"전투 종료마다 최대 HP +5 (영구)", descJa:"戦闘終了ごとに最大HP+5（永続）", descEn:"+5 max HP permanently after each battle" },
+  { id:"vampire_ring",   grade:"rare",   category:"combat",   name:"흡혈 반지",       nameJa:"吸血の指輪",       nameEn:"Vampire Ring",     desc:"전투 승리 시 최대 HP +2",      descJa:"戦闘勝利時、最大HP+2",     descEn:"+2 max HP on battle win" },
+  { id:"health_potion",  grade:"rare",   category:"combat",   name:"체력 물약",       nameJa:"体力ポーション",   nameEn:"Health Potion",    desc:"전투 종료마다 최대 HP +2 (영구)", descJa:"戦闘終了ごとに最大HP+2（永続）", descEn:"+2 max HP permanently after each battle" },
   // ── Rare / utility ──
-  { id:"magic_cloak",    grade:"rare",   category:"utility",  name:"마법 망토",       nameJa:"魔法のマント",     nameEn:"Magic Cloak",      desc:"획득 시 최대 HP +20",          descJa:"取得時、最大HP+20",         descEn:"Gain +20 max HP" },
+  { id:"magic_cloak",    grade:"rare",   category:"utility",  name:"마법 망토",       nameJa:"魔法のマント",     nameEn:"Magic Cloak",      desc:"획득 시 최대 HP +100",         descJa:"取得時、最大HP+100",        descEn:"Gain +100 max HP" },
   { id:"energy_crystal", grade:"rare",   category:"utility",  name:"에너지 결정체",   nameJa:"エナジークリスタル",nameEn:"Energy Crystal",   desc:"획득 시 최대 에너지 +1",       descJa:"取得時、最大エナジー+1",    descEn:"Gain +1 max energy" },
   // ── Rare / reward ──
   { id:"gold_pouch",     grade:"rare",   category:"reward",   name:"금화 주머니",     nameJa:"金貨袋",           nameEn:"Gold Pouch",       desc:"골드 획득량 +30%",             descJa:"ゴールド獲得量+30%",        descEn:"+30% gold from battles" },
@@ -227,11 +231,27 @@ const RELICS: RelicDef[] = [
   { id:"immortal_heart", grade:"unique", category:"combat",   name:"불멸의 심장",     nameJa:"不滅の心臓",       nameEn:"Immortal Heart",   desc:"런 중 1회 치사 데미지 방어",    descJa:"1回だけ致死ダメージを無効", descEn:"Block lethal damage once per run" },
   { id:"storm_sword",    grade:"unique", category:"combat",   name:"폭풍의 검",       nameJa:"嵐の剣",           nameEn:"Storm Sword",      desc:"획득 시 최대 에너지 +1 (영구)", descJa:"取得時、最大エナジー+1（永続）",descEn:"Gain +1 max energy permanently" },
   // ── Unique / utility ──
-  { id:"hourglass",      grade:"unique", category:"utility",  name:"시간의 모래시계", nameJa:"時の砂時計",       nameEn:"Hourglass",        desc:"매 전투 시작 시 카드 2장 추가", descJa:"戦闘開始時、2枚追加ドロー", descEn:"Draw 2 extra cards at battle start" },
-  { id:"philosopher",    grade:"unique", category:"utility",  name:"연금술사의 돌",   nameJa:"賢者の石",         nameEn:"Philosopher's Stone",desc:"상점 가격 -25%",              descJa:"ショップ価格-25%",          descEn:"Shop prices -25%" },
+  { id:"hourglass",      grade:"rare",   category:"utility",  name:"시간의 모래시계", nameJa:"時の砂時計",       nameEn:"Hourglass",        desc:"매 전투 시작 시 카드 2장 추가", descJa:"戦闘開始時、2枚追加ドロー", descEn:"Draw 2 extra cards at battle start" },
+  { id:"philosopher",    grade:"rare",   category:"utility",  name:"연금술사의 돌",   nameJa:"賢者の石",         nameEn:"Philosopher's Stone",desc:"상점 가격 -25%",              descJa:"ショップ価格-25%",          descEn:"Shop prices -25%" },
   // ── Unique / reward ──
   { id:"fate_dice",      grade:"unique", category:"reward",   name:"운명의 주사위",   nameJa:"運命のサイコロ",   nameEn:"Fate Dice",        desc:"보상 카드 4장, 레어 이상 위주", descJa:"報酬4枚・レア以上中心",     descEn:"4 reward cards, skewed rare+" },
   { id:"master_key",     grade:"unique", category:"reward",   name:"마스터 열쇠",     nameJa:"マスターキー",     nameEn:"Master Key",       desc:"보물 노드 함정 없음",           descJa:"宝物ノードのトラップなし",  descEn:"No ambush trap in treasure nodes" },
+  // ── Common / combat (신규) ──
+  { id:"iron_flask",     grade:"common", category:"combat",   name:"철제 플라스크",   nameJa:"鉄フラスク",       nameEn:"Iron Flask",       desc:"전투 시작 시 방어력 +5",        descJa:"戦闘開始時、シールド+5",    descEn:"Gain 5 shield at battle start" },
+  { id:"battle_horn",    grade:"common", category:"combat",   name:"전투 뿔피리",     nameJa:"戦闘の角笛",       nameEn:"Battle Horn",      desc:"전투 시작 시 적에게 독 3",      descJa:"戦闘開始時、敵に毒3",      descEn:"Apply 3 poison to enemy at battle start" },
+  // ── Common / reward (신규) ──
+  { id:"rabbit_foot",    grade:"common", category:"reward",   name:"토끼 발",         nameJa:"ウサギの足",       nameEn:"Rabbit's Foot",    desc:"전투 승리 시 골드 +20",         descJa:"戦闘勝利時、ゴールド+20",  descEn:"Gain 20 gold on battle win" },
+  // ── Rare / combat (신규) ──
+  { id:"gilded_shield",  grade:"rare",   category:"combat",   name:"황금 방패",       nameJa:"黄金の盾",         nameEn:"Gilded Shield",    desc:"전투 시작 시 방어력 +10",       descJa:"戦闘開始時、シールド+10",   descEn:"Gain 10 shield at battle start" },
+  { id:"cursed_tome",    grade:"rare",   category:"combat",   name:"저주받은 책",     nameJa:"呪われた本",       nameEn:"Cursed Tome",      desc:"매 턴 시작 시 적에게 독 2",     descJa:"ターン開始時、敵に毒2",    descEn:"Apply 2 poison to enemy each turn" },
+  { id:"titan_heart",    grade:"rare",   category:"combat",   name:"거인의 심장",     nameJa:"巨人の心臓",       nameEn:"Titan's Heart",    desc:"획득 시 최대 HP +40",           descJa:"取得時、最大HP+40",         descEn:"Gain +40 max HP on acquire" },
+  // ── Rare / utility (신규) ──
+  { id:"mana_shard",     grade:"rare",   category:"utility",  name:"마나 파편",       nameJa:"マナの欠片",       nameEn:"Mana Shard",       desc:"전투 시작 시 에너지 +1",        descJa:"戦闘開始時、エナジー+1",    descEn:"Gain 1 extra energy at battle start" },
+  // ── Unique / combat (신규) ──
+  { id:"titan_core",     grade:"unique", category:"combat",   name:"거인의 핵",       nameJa:"巨人の核",         nameEn:"Titan Core",       desc:"전투 종료마다 최대 HP +3 (영구)",descJa:"戦闘終了ごとに最大HP+3（永続）",descEn:"+3 max HP permanently after each battle" },
+  { id:"soul_mirror",    grade:"unique", category:"combat",   name:"영혼의 거울",     nameJa:"魂の鏡",           nameEn:"Soul Mirror",      desc:"피격 시 받은 피해의 30% 반사",  descJa:"被撃時、ダメージの30%反射", descEn:"Reflect 30% of damage taken when hit" },
+  // ── Unique / utility (신규) ──
+  { id:"void_crystal",   grade:"unique", category:"utility",  name:"공허의 결정",     nameJa:"虚空の結晶",       nameEn:"Void Crystal",     desc:"획득 시 최대 에너지 +2 (영구)", descJa:"取得時、最大エナジー+2（永続）",descEn:"Gain +2 max energy on acquire" },
 ];
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
@@ -479,13 +499,16 @@ function makeStarterDeck(type: CharacterType): CardInstance[] {
   return shuffle(ids.map(id=>CARDS.find(c=>c.id===id)!).filter(Boolean)).map(toInst);
 }
 
-function pickRewards(floor: number, arch: string, diff: Difficulty = "normal", extraCard = false, fateDice = false): CardDef[] {
+function pickRewards(floor: number, arch: string, diff: Difficulty = "normal", extraCard = false, fateDice = false, deck: CardInstance[] = []): CardDef[] {
   const count = extraCard ? 4 : 3;
   const allowLeg = floor >= DIFF_LEG_FLOOR[diff];
   const allowEpicFloor = DIFF_EPIC_FLOOR[diff];
+  const deckCount = new Map<string, number>();
+  for (const c of deck) deckCount.set(c.id, (deckCount.get(c.id) ?? 0) + 1);
   const pool = CARDS.filter(c => {
     if (c.rarity==="legendary" && !allowLeg) return false;
     if (c.rarity==="epic" && floor<allowEpicFloor) return false;
+    if ((deckCount.get(c.id) ?? 0) >= 3) return false;
     return c.archetype===arch || c.archetype==="all";
   });
   const weighted: CardDef[] = [];
@@ -499,14 +522,16 @@ function pickRewards(floor: number, arch: string, diff: Difficulty = "normal", e
     if (!seen.has(c.id)) { seen.add(c.id); res.push(c); if (res.length===count) break; }
   }
   while (res.length<count) {
-    const fb = CARDS.find(c=>!seen.has(c.id));
+    const fb = CARDS.find(c=>!seen.has(c.id) && (deckCount.get(c.id) ?? 0) < 3);
     if (fb) { seen.add(fb.id); res.push(fb); } else break;
   }
   return res;
 }
 
-function makeShopItems(arch: string, inflated = false, discount = false) {
-  const pool = shuffle(CARDS.filter(c=>c.archetype===arch||c.archetype==="all")).slice(0,3);
+function makeShopItems(arch: string, inflated = false, discount = false, deck: CardInstance[] = []) {
+  const deckCount = new Map<string, number>();
+  for (const c of deck) deckCount.set(c.id, (deckCount.get(c.id) ?? 0) + 1);
+  const pool = shuffle(CARDS.filter(c=>(c.archetype===arch||c.archetype==="all") && (deckCount.get(c.id) ?? 0) < 3)).slice(0,3);
   const mult = (inflated ? 1.5 : 1.0) * (discount ? 0.75 : 1.0);
   return pool.map(card=>({ card, price: Math.ceil((CARD_PRICE[card.rarity]??60) * mult / 10) * 10, bought:false }));
 }
@@ -863,7 +888,7 @@ export default function RoguePage() {
     const rogueType = ROGUE_TYPE_MAP[myChar.type] ?? "energy";
     const startEnergy    = rogueType === "energy"  ? 4 : 3;
     const startStrength  = 0; // attack type: +1 per battle (applied at each battle start)
-    const startShield    = rogueType === "defense" ? 5 : 0;
+    const startShield    = 0; // defense type: +5 shield applied at each battle start
     const diff: Difficulty = mode === "challenge" ? "challenge" : difficulty;
     setGs({
       phase:"map", floor:-1,
@@ -900,15 +925,22 @@ export default function RoguePage() {
         const chainPending = (nodeType==="elite" && floorIdx >= 4 && Math.random() < 0.20)
           ? spawnEnemyForFloor(floorIdx, "fight", prev.difficulty)
           : null;
-        // 공격형 패시브: 매 전투 시작 시 힘 +1 (영구 누적)
+        // 전투 시작 패시브
         const attackStrBonus = (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
-        const battleLog = attackStrBonus > 0
-          ? [ko?"전투 시작! (힘 +1)":ja?"バトル開始！(力+1)":"Battle start! (Strength +1)"]
-          : [ko?"전투 시작!":ja?"バトル開始！":"Battle start!"];
+        const defenseShieldBonus = (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense" ? 5 : 0;
+        const battleStartShield = defenseShieldBonus + (hasRelic(prev.relics,"iron_flask")?5:0) + (hasRelic(prev.relics,"gilded_shield")?10:0);
+        const manaBonus = hasRelic(prev.relics,"mana_shard") ? 1 : 0;
+        if (hasRelic(prev.relics,"battle_horn")) enemy.poisonStacks += 3;
+        const battleLog: string[] = [
+          attackStrBonus > 0
+            ? (ko?"전투 시작! (힘 +1)":ja?"バトル開始！(力+1)":"Battle start! (Strength +1)")
+            : (ko?"전투 시작!":ja?"バトル開始！":"Battle start!"),
+          ...(hasRelic(prev.relics,"battle_horn") ? [ko?"[전투 뿔피리] 독 3":ja?"[戦闘の角笛] 毒3":"[Battle Horn] +3 poison"] : []),
+        ];
         return {
           ...prev, phase:"battle", floor:floorIdx,
           chosenPath:newChosenPath,
-          shield:0, energy:prev.maxEnergy,
+          shield: battleStartShield, energy: prev.maxEnergy + manaBonus,
           strength: prev.strength + attackStrBonus,
           playerHp: prev.playerHp,
           enemy,
@@ -925,9 +957,13 @@ export default function RoguePage() {
           const extraDraw = (hasRelic(prev.relics,"compass")?1:0) + (hasRelic(prev.relics,"hourglass")?2:0);
           const drawn = drawN([], drawPile, [], 5 + extraDraw);
           const attackStrBonus = (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+          const defenseShieldBonusA = (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense" ? 5 : 0;
+          const battleStartShieldA = defenseShieldBonusA + (hasRelic(prev.relics,"iron_flask")?5:0) + (hasRelic(prev.relics,"gilded_shield")?10:0);
+          const manaBonus = hasRelic(prev.relics,"mana_shard") ? 1 : 0;
+          if (hasRelic(prev.relics,"battle_horn")) enemy.poisonStacks += 3;
           return {
             ...prev, phase:"battle", floor:floorIdx, chosenPath:newChosenPath,
-            shield:0, energy:prev.maxEnergy,
+            shield: battleStartShieldA, energy: prev.maxEnergy + manaBonus,
             strength: prev.strength + attackStrBonus,
             enemy,
             hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
@@ -937,13 +973,13 @@ export default function RoguePage() {
         }
         const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
         const fateDice = hasRelic(prev.relics,"fate_dice");
-        return { ...prev, phase:"reward", floor:floorIdx, chosenPath:newChosenPath, rewardCards:pickRewards(floorIdx, arch, prev.difficulty, extraCard, fateDice), relicPending:true };
+        return { ...prev, phase:"reward", floor:floorIdx, chosenPath:newChosenPath, rewardCards:pickRewards(floorIdx, arch, prev.difficulty, extraCard, fateDice, prev.deck), relicPending:true };
       }
       if (nodeType==="shop") {
         // 억까: 바가지 상점 - 30% 확률로 가격 1.5배
         const inflated = Math.random() < 0.30;
         const discount = hasRelic(prev.relics,"philosopher");
-        return { ...prev, phase:"shop", floor:floorIdx, chosenPath:newChosenPath, shopItems:makeShopItems(arch, inflated, discount), shopInflated:inflated };
+        return { ...prev, phase:"shop", floor:floorIdx, chosenPath:newChosenPath, shopItems:makeShopItems(arch, inflated, discount, prev.deck), shopInflated:inflated };
       }
       if (nodeType==="rest") {
         // 억까: 저주받은 휴식소 - floor4+ 25% 확률
@@ -985,6 +1021,17 @@ export default function RoguePage() {
         }
         const hitStr = hits>1 ? ` ×${hits}` : "";
         logs.push(ko?`${total} 데미지${hitStr}`:ja?`${total}ダメージ${hitStr}`:`${total} damage${hitStr}`);
+      }
+
+      // 2b. Shield-proportional damage (현재 방어도 비례)
+      if (card.shieldStrike && shield > 0) {
+        const shieldDmg = Math.floor(shield * card.shieldStrike);
+        if (shieldDmg > 0) {
+          const abs = Math.min(enemy.currentShield, shieldDmg);
+          enemy.currentShield = Math.max(0, enemy.currentShield - abs);
+          enemy.currentHp = Math.max(0, enemy.currentHp - (shieldDmg - abs));
+          logs.push(ko?`방어력 ${shieldDmg} 피해 (×${card.shieldStrike})`:ja?`シールド${shieldDmg}ダメージ (×${card.shieldStrike})`:`Shield ${shieldDmg} damage (×${card.shieldStrike})`);
+        }
       }
 
       // 3. Shield
@@ -1031,7 +1078,7 @@ export default function RoguePage() {
         const nodeType = prev.chosenPath[prev.floor];
         const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
         // Relic: permanent stat gain on kill
-        const killMaxHpGain = (hasRelic(prev.relics,"bandage")?5:0) + (hasRelic(prev.relics,"vampire_ring")?10:0) + (hasRelic(prev.relics,"health_potion")?5:0);
+        const killMaxHpGain = (hasRelic(prev.relics,"bandage")?1:0) + (hasRelic(prev.relics,"vampire_ring")?2:0) + (hasRelic(prev.relics,"health_potion")?2:0) + (hasRelic(prev.relics,"titan_core")?3:0);
         const killStrGain   = (hasRelic(prev.relics,"blade_ring")?1:0) + (hasRelic(prev.relics,"berserker_axe")?2:0);
         const newMaxHp = prev.playerMaxHp + killMaxHpGain;
         const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
@@ -1049,9 +1096,10 @@ export default function RoguePage() {
           };
         }
         const baseGold = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
-        const finalGold = hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold;
+        const bonusGold = (hasRelic(prev.relics,"old_wallet")?15:0) + (hasRelic(prev.relics,"rabbit_foot")?20:0);
+        const finalGold = (hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold) + bonusGold;
         const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
-        const rewards = pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice"));
+        const rewards = pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice"), prev.deck);
         const newRelicPending = nodeType==="elite" || nodeType==="boss";
         return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, shield, strength:strength+killStrGain, energy, enemy, hand:finalHand, drawPile, discardPile, log:[...newLog, ko?"처치!":ja?"撃破！":"Defeated!"], phase:"reward", gold:prev.gold+finalGold, rewardCards:rewards, relicPending:newRelicPending };
       }
@@ -1080,6 +1128,7 @@ export default function RoguePage() {
       let enemy = { ...prev.enemy };
       let playerHp = prev.playerHp;
       let playerPoison = prev.poison;
+      let shield = prev.shield;
       const logs: string[] = [];
       const eName = ko ? enemy.name : ja ? enemy.nameJa : enemy.nameEn;
 
@@ -1094,7 +1143,7 @@ export default function RoguePage() {
       if (enemy.currentHp <= 0) {
         const nodeType = prev.chosenPath[prev.floor];
         const isFinal = prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
-        const killMaxHpGain = (hasRelic(prev.relics,"bandage")?5:0)+(hasRelic(prev.relics,"vampire_ring")?10:0)+(hasRelic(prev.relics,"health_potion")?5:0);
+        const killMaxHpGain = (hasRelic(prev.relics,"bandage")?1:0)+(hasRelic(prev.relics,"vampire_ring")?2:0)+(hasRelic(prev.relics,"health_potion")?2:0)+(hasRelic(prev.relics,"titan_core")?3:0);
         const killStrGain   = (hasRelic(prev.relics,"blade_ring")?1:0)+(hasRelic(prev.relics,"berserker_axe")?2:0);
         const newMaxHp = prev.playerMaxHp + killMaxHpGain;
         const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
@@ -1113,10 +1162,11 @@ export default function RoguePage() {
           };
         }
         const baseGold = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
-        const finalGold = hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold;
+        const bonusGold = (hasRelic(prev.relics,"old_wallet")?15:0) + (hasRelic(prev.relics,"rabbit_foot")?20:0);
+        const finalGold = (hasRelic(prev.relics,"gold_pouch") ? Math.floor(baseGold*1.3) : baseGold) + bonusGold;
         const extraCard = hasRelic(prev.relics,"lucky_coin")||hasRelic(prev.relics,"fate_dice");
         const newRelicPending = nodeType==="elite" || nodeType==="boss";
-        return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, strength:prev.strength+killStrGain, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+finalGold, rewardCards:pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice")), relicPending:newRelicPending, log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
+        return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, strength:prev.strength+killStrGain, enemy:{...enemy,currentHp:0}, phase:"reward", gold:prev.gold+finalGold, rewardCards:pickRewards(prev.floor, arch, prev.difficulty, extraCard, hasRelic(prev.relics,"fate_dice"), prev.deck), relicPending:newRelicPending, log:[...prev.log.slice(-5),...logs,ko?"처치!":ja?"撃破！":"Defeated!"], hand:[], discardPile:[...prev.discardPile,...prev.hand] };
       }
 
       // Enemy action
@@ -1126,13 +1176,22 @@ export default function RoguePage() {
 
       if (pattern.intent==="attack"||pattern.intent==="poison") {
         const atk = pattern.value + enemy.currentStrength;
-        const abs = Math.min(prev.shield, atk);
+        const abs = Math.min(shield, atk);
         const direct = atk - abs;
         playerHp = Math.max(0, playerHp - direct);
+        shield = Math.max(0, shield - abs);
         // Relic: thorn bracelet reflects 1 damage when hit
         if (direct > 0 && hasRelic(prev.relics,"thorn_bracelet")) {
           enemy.currentHp = Math.max(0, enemy.currentHp - 1);
           logs.push(ko?"[가시 팔찌] 반사 1":ja?"[棘腕輪] 反射1":"[Thorn Bracelet] Reflect 1");
+        }
+        // Relic: soul mirror reflects 30% of direct damage
+        if (direct > 0 && hasRelic(prev.relics,"soul_mirror")) {
+          const mirrorDmg = Math.floor(direct * 0.3);
+          if (mirrorDmg > 0) {
+            enemy.currentHp = Math.max(0, enemy.currentHp - mirrorDmg);
+            logs.push(ko?`[영혼의 거울] 반사 ${mirrorDmg}`:ja?`[魂の鏡] 反射${mirrorDmg}`:`[Soul Mirror] Reflect ${mirrorDmg}`);
+          }
         }
         logs.push(`[${eName}] ${ko?"공격":ja?"攻撃":"Attack"} ${atk}${direct<atk?` (${ko?"방어":ja?"盾":"Block"} ${abs})`:""}${direct>0?` → -${direct}HP`:""}`);
         if (pattern.poison) { playerPoison += pattern.poison; logs.push(ko?`독 ${pattern.poison} 적용`:ja?`毒${pattern.poison}`:`Poison ${pattern.poison} applied`); }
@@ -1176,25 +1235,29 @@ export default function RoguePage() {
         }
       }
 
-      // Start new player turn: reset shield, draw 5
+      // Start new player turn: draw 5 (shield carries over within battle)
       const newDisc = [...prev.discardPile, ...prev.hand];
       const extraDraw = (hasRelic(prev.relics,"compass")?1:0)+(hasRelic(prev.relics,"hourglass")?2:0);
       const drawn = drawN([], prev.drawPile, newDisc, 5 + extraDraw);
 
-      // Relic: dragon scale - shield on turn start
+      // Relic: dragon scale - add shield on turn start
       const dragonShield = hasRelic(prev.relics,"dragon_scale") ? 3 : 0;
-      // Relic: poison bangle - apply poison to enemy on turn start
+      // Relic: poison bangle / cursed tome - apply poison to enemy on turn start
       let turnStartEnemy = { ...enemy };
       const turnLogs: string[] = [];
       if (hasRelic(prev.relics,"poison_bangle") && turnStartEnemy.currentHp > 0) {
         turnStartEnemy.poisonStacks += 1;
         turnLogs.push(ko?"[독침 팔찌] 독 1":ja?"[毒針腕輪] 毒1":"[Poison Bangle] +1 poison");
       }
+      if (hasRelic(prev.relics,"cursed_tome") && turnStartEnemy.currentHp > 0) {
+        turnStartEnemy.poisonStacks += 2;
+        turnLogs.push(ko?"[저주받은 책] 독 2":ja?"[呪われた本] 毒2":"[Cursed Tome] +2 poison");
+      }
 
       return {
         ...prev,
         playerHp, poison:playerPoison,
-        shield:dragonShield, energy:prev.maxEnergy,
+        shield: shield + dragonShield, energy:prev.maxEnergy,
         enemy:turnStartEnemy,
         hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
         log:[...prev.log.slice(-4),...logs,...turnLogs, ko?`— 턴 ${prev.turnCount+1}`:ja?`— ターン${prev.turnCount+1}`:`— Turn ${prev.turnCount+1}`],
@@ -1264,9 +1327,11 @@ export default function RoguePage() {
     setGs(prev => {
       if (!prev) return prev;
       let next = { ...prev, relics: [...prev.relics, relic] };
-      if (relic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 20, playerHp: Math.min(next.playerMaxHp + 20, next.playerHp + 20) };
+      if (relic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 100, playerHp: Math.min(next.playerMaxHp + 100, next.playerHp + 100) };
       if (relic.id==="energy_crystal") next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
       if (relic.id==="storm_sword")    next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
+      if (relic.id==="titan_heart")    next = { ...next, playerMaxHp: next.playerMaxHp + 40, playerHp: Math.min(next.playerMaxHp + 40, next.playerHp + 40) };
+      if (relic.id==="void_crystal")   next = { ...next, maxEnergy: next.maxEnergy + 2, energy: next.energy + 2 };
       return next;
     });
     setPendingRelicOffer(null);
@@ -1285,13 +1350,17 @@ export default function RoguePage() {
       const newRelics = [...prev.relics]; newRelics[slotIdx] = newRelic;
       let next = { ...prev, relics: newRelics };
       // Reverse old relic immediate effects
-      if (oldRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp - 20, playerHp: Math.min(next.playerHp, next.playerMaxHp - 20) };
+      if (oldRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp - 100, playerHp: Math.min(next.playerHp, next.playerMaxHp - 100) };
       if (oldRelic.id==="energy_crystal") next = { ...next, maxEnergy: Math.max(1, next.maxEnergy - 1), energy: Math.max(1, next.energy - 1) };
       if (oldRelic.id==="storm_sword")    next = { ...next, maxEnergy: Math.max(1, next.maxEnergy - 1), energy: Math.max(1, next.energy - 1) };
+      if (oldRelic.id==="titan_heart")    next = { ...next, playerMaxHp: next.playerMaxHp - 40, playerHp: Math.min(next.playerHp, next.playerMaxHp - 40) };
+      if (oldRelic.id==="void_crystal")   next = { ...next, maxEnergy: Math.max(1, next.maxEnergy - 2), energy: Math.max(1, next.energy - 2) };
       // Apply new relic immediate effects
-      if (newRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 20, playerHp: Math.min(next.playerMaxHp + 20, next.playerHp + 20) };
+      if (newRelic.id==="magic_cloak")    next = { ...next, playerMaxHp: next.playerMaxHp + 100, playerHp: Math.min(next.playerMaxHp + 100, next.playerHp + 100) };
       if (newRelic.id==="energy_crystal") next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
       if (newRelic.id==="storm_sword")    next = { ...next, maxEnergy: next.maxEnergy + 1, energy: next.energy + 1 };
+      if (newRelic.id==="titan_heart")    next = { ...next, playerMaxHp: next.playerMaxHp + 40, playerHp: Math.min(next.playerMaxHp + 40, next.playerHp + 40) };
+      if (newRelic.id==="void_crystal")   next = { ...next, maxEnergy: next.maxEnergy + 2, energy: next.energy + 2 };
       return next;
     });
     setPendingRelicSwap(null); setPendingRelicOffer(null);
@@ -1597,7 +1666,7 @@ export default function RoguePage() {
                     const tColor = rt==="energy"?"#38bdf8":rt==="attack"?"#ef4444":"#3b82f6";
                     const tIcon = rt==="energy"?<Swords size={11}/>:rt==="attack"?<Swords size={11}/>:<Shield size={11}/>;
                     const tLabel = rt==="energy"?(ko?"에너지형":ja?"エナジー型":"Energy"):rt==="attack"?(ko?"공격형":ja?"アタック型":"Attack"):(ko?"방어형":ja?"ディフェンス型":"Defense");
-                    const tBonus = rt==="energy"?(ko?"+1에너지":ja?"+1エナジー":"+1 Energy"):rt==="attack"?(ko?"전투마다 힘+1":ja?"戦闘ごと力+1":"Str+1/battle"):(ko?"+5방어":ja?"+5シールド":"+5 Shield");
+                    const tBonus = rt==="energy"?(ko?"+1에너지":ja?"+1エナジー":"+1 Energy"):rt==="attack"?(ko?"전투마다 힘+1":ja?"戦闘ごと力+1":"Str+1/battle"):(ko?"전투마다 방어+5":ja?"戦闘ごとシールド+5":"Shield+5/battle");
                     return (
                       <div style={{display:"flex",alignItems:"center",gap:4,background:`${tColor}18`,borderRadius:6,padding:"3px 8px"}}>
                         <span style={{color:tColor,display:"flex"}}>{tIcon}</span>
