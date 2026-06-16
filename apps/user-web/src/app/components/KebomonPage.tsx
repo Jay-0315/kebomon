@@ -1357,6 +1357,7 @@ function CollectionTab({
           isOwned={ownedSet.has(selectedChar.id)}
           isEquipped={selectedChar.id === equippedCharacterId}
           equipping={equipping}
+          enhance={characterEnhancements[selectedChar.id] ?? 0}
           onEquip={onEquip}
           t={t}
         />
@@ -1397,7 +1398,7 @@ function CollectionTab({
             <button
               key={char.id}
               onClick={() => handleSelect(char.id)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+              className={`relative group flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                 isEquipped
                   ? `${RARITY_BORDER[char.rarity]} bg-primary/10 ring-1 ring-primary/40`
                   : isSelected
@@ -1405,6 +1406,14 @@ function CollectionTab({
                     : "border-border bg-muted hover:bg-muted/70"
               }`}
             >
+              {/* hover 툴팁 */}
+              {isOwned && (
+                <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-44 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 drop-shadow-xl">
+                  <div className="rounded-xl border border-border bg-card p-2">
+                    <CharStatMini char={char} enhance={characterEnhancements[char.id] ?? 0} />
+                  </div>
+                </div>
+              )}
               <div className="relative">
                 {isOwned ? (
                   <PixelSprite
@@ -1463,12 +1472,83 @@ function CollectionTab({
   );
 }
 
+// ─── Compact stat card (hover tooltip + detail panel reuse) ──────────────
+function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: number }) {
+  const { lang } = useLang();
+  const ko = lang !== "ja" && lang !== "en";
+  const ja = lang === "ja";
+
+  const dice      = RARITY_DICE_FE[char.rarity];
+  const raidPower = RAID_POWER_FE[char.rarity];
+  const rogueHp   = RARITY_HP_TABLE[char.rarity];
+  const rt        = ROGUE_TYPE_MAP[char.type] ?? "energy";
+
+  const minRoll    = medEnhanceMinRoll(enhance);
+  const bonusFaces = medEnhanceBonusDice(enhance);
+  const diceMin    = minRoll * dice.count + (bonusFaces > 0 ? minRoll : 0);
+  const diceMax    = dice.faces * dice.count + bonusFaces;
+  const diceNote   = `${dice.count > 1 ? dice.count : ""}d${dice.faces}${bonusFaces > 0 ? `+d${bonusFaces}` : ""}`;
+
+  const rtLabel = ko
+    ? rt === "energy" ? "에너지형" : rt === "attack" ? "공격형" : "방어형"
+    : ja
+      ? rt === "energy" ? "エナジー型" : rt === "attack" ? "アタック型" : "ディフェンス型"
+      : rt === "energy" ? "Energy" : rt === "attack" ? "Attack" : "Defense";
+  const rtBonus = ko
+    ? rt === "energy" ? "+1 에너지" : rt === "attack" ? "+1 힘" : "+5 방어"
+    : ja
+      ? rt === "energy" ? "+1エナジー" : rt === "attack" ? "+1力" : "+5シールド"
+      : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "+5 Shield";
+  const rtColor = rt === "energy" ? "#60a5fa" : rt === "attack" ? "#f87171" : "#4ade80";
+
+  const sectionCls = "rounded-lg bg-muted/60 border border-border px-2.5 py-2 space-y-1";
+  const labelCls   = "text-[9px] font-bold uppercase tracking-wider text-muted-foreground";
+  const valueCls   = "text-[11px] font-bold text-foreground";
+
+  return (
+    <div className="space-y-1.5 text-left">
+      {/* 콜로세움 */}
+      <div className={sectionCls}>
+        <p className={labelCls}>{ko ? "콜로세움" : ja ? "COLOSSEUM" : "COLOSSEUM"}</p>
+        <div className="flex items-center justify-between gap-2">
+          <span className={valueCls}>{diceNote}</span>
+          <span className="text-[10px] text-muted-foreground">{diceMin}~{diceMax}</span>
+        </div>
+      </div>
+      {/* 로그라이크 */}
+      <div className={sectionCls}>
+        <p className={labelCls}>{ko ? "로그라이크" : ja ? "ローグライク" : "ROGUELIKE"}</p>
+        <div className="flex items-center justify-between gap-2">
+          <span className={valueCls}>HP {rogueHp}</span>
+          <span className="text-[10px] font-semibold" style={{ color: rtColor }}>{rtLabel} {rtBonus}</span>
+        </div>
+      </div>
+      {/* 보스레이드 */}
+      <div className={sectionCls}>
+        <p className={labelCls}>{ko ? "보스레이드" : ja ? "ボスレイド" : "BOSS RAID"}</p>
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Star
+              key={i}
+              size={11}
+              fill={i < raidPower ? "#f59e0b" : "none"}
+              color={i < raidPower ? "#f59e0b" : "#6b7280"}
+            />
+          ))}
+          <span className="text-[10px] text-muted-foreground ml-1">{raidPower}pt</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Character Detail Panel ───────────────────────────────────────────────
 function CharacterDetail({
   char,
   isOwned,
   isEquipped,
   equipping,
+  enhance,
   onEquip,
   t,
 }: {
@@ -1476,6 +1556,7 @@ function CharacterDetail({
   isOwned: boolean;
   isEquipped: boolean;
   equipping: boolean;
+  enhance: number;
   onEquip: (id: number) => void;
   t: TFunc;
 }) {
@@ -1555,6 +1636,12 @@ function CharacterDetail({
           )}
         </div>
       </div>
+      {/* 콘텐츠 스탯 */}
+      {isOwned && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <CharStatMini char={char} enhance={enhance} />
+        </div>
+      )}
     </div>
   );
 }
