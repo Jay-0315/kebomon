@@ -763,6 +763,11 @@ export default function ExpeditionPage() {
                       <span style={{ color:C.textDim }}> · {ko?"잠김":ja?"ロック":"Locked"}</span>
                     )}
                   </p>
+                  {!isDefault && !unlocked && (
+                    <p style={{ margin:"2px 0 0", fontSize:9, color:C.textDim, lineHeight:1.3 }}>
+                      {ko ? region.unlockDescKo : ja ? region.unlockDescJa : region.unlockDescEn}
+                    </p>
+                  )}
                 </div>
                 {isActive && <ChevronRight size={14} color={col}/>}
               </button>

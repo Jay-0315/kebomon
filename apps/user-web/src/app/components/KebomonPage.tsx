@@ -18,6 +18,7 @@ import {
   Swords,
   Layers,
   Map as MapIcon,
+  Star,
 } from "lucide-react";
 import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -35,8 +36,6 @@ import {
   RARITY_COLOR,
   RARITY_BORDER,
   ROGUE_TYPE_MAP,
-  RARITY_RAID_STATS,
-  RARITY_COL_STATS,
   getCharName,
   getCharDesc,
   getRarityLabel,
@@ -1404,70 +1403,36 @@ function CollectionTab({
                     <Shield className="w-2 h-2 text-primary-foreground" />
                   </div>
                 )}
-                {/* Roguelike type icon — top-left */}
-                {isOwned &&
-                  (() => {
-                    const rt: RogueArchetype =
-                      ROGUE_TYPE_MAP[char.type] ?? "energy";
-                    const rtColor =
-                      rt === "energy"
-                        ? "#38bdf8"
-                        : rt === "attack"
-                          ? "#f87171"
-                          : "#60a5fa";
-                    const rtBg =
-                      rt === "energy"
-                        ? "#0ea5e922"
-                        : rt === "attack"
-                          ? "#ef444422"
-                          : "#3b82f622";
-                    return (
-                      <div
-                        className="absolute -top-1 -left-1 w-4 h-4 rounded-sm flex items-center justify-center"
-                        style={{
-                          background: rtBg,
-                          border: `1px solid ${rtColor}44`,
-                        }}
-                      >
-                        {rt === "energy" ? (
-                          <Zap
-                            className="w-2.5 h-2.5"
-                            style={{ color: rtColor }}
-                          />
-                        ) : rt === "attack" ? (
-                          <Swords
-                            className="w-2.5 h-2.5"
-                            style={{ color: rtColor }}
-                          />
-                        ) : (
-                          <Shield
-                            className="w-2.5 h-2.5"
-                            style={{ color: rtColor }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })()}
                 {!isOwned && char.obtainMethod === "starter" && (
                   <div className="absolute -top-1 -left-1 text-[7px] font-bold bg-amber-500 text-white px-0.5 rounded leading-none py-px">
                     ST
                   </div>
                 )}
               </div>
-              <p
-                className={`text-[9px] leading-tight text-center truncate w-full ${
-                  isOwned
-                    ? RARITY_COLOR[char.rarity]
-                    : "text-muted-foreground/60"
-                }`}
-              >
-                {isOwned ? getCharName(char, lang) : "???"}
-                {isOwned && (characterEnhancements[char.id] ?? 0) > 0 && (
-                  <span className="text-amber-400 ml-0.5">
-                    +{characterEnhancements[char.id]}
-                  </span>
-                )}
-              </p>
+              {/* name row: type icon left + name text */}
+              <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
+                {isOwned && (() => {
+                  const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
+                  const rtColor = rt === "energy" ? "#38bdf8" : rt === "attack" ? "#f87171" : "#60a5fa";
+                  return rt === "energy"
+                    ? <Zap className="w-2 h-2 shrink-0" style={{ color: rtColor }}/>
+                    : rt === "attack"
+                    ? <Swords className="w-2 h-2 shrink-0" style={{ color: rtColor }}/>
+                    : <Shield className="w-2 h-2 shrink-0" style={{ color: rtColor }}/>;
+                })()}
+                <p
+                  className={`text-[9px] leading-tight text-center truncate ${
+                    isOwned ? RARITY_COLOR[char.rarity] : "text-muted-foreground/60"
+                  }`}
+                >
+                  {isOwned ? getCharName(char, lang) : "???"}
+                  {isOwned && (characterEnhancements[char.id] ?? 0) > 0 && (
+                    <span className="text-amber-400 ml-0.5">
+                      +{characterEnhancements[char.id]}
+                    </span>
+                  )}
+                </p>
+              </div>
             </button>
           );
         })}
@@ -2415,7 +2380,7 @@ export function AchievementRevealModal({
   );
 }
 
-// ─── kebo-Style Status Panel ────────────────────────────────────────────────
+// ─── Medieval Pixel Status Panel ─────────────────────────────────────────────
 const RARITY_HP_TABLE: Record<CharacterRarity, number> = {
   common: 70,
   uncommon: 75,
@@ -2424,269 +2389,112 @@ const RARITY_HP_TABLE: Record<CharacterRarity, number> = {
   legendary: 90,
   mythic: 100,
 };
-const ARCHETYPE_KO: Record<string, string> = {
-  warrior: "전사",
-  rogue: "도적",
-  mage: "마법사",
-  tank: "탱커",
-  nature: "자연",
-  wild: "야생",
+
+// Real colosseum dice (mirrors battle.gateway.ts RARITY_DICE)
+const RARITY_DICE_FE: Record<CharacterRarity, { faces: number; count: number }> = {
+  common:    { faces: 6,  count: 1 },
+  uncommon:  { faces: 6,  count: 1 },
+  rare:      { faces: 8,  count: 1 },
+  epic:      { faces: 12, count: 1 },
+  legendary: { faces: 6,  count: 2 },
+  mythic:    { faces: 8,  count: 2 },
 };
-const ARCHETYPE_JA: Record<string, string> = {
-  warrior: "戦士",
-  rogue: "盗賊",
-  mage: "魔法使い",
-  tank: "タンク",
-  nature: "自然",
-  wild: "野性",
+
+// Real raid damage (mirrors raid.gateway.ts rarityDamage)
+const RAID_POWER_FE: Record<CharacterRarity, number> = {
+  common:    1,
+  uncommon:  1,
+  rare:      2,
+  epic:      2,
+  legendary: 3,
+  mythic:    4,
 };
-const ROGUE_ARCH: Record<string, string> = {
-  wolf: "warrior",
-  tiger: "warrior",
-  lion: "warrior",
-  bear: "warrior",
-  eagle: "warrior",
-  boar: "warrior",
-  cat: "rogue",
-  fox: "rogue",
-  rabbit: "rogue",
-  monkey: "rogue",
-  raven: "rogue",
-  deer: "rogue",
-  ghost: "mage",
-  owl: "mage",
-  dragon: "mage",
-  demon: "mage",
-  angel: "mage",
-  phoenix: "mage",
-  turtle: "tank",
-  elephant: "tank",
-  whale: "tank",
-  beetle: "tank",
-  crocodile: "tank",
-  plant: "nature",
-  fish: "nature",
-  snake: "nature",
-  unicorn: "nature",
-  horse: "nature",
-  robot: "wild",
-  slime: "wild",
-};
-const TYPE_ATK_MULT: Record<RogueArchetype, number> = {
-  energy: 1.0,
-  attack: 1.3,
-  defense: 0.8,
-};
-const TYPE_DEF_MULT: Record<RogueArchetype, number> = {
-  energy: 0.9,
-  attack: 0.8,
-  defense: 1.4,
-};
-const TYPE_HP_MULT: Record<RogueArchetype, number> = {
-  energy: 1.0,
-  attack: 1.0,
-  defense: 1.2,
-};
-const TYPE_SPD_MULT: Record<RogueArchetype, number> = {
-  energy: 1.3,
-  attack: 1.1,
-  defense: 0.9,
-};
+
+function medEnhanceMinRoll(level: number): number {
+  if (level >= 4) return 5;
+  if (level >= 3) return 4;
+  if (level >= 2) return 3;
+  if (level >= 1) return 2;
+  return 1;
+}
+
+function medEnhanceBonusDice(level: number): number {
+  if (level >= 6) return 8;
+  if (level >= 5) return 6;
+  return 0;
+}
 
 const KEBO_STATUS_CSS = `
-@keyframes kebo-bar-in {
-  from { width: 0; opacity: 0.4; }
-  to   { opacity: 1; }
-}
-@keyframes kebo-flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:0.7} 94%{opacity:1} }
-@keyframes kebo-glow-pulse { 0%,100%{box-shadow:0 0 8px #00d4ff33} 50%{box-shadow:0 0 18px #00d4ff66} }
+@keyframes kebo-bar-in { from { opacity:0 } to { opacity:1 } }
+@keyframes med-breathe { 0%,100%{box-shadow:0 0 10px #c8a85520} 50%{box-shadow:0 0 22px #c8a85540} }
 `;
 
-const CYN = "#00d4ff";
-const CYN_DIM = "#005f7a";
+const M = {
+  gold:      "#c8a855",
+  goldDim:   "#4a2e08",
+  goldPale:  "#7a5c2a",
+  stone:     "#0a0703",
+  stoneMid:  "#130e06",
+  stonePanel:"#1c1509",
+  parchment: "#d4b87a",
+  red:       "#bb2200",
+  redBright: "#ee4422",
+  redDim:    "#3a0800",
+  green:     "#3a9922",
+  greenBright:"#55cc33",
+  greenDim:  "#0d2a06",
+  blue:      "#2255aa",
+};
 
-function HudCorners({
-  size = 10,
-  color = CYN,
-  opacity = 1,
-}: {
-  size?: number;
-  color?: string;
-  opacity?: number;
-}) {
-  const s: React.CSSProperties = {
-    position: "absolute",
-    width: size,
-    height: size,
-    opacity,
-  };
+function PixelCorners({ size = 10, color = M.gold, opacity = 1 }: { size?: number; color?: string; opacity?: number }) {
+  const s: React.CSSProperties = { position:"absolute", width:size, height:size, opacity };
+  const b = `1.5px solid ${color}`;
   return (
     <>
-      <div
-        style={{
-          ...s,
-          top: 0,
-          left: 0,
-          borderTop: `1.5px solid ${color}`,
-          borderLeft: `1.5px solid ${color}`,
-        }}
-      />
-      <div
-        style={{
-          ...s,
-          top: 0,
-          right: 0,
-          borderTop: `1.5px solid ${color}`,
-          borderRight: `1.5px solid ${color}`,
-        }}
-      />
-      <div
-        style={{
-          ...s,
-          bottom: 0,
-          left: 0,
-          borderBottom: `1.5px solid ${color}`,
-          borderLeft: `1.5px solid ${color}`,
-        }}
-      />
-      <div
-        style={{
-          ...s,
-          bottom: 0,
-          right: 0,
-          borderBottom: `1.5px solid ${color}`,
-          borderRight: `1.5px solid ${color}`,
-        }}
-      />
+      <div style={{ ...s, top:0, left:0,  borderTop:b, borderLeft:b }} />
+      <div style={{ ...s, top:0, right:0, borderTop:b, borderRight:b }} />
+      <div style={{ ...s, bottom:0, left:0,  borderBottom:b, borderLeft:b }} />
+      <div style={{ ...s, bottom:0, right:0, borderBottom:b, borderRight:b }} />
     </>
   );
 }
 
-function HudSectionLabel({ children }: { children: React.ReactNode }) {
+function MedLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        marginBottom: 10,
-      }}
-    >
-      <div
-        style={{
-          width: 7,
-          height: 7,
-          background: CYN,
-          boxShadow: `0 0 6px ${CYN}`,
-        }}
-      />
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 800,
-          color: CYN,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          fontFamily: "monospace",
-        }}
-      >
+    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+      <div style={{ width:6, height:6, background:M.gold, transform:"rotate(45deg)", boxShadow:`0 0 4px ${M.gold}80`, flexShrink:0 }} />
+      <span style={{ fontSize:9, fontWeight:900, color:M.gold, letterSpacing:"0.22em", fontFamily:"monospace", textTransform:"uppercase", textShadow:`0 0 6px ${M.gold}50` }}>
         {children}
       </span>
-      <div
-        style={{
-          flex: 1,
-          height: 1,
-          background: `linear-gradient(90deg,${CYN_DIM},transparent)`,
-        }}
-      />
+      <div style={{ flex:1, height:1, backgroundImage:`repeating-linear-gradient(90deg,${M.goldDim} 0,${M.goldDim} 3px,transparent 3px,transparent 6px)` }} />
     </div>
   );
 }
 
-function KeboStatBar({
-  value,
-  max,
-  color,
-}: {
-  value: number;
-  max: number;
-  color: string;
-}) {
-  const pct = Math.min(100, Math.round((value / max) * 100));
+function PixelCells({ pct, color, brightColor, segments = 12 }: { pct: number; color: string; brightColor: string; segments?: number }) {
+  const filled = Math.round(pct * segments);
   return (
-    <div
-      style={{
-        flex: 1,
-        height: 5,
-        background: "#06111e",
-        borderRadius: 2,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      <div
-        style={{ position: "absolute", inset: 0, background: `${CYN_DIM}18` }}
-      />
-      <div
-        style={{
-          height: "100%",
-          width: `${pct}%`,
-          background: `linear-gradient(90deg, ${color}60, ${color})`,
-          boxShadow: `0 0 8px ${color}88`,
-          borderRadius: 2,
-          animation: "kebo-bar-in 0.6s ease-out both",
-        }}
-      />
+    <div style={{ display:"flex", gap:1, animation:"kebo-bar-in 0.5s ease both" }}>
+      {Array.from({ length: segments }).map((_, i) => (
+        <div key={i} style={{
+          flex:1, height:6,
+          background: i < filled ? (i === filled - 1 ? brightColor : color) : "#1a0c04",
+          border: `1px solid ${i < filled ? `${color}80` : "#2e1508"}`,
+        }} />
+      ))}
     </div>
   );
 }
 
-function KeboStatRow({
-  label,
-  value,
-  max,
-  color,
-  unit = "",
-}: {
-  label: string;
-  value: number;
-  max: number;
-  color: string;
-  unit?: string;
-}) {
+function MedStat({ label, value, sub, large }: { label: string; value: React.ReactNode; sub?: string; large?: boolean }) {
   return (
-    <div
-      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}
-    >
-      <span
-        style={{
-          width: 32,
-          fontSize: 9,
-          fontWeight: 700,
-          color: "#3a6070",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          flexShrink: 0,
-          fontFamily: "monospace",
-        }}
-      >
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+      <span style={{ fontSize:9, fontWeight:700, color:M.goldPale, fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.1em" }}>
         {label}
       </span>
-      <KeboStatBar value={value} max={max} color={color} />
-      <span
-        style={{
-          width: 38,
-          fontSize: 11,
-          fontWeight: 800,
-          color,
-          textAlign: "right",
-          flexShrink: 0,
-          fontFamily: "monospace",
-          textShadow: `0 0 8px ${color}88`,
-        }}
-      >
+      <span style={{ fontSize: large ? 15 : 11, fontWeight:900, color:large ? M.parchment : M.gold, fontFamily:"monospace", textShadow: large ? `0 0 8px ${M.gold}60` : "none" }}>
         {value}
-        {unit}
+        {sub && <span style={{ fontSize:9, color:M.goldPale, marginLeft:4 }}>{sub}</span>}
       </span>
     </div>
   );
@@ -2704,284 +2512,160 @@ export function KeboStatusPanel({
   const ko = lang !== "ja" && lang !== "en";
   const ja = lang === "ja";
   const enhance = enhancements[char.id] ?? 0;
-  // local panel-facing max enhance (mirrors KebomonPage MAX_ENHANCE)
-  const MAX_ENHANCE_PANEL: Record<CharacterRarity, number> = {
-    common: 3,
-    uncommon: 3,
-    rare: 4,
-    epic: 4,
-    legendary: 5,
-    mythic: 6,
-  };
+
   const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
-  const arch = ROGUE_ARCH[char.type] ?? "wild";
-  const raid = RARITY_RAID_STATS[char.rarity];
-  const col = RARITY_COL_STATS[char.rarity];
-
-  const finalAtk = Math.round(raid.atk * TYPE_ATK_MULT[rt] + enhance * 3);
-  const finalDef = Math.round(col.def * TYPE_DEF_MULT[rt] + enhance * 2);
-  const finalHp = Math.round(col.hp * TYPE_HP_MULT[rt] + enhance * 20);
-  const finalSpd = Math.round(col.spd * TYPE_SPD_MULT[rt]);
+  const dice = RARITY_DICE_FE[char.rarity];
+  const raidPower = RAID_POWER_FE[char.rarity];
   const rogueHp = RARITY_HP_TABLE[char.rarity];
-  const dps = Math.round(finalAtk * (1 + (raid.crit / 100) * 1.5));
 
-  // compute sensible maxima for the bars so percentages reflect applied ranges
-  const maxTypeAtkMult = Math.max(...Object.values(TYPE_ATK_MULT));
-  const maxTypeDefMult = Math.max(...Object.values(TYPE_DEF_MULT));
-  const maxTypeHpMult = Math.max(...Object.values(TYPE_HP_MULT));
-  const maxTypeSpdMult = Math.max(...Object.values(TYPE_SPD_MULT));
-  const maxEnhance = MAX_ENHANCE_PANEL[char.rarity] ?? 0;
+  const minRoll    = medEnhanceMinRoll(enhance);
+  const bonusFaces = medEnhanceBonusDice(enhance);
 
-  const maxAtk = Math.round(raid.atk * maxTypeAtkMult + maxEnhance * 3);
-  const maxCrit = Math.max(
-    ...Object.values(RARITY_RAID_STATS).map((r) => r.crit),
-  );
-  const maxDps = Math.round(maxAtk * (1 + (maxCrit / 100) * 1.5));
+  const diceMin = minRoll * dice.count + (bonusFaces > 0 ? minRoll : 0);
+  const diceMax = dice.faces * dice.count + bonusFaces;
+  const diceNotation = `${dice.count > 1 ? dice.count : ""}d${dice.faces}${bonusFaces > 0 ? `+d${bonusFaces}` : ""}`;
 
-  const maxHp = Math.round(col.hp * maxTypeHpMult + maxEnhance * 20);
-  const maxDef = Math.round(col.def * maxTypeDefMult + maxEnhance * 2);
-  const maxSpd = Math.round(col.spd * maxTypeSpdMult);
-
-  const rtColor =
-    rt === "energy" ? "#00d4ff" : rt === "attack" ? "#ff5c5c" : "#60a5fa";
   const rtLabel = ja
-    ? rt === "energy"
-      ? "エナジー型"
-      : rt === "attack"
-        ? "アタック型"
-        : "ディフェンス型"
+    ? rt === "energy" ? "エナジー型" : rt === "attack" ? "アタック型" : "ディフェンス型"
     : ko
-      ? rt === "energy"
-        ? "에너지형"
-        : rt === "attack"
-          ? "공격형"
-          : "방어형"
-      : rt === "energy"
-        ? "Energy"
-        : rt === "attack"
-          ? "Attack"
-          : "Defense";
-  const rtBonus = ja
-    ? rt === "energy"
-      ? "+1エナジー"
-      : rt === "attack"
-        ? "+1力"
-        : "+5シールド"
-    : ko
-      ? rt === "energy"
-        ? "+1 에너지"
-        : rt === "attack"
-          ? "+1 힘"
-          : "+5 방어"
-      : rt === "energy"
-        ? "+1 Energy"
-        : rt === "attack"
-          ? "+1 STR"
-          : "+5 Shield";
-  const archLabel = ja
-    ? (ARCHETYPE_JA[arch] ?? arch)
-    : (ARCHETYPE_KO[arch] ?? arch);
+      ? rt === "energy" ? "에너지형" : rt === "attack" ? "공격형" : "방어형"
+      : rt === "energy" ? "Energy" : rt === "attack" ? "Attack" : "Defense";
 
-  const panel: React.CSSProperties = {
-    background: "linear-gradient(160deg,#020c18 0%,#03111e 50%,#020e1a 100%)",
-    border: `1px solid ${CYN_DIM}`,
-    borderRadius: 4,
-    padding: "12px 14px",
+  const rtBonus = ja
+    ? rt === "energy" ? "+1エナジー" : rt === "attack" ? "+1力" : "+5シールド"
+    : ko
+      ? rt === "energy" ? "+1 에너지" : rt === "attack" ? "+1 힘" : "+5 방어"
+      : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "+5 Shield";
+
+  const rtColor = rt === "energy" ? "#4499dd" : rt === "attack" ? M.redBright : M.greenBright;
+
+  const lbColosseum = ja ? "COLOSSEUM" : ko ? "콜로세움" : "COLOSSEUM";
+  const lbRaid      = ja ? "RAID"       : ko ? "레이드"   : "RAID";
+  const lbRogue     = ja ? "ローグライク" : ko ? "로그라이크" : "ROGUELIKE";
+
+  const panelBase: React.CSSProperties = {
+    background: `linear-gradient(160deg,${M.stoneMid} 0%,${M.stonePanel} 100%)`,
+    border: `1px solid ${M.goldDim}`,
+    padding: "10px 12px",
     position: "relative",
-    marginBottom: 10,
-    animation: "kebo-glow-pulse 3s ease-in-out infinite",
+    marginBottom: 8,
   };
 
   return (
-    <div style={{ fontFamily: "'Noto Sans KR','Malgun Gothic',monospace" }}>
+    <div style={{ fontFamily:"'Noto Sans KR','Malgun Gothic',monospace" }}>
       <style>{KEBO_STATUS_CSS}</style>
 
-      {/* ── OUTER WRAPPER ── */}
-      <div
-        style={{
-          background: "linear-gradient(160deg,#010810 0%,#020d1b 100%)",
-          border: `1px solid ${CYN_DIM}44`,
-          borderRadius: 6,
-          padding: 16,
-          position: "relative",
-          boxShadow: `0 0 40px #00d4ff0c, inset 0 0 30px #00050e`,
-        }}
-      >
-        <HudCorners size={14} color={CYN} />
+      <div style={{
+        background: `linear-gradient(160deg,${M.stone} 0%,#110a04 50%,${M.stone} 100%)`,
+        border: `1px solid ${M.goldDim}88`,
+        padding: 14,
+        position: "relative",
+        animation: "med-breathe 4s ease-in-out infinite",
+      }}>
+        <PixelCorners size={12} color={M.gold} />
 
-        {/* header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 14,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 2,
-                height: 18,
-                background: `linear-gradient(180deg,${CYN},transparent)`,
-                boxShadow: `0 0 8px ${CYN}`,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: CYN,
-                letterSpacing: "0.22em",
-                fontFamily: "monospace",
-              }}
-            >
-              CHARACTER STATUS
+        {/* Header */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <div style={{ width:3, height:18, background:`linear-gradient(180deg,${M.gold},${M.goldDim})` }} />
+            <span style={{ fontSize:10, fontWeight:900, color:M.gold, letterSpacing:"0.25em", fontFamily:"monospace", textTransform:"uppercase" }}>
+              {ko ? "캐릭터 스테이터스" : ja ? "キャラクターステータス" : "CHARACTER STATUS"}
             </span>
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span
-              style={{
-                fontSize: 10,
-                color: `${CYN}99`,
-                fontFamily: "monospace",
-              }}
-            >
-              #{String(char.id).padStart(3, "0")}
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+            <span style={{ fontSize:9, color:M.goldPale, fontFamily:"monospace" }}>
+              #{String(char.id).padStart(3,"0")}
             </span>
             {enhance > 0 && (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 900,
-                  color: "#ffd060",
-                  background: "#ffd06015",
-                  border: "1px solid #ffd06040",
-                  borderRadius: 3,
-                  padding: "1px 6px",
-                  fontFamily: "monospace",
-                }}
-              >
+              <span style={{ fontSize:9, fontWeight:900, color:M.gold, border:`1px solid ${M.goldDim}`, padding:"1px 5px", fontFamily:"monospace" }}>
                 +{enhance}
               </span>
             )}
           </div>
         </div>
 
-        {/* ── RAID panel ── */}
-        <div style={{ ...panel }}>
-          <HudCorners size={8} color={CYN} opacity={0.5} />
-          <HudSectionLabel>
-            {ja ? "RAID" : ko ? "■ 레이드" : "■ RAID"}
-          </HudSectionLabel>
-          <KeboStatRow
-            label="ATK"
-            value={finalAtk}
-            max={maxAtk}
-            color="#ff5c5c"
+        {/* ── 콜로세움 ── */}
+        <div style={panelBase}>
+          <PixelCorners size={6} color={`${M.gold}55`} />
+          <MedLabel>{lbColosseum}</MedLabel>
+          <MedStat
+            label={ko ? "HP" : "HP"}
+            value="150"
+            large
           />
-          <KeboStatRow
-            label="CRIT"
-            value={raid.crit}
-            max={maxCrit}
-            color="#ffd060"
-            unit="%"
+          <PixelCells pct={1} color={M.red} brightColor={M.redBright} segments={15} />
+          <div style={{ height:7 }} />
+          <MedStat
+            label={ko ? "공격 주사위" : ja ? "攻撃ダイス" : "ATTACK DICE"}
+            value={diceNotation}
           />
-          <KeboStatRow label="DPS" value={dps} max={maxDps} color="#ff9040" />
+          <MedStat
+            label={ko ? "데미지 범위" : ja ? "ダメージ幅" : "DMG RANGE"}
+            value={`${diceMin} ~ ${diceMax}`}
+            sub={ko ? "의 사이" : ja ? "の間" : ""}
+          />
+          {enhance > 0 && (
+            <MedStat
+              label={ko ? "강화 효과" : ja ? "強化効果" : "ENHANCE"}
+              value={
+                ko ? `최소 ${minRoll}${bonusFaces > 0 ? ` · +d${bonusFaces}` : ""}` :
+                ja ? `最小${minRoll}${bonusFaces > 0 ? ` ·+d${bonusFaces}` : ""}` :
+                `MIN ${minRoll}${bonusFaces > 0 ? ` +d${bonusFaces}` : ""}`
+              }
+            />
+          )}
         </div>
 
-        {/* ── COLOSSEUM panel ── */}
-        <div style={{ ...panel }}>
-          <HudCorners size={8} color={CYN} opacity={0.5} />
-          <HudSectionLabel>
-            {ja ? "■ コロシアム" : ko ? "■ 콜로세움" : "■ COLOSSEUM"}
-          </HudSectionLabel>
-          <KeboStatRow label="HP" value={finalHp} max={maxHp} color="#3dffb0" />
-          <KeboStatRow label="DEF" value={finalDef} max={maxDef} color={CYN} />
-          <KeboStatRow
-            label="SPD"
-            value={finalSpd}
-            max={maxSpd}
-            color="#b080ff"
+        {/* ── 레이드 ── */}
+        <div style={panelBase}>
+          <PixelCorners size={6} color={`${M.gold}55`} />
+          <MedLabel>{lbRaid}</MedLabel>
+          <MedStat
+            label={ko ? "공격력" : ja ? "攻撃力" : "POWER"}
+            value={
+              <span style={{ display:"inline-flex", alignItems:"center", gap:1 }}>
+                {Array.from({length: raidPower}).map((_,i) => (
+                  <Star key={`f${i}`} size={11} fill={M.gold} color={M.gold}/>
+                ))}
+                {Array.from({length: 4 - raidPower}).map((_,i) => (
+                  <Star key={`e${i}`} size={11} fill="none" color={M.goldDim}/>
+                ))}
+                <span style={{ fontSize:9, color:M.goldPale, marginLeft:6, fontWeight:700 }}>
+                  {raidPower}pt
+                </span>
+              </span>
+            }
+            large
           />
+          <PixelCells pct={raidPower / 4} color="#884400" brightColor="#cc7700" segments={8} />
         </div>
 
-        {/* ── ROGUELIKE panel ── */}
-        <div style={{ ...panel, marginBottom: 0 }}>
-          <HudCorners size={8} color={CYN} opacity={0.5} />
-          <HudSectionLabel>
-            {ja ? "■ ローグライク" : ko ? "■ 로그라이크" : "■ ROGUELIKE"}
-          </HudSectionLabel>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}
-          >
-            {(
-              [
-                {
-                  key: ja ? "タイプ" : ko ? "타입" : "Type",
-                  val: rtLabel,
-                  icon: true,
-                  color: rtColor,
-                },
-                {
-                  key: ja ? "ボーナス" : ko ? "특수보너스" : "Bonus",
-                  val: rtBonus,
-                  icon: true,
-                  color: rtColor,
-                },
-                {
-                  key: ja ? "アーキ" : ko ? "아키타입" : "Archetype",
-                  val: archLabel,
-                  icon: false,
-                  color: "#7ecfff",
-                },
-                {
-                  key: "START HP",
-                  val: String(rogueHp),
-                  icon: false,
-                  color: "#3dffb0",
-                },
-              ] as const
-            ).map(({ key, val, icon, color }) => (
-              <div
-                key={key}
-                style={{
-                  background: "#020c18",
-                  border: `1px solid ${CYN_DIM}55`,
-                  borderRadius: 3,
-                  padding: "7px 9px",
-                  position: "relative",
-                }}
-              >
-                <p
-                  style={{
-                    margin: "0 0 3px",
-                    fontSize: 9,
-                    color: `${CYN}60`,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    fontFamily: "monospace",
-                  }}
-                >
+        {/* ── 로그라이크 ── */}
+        <div style={{ ...panelBase, marginBottom:0 }}>
+          <PixelCorners size={6} color={`${M.gold}55`} />
+          <MedLabel>{lbRogue}</MedLabel>
+          <MedStat
+            label={ko ? "초기 HP" : ja ? "初期HP" : "START HP"}
+            value={String(rogueHp)}
+            large
+          />
+          <PixelCells pct={rogueHp / 100} color={M.green} brightColor={M.greenBright} segments={10} />
+          <div style={{ height:7 }} />
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5 }}>
+            {([
+              { key: ko ? "타입" : ja ? "タイプ" : "TYPE",          val: rtLabel,  color: rtColor },
+              { key: ko ? "특수 보너스" : ja ? "ボーナス" : "BONUS", val: rtBonus,  color: M.gold },
+            ] as const).map(({ key, val, color }) => (
+              <div key={key} style={{
+                background: M.stone,
+                border: `1px solid ${M.goldDim}`,
+                padding: "6px 8px",
+                position: "relative",
+              }}>
+                <p style={{ margin:"0 0 2px", fontSize:8, color:M.goldPale, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", fontFamily:"monospace" }}>
                   {key}
                 </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    fontFamily: "monospace",
-                    textShadow: `0 0 10px ${color}66`,
-                  }}
-                >
-                  {icon && rt === "energy" && <Zap size={11} />}
-                  {icon && rt === "attack" && <Swords size={11} />}
-                  {icon && rt === "defense" && <Shield size={11} />}
+                <p style={{ margin:0, fontSize:11, fontWeight:900, color, fontFamily:"monospace", textShadow:`0 0 8px ${color}50` }}>
                   {val}
                 </p>
               </div>

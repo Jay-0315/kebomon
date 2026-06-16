@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Layers, Swords, Shield, Heart, RefreshCw,
   ShoppingCart, Skull, Trophy, Star, X, Flame, ChevronRight, Crown,
-  Sparkles, Award,
+  Sparkles, Award, AlertCircle,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -250,16 +250,24 @@ const CHALLENGE_FLOORS = 100;
 // 스테이지가 올라갈수록 적 HP·공격력이 계속 증가 (floor = 0-index)
 function challengeHpMult(floor: number): number { return 1 + floor * 0.08; }   // stage100 ≈ ×8.9
 function challengeAtkBonus(floor: number): number { return Math.floor(floor * 0.45); } // stage100 ≈ +44
-// 매 칸 랜덤 선택지 2개 (기존 로그라이크처럼). 10칸마다 엘리트 보장, 마지막은 최종 보스
+// 매 칸 랜덤 선택지 2개. 20스테이지마다 보스만 등장, 10스테이지마다 엘리트 보장, 마지막은 최종 보스.
+// 1~3스테이지는 상점 선택지 없음.
 function challengeFloorOptions(i: number): NodeType[] {
   if (i >= CHALLENGE_FLOORS - 1) return ["boss"];
+  if ((i + 1) % 20 === 0) return ["boss"];
   if ((i + 1) % 10 === 0) return shuffle(["elite", Math.random() < 0.5 ? "rest" : "treasure"] as NodeType[]);
-  const PAIRS: NodeType[][] = [
+  const PAIRS_NO_SHOP: NodeType[][] = [
+    ["fight", "treasure"], ["fight", "rest"],
+    ["fight", "elite"],    ["elite", "treasure"], ["elite", "rest"],
+    ["fight", "rest"],     ["fight", "treasure"],
+  ];
+  const PAIRS_WITH_SHOP: NodeType[][] = [
     ["fight", "treasure"], ["fight", "rest"], ["fight", "shop"],
     ["fight", "elite"],    ["elite", "treasure"], ["elite", "rest"],
     ["fight", "rest"],     ["fight", "treasure"], ["rest", "shop"],
   ];
-  return shuffle([...PAIRS[(Math.random() * PAIRS.length) | 0]]);
+  const pool = i < 3 ? PAIRS_NO_SHOP : PAIRS_WITH_SHOP;
+  return shuffle([...pool[(Math.random() * pool.length) | 0]]);
 }
 function generateChallengeMap(): { options: NodeType[] }[] {
   return Array.from({ length: CHALLENGE_FLOORS }, (_, i) => ({ options: challengeFloorOptions(i) }));
@@ -505,7 +513,8 @@ function spawnEnemyForFloor(floor: number, nodeType: "fight"|"elite"|"boss", dif
   const id = pool[Math.floor(Math.random()*pool.length)];
   const def = ENEMY_DEFS.find(e=>e.id===id) ?? ENEMY_DEFS[0];
   // 도전 모드는 스테이지에 따라 계속 강해짐 (연속 스케일링)
-  const hpMult = DIFF_HP_MULT[diff] * (diff==="challenge" ? challengeHpMult(floor) : 1);
+  const earlyMult = (diff==="challenge" && floor < 50) ? 0.7 : 1;
+  const hpMult = DIFF_HP_MULT[diff] * (diff==="challenge" ? challengeHpMult(floor) : 1) * earlyMult;
   const atkBonus = DIFF_ATK_BONUS[diff] + (diff==="challenge" ? challengeAtkBonus(floor) : 0);
   const strBonus = DIFF_STR_BONUS[diff] + (diff==="challenge" ? Math.floor(floor/20) : 0);
   const scaledPatterns = def.patterns.map(p => ({
@@ -736,6 +745,8 @@ export default function RoguePage() {
   const [pendingRelicOffer, setPendingRelicOffer] = useState<RelicDef[] | null>(null);
   const [pendingRelicSwap, setPendingRelicSwap] = useState<RelicDef | null>(null);
   const [pendingCardSwap, setPendingCardSwap] = useState<CardInstance | null>(null);
+  const [showRewardGuide, setShowRewardGuide] = useState(false);
+  const [showStarterCards, setShowStarterCards] = useState(false);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
   gsRef.current = gs;
@@ -898,7 +909,7 @@ export default function RoguePage() {
             ...prev, phase:"battle", floor:floorIdx, chosenPath:newChosenPath,
             shield:0, energy:prev.maxEnergy, enemy,
             hand:drawn.hand, drawPile:drawn.drawPile, discardPile:drawn.discardPile,
-            log:[ko?"⚠ 함정이다! 적이 숨어 있었다!":ja?"⚠ トラップ！敵が潜んでいた！":"⚠ Ambush! An enemy was hiding!"], turnCount:1,
+            log:[ko?"[!] 함정이다! 적이 숨어 있었다!":ja?"[!] トラップ！敵が潜んでいた！":"[!] Ambush! An enemy was hiding!"], turnCount:1,
             chainPending:null, cursedRest:false, shopInflated:false,
           };
         }
@@ -1010,7 +1021,7 @@ export default function RoguePage() {
           const chainDrawn = drawN([], chainDrawPile, [], 5+extraDraw);
           return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, shield:0, strength, energy:prev.maxEnergy, enemy:prev.chainPending, chainPending:null,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
-            log:[...newLog, ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
+            log:[...newLog, ko?"[!] 연전! 새로운 적이 나타났다!":ja?"[!] 連戦！新たな敵が出現！":"[!] Chain battle! A new enemy appears!"], turnCount:1,
           };
         }
         const baseGold = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
@@ -1072,7 +1083,7 @@ export default function RoguePage() {
           return { ...prev, playerHp:hpAfterKill, playerMaxHp:newMaxHp, enemy:prev.chainPending, chainPending:null,
             shield:0, energy:prev.maxEnergy,
             hand:chainDrawn.hand, drawPile:chainDrawn.drawPile, discardPile:[],
-            log:[...prev.log.slice(-3),...logs,ko?"⚠ 연전! 새로운 적이 나타났다!":ja?"⚠ 連戦！新たな敵が出現！":"⚠ Chain battle! A new enemy appears!"], turnCount:1,
+            log:[...prev.log.slice(-3),...logs,ko?"[!] 연전! 새로운 적이 나타났다!":ja?"[!] 連戦！新たな敵が出現！":"[!] Chain battle! A new enemy appears!"], turnCount:1,
           };
         }
         const baseGold = nodeType==="elite" ? DIFF_GOLD_ELITE[prev.difficulty] : DIFF_GOLD_FIGHT[prev.difficulty];
@@ -1504,51 +1515,108 @@ export default function RoguePage() {
     const RARITY_EN_L: Record<string,string> = { common:"Common",uncommon:"Uncommon",rare:"Rare",epic:"Epic",legendary:"Legendary",mythic:"Mythic" };
     const rarityLabel = ko ? RARITY_KO[myChar.rarity] : ja ? RARITY_JA[myChar.rarity] : RARITY_EN_L[myChar.rarity];
     return (
+      <>
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
         <style>{css}</style>
         <div style={{width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:24}}>
           {/* Header */}
-          <div style={{textAlign:"center",animation:"rogue-in 0.4s ease-out both"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:4}}>
-              <Layers size={28} color={C.gold}/>
-              <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
+          <div style={{animation:"rogue-in 0.4s ease-out both"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <Layers size={28} color={C.gold}/>
+                <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
+              </div>
+              <button
+                onClick={() => setShowRewardGuide(true)}
+                style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+              >
+                <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
+              </button>
             </div>
-            <p style={{margin:0,fontSize:12,color:C.textDim}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
+            <p style={{margin:0,fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
           </div>
 
           {/* Character card */}
-          <div style={{background:C.panel,border:`2px solid ${ac}44`,borderRadius:12,padding:20,display:"flex",alignItems:"center",gap:20,overflow:"hidden",animation:"rogue-in 0.4s 0.05s ease-out both"}}>
-            <div style={{animation:"rogue-float 3s ease-in-out infinite",flexShrink:0}}>
-              <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} rarity={myChar.rarity} size={72}/>
-            </div>
-            <div style={{flex:1}}>
-              <p style={{margin:0,fontSize:16,fontWeight:800,color:C.textBright}}>{getCharName(myChar, lang)}</p>
-              <p style={{margin:"2px 0 6px",fontSize:11,color:ac}}>{rarityLabel} · {archLabel[arch]}</p>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <div style={{display:"flex",alignItems:"center",gap:4,background:`${C.red}18`,borderRadius:6,padding:"3px 8px"}}>
-                  <Heart size={11} color={C.red}/>
-                  <span style={{fontSize:11,color:C.red,fontWeight:700}}>{RARITY_HP[myChar.rarity]??75}</span>
+          {(()=>{
+            const ARCH_UNIQUE: Record<string,string[]> = {
+              warrior:["war_howl","reckless"], rogue:["swift_strike","scratch"],
+              mage:["haunt","soul_drain"], tank:["shell_block","endure"],
+              nature:["thorn_strike","spore_cloud"], wild:["absorb","overclock"],
+              all:["quick_guard","battle_cry"],
+            };
+            const uniqueIds = ARCH_UNIQUE[arch] ?? ARCH_UNIQUE.all;
+            const uniqueCards = uniqueIds.map(id=>CARDS.find(c=>c.id===id)!).filter(Boolean);
+            const cardTypeColor = (t:string) => t==="attack"?"#ef4444":t==="skill"?"#3b82f6":"#a855f7";
+            const cardTypeName = (t:string) => t==="attack"?(ko?"공격":ja?"攻撃":"Atk"):t==="skill"?(ko?"스킬":ja?"スキル":"Skill"):(ko?"기술":ja?"技":"Power");
+            return (
+            <div style={{background:C.panel,border:`2px solid ${ac}44`,borderRadius:12,padding:20,display:"flex",alignItems:"center",gap:16,animation:"rogue-in 0.4s 0.05s ease-out both",position:"relative"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{margin:0,fontSize:16,fontWeight:800,color:C.textBright}}>{getCharName(myChar, lang)}</p>
+                <p style={{margin:"2px 0 6px",fontSize:11,color:ac}}>{rarityLabel} · {archLabel[arch]}</p>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
+                  <div style={{display:"flex",alignItems:"center",gap:4,background:`${C.red}18`,borderRadius:6,padding:"3px 8px"}}>
+                    <Heart size={11} color={C.red}/>
+                    <span style={{fontSize:11,color:C.red,fontWeight:700}}>{RARITY_HP[myChar.rarity]??75}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:4,background:"#22c55e18",borderRadius:6,padding:"3px 8px"}}>
+                    <Layers size={11} color="#22c55e"/>
+                    <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>{ko?"덱 10장":ja?"デッキ10枚":"10 Cards"}</span>
+                  </div>
+                  {(()=>{
+                    const rt = ROGUE_TYPE_MAP[myChar.type]??"energy";
+                    const tColor = rt==="energy"?"#38bdf8":rt==="attack"?"#ef4444":"#3b82f6";
+                    const tIcon = rt==="energy"?<Swords size={11}/>:rt==="attack"?<Swords size={11}/>:<Shield size={11}/>;
+                    const tLabel = rt==="energy"?(ko?"에너지형":ja?"エナジー型":"Energy"):rt==="attack"?(ko?"공격형":ja?"アタック型":"Attack"):(ko?"방어형":ja?"ディフェンス型":"Defense");
+                    const tBonus = rt==="energy"?(ko?"+1에너지":ja?"+1エナジー":"+1 Energy"):rt==="attack"?(ko?"+1힘":ja?"+1力":"+1 Strength"):(ko?"+5방어":ja?"+5シールド":"+5 Shield");
+                    return (
+                      <div style={{display:"flex",alignItems:"center",gap:4,background:`${tColor}18`,borderRadius:6,padding:"3px 8px"}}>
+                        <span style={{color:tColor,display:"flex"}}>{tIcon}</span>
+                        <span style={{fontSize:11,color:tColor,fontWeight:700}}>{tLabel} {tBonus}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:4,background:"#22c55e18",borderRadius:6,padding:"3px 8px"}}>
-                  <Layers size={11} color="#22c55e"/>
-                  <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>{ko?"덱 10장":ja?"デッキ10枚":"10 Cards"}</span>
+              </div>
+              {/* Sprite on the right — hover shows starter cards */}
+              <div
+                style={{flexShrink:0,cursor:"help",position:"relative"}}
+                onMouseEnter={()=>setShowStarterCards(true)}
+                onMouseLeave={()=>setShowStarterCards(false)}
+              >
+                <div style={{animation:"rogue-float 3s ease-in-out infinite"}}>
+                  <PixelSprite type={myChar.type} colors={myChar.colors} characterId={myChar.id} rarity={myChar.rarity} size={72}/>
                 </div>
-                {(()=>{
-                  const rt = ROGUE_TYPE_MAP[myChar.type]??"energy";
-                  const tColor = rt==="energy"?"#38bdf8":rt==="attack"?"#ef4444":"#3b82f6";
-                  const tIcon = rt==="energy"?<Swords size={11}/>:rt==="attack"?<Swords size={11}/>:<Shield size={11}/>;
-                  const tLabel = rt==="energy"?(ko?"에너지형":ja?"エナジー型":"Energy"):rt==="attack"?(ko?"공격형":ja?"アタック型":"Attack"):(ko?"방어형":ja?"ディフェンス型":"Defense");
-                  const tBonus = rt==="energy"?(ko?"+1에너지":ja?"+1エナジー":"+1 Energy"):rt==="attack"?(ko?"+1힘":ja?"+1力":"+1 Strength"):(ko?"+5방어":ja?"+5シールド":"+5 Shield");
-                  return (
-                    <div style={{display:"flex",alignItems:"center",gap:4,background:`${tColor}18`,borderRadius:6,padding:"3px 8px"}}>
-                      <span style={{color:tColor,display:"flex"}}>{tIcon}</span>
-                      <span style={{fontSize:11,color:tColor,fontWeight:700}}>{tLabel} {tBonus}</span>
-                    </div>
-                  );
-                })()}
+                <p style={{margin:"3px 0 0",textAlign:"center" as const,fontSize:9,color:C.textDim}}>{ko?"카드 확인":ja?"カード確認":"Cards"}</p>
+                {showStarterCards && (
+                  <div style={{
+                    position:"absolute",right:0,bottom:"calc(100% + 8px)",zIndex:20,
+                    background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,
+                    padding:10,width:200,boxShadow:"0 8px 24px #000a",
+                    animation:"rogue-in 0.15s ease-out both",
+                  }}>
+                    <p style={{margin:"0 0 6px",fontSize:10,fontWeight:800,color:C.textBright,display:"flex",alignItems:"center",gap:4}}>
+                      <Layers size={10} color={ac}/>{ko?"전용 스타터 카드":ja?"専用スターターカード":"Unique Starter Cards"}
+                    </p>
+                    {uniqueCards.map(card=>(
+                      <div key={card.id} style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:5}}>
+                        <span style={{fontSize:9,fontWeight:800,color:"#0a0a0a",background:cardTypeColor(card.type),borderRadius:3,padding:"1px 4px",flexShrink:0,lineHeight:1.6}}>{cardTypeName(card.type)}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <p style={{margin:0,fontSize:10,fontWeight:700,color:C.textBright,lineHeight:1.2}}>
+                            [{card.cost}] {ko?card.name:ja?card.nameJa:card.nameEn}
+                          </p>
+                          <p style={{margin:0,fontSize:9,color:C.textDim,lineHeight:1.3}}>{ko?card.desc:ja?card.descJa:card.descEn}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <p style={{margin:"4px 0 0",fontSize:9,color:C.textDim,borderTop:`1px solid ${C.border}`,paddingTop:4}}>
+                      {ko?"공통: 스트라이크×4, 방어×3":ja?"共通: ストライク×4, ディフェンス×3":"Common: Strike×4, Defend×3"}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+            );
+          })()}
 
           {/* Difficulty selector */}
           <div style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:10,padding:16,animation:"rogue-in 0.4s 0.08s ease-out both"}}>
@@ -1642,6 +1710,76 @@ export default function RoguePage() {
           </div>
         </div>
       </div>
+
+      {/* ── 보상 안내 모달 ── */}
+      {showRewardGuide && (
+        <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowRewardGuide(false)}>
+          <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:14,padding:20,width:"min(480px,94vw)",maxHeight:"85vh",overflow:"auto",fontFamily:FONT,animation:"rogue-in 0.22s ease-out both"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <p style={{margin:0,fontSize:16,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:6}}><Award size={16} color={C.gold}/>{ko?"보상 안내":ja?"報酬案内":"Reward Guide"}</p>
+              <button onClick={()=>setShowRewardGuide(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1}}>×</button>
+            </div>
+
+            {/* 일반 모드 */}
+            <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:"#22c55e",display:"flex",alignItems:"center",gap:5}}><Star size={12} color="#22c55e"/>{ko?"일반 모드 누적 클리어 보상":ja?"通常モード累計クリア報酬":"Normal Mode Milestone Rewards"}</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+              {([
+                {c:1,   pts:500,  st:0, ne:1, be:0, ge:0},
+                {c:3,   pts:1000, st:1, ne:1, be:0, ge:0},
+                {c:5,   pts:1500, st:1, ne:1, be:0, ge:0},
+                {c:10,  pts:2000, st:1, ne:0, be:1, ge:0},
+                {c:20,  pts:3000, st:2, ne:0, be:1, ge:0},
+                {c:30,  pts:3500, st:2, ne:0, be:1, ge:0},
+                {c:40,  pts:4000, st:2, ne:0, be:1, ge:0},
+                {c:50,  pts:4500, st:2, ne:0, be:1, ge:0},
+                {c:75,  pts:5000, st:3, ne:0, be:0, ge:1},
+                {c:100, pts:5000, st:3, ne:0, be:0, ge:1},
+                {c:125, pts:5500, st:3, ne:0, be:0, ge:1},
+                {c:150, pts:5000, st:3, ne:0, be:0, ge:1},
+              ] as {c:number;pts:number;st:number;ne:number;be:number;ge:number}[]).map(m => (
+                <div key={m.c} style={{background:"#0a1a0a",border:"1px solid #22c55e33",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,fontWeight:800,color:"#22c55e",minWidth:44}}>{ko?`${m.c}회`:ja?`${m.c}回`:`×${m.c}`}</span>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap" as const,flex:1}}>
+                    {m.pts>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{m.pts.toLocaleString()}P</span>}
+                    {m.st>0&&<span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"#60a5fa18",borderRadius:4,padding:"2px 6px"}}>{ko?"강화석":ja?"強化石":"Stone"} ×{m.st}</span>}
+                    {m.ne>0&&<span style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"#94a3b818",borderRadius:4,padding:"2px 6px"}}>{ko?"일반알":ja?"通常卵":"Normal Egg"} ×{m.ne}</span>}
+                    {m.be>0&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80",background:"#4ade8018",borderRadius:4,padding:"2px 6px"}}>{ko?"고급알":ja?"上級卵":"Prem.Egg"} ×{m.be}</span>}
+                    {m.ge>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{ko?"황금알":ja?"黄金卵":"Gold Egg"} ×{m.ge}</span>}
+                  </div>
+                </div>
+              ))}
+              <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>{ko?"※ 150회 이후 매 50회마다 5000P + 강화석×4 + 황금알×1":ja?"※ 150回以降、50回ごとに5000P+強化石×4+黄金卵×1":"※ After 150: every 50 clears → 5000P + Stone×4 + Gold Egg×1"}</p>
+            </div>
+
+            {/* 도전 모드 */}
+            <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:"#c084fc",display:"flex",alignItems:"center",gap:5}}><Crown size={12} color="#c084fc"/>{ko?"도전 모드 신기록 달성 보상":ja?"チャレンジモード新記録報酬":"Challenge Mode Best Record Rewards"}</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {([
+                {c:5,   pts:500,  st:0, ne:1, be:0, ge:0},
+                {c:10,  pts:1000, st:1, ne:1, be:0, ge:0},
+                {c:20,  pts:1800, st:1, ne:0, be:1, ge:0},
+                {c:30,  pts:2600, st:2, ne:0, be:1, ge:0},
+                {c:50,  pts:4000, st:3, ne:0, be:1, ge:0},
+                {c:75,  pts:5500, st:4, ne:0, be:0, ge:1},
+                {c:100, pts:9000, st:6, ne:0, be:0, ge:2},
+              ] as {c:number;pts:number;st:number;ne:number;be:number;ge:number}[]).map(m => (
+                <div key={m.c} style={{background:"#140a20",border:"1px solid #a855f733",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,fontWeight:800,color:"#c084fc",minWidth:52}}>{ko?`${m.c}스테이지`:ja?`${m.c}ステージ`:`Stage ${m.c}`}</span>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap" as const,flex:1}}>
+                    {m.pts>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{m.pts.toLocaleString()}P</span>}
+                    {m.st>0&&<span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"#60a5fa18",borderRadius:4,padding:"2px 6px"}}>{ko?"강화석":ja?"強化石":"Stone"} ×{m.st}</span>}
+                    {m.ne>0&&<span style={{fontSize:10,fontWeight:700,color:"#94a3b8",background:"#94a3b818",borderRadius:4,padding:"2px 6px"}}>{ko?"일반알":ja?"通常卵":"Normal Egg"} ×{m.ne}</span>}
+                    {m.be>0&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80",background:"#4ade8018",borderRadius:4,padding:"2px 6px"}}>{ko?"고급알":ja?"上級卵":"Prem.Egg"} ×{m.be}</span>}
+                    {m.ge>0&&<span style={{fontSize:10,fontWeight:700,color:C.gold,background:`${C.gold}18`,borderRadius:4,padding:"2px 6px"}}>{ko?"황금알":ja?"黄金卵":"Gold Egg"} ×{m.ge}</span>}
+                  </div>
+                </div>
+              ))}
+              <p style={{margin:"2px 0 0",fontSize:10,color:C.textDim}}>{ko?"※ 신기록 갱신 시에만 지급됩니다":ja?"※ 自己記録更新時のみ支給されます":"※ Paid only when you break your personal best"}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
@@ -1785,8 +1923,8 @@ export default function RoguePage() {
             <button onClick={()=>setDeckOpen(true)} style={{background:C.panelDark,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 8px",color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:FONT}}>
               {ko?`덱(${gs.deck.length})`:ja?`デッキ(${gs.deck.length})`:`Deck(${gs.deck.length})`}
             </button>
-            <button onClick={()=>setRelicOpen(true)} style={{background:"#a855f718",border:"1px solid #a855f744",borderRadius:6,padding:"4px 8px",color:"#a855f7",cursor:"pointer",fontSize:11,fontFamily:FONT}}>
-              ✨{gs.relics.length}
+            <button onClick={()=>setRelicOpen(true)} style={{background:"#a855f718",border:"1px solid #a855f744",borderRadius:6,padding:"4px 8px",color:"#a855f7",cursor:"pointer",fontSize:11,fontFamily:FONT,display:"flex",alignItems:"center",gap:3}}>
+              <Sparkles size={11}/>{gs.relics.length}
             </button>
             <button onClick={abandonRun} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:11,fontFamily:FONT,padding:"4px 6px"}}>
               {ko?"포기":ja?"放棄":"Quit"}
@@ -2196,7 +2334,11 @@ export default function RoguePage() {
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:4}}>
             <ShoppingCart size={20} color={gs.shopInflated?"#f59e0b":"#22c55e"}/>
             <p style={{margin:0,fontSize:20,fontWeight:900,color:gs.shopInflated?"#f59e0b":"#22c55e"}}>
-              {gs.shopInflated?(ko?"바가지 상점 ⚠":ja?"ぼったくり商店 ⚠":"Overpriced Shop ⚠"):(ko?"상점":ja?"商店":"Shop")}
+              {gs.shopInflated?(
+                <span style={{display:"inline-flex",alignItems:"center",gap:5}}>
+                  {ko?"바가지 상점":ja?"ぼったくり商店":"Overpriced Shop"}<AlertCircle size={16}/>
+                </span>
+              ):(ko?"상점":ja?"商店":"Shop")}
             </p>
           </div>
           {gs.shopInflated && (

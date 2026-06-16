@@ -1489,6 +1489,7 @@ export default function RaidPage() {
   const [jumpPlayerLives, setJumpPlayerLives] = useState<PlayerLiveMap>({});
   const [chatLives, setChatLives] = useState(5);
   const [eliminated, setEliminated] = useState(false);
+  const [showRewardGuide, setShowRewardGuide] = useState(false);
   const prevHp = useRef<number | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -1729,9 +1730,18 @@ export default function RaidPage() {
   if (view === "lobby") {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <div className="mb-2 flex items-center gap-2">
-          <Swords className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("raid.title")}</h1>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Swords className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold">{t("raid.title")}</h1>
+          </div>
+          <button
+            onClick={() => setShowRewardGuide(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+          >
+            <Trophy className="h-3.5 w-3.5" />
+            {lang === "ko" ? "보상 안내" : lang === "ja" ? "報酬案内" : "Reward Guide"}
+          </button>
         </div>
         <p className="mb-6 text-sm text-muted-foreground">{t("raid.desc")}</p>
 
@@ -1985,6 +1995,76 @@ export default function RaidPage() {
 
               <button
                 onClick={() => setRankingsModal(null)}
+                className="mt-4 w-full rounded-lg bg-muted py-2 text-sm font-semibold hover:bg-muted/70 transition-colors"
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── 보상 안내 모달 ── */}
+        {showRewardGuide && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowRewardGuide(false)}
+          >
+            <div
+              className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl mx-4 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-400" />
+                <h2 className="font-bold text-lg">
+                  {lang === "ko" ? "보상 안내" : lang === "ja" ? "報酬案内" : "Reward Guide"}
+                </h2>
+                <button
+                  onClick={() => setShowRewardGuide(false)}
+                  className="ml-auto text-muted-foreground hover:text-foreground text-lg leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* 순위 보상 */}
+              <p className="mb-2 text-xs font-bold text-amber-400">
+                {lang === "ko" ? "순위 보상" : lang === "ja" ? "順位報酬" : "Rank Rewards"}
+              </p>
+              <div className="mb-4 space-y-1.5">
+                {[
+                  { rank: lang === "ko" ? "1위" : lang === "ja" ? "1位" : "1st",  reward: lang === "ko" ? "황금 알 ×1" : lang === "ja" ? "黄金卵 ×1" : "Golden Egg ×1",  color: "#fbbf24" },
+                  { rank: lang === "ko" ? "2위" : lang === "ja" ? "2位" : "2nd",  reward: lang === "ko" ? "고급 알 ×2" : lang === "ja" ? "上級卵 ×2" : "Premium Egg ×2", color: "#94a3b8" },
+                  { rank: lang === "ko" ? "3위" : lang === "ja" ? "3位" : "3rd",  reward: lang === "ko" ? "고급 알 ×1" : lang === "ja" ? "上級卵 ×1" : "Premium Egg ×1", color: "#cd7f32" },
+                  { rank: lang === "ko" ? "4~10위" : lang === "ja" ? "4~10位" : "4th~10th", reward: lang === "ko" ? "일반 알 ×1" : lang === "ja" ? "通常卵 ×1" : "Normal Egg ×1", color: "#64748b" },
+                  { rank: lang === "ko" ? "11위~" : lang === "ja" ? "11位~" : "11th+", reward: lang === "ko" ? "포인트 ×100" : lang === "ja" ? "ポイント ×100" : "Points ×100", color: "#64748b" },
+                ].map((row) => (
+                  <div key={row.rank} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                    <span className="font-bold" style={{ color: row.color }}>{row.rank}</span>
+                    <span className="text-foreground font-medium">{row.reward}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 참여 보상 */}
+              <p className="mb-2 text-xs font-bold text-blue-400">
+                {lang === "ko" ? "참여 포인트 (레이드별)" : lang === "ja" ? "参加ポイント（レイド別）" : "Participation Points (per Raid)"}
+              </p>
+              <div className="space-y-1.5">
+                {[
+                  { name: lang === "ko" ? "점프 레이드" : lang === "ja" ? "ジャンプレイド" : "Jump Raid", pts: 30 },
+                  { name: lang === "ko" ? "퀴즈 레이드" : lang === "ja" ? "クイズレイド" : "Quiz Raid", pts: 50 },
+                  { name: lang === "ko" ? "받아쓰기 레이드" : lang === "ja" ? "書き取りレイド" : "Dictation Raid", pts: 80 },
+                  { name: lang === "ko" ? "탄막 레이드" : lang === "ja" ? "弾幕レイド" : "Bullet Raid", pts: 60 },
+                ].map((row) => (
+                  <div key={row.name} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                    <span className="text-foreground">{row.name}</span>
+                    <span className="font-bold text-blue-400">+{row.pts}P</span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowRewardGuide(false)}
                 className="mt-4 w-full rounded-lg bg-muted py-2 text-sm font-semibold hover:bg-muted/70 transition-colors"
               >
                 {t("common.close")}
