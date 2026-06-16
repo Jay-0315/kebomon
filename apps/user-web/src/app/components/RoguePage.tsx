@@ -751,6 +751,7 @@ export default function RoguePage() {
   const [pendingCardSwap, setPendingCardSwap] = useState<CardInstance | null>(null);
   const [showRewardGuide, setShowRewardGuide] = useState(false);
   const [guideDiff, setGuideDiff] = useState<"normal"|"hard"|"hell">("normal");
+  const [showRelicGuide, setShowRelicGuide] = useState(false);
   const [showStarterCards, setShowStarterCards] = useState(false);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
@@ -1538,12 +1539,20 @@ export default function RoguePage() {
                 <Layers size={28} color={C.gold}/>
                 <h1 style={{margin:0,fontSize:24,fontWeight:900,color:C.gold,letterSpacing:"0.1em"}}>CARD EXPEDITION</h1>
               </div>
-              <button
-                onClick={() => setShowRewardGuide(true)}
-                style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
-              >
-                <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
-              </button>
+              <div style={{display:"flex",gap:6}}>
+                <button
+                  onClick={() => setShowRelicGuide(true)}
+                  style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+                >
+                  <Sparkles size={12}/>{ko?"기물 도감":ja?"遺物図鑑":"Relics"}
+                </button>
+                <button
+                  onClick={() => setShowRewardGuide(true)}
+                  style={{flexShrink:0,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.textDim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const}}
+                >
+                  <Award size={12}/>{ko?"보상 안내":ja?"報酬案内":"Rewards"}
+                </button>
+              </div>
             </div>
             <p style={{margin:0,fontSize:12,color:C.textDim,textAlign:"center"}}>{ko?"카드 배틀 로그라이크":ja?"カードバトルローグライク":"Card Battle Roguelike"}</p>
           </div>
@@ -1704,12 +1713,6 @@ export default function RoguePage() {
               {ko?"점점 강해지는 적과 싸우며 100스테이지에 도전! 사망 시 즉시 종료."
                 :ja?"強化し続ける敵と戦い、100ステージに挑戦！死亡で即終了。"
                 :"Fight ever-stronger foes up to Stage 100. Death ends the run."}
-              <br/>
-              <span style={{fontSize:10,color:"#a855f7",display:"block",marginTop:3}}>
-                {ko?"▸ 1~2스테이지: 상점·휴식 미등장  ▸ 3스테이지: 상점 미등장  ▸ 20스테이지마다: 보스만 1개  ▸ 1~50스테이지: 적 HP ×0.7"
-                  :ja?"▸ 1〜2面: ショップ・休息なし  ▸ 3面: ショップなし  ▸ 20面ごと: ボスのみ  ▸ 1〜50面: 敵HP×0.7"
-                  :"▸ Stage 1–2: no shop/rest  ▸ Stage 3: no shop  ▸ Every 20: boss only  ▸ Stage 1–50: enemy HP ×0.7"}
-              </span>
             </p>
             <button
               onClick={() => startRun("challenge")}
@@ -1730,6 +1733,33 @@ export default function RoguePage() {
           </div>
         </div>
       </div>
+
+      {/* ── 기물 도감 모달 ── */}
+      {showRelicGuide && (
+        <div style={{position:"fixed",inset:0,zIndex:999,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowRelicGuide(false)}>
+          <div className="rogue-reward-guide" style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:14,padding:20,width:"min(520px,96vw)",maxHeight:"88vh",overflowY:"auto",fontFamily:FONT,animation:"rogue-in 0.22s ease-out both"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <p style={{margin:0,fontSize:16,fontWeight:800,color:C.gold,display:"flex",alignItems:"center",gap:6}}><Sparkles size={16} color={C.gold}/>{ko?"기물 도감":ja?"遺物図鑑":"Relic Encyclopedia"}</p>
+              <button onClick={()=>setShowRelicGuide(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1}}>×</button>
+            </div>
+            {(["common","rare","unique"] as RelicGrade[]).map(grade => {
+              const gradeRelics = RELICS.filter(r => r.grade === grade);
+              const gc = RELIC_GRADE_COLOR[grade];
+              const gl = RELIC_GRADE_LABEL(grade);
+              return (
+                <div key={grade} style={{marginBottom:18}}>
+                  <p style={{margin:"0 0 8px",fontSize:12,fontWeight:800,color:gc,display:"flex",alignItems:"center",gap:5,borderBottom:`1px solid ${gc}33`,paddingBottom:6}}>{gl} ({gradeRelics.length})</p>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {gradeRelics.map(r => (
+                      <RelicCard key={r.id} relic={r}/>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── 보상 안내 모달 ── */}
       {showRewardGuide && (() => {
