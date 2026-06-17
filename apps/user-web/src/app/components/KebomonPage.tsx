@@ -1496,10 +1496,10 @@ function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: num
       ? rt === "energy" ? "エナジー型" : rt === "attack" ? "アタック型" : "ディフェンス型"
       : rt === "energy" ? "Energy" : rt === "attack" ? "Attack" : "Defense";
   const rtBonus = ko
-    ? rt === "energy" ? "+1 에너지" : rt === "attack" ? "+1 힘" : "+5 방어"
+    ? rt === "energy" ? "+1 에너지" : rt === "attack" ? "+1 힘" : "방어도 영구 유지"
     : ja
-      ? rt === "energy" ? "+1エナジー" : rt === "attack" ? "+1力" : "+5シールド"
-      : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "+5 Shield";
+      ? rt === "energy" ? "+1エナジー" : rt === "attack" ? "+1力" : "防御永続"
+      : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "Shield persists";
   const rtColor = rt === "energy" ? "#60a5fa" : rt === "attack" ? "#f87171" : "#4ade80";
 
   const ca = CARD_ARCH_MAP[char.type];
@@ -2649,10 +2649,10 @@ export function KeboStatusPanel({
       : rt === "energy" ? "Energy" : rt === "attack" ? "Attack" : "Defense";
 
   const rtBonus = ja
-    ? rt === "energy" ? "+1エナジー" : rt === "attack" ? "+1力" : "+5シールド"
+    ? rt === "energy" ? "+1エナジー" : rt === "attack" ? "+1力" : "防御永続"
     : ko
-      ? rt === "energy" ? "+1 에너지" : rt === "attack" ? "+1 힘" : "+5 방어"
-      : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "+5 Shield";
+      ? rt === "energy" ? "+1 에너지" : rt === "attack" ? "+1 힘" : "방어도 영구 유지"
+      : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "Shield persists";
 
   const rtColor = rt === "energy" ? "#4499dd" : rt === "attack" ? M.redBright : M.greenBright;
 

@@ -1842,9 +1842,9 @@ const RELICS: RelicDef[] = [
     nameJa: "鉄の心臓",
     nameEn: "Iron Heart",
     handSizeMod: -1,
-    desc: "전투 시작 방어력 +12 / 단 시작 패 4장",
-    descJa: "戦闘開始時、防御+12 / ただし初期手札4枚",
-    descEn: "Battle start: +12 armor / start with 4 cards",
+    desc: "전투 시작 방어력 +20 / 단 시작 패 4장",
+    descJa: "戦闘開始時、防御+20 / ただし初期手札4枚",
+    descEn: "Battle start: +20 armor / start with 4 cards",
   },
   {
     id: "berserker_crown",
@@ -1853,10 +1853,10 @@ const RELICS: RelicDef[] = [
     name: "광전사의 왕관",
     nameJa: "狂戦士の王冠",
     nameEn: "Berserker Crown",
-    selfDmgPct: 0.15,
-    desc: "획득 시 힘 +5 (영구) / 단 매 전투 시작 체력 -15%",
-    descJa: "取得時、力+5（永続） / 戦闘開始HP-15%",
-    descEn: "Gain +5 strength / Battle start: -15% HP",
+    selfDmgPct: 0.10,
+    desc: "획득 시 힘 +7 (영구) / 단 매 전투 시작 체력 -10%",
+    descJa: "取得時、力+7（永続） / 戦闘開始HP-10%",
+    descEn: "Gain +7 strength / Battle start: -10% HP",
   },
   {
     id: "cursed_sigil",
@@ -1865,9 +1865,9 @@ const RELICS: RelicDef[] = [
     name: "저주의 인장",
     nameJa: "呪いの印章",
     nameEn: "Cursed Sigil",
-    desc: "전투 시작 적 독 +5 / 단 본인도 독 +3",
-    descJa: "戦闘開始時、敵に毒+5 / 自分も毒+3",
-    descEn: "Battle start: enemy +5 poison / self +3 poison",
+    desc: "전투 시작 적 독 +8 / 단 본인도 독 +2",
+    descJa: "戦闘開始時、敵に毒+8 / 自分も毒+2",
+    descEn: "Battle start: enemy +8 poison / self +2 poison",
   },
   {
     id: "titan_gauntlet",
@@ -1876,9 +1876,9 @@ const RELICS: RelicDef[] = [
     name: "거인의 건틀릿",
     nameJa: "巨人のガントレット",
     nameEn: "Titan Gauntlet",
-    desc: "공격 카드 데미지 +4 / 단 획득 시 최대HP -30",
-    descJa: "攻撃カードダメージ+4 / 取得時、最大HP-30",
-    descEn: "Attack cards +4 damage / Lose 30 max HP on acquire",
+    desc: "공격 카드 데미지 +6 / 단 획득 시 최대HP -20",
+    descJa: "攻撃カードダメージ+6 / 取得時、最大HP-20",
+    descEn: "Attack cards +6 damage / Lose 20 max HP on acquire",
   },
   {
     id: "abyss_crown",
@@ -1887,9 +1887,9 @@ const RELICS: RelicDef[] = [
     name: "심연의 왕관",
     nameJa: "深淵の王冠",
     nameEn: "Abyss Crown",
-    desc: "전투 종료 시 최대HP +8 & 힘 +1 / 단 획득 시 현재HP 절반",
-    descJa: "戦闘終了時、最大HP+8 & 力+1 / 取得時、現在HP半減",
-    descEn: "Battle end: +8 max HP & +1 strength / Acquire: HP halved",
+    desc: "전투 종료 시 최대HP +10 & 힘 +1 / 단 획득 시 현재HP 절반",
+    descJa: "戦闘終了時、最大HP+10 & 力+1 / 取得時、現在HP半減",
+    descEn: "Battle end: +10 max HP & +1 strength / Acquire: HP halved",
   },
 ];
 
@@ -3315,18 +3315,18 @@ export default function RoguePage() {
           // 전투 시작 패시브
           const attackStrBonus =
             (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
-          const defenseShieldBonus =
-            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense" ? 5 : 0;
+          const isDefenseType =
+            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
           const battleStartShield =
-            defenseShieldBonus +
+            (isDefenseType ? prev.shield : 0) +
             (hasRelic(prev.relics, "iron_flask") ? 5 : 0) +
             (hasRelic(prev.relics, "gilded_shield") ? 10 : 0) +
-            (hasRelic(prev.relics, "iron_heart") ? 12 : 0);
+            (hasRelic(prev.relics, "iron_heart") ? 20 : 0);
           const manaBonus = hasRelic(prev.relics, "mana_shard") ? 1 : 0;
           if (hasRelic(prev.relics, "battle_horn")) enemy.poisonStacks += 3;
-          // boss relic: cursed_sigil — 적 독 +5, 본인 독 +3
-          if (hasRelic(prev.relics, "cursed_sigil")) enemy.poisonStacks += 5;
-          const sigilSelfPoison = hasRelic(prev.relics, "cursed_sigil") ? 3 : 0;
+          // boss relic: cursed_sigil — 적 독 +8, 본인 독 +2
+          if (hasRelic(prev.relics, "cursed_sigil")) enemy.poisonStacks += 8;
+          const sigilSelfPoison = hasRelic(prev.relics, "cursed_sigil") ? 2 : 0;
           // boss relic: berserker_crown — 전투 시작 체력 -15%
           const berserkDmg = hasRelic(prev.relics, "berserker_crown")
             ? Math.floor(prev.playerMaxHp * 0.15) : 0;
@@ -3390,10 +3390,10 @@ export default function RoguePage() {
             const drawn = drawN([], drawPile, [], 5 + extraDraw);
             const attackStrBonus =
               (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
-            const defenseShieldBonusA =
-              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense" ? 5 : 0;
+            const isDefenseTypeA =
+              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
             const battleStartShieldA =
-              defenseShieldBonusA +
+              (isDefenseTypeA ? prev.shield : 0) +
               (hasRelic(prev.relics, "iron_flask") ? 5 : 0) +
               (hasRelic(prev.relics, "gilded_shield") ? 10 : 0);
             const manaBonus = hasRelic(prev.relics, "mana_shard") ? 1 : 0;
@@ -3509,7 +3509,7 @@ export default function RoguePage() {
         // 2. Damage
         if (card.damage) {
           const hits = card.multiHit ?? 1;
-          const gauntletBonus = (card.type === "attack" && hasRelic(prev.relics, "titan_gauntlet")) ? 4 : 0;
+          const gauntletBonus = (card.type === "attack" && hasRelic(prev.relics, "titan_gauntlet")) ? 6 : 0;
           let total = 0;
           for (let i = 0; i < hits; i++) {
             const raw = Math.floor((card.damage + strength + gauntletBonus) * (mekaDoubled ? 2 : 1));
@@ -3744,7 +3744,7 @@ export default function RoguePage() {
             (hasRelic(prev.relics, "vampire_ring") ? 2 : 0) +
             (hasRelic(prev.relics, "health_potion") ? 2 : 0) +
             (hasRelic(prev.relics, "titan_core") ? 3 : 0) +
-            (hasRelic(prev.relics, "abyss_crown") ? 8 : 0);
+            (hasRelic(prev.relics, "abyss_crown") ? 10 : 0);
           const killStrGain =
             (hasRelic(prev.relics, "blade_ring") ? 1 : 0) +
             (hasRelic(prev.relics, "berserker_axe") ? 2 : 0) +
@@ -3776,11 +3776,13 @@ export default function RoguePage() {
             const chainDrawn = drawN([], chainDrawPile, [], 5 + extraDraw);
             const chainStrBonus =
               (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+            const chainIsDefense =
+              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
             return {
               ...prev,
               playerHp: hpAfterKill,
               playerMaxHp: newMaxHp,
-              shield: 0,
+              shield: chainIsDefense ? prev.shield : 0,
               strength: strength + killStrGain + chainStrBonus,
               energy: prev.maxEnergy,
               enemy: prev.chainPending,
@@ -3984,13 +3986,15 @@ export default function RoguePage() {
           const chainDrawn = drawN([], chainDrawPile, [], 5 + extraDraw);
           const chainStrBonus =
             (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+          const chainIsDefense2 =
+            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
           return {
             ...prev,
             playerHp: hpAfterKill,
             playerMaxHp: newMaxHp,
             enemy: prev.chainPending,
             chainPending: null,
-            shield: 0,
+            shield: chainIsDefense2 ? prev.shield : 0,
             strength: prev.strength + killStrGain + chainStrBonus,
             energy: prev.maxEnergy,
             hand: chainDrawn.hand,
@@ -4439,12 +4443,12 @@ export default function RoguePage() {
           energy: next.energy + 2,
         };
       if (relic.id === "berserker_crown")
-        next = { ...next, strength: next.strength + 5 };
+        next = { ...next, strength: next.strength + 7 };
       if (relic.id === "titan_gauntlet")
         next = {
           ...next,
-          playerMaxHp: Math.max(1, next.playerMaxHp - 30),
-          playerHp: Math.min(Math.max(1, next.playerMaxHp - 30), next.playerHp),
+          playerMaxHp: Math.max(1, next.playerMaxHp - 20),
+          playerHp: Math.min(Math.max(1, next.playerMaxHp - 20), next.playerHp),
         };
       if (relic.id === "abyss_crown")
         next = { ...next, playerHp: Math.max(1, Math.floor(next.playerHp / 2)) };
@@ -5758,10 +5762,10 @@ export default function RoguePage() {
                                   ? "戦闘ごと力+1"
                                   : "Str+1/battle"
                               : ko
-                                ? "전투마다 방어+5"
+                                ? "방어도 영구 유지"
                                 : ja
-                                  ? "戦闘ごとシールド+5"
-                                  : "Shield+5/battle";
+                                  ? "防御永続"
+                                  : "Shield persists";
                         return (
                           <div
                             style={{
@@ -7198,10 +7202,10 @@ export default function RoguePage() {
                       icon: <Shield size={14} color="#60a5fa" />,
                       title: ko ? "방어력 (아머)" : ja ? "防御力（アーマー）" : "Armor",
                       desc: ko
-                        ? "방어력은 영구적으로 유지됩니다. 피해를 받을 때 '방어력 초과분'만 HP가 감소합니다. (예: 방어력 5, 공격 8 → HP -3)"
+                        ? "방어력은 피해를 받아도 줄어들지 않으며, 초과분만 HP가 감소합니다. (예: 방어력 5, 공격 8 → HP -3) 방어형 캐릭터는 전투가 끝나도 방어력이 유지됩니다."
                         : ja
-                          ? "防御力は永続します。ダメージを受けると「防御力超過分」のみHPが減少します。（例: 防御5, 攻撃8 → HP-3）"
-                          : "Armor persists permanently. Only damage exceeding your armor reduces HP. (e.g. 5 armor vs 8 atk → -3 HP)",
+                          ? "防御力はダメージを受けても減らず、超過分のみHPが減少します。（例: 防御5, 攻撃8 → HP-3）防御型キャラは戦闘後も防御力が維持されます。"
+                          : "Armor doesn't decrease when hit — only damage exceeding armor reduces HP. (e.g. 5 armor vs 8 atk → -3 HP) Defense-type characters keep armor between battles.",
                     },
                     {
                       icon: <Heart size={14} color="#f87171" />,
@@ -7216,19 +7220,19 @@ export default function RoguePage() {
                       icon: <FlaskConical size={14} color="#60a5fa" />,
                       title: ko ? "포션 슬롯" : ja ? "ポーションスロット" : "Potions",
                       desc: ko
-                        ? "상점에서 구매한 엘릭서는 포션 슬롯(최대 3)에 보관됩니다. 전투 중 버튼을 눌러 즉시 사용할 수 있습니다."
+                        ? "상점에서 구매한 엘릭서·해독제는 포션 슬롯(최대 3)에 보관됩니다. 전투 중 버튼을 눌러 즉시 사용할 수 있습니다. 해독제는 모든 상태이상을 즉시 해제합니다."
                         : ja
-                          ? "商店で購入したエリクサーはポーションスロット（最大3）に保管されます。戦闘中ボタンを押して即使用できます。"
-                          : "Elixirs bought in the shop are stored in potion slots (max 3). Use them mid-battle with a tap.",
+                          ? "商店で購入したエリクサー・解毒剤はポーションスロット（最大3）に保管されます。戦闘中ボタンを押して即使用できます。解毒剤は全状態異常を即座に解除します。"
+                          : "Elixirs and Antidotes from the shop are stored in potion slots (max 3). Use mid-battle with a tap. Antidote instantly clears all status effects.",
                     },
                     {
                       icon: <Skull size={14} color="#f97316" />,
                       title: ko ? "상태이상" : ja ? "状態異常" : "Status Effects",
                       desc: ko
-                        ? "출혈·화상·공포·속박·감전·저주는 60% 확률로 적용됩니다. 공포: 1턴 공격 불가. 속박: 1턴 행동 불가. 저주: 다른 상태이상 피해 1.5배."
+                        ? "독·출혈·화상·저주는 방어력 무시 트루 데미지로 2턴간 유지됩니다. 독 1스택=1, 출혈=×2, 화상=×3, 저주=×4 피해. 공포: 1턴 공격 불가. 속박: 1턴 행동 불가. 감전: 1턴 공격력 절반. 저주 스택 있으면 다른 상태이상 피해 1.5배."
                         : ja
-                          ? "出血・火傷・恐怖・束縛・感電・呪いは60%の確率で付与されます。恐怖: 1ターン攻撃不可. 束縛: 1ターン行動不可. 呪い: 他状態異常1.5倍。"
-                          : "Bleed/Burn/Fear/Bind/Shock/Curse apply at 60%. Fear: skip attack 1 turn. Bind: skip all actions. Curse: 1.5× other status damage.",
+                          ? "毒・出血・火傷・呪いは防御無視のトゥルーダメージで2ターン持続します。毒1スタック=1, 出血=×2, 火傷=×3, 呪い=×4ダメージ。恐怖:1ターン攻撃不可。束縛:1ターン行動不可。感電:1ターン攻撃半減。呪いスタックがあると他状態異常1.5倍。"
+                          : "Poison/Bleed/Burn/Curse deal true damage (ignores armor) and last 2 turns per stack. Poison=×1, Bleed=×2, Burn=×3, Curse=×4. Fear: skip attack 1t. Bind: skip actions 1t. Shock: half attack 1t. Curse stacks amplify other DoT ×1.5.",
                     },
                     {
                       icon: <Star size={14} color={C.gold} />,
@@ -7243,10 +7247,10 @@ export default function RoguePage() {
                       icon: <Sparkles size={14} color="#a78bfa" />,
                       title: ko ? "기물" : ja ? "遺物" : "Relics",
                       desc: ko
-                        ? "기물을 획득하면 탐험 내내 지속되는 특수 효과가 적용됩니다. 보스 처치 시 강력한 보스 기물 3개 중 1개를 선택합니다."
+                        ? "기물을 획득하면 탐험 내내 지속되는 특수 효과가 적용됩니다. 보스 처치 시 강력한 보스 기물 3개 중 1개를 선택합니다. 보스 기물은 강력한 이득과 함께 패널티가 따릅니다."
                         : ja
-                          ? "遺物を入手すると探検中ずっと続く特殊効果が発動します。ボス撃破時に強力なボス遺物3個から1つ選択できます。"
-                          : "Relics grant persistent effects. After beating a boss, choose 1 of 3 powerful boss relics.",
+                          ? "遺物を入手すると探検中ずっと続く特殊効果が発動します。ボス撃破時に強力なボス遺物3個から1つ選択できます。ボス遺物は強力な恩恵と引き換えにデメリットがあります。"
+                          : "Relics grant persistent effects. After beating a boss, choose 1 of 3 powerful boss relics. Boss relics come with strong bonuses — and notable drawbacks.",
                     },
                     {
                       icon: <Crown size={14} color="#ef4444" />,
