@@ -616,6 +616,198 @@ export const RARITY_LABEL_JA: Record<CharacterRarity, string> = {
   mythic: "神話",
 };
 
+export const RARITY_LABEL_EN: Record<CharacterRarity, string> = {
+  common: "Common",
+  uncommon: "Uncommon",
+  rare: "Rare",
+  epic: "Epic",
+  legendary: "Legendary",
+  mythic: "Mythic",
+};
+
+export const CHARACTER_EN_DESCRIPTIONS: Record<number, string> = {
+  4: "Peaceful Ghost",
+  5: "Small Courage",
+  6: "Free Spirit",
+  7: "First Step of Wisdom",
+  8: "Steadfast Companion",
+  9: "Slow and Steady",
+  11: "Brave Sentinel",
+  12: "Calculation Genius",
+  13: "Mysterious Jelly",
+  14: "Haughty Traveler",
+  16: "Mysterious Being",
+  17: "Radiant Vitality",
+  18: "Luck Bringer",
+  19: "Embracing Moonlight",
+  20: "Guardian of the Night",
+  21: "Dream of the Deep Sea",
+  22: "Pure White Wisdom",
+  26: "Mysterious Cat",
+  28: "Forest Spirit",
+  29: "Magical Garden",
+  30: "Brave Fish",
+  31: "Eye of the Prophet",
+  32: "Harmony of Black and White",
+  33: "Symbol of Fortune",
+  34: "Ice Fox",
+  35: "Night Hunter",
+  36: "Premium Alloy Machine",
+  37: "Lucky Jelly",
+  38: "Noble Bloodline",
+  39: "Magical Rabbit",
+  40: "Spirit of Wealth",
+  41: "Miracle of Colors",
+  42: "Swimming in Light",
+  43: "Symbol of Wealth and Wisdom",
+  44: "Guardian of the Snowfield",
+  51: "Spirit of the Sea",
+  52: "Legendary Rabbit",
+  53: "Purified Soul",
+  54: "Garden of Ice",
+  55: "Swimming Within Light",
+  56: "Transparent Wisdom",
+  57: "Guardian of Light",
+  58: "Dragon Bloodline",
+  59: "Dark Hunter",
+  60: "Lord of Flames",
+  61: "Mightiest Machine",
+  64: "Shadow of the Moon",
+  65: "Soul Within Flames",
+  66: "Flame of Life",
+  67: "Volcanic Soul",
+  69: "Guardian of Flame",
+  71: "Soul Guardian",
+  72: "Soul Sentinel",
+  73: "Machine of the Soul",
+  74: "Star Essence",
+  75: "Starlight Cat",
+  76: "Galactic Rabbit",
+  83: "Cosmic Shell",
+  84: "Lightning-Calling Dragon",
+  90: "Immortal Bird",
+  91: "Lunar Shrine",
+  96: "Dragon Beyond Time",
+  99: "Mightiest Dragon",
+  104: "Shapeshifting Trickster",
+  105: "Celtic Green Hound",
+  116: "Mischievous Little Demon",
+  117: "Cave Goblin",
+  120: "Wolf That Rides Your Back",
+  121: "Fox Spirit Goddess",
+  125: "Lightning Beast",
+  127: "Guardian Lion-Dog",
+  128: "Guardian of the Shrine",
+  129: "Sacred Beast of Fortune",
+  131: "All-Knowing Sacred Beast",
+  132: "White Tiger of the West",
+  135: "Sacred Beast of Justice",
+  136: "Five-Colored Phoenix",
+  137: "Red Bird of the South",
+  139: "Great Serpent Aspiring to Dragonhood",
+  140: "Sky-Racing Horse",
+  141: "Herald of the Holy",
+  144: "Odin's Eight-Legged Horse",
+  150: "Giant Wind-Raising Bird",
+  152: "Golden-Maned Boar",
+  153: "Sacred Beast of Mead",
+  154: "Dragon of the World Tree's Root",
+  155: "Guide of Lions",
+  156: "Hawk God of the Sky",
+  158: "Lioness of War",
+  159: "Nile Crocodile God",
+  160: "Egyptian Cobra God",
+  161: "Sacred Bull",
+  163: "Serpent God of Water and Gems",
+  169: "Winged Heavenly Horse",
+  172: "Many-Headed Hydra",
+  173: "Three-Headed Dog of Hell's Gate",
+  174: "Guardian Dragon of the Golden Apple",
+  176: "Bronze-Beaked Man-Eating Bird",
+  177: "Beast of Calydon",
+  178: "Bull of the Labyrinth",
+  179: "Persian Unicorn",
+  180: "Eagle-Horse Hybrid",
+  191: "Soul Devourer",
+  193: "Primordial Sea Goddess",
+  194: "Lion-Headed Storm Bird",
+  204: "Sacred Prayer",
+  205: "Unerring Bowstring",
+  206: "Axe Blade of Rage",
+  208: "Star Reader",
+  216: "Sheriff of the Wilderness",
+  220: "White-Coat Doctor",
+  221: "Laboratory Genius",
+  232: "Princess of Roses",
+  233: "Bell-Hat Jester",
+  235: "Singing Poet",
+  238: "Bearer of Wisdom",
+  239: "Backpack Freshman",
+  240: "Skilled Haggler",
+  241: "Steps Toward the Holy Land",
+  242: "Footprints of the Unknown",
+  243: "Binocular Scout",
+  252: "Scent of Fresh-Baked Bread",
+  253: "Bubble of Fermentation",
+  254: "Saw-and-Hammer Machine",
+  255: "Century of Insight",
+  258: "Silk-Hat Magician",
+  259: "Mirror Trick",
+  260: "Enchanting Spell",
+  267: "Abundance of Golden Fields",
+  268: "Silence of the Blizzard",
+  271: "Whirling Footsteps",
+  272: "Vortex Tail",
+  273: "Falling Ice Eggs",
+  274: "Thundering Hoofbeat",
+  275: "Moist Raindrop",
+  276: "Spirit of Dawn Mist",
+  277: "Pillow of Fluffy Clouds",
+  278: "Galloping Through Blue Sky",
+  287: "Permafrost Footprint",
+  288: "Frozen Nest",
+  290: "Lord of Water Pressure",
+  291: "Essence of Flowing Water",
+  292: "Calm Water Surface",
+  293: "Coil Beneath the Thicket",
+  294: "Crater Scale",
+  304: "Gray Ash",
+  305: "Figure in the Smoke",
+  306: "Ember's Footprint",
+  307: "Melting Slime",
+  308: "Lethal Fangs",
+  309: "Lord of Poison Mist",
+  313: "Sacred Water Horn",
+  322: "Crescent Moon Smile",
+  323: "Star-Scattered Jelly",
+  324: "Nebula Mane",
+  331: "Star Explosion",
+  332: "Walking Through Void",
+  333: "Interdimensional Slime",
+  335: "Time Crosser",
+  336: "Endless Coil",
+  337: "Armor of Eternity",
+  338: "Balance of Day and Night",
+  339: "King of the Longest Night",
+  344: "Thunder-Calling Hooves",
+  349: "Horn in the Darkness",
+  350: "Twilight Horn",
+  351: "Ice Unicorn",
+  352: "Lightning Unicorn",
+  355: "Frozen Scale",
+  372: "Persian Sacred Bird",
+  373: "Hellhound",
+  375: "King of Serpents",
+  377: "Two-Legged Wyvern",
+  378: "Nordic Serpent Dragon",
+  388: "Mexican Water Ocelot",
+  389: "Chinese Nine-Tailed Fox",
+  390: "Bull Ghost",
+  391: "Spirit of the Pink Dolphin",
+  392: "Spanish Cave Dragon",
+  393: "Female Great Serpent",
+};
+
 export const CHARACTER_JP_DESCRIPTIONS: Record<number, string> = {
   1: "旅の第一歩",
   2: "好奇心旺盛なにゃんこ",
@@ -1028,16 +1220,44 @@ export function getCharName(char: CharacterDef, lang: string): string {
 export function getCharDesc(char: CharacterDef, lang: string): string {
   if (lang === "ja")
     return CHARACTER_JP_DESCRIPTIONS[char.id] ?? char.description;
+  if (lang === "en")
+    return CHARACTER_EN_DESCRIPTIONS[char.id] ?? char.name;
   return char.description;
 }
 
 export function getRarityLabel(rarity: CharacterRarity, lang: string): string {
   if (lang === "ja") return RARITY_LABEL_JA[rarity];
+  if (lang === "en") return RARITY_LABEL_EN[rarity];
   return RARITY_LABEL[rarity];
 }
 
-export function getAchLabel(ach: AchievementDef, _lang: string): string {
-  return ach.label;
+export function getAchLabel(ach: AchievementDef, lang: string): string {
+  if (lang === "ko") return ach.label;
+  const v = ach.value;
+  if (lang === "ja") {
+    switch (ach.type) {
+      case "attendance": return `${v}日出席`;
+      case "streak": return `${v}日連続出席`;
+      case "points": return `${v}P使用`;
+      case "raid_count": return v === 1 ? "初レイドクリア" : `レイド${v}回クリア`;
+      case "post_count": return v === 1 ? "初投稿作成" : `投稿${v}件作成`;
+      case "rogue_clears": return v === 1 ? "ローグライク初クリア" : `ローグライク${v}回クリア`;
+      case "colosseum_wins": return v === 1 ? "コロシアム初勝利" : `コロシアム${v}勝`;
+      case "expedition_count": return `遠征${v}回完了`;
+      default: return ach.label;
+    }
+  }
+  switch (ach.type) {
+    case "attendance": return `${v}-Day Attendance`;
+    case "streak": return `${v}-Day Streak`;
+    case "points": return `Spend ${v}P`;
+    case "raid_count": return v === 1 ? "First Raid Clear" : `Clear ${v} Raids`;
+    case "post_count": return v === 1 ? "First Post" : `Write ${v} Posts`;
+    case "rogue_clears": return v === 1 ? "First Roguelike Clear" : `Clear ${v} Roguelike Runs`;
+    case "colosseum_wins": return v === 1 ? "First Colosseum Win" : `${v} Colosseum Wins`;
+    case "expedition_count": return `Complete ${v} Expeditions`;
+    default: return ach.label;
+  }
 }
 
 export const CHARACTERS: CharacterDef[] = [
