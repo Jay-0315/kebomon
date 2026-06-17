@@ -15,6 +15,6 @@ export class UpdateUserSettingsDto {
   themeColor?: string;
 
   @IsOptional()
-  @IsIn(["ko", "ja"])
+  @IsIn(["ko", "ja", "en"])
   language?: string;
 }
