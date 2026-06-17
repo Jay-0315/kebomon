@@ -19,7 +19,6 @@ import {
   BookOpen,
   Info,
   FlaskConical,
-  Gem,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -2617,6 +2616,110 @@ function spawnEnemyForFloor(
     curseStacks: 0,
     patternIdx: 0,
   };
+}
+
+// ── Shop item pixel art icons ─────────────────────────────────────────────
+function PixelPotionIcon({ size = 32, variant = "blue" }: { size?: number; variant?: "blue" | "cyan" | "gold" | "green" }) {
+  const C2 = {
+    blue:  { b: "#3b82f6", h: "#93c5fd", d: "#1d4ed8" },
+    cyan:  { b: "#06b6d4", h: "#67e8f9", d: "#0e7490" },
+    gold:  { b: "#f59e0b", h: "#fde68a", d: "#b45309" },
+    green: { b: "#22c55e", h: "#86efac", d: "#15803d" },
+  }[variant];
+  return (
+    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 10 12" style={{ imageRendering: "pixelated", display: "block" }}>
+      {/* cork */}
+      <rect x="3" y="0" width="4" height="1" fill="#94a3b8" />
+      <rect x="4" y="1" width="2" height="1" fill="#64748b" />
+      {/* neck */}
+      <rect x="4" y="2" width="2" height="1" fill="#334155" />
+      {/* shoulders */}
+      <rect x="2" y="3" width="6" height="1" fill={C2.b} />
+      {/* body */}
+      <rect x="1" y="4" width="8" height="6" fill={C2.b} />
+      {/* highlight */}
+      <rect x="2" y="4" width="1" height="4" fill={C2.h} />
+      <rect x="3" y="4" width="1" height="2" fill={C2.h} />
+      {/* bubble */}
+      <rect x="6" y="6" width="1" height="1" fill={C2.h} />
+      {/* side shadow */}
+      <rect x="8" y="4" width="1" height="6" fill={C2.d} opacity="0.5" />
+      {/* base */}
+      <rect x="2" y="10" width="6" height="1" fill={C2.d} />
+      {/* size bands */}
+      {variant === "cyan" && <><rect x="1" y="7" width="8" height="1" fill={C2.d} opacity="0.3" /></>}
+      {variant === "gold" && <><rect x="1" y="6" width="8" height="1" fill={C2.d} opacity="0.25" /><rect x="1" y="8" width="8" height="1" fill={C2.d} opacity="0.25" /></>}
+    </svg>
+  );
+}
+
+function PixelCrystalIcon({ size = 32, variant = "red" }: { size?: number; variant?: "red" | "green" | "pink" }) {
+  const C2 = {
+    red:   { m: "#ef4444", h: "#fca5a5", d: "#991b1b" },
+    green: { m: "#22c55e", h: "#86efac", d: "#15803d" },
+    pink:  { m: "#ec4899", h: "#f9a8d4", d: "#9d174d" },
+  }[variant];
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 12" style={{ imageRendering: "pixelated", display: "block" }}>
+      {/* top tip */}
+      <rect x="4" y="0" width="2" height="1" fill={C2.h} />
+      {/* upper facets */}
+      <rect x="2" y="1" width="6" height="2" fill={C2.m} />
+      <rect x="2" y="1" width="2" height="2" fill={C2.h} />
+      {/* waist */}
+      <rect x="1" y="3" width="8" height="5" fill={C2.m} />
+      <rect x="2" y="3" width="2" height="3" fill={C2.h} />
+      {/* lower taper */}
+      <rect x="2" y="8" width="6" height="2" fill={C2.d} />
+      {/* bottom tip */}
+      <rect x="4" y="10" width="2" height="2" fill={C2.d} />
+    </svg>
+  );
+}
+
+function PixelRelicShopIcon({ size = 32, grade = "common" }: { size?: number; grade?: string }) {
+  if (grade === "unique") {
+    // Gold star / crown
+    return (
+      <svg width={size} height={size} viewBox="0 0 11 11" style={{ imageRendering: "pixelated", display: "block" }}>
+        <rect x="4" y="0" width="3" height="2" fill="#fbbf24" />
+        <rect x="3" y="1" width="5" height="1" fill="#fde68a" />
+        <rect x="0" y="3" width="11" height="2" fill="#fbbf24" />
+        <rect x="1" y="2" width="2" height="2" fill="#fbbf24" />
+        <rect x="8" y="2" width="2" height="2" fill="#fbbf24" />
+        <rect x="1" y="5" width="9" height="4" fill="#f59e0b" />
+        <rect x="2" y="5" width="2" height="3" fill="#fde68a" />
+        <rect x="0" y="9" width="11" height="2" fill="#b45309" />
+      </svg>
+    );
+  }
+  if (grade === "rare") {
+    // Purple gem
+    return (
+      <svg width={size} height={size} viewBox="0 0 10 12" style={{ imageRendering: "pixelated", display: "block" }}>
+        <rect x="3" y="0" width="4" height="1" fill="#c4b5fd" />
+        <rect x="1" y="1" width="8" height="2" fill="#a78bfa" />
+        <rect x="1" y="1" width="2" height="2" fill="#ddd6fe" />
+        <rect x="0" y="3" width="10" height="5" fill="#7c3aed" />
+        <rect x="1" y="3" width="2" height="3" fill="#a78bfa" />
+        <rect x="0" y="8" width="10" height="2" fill="#6d28d9" />
+        <rect x="3" y="10" width="4" height="2" fill="#5b21b6" />
+      </svg>
+    );
+  }
+  // Common - coin
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 10" style={{ imageRendering: "pixelated", display: "block" }}>
+      <rect x="2" y="0" width="6" height="1" fill="#fde68a" />
+      <rect x="1" y="1" width="8" height="1" fill="#fde68a" />
+      <rect x="0" y="2" width="10" height="6" fill="#f59e0b" />
+      <rect x="1" y="2" width="2" height="4" fill="#fde68a" />
+      <rect x="4" y="2" width="2" height="6" fill="#b45309" opacity="0.35" />
+      <rect x="3" y="4" width="4" height="2" fill="#b45309" opacity="0.35" />
+      <rect x="1" y="8" width="8" height="1" fill="#fbbf24" />
+      <rect x="2" y="9" width="6" height="1" fill="#b45309" />
+    </svg>
+  );
 }
 
 // ── Relic category pixel art icons ────────────────────────────────────────
@@ -9140,28 +9243,34 @@ export default function RoguePage() {
               const def = CONSUMABLE_DEFS[item.consumableId];
               const name = ko ? def.ko : ja ? def.ja : def.en;
               const desc = ko ? def.desc : ja ? def.descJa : def.descEn;
+              const potionVariant =
+                item.consumableId === "elixir_30" ? "blue"
+                : item.consumableId === "elixir_50" ? "cyan"
+                : item.consumableId === "elixir_100" ? "gold"
+                : item.consumableId === "antidote" ? "green"
+                : undefined;
+              const crystalVariant =
+                item.consumableId === "stat_str" ? "red"
+                : item.consumableId === "stat_def" ? "green"
+                : item.consumableId === "stat_maxhp" ? "pink"
+                : undefined;
               return (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                   <div style={{
                     opacity: item.bought ? 0.4 : 1,
-                    width: 120, minHeight: 160,
-                    background: "#1a2030", border: "1px solid #334155", borderRadius: 10,
+                    width: 90, height: 130,
+                    background: "#1a2030", border: "1px solid #334155", borderRadius: 8,
                     display: "flex", flexDirection: "column", alignItems: "center",
-                    justifyContent: "center", gap: 8, padding: "12px 8px",
+                    justifyContent: "center", gap: 6, padding: "8px 6px",
+                    overflow: "hidden",
                   }}>
-                    <div style={{ color: "#e2e8f0" }}>
-                      {item.consumableId.startsWith("elixir")
-                        ? <FlaskConical size={36} color="#60a5fa" />
-                        : item.consumableId === "antidote"
-                          ? <FlaskConical size={36} color="#4ade80" />
-                          : item.consumableId === "stat_str"
-                            ? <Swords size={36} color="#f87171" />
-                            : item.consumableId === "stat_def"
-                              ? <Shield size={36} color="#34d399" />
-                              : <Heart size={36} color="#f472b6" />}
-                    </div>
-                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13, color: "#e2e8f0", textAlign: "center" }}>{name}</div>
-                    <div style={{ fontFamily: FONT, fontSize: 11, color: "#94a3b8", textAlign: "center" }}>{desc}</div>
+                    {potionVariant
+                      ? <PixelPotionIcon size={38} variant={potionVariant} />
+                      : crystalVariant
+                        ? <PixelCrystalIcon size={34} variant={crystalVariant} />
+                        : null}
+                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 11, color: "#e2e8f0", textAlign: "center", lineHeight: 1.2 }}>{name}</div>
+                    <div style={{ fontFamily: FONT, fontSize: 10, color: "#94a3b8", textAlign: "center", lineHeight: 1.2 }}>{desc}</div>
                   </div>
                   <button disabled={item.bought || gs.gold < item.price} onClick={() => buyItem(i)} style={btnStyle}>
                     {btnLabel}
@@ -9174,24 +9283,22 @@ export default function RoguePage() {
               const relic = item.relic;
               const relicName = ko ? relic.name : ja ? (relic.nameJa ?? relic.name) : (relic.nameEn ?? relic.name);
               const relicDesc = ko ? relic.desc : ja ? (relic.descJa ?? relic.desc) : (relic.descEn ?? relic.desc);
+              const relicBorder = relic.grade === "unique" ? "#f59e0b" : relic.grade === "rare" ? "#7c3aed" : "#475569";
+              const relicBg = relic.grade === "unique" ? "#1c1500" : relic.grade === "rare" ? "#1a1a2e" : "#161e2e";
+              const relicTextColor = relic.grade === "unique" ? "#fde68a" : relic.grade === "rare" ? "#c4b5fd" : "#94a3b8";
               return (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                   <div style={{
                     opacity: item.bought ? 0.4 : 1,
-                    width: 120, minHeight: 160,
-                    background: "#1a1a2e", border: "1px solid #7c3aed", borderRadius: 10,
+                    width: 90, height: 130,
+                    background: relicBg, border: `1px solid ${relicBorder}`, borderRadius: 8,
                     display: "flex", flexDirection: "column", alignItems: "center",
-                    justifyContent: "center", gap: 8, padding: "12px 8px",
+                    justifyContent: "center", gap: 6, padding: "8px 6px",
+                    overflow: "hidden",
                   }}>
-                    <div>
-                      {relic.grade === "unique"
-                        ? <Sparkles size={36} color="#fbbf24" />
-                        : relic.grade === "rare"
-                          ? <Gem size={36} color="#a78bfa" />
-                          : <Award size={36} color="#94a3b8" />}
-                    </div>
-                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13, color: "#c4b5fd", textAlign: "center" }}>{relicName}</div>
-                    <div style={{ fontFamily: FONT, fontSize: 11, color: "#94a3b8", textAlign: "center" }}>{relicDesc}</div>
+                    <PixelRelicShopIcon size={34} grade={relic.grade} />
+                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 11, color: relicTextColor, textAlign: "center", lineHeight: 1.2 }}>{relicName}</div>
+                    <div style={{ fontFamily: FONT, fontSize: 10, color: "#94a3b8", textAlign: "center", lineHeight: 1.2 }}>{relicDesc}</div>
                   </div>
                   <button disabled={item.bought || gs.gold < item.price} onClick={() => buyItem(i)} style={btnStyle}>
                     {btnLabel}
