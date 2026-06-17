@@ -3186,6 +3186,7 @@ export default function RoguePage() {
   const [showCardGuide, setShowCardGuide] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showStarterCards, setShowStarterCards] = useState(false);
+  const [hoveredPotionIdx, setHoveredPotionIdx] = useState<number | null>(null);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
   gsRef.current = gs;
@@ -3470,7 +3471,7 @@ export default function RoguePage() {
             energy: prev.maxEnergy + manaBonus,
             strength: prev.strength + attackStrBonus,
             playerHp: battleStartHp,
-            poison: prev.poison + sigilSelfPoison,
+            poison: sigilSelfPoison,
             enemy,
             hand: drawn.hand,
             drawPile: drawn.drawPile,
@@ -3514,6 +3515,7 @@ export default function RoguePage() {
               shield: battleStartShieldA,
               energy: prev.maxEnergy + manaBonus,
               strength: prev.strength + attackStrBonus,
+              poison: 0,
               enemy,
               hand: drawn.hand,
               drawPile: drawn.drawPile,
@@ -4451,9 +4453,16 @@ export default function RoguePage() {
     }
 
     if (item.kind === "relic" && item.relic) {
-      setGs((prev) =>
-        prev ? { ...prev, relics: [...prev.relics, item.relic!], gold: prev.gold - item.price, shopItems: newItems } : prev,
-      );
+      if (cur.relics.length >= 5) {
+        setGs((prev) =>
+          prev ? { ...prev, gold: prev.gold - item.price, shopItems: newItems } : prev,
+        );
+        setPendingRelicSwap(item.relic);
+      } else {
+        setGs((prev) =>
+          prev ? { ...prev, relics: [...prev.relics, item.relic!], gold: prev.gold - item.price, shopItems: newItems } : prev,
+        );
+      }
       return;
     }
   }, []);
@@ -7243,7 +7252,9 @@ export default function RoguePage() {
                 border: `1px solid ${C.border}`,
                 borderRadius: 14,
                 padding: 20,
-                width: "min(380px,92vw)",
+                width: "min(680px,95vw)",
+                maxHeight: "90vh",
+                overflowY: "auto",
                 fontFamily: FONT,
                 animation: "rogue-in 0.22s ease-out both",
               }}
@@ -7285,7 +7296,7 @@ export default function RoguePage() {
                   ×
                 </button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {(
                   [
                     {
@@ -8871,26 +8882,59 @@ export default function RoguePage() {
             {gs.potions.map((potionId, i) => {
               const def = potionId ? CONSUMABLE_DEFS[potionId] : null;
               const name = def ? (ko ? def.ko : ja ? def.ja : def.en) : null;
+              const desc = def ? (ko ? def.desc : ja ? def.descJa : def.descEn) : null;
+              const isHovered = hoveredPotionIdx === i;
+              const iconColor = potionId === "antidote" ? "#4ade80" : potionId === "elixir_100" ? "#fbbf24" : potionId === "elixir_50" ? "#22d3ee" : "#60a5fa";
               return (
-                <button
-                  key={i}
-                  onClick={() => potionId && usePotion(i)}
-                  disabled={!potionId}
-                  title={name ?? (ko ? "빈 슬롯" : ja ? "空スロット" : "Empty slot")}
-                  style={{
-                    width: 40, height: 40,
-                    background: potionId ? "#1e3a5f" : "transparent",
-                    border: `1px solid ${potionId ? "#3b82f6" : C.border}`,
-                    borderRadius: 8,
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    cursor: potionId ? "pointer" : "default",
-                    gap: 2, padding: 0,
-                  }}
-                >
-                  {potionId
-                    ? <FlaskConical size={18} color={potionId === "antidote" ? "#4ade80" : "#60a5fa"} />
-                    : <span style={{ fontSize: 14, opacity: 0.25, color: C.textDim }}>○</span>}
-                </button>
+                <div key={i} style={{ position: "relative" }}>
+                  {/* Tooltip */}
+                  {isHovered && potionId && def && (
+                    <div style={{
+                      position: "absolute",
+                      bottom: 46,
+                      right: 0,
+                      minWidth: 130,
+                      maxWidth: 180,
+                      background: "#0f172a",
+                      border: `1px solid ${iconColor}`,
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      pointerEvents: "none",
+                      zIndex: 100,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.6)",
+                    }}>
+                      <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 12, color: iconColor, marginBottom: 4, whiteSpace: "nowrap" }}>
+                        {name}
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: 11, color: "#cbd5e1", lineHeight: 1.4 }}>
+                        {desc}
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: "#475569", marginTop: 5 }}>
+                        {ko ? "전투 중 클릭으로 사용" : ja ? "戦闘中クリックで使用" : "Click to use in battle"}
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => potionId && usePotion(i)}
+                    disabled={!potionId}
+                    onMouseEnter={() => setHoveredPotionIdx(i)}
+                    onMouseLeave={() => setHoveredPotionIdx(null)}
+                    style={{
+                      width: 40, height: 40,
+                      background: potionId ? (isHovered ? "#1e4a7a" : "#1e3a5f") : "transparent",
+                      border: `1px solid ${potionId ? (isHovered ? iconColor : "#3b82f6") : C.border}`,
+                      borderRadius: 8,
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      cursor: potionId ? "pointer" : "default",
+                      gap: 2, padding: 0,
+                      transition: "background 0.15s, border-color 0.15s",
+                    }}
+                  >
+                    {potionId
+                      ? <FlaskConical size={18} color={iconColor} />
+                      : <span style={{ fontSize: 14, opacity: 0.25, color: C.textDim }}>○</span>}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -9207,7 +9251,9 @@ export default function RoguePage() {
         >
           {gs.shopItems.map((item, i) => {
             const isElixir = item.kind === "consumable" && item.consumableId?.startsWith("elixir");
-            const potionsFull = isElixir && gs.potions.every((p) => p !== null);
+            const isAntidote = item.kind === "consumable" && item.consumableId === "antidote";
+            const potionsFull = (isElixir || isAntidote) && gs.potions.every((p) => p !== null);
+            const relicsFull = item.kind === "relic" && gs.relics.length >= 5;
             const canAfford = !item.bought && gs.gold >= item.price && !potionsFull;
             const btnStyle: React.CSSProperties = {
               background: item.bought ? "#1a2030" : canAfford ? "#14532d" : "#1a2030",
@@ -9224,7 +9270,9 @@ export default function RoguePage() {
               ? ko ? "구매완료" : ja ? "購入済" : "Purchased"
               : potionsFull
                 ? ko ? "슬롯 가득" : ja ? "スロット満" : "Slots Full"
-                : ko ? `${item.price}G로 구매` : ja ? `${item.price}Gで購入` : `Buy ${item.price}G`;
+                : relicsFull
+                  ? ko ? "교체" : ja ? "入替" : "Swap"
+                  : ko ? `${item.price}G로 구매` : ja ? `${item.price}Gで購入` : `Buy ${item.price}G`;
 
             if (item.kind === "card" && item.card) {
               return (
