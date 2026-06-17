@@ -153,14 +153,18 @@ const dict = {
     "mission.streak_desc": "연속 출석 1일당",
     "mission.page_title": "미션",
     "mission.page_desc": "다양한 콘텐츠에 도전하고 보상을 획득하세요",
-    "mission.colosseum_desc": "다른 유저와 실시간 대전을 펼치세요. 랭킹 포인트를 획득하고 시즌 보상을 노려보세요.",
+    "mission.colosseum_desc":
+      "다른 유저와 실시간 대전을 펼치세요. 랭킹 포인트를 획득하고 시즌 보상을 노려보세요.",
     "mission.colosseum_tag": "PvP",
     "mission.raid_title": "보스 레이드",
-    "mission.raid_desc": "강력한 보스에게 도전하세요. 공격력에 따라 랭킹이 매겨지고 희귀 보상을 획득합니다.",
+    "mission.raid_desc":
+      "강력한 보스에게 도전하세요. 공격력에 따라 랭킹이 매겨지고 희귀 보상을 획득합니다.",
     "mission.raid_tag": "PvE 랭킹",
-    "mission.rogue_desc": "카드 덱을 구성해 던전을 탐험하세요. 노말·하드·지옥 3가지 난이도로 도전할 수 있습니다.",
+    "mission.rogue_desc":
+      "카드 덱을 구성해 던전을 탐험하세요. 노말·하드·지옥 3가지 난이도로 도전할 수 있습니다.",
     "mission.rogue_tag": "솔로 탐험",
-    "mission.expedition_desc": "파티를 구성해 원정을 떠나세요. 시간이 지날수록 더 많은 보상이 쌓입니다.",
+    "mission.expedition_desc":
+      "파티를 구성해 원정을 떠나세요. 시간이 지날수록 더 많은 보상이 쌓입니다.",
     "mission.expedition_tag": "자동 보상",
     // Attendance
     "attendance.this_month": "이번 달 출석",
@@ -213,7 +217,7 @@ const dict = {
     "settings.social": "소셜 연동",
     "settings.social_link": "로그인 계정 연결",
     "settings.social_link_desc":
-      "현재 계정에 Google, Kakao, LINE, Apple 로그인을 연결할 수 있습니다.",
+      "현재 계정에 Google 로그인을 연결할 수 있습니다.",
     "settings.social_loading": "연동 상태를 불러오는 중입니다.",
     "settings.social_linked": "연결됨",
     "settings.social_available": "현재 계정에 연결할 수 있습니다.",
@@ -433,7 +437,8 @@ const dict = {
     "raid.jump_dead": "쓰러졌다!",
     "raid.jump_revive": "부활까지 {s}초",
     "raid.report": "신고",
-    "raid.report_confirm": "이 문제를 신고할까요? 신고하면 다음 문제로 넘어가고, 누적 10회 신고 시 삭제됩니다.",
+    "raid.report_confirm":
+      "이 문제를 신고할까요? 신고하면 다음 문제로 넘어가고, 누적 10회 신고 시 삭제됩니다.",
     "raid.report_done": "신고했어요. 다음 문제로 넘어갑니다.",
     "raid.boss_defeated_suffix": " 격파!",
     "raid.answer": "정답",
@@ -518,7 +523,8 @@ const dict = {
     "col.rematch": "다음 전투로",
     "col.next_turn": "다음  →",
     "col.exit": "나가기",
-    "col.exit_warning": "지금 나가시면 자동으로 패배처리 됩니다. 정말로 나가시겠습니까?",
+    "col.exit_warning":
+      "지금 나가시면 자동으로 패배처리 됩니다. 정말로 나가시겠습니까?",
     "col.attack": "공격하기!",
     "col.rolling": "굴리는 중…",
     "col.wait_opp": "상대 턴 대기 중…",
@@ -793,14 +799,18 @@ const dict = {
     "mission.streak_desc": "連続出席1日ごと",
     "mission.page_title": "ミッション",
     "mission.page_desc": "さまざまなコンテンツに挑戦して報酬を獲得しよう",
-    "mission.colosseum_desc": "他のプレイヤーとリアルタイム対戦。ランキングポイントを集めてシーズン報酬を狙おう。",
+    "mission.colosseum_desc":
+      "他のプレイヤーとリアルタイム対戦。ランキングポイントを集めてシーズン報酬を狙おう。",
     "mission.colosseum_tag": "PvP",
     "mission.raid_title": "ボスレイド",
-    "mission.raid_desc": "強力なボスに挑もう。攻撃力でランキングが決まり、レアな報酬を手に入れよう。",
+    "mission.raid_desc":
+      "強力なボスに挑もう。攻撃力でランキングが決まり、レアな報酬を手に入れよう。",
     "mission.raid_tag": "PvEランキング",
-    "mission.rogue_desc": "カードデッキを組んでダンジョンを探索。ノーマル・ハード・ヘルの3難易度で挑戦できます。",
+    "mission.rogue_desc":
+      "カードデッキを組んでダンジョンを探索。ノーマル・ハード・ヘルの3難易度で挑戦できます。",
     "mission.rogue_tag": "ソロ探索",
-    "mission.expedition_desc": "パーティを組んで遠征に出発。時間が経つほど報酬が積み重なります。",
+    "mission.expedition_desc":
+      "パーティを組んで遠征に出発。時間が経つほど報酬が積み重なります。",
     "mission.expedition_tag": "自動報酬",
     // Attendance
     "attendance.this_month": "今月の出席",
@@ -853,7 +863,7 @@ const dict = {
     "settings.social": "ソーシャル連携",
     "settings.social_link": "ログインアカウント連携",
     "settings.social_link_desc":
-      "現在のアカウントにGoogle、Kakao、LINE、Appleログインを連携できます。",
+      "現在のアカウントにGoogle ログインを連携できます。",
     "settings.social_loading": "連携状態を読み込み中です。",
     "settings.social_linked": "連携済み",
     "settings.social_available": "現在のアカウントに連携できます。",
@@ -1057,7 +1067,8 @@ const dict = {
     "raid.jump_dead": "倒れた！",
     "raid.jump_revive": "復活まで{s}秒",
     "raid.report": "通報",
-    "raid.report_confirm": "この問題を通報しますか？通報すると次の問題に進み、累計10回で削除されます。",
+    "raid.report_confirm":
+      "この問題を通報しますか？通報すると次の問題に進み、累計10回で削除されます。",
     "raid.report_done": "通報しました。次の問題に進みます。",
     "raid.boss_defeated_suffix": " 撃破！",
     "raid.answer": "正解",
@@ -1100,7 +1111,8 @@ const dict = {
     "raid.bullet_dead": "倒れた！",
     "raid.bullet_revive": "復活まで{s}秒",
     "raid.eliminated": "脱落",
-    "raid.eliminated_msg": "ライフが全て失われ退場されました。次のタイムに再挑戦してください。",
+    "raid.eliminated_msg":
+      "ライフが全て失われ退場されました。次のタイムに再挑戦してください。",
     "raid.banned_msg":
       "今タイムにすでに参加したレイドです。次のタイムにご参加ください。",
     "raid.ranking_title": "今タイムのランキング",
@@ -1141,7 +1153,8 @@ const dict = {
     "col.rematch": "次の戦闘へ",
     "col.next_turn": "次へ →",
     "col.exit": "退出",
-    "col.exit_warning": "今退出すると自動的に敗北となります。本当に退出しますか？",
+    "col.exit_warning":
+      "今退出すると自動的に敗北となります。本当に退出しますか？",
     "col.attack": "攻撃する！",
     "col.rolling": "ロール中…",
     "col.wait_opp": "相手のターンを待っています…",
@@ -1176,7 +1189,8 @@ const dict = {
     "col.tier_up": "ティアアップ！",
     "col.season": "シーズン",
     "col.rewards": "報酬",
-    "col.season_desc": "シーズン終了時、達成ティアとそれ以下の全ティアのプロフィール枠が付与されます。枠は次シーズンも維持されます。",
+    "col.season_desc":
+      "シーズン終了時、達成ティアとそれ以下の全ティアのプロフィール枠が付与されます。枠は次シーズンも維持されます。",
     "col.pts_and_above": "以上",
     // Shop
     "shop.title": "ポイントショップ",
@@ -1383,7 +1397,8 @@ const dict = {
     "signup.new_password": "New Password",
     "signup.reset_submit": "Change Password",
     "signup.reset_success": "Password changed. Please log in.",
-    "signup.code_sent_to": " — enter the verification code sent to this address.",
+    "signup.code_sent_to":
+      " — enter the verification code sent to this address.",
     "signup.redirecting": "Redirecting to login...",
     "signup.starter_title": "Choose Your Starter",
     "signup.starter_subtitle": "Pick a Kebomon to start with!",
@@ -1399,14 +1414,18 @@ const dict = {
     "mission.streak_desc": "Per consecutive day",
     "mission.page_title": "Mission",
     "mission.page_desc": "Challenge various content and earn rewards",
-    "mission.colosseum_desc": "Battle other players in real-time. Earn ranking points and chase season rewards.",
+    "mission.colosseum_desc":
+      "Battle other players in real-time. Earn ranking points and chase season rewards.",
     "mission.colosseum_tag": "PvP",
     "mission.raid_title": "Boss Raid",
-    "mission.raid_desc": "Challenge powerful bosses. Rankings are based on damage dealt, earning rare rewards.",
+    "mission.raid_desc":
+      "Challenge powerful bosses. Rankings are based on damage dealt, earning rare rewards.",
     "mission.raid_tag": "PvE Ranking",
-    "mission.rogue_desc": "Build your card deck and explore the dungeon. Three difficulty levels await.",
+    "mission.rogue_desc":
+      "Build your card deck and explore the dungeon. Three difficulty levels await.",
     "mission.rogue_tag": "Solo Run",
-    "mission.expedition_desc": "Form a party and embark on an expedition. Rewards accumulate over time.",
+    "mission.expedition_desc":
+      "Form a party and embark on an expedition. Rewards accumulate over time.",
     "mission.expedition_tag": "Auto Reward",
     // Attendance
     "attendance.this_month": "This Month",
@@ -1459,7 +1478,7 @@ const dict = {
     "settings.social": "Social Login",
     "settings.social_link": "Link Login Account",
     "settings.social_link_desc":
-      "You can link Google, Kakao, LINE, or Apple login to your current account.",
+      "You can link Google login to your current account.",
     "settings.social_loading": "Loading linked accounts…",
     "settings.social_linked": "Linked",
     "settings.social_available": "Available to link to your account.",
@@ -1677,7 +1696,8 @@ const dict = {
     "raid.jump_dead": "Down!",
     "raid.jump_revive": "Reviving in {s}s",
     "raid.report": "Report",
-    "raid.report_confirm": "Report this problem? You'll move to the next one, and it's deleted after 10 reports.",
+    "raid.report_confirm":
+      "Report this problem? You'll move to the next one, and it's deleted after 10 reports.",
     "raid.report_done": "Reported. Moving to the next problem.",
     "raid.boss_defeated_suffix": " Defeated!",
     "raid.answer": "Answer",
@@ -1723,7 +1743,8 @@ const dict = {
     "raid.bullet_dead": "Down!",
     "raid.bullet_revive": "Reviving in {s}s",
     "raid.eliminated": "Eliminated",
-    "raid.eliminated_msg": "All lives lost — you've been removed. Try again next period.",
+    "raid.eliminated_msg":
+      "All lives lost — you've been removed. Try again next period.",
     "raid.banned_msg":
       "You already participated in this raid this period. Join next time.",
     "raid.ranking_title": "This Period's Rankings",
@@ -1763,7 +1784,8 @@ const dict = {
     "col.rematch": "Next Battle",
     "col.next_turn": "Next →",
     "col.exit": "Exit",
-    "col.exit_warning": "Leaving now will count as a loss. Are you sure you want to exit?",
+    "col.exit_warning":
+      "Leaving now will count as a loss. Are you sure you want to exit?",
     "col.attack": "Attack!",
     "col.rolling": "Rolling…",
     "col.wait_opp": "Waiting for opponent's turn…",
@@ -1798,7 +1820,8 @@ const dict = {
     "col.tier_up": "Tier Up!",
     "col.season": "Season",
     "col.rewards": "Rewards",
-    "col.season_desc": "At season end, you'll receive profile borders for your achieved tier and all tiers below it. Borders carry over to the next season.",
+    "col.season_desc":
+      "At season end, you'll receive profile borders for your achieved tier and all tiers below it. Borders carry over to the next season.",
     "col.pts_and_above": "& above",
     // Shop
     "shop.title": "Point Shop",

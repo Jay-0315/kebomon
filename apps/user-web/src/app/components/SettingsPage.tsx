@@ -31,7 +31,7 @@ const LANGUAGES = [
   { code: "en" as const, nativeName: "English", name: "English" },
 ];
 
-type SocialProvider = "GOOGLE" | "KAKAO" | "LINE" | "APPLE";
+type SocialProvider = "GOOGLE";
 
 type LinkedProvider = {
   provider: SocialProvider;
@@ -48,26 +48,10 @@ const SOCIAL_PROVIDER_META: Record<
     label: "Google",
     buttonClassName: "bg-white text-[#1f1f1f] border border-border",
   },
-  KAKAO: {
-    label: "Kakao",
-    buttonClassName: "bg-[#FEE500] text-[#191600]",
-  },
-  LINE: {
-    label: "LINE",
-    buttonClassName: "bg-[#06C755] text-white",
-  },
-  APPLE: {
-    label: "Apple",
-    buttonClassName: "bg-black text-white",
-  },
 };
 
 export default function SettingsPage() {
-  const {
-    settings,
-    profile,
-    updateSettings,
-  } = useAppData();
+  const { settings, profile, updateSettings } = useAppData();
   const { t } = useLang();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -312,9 +296,14 @@ export default function SettingsPage() {
                       email: profile.email,
                       purpose: "RESET_PASSWORD",
                     });
-                    navigate(`/reset-password?email=${encodeURIComponent(profile.email)}`);
+                    navigate(
+                      `/reset-password?email=${encodeURIComponent(profile.email)}`,
+                    );
                   } catch (err: unknown) {
-                    setPwCodeError((err as { message?: string })?.message ?? "발송에 실패했습니다.");
+                    setPwCodeError(
+                      (err as { message?: string })?.message ??
+                        "발송에 실패했습니다.",
+                    );
                   } finally {
                     setIsSendingPwCode(false);
                   }
@@ -333,7 +322,9 @@ export default function SettingsPage() {
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </button>
-              {pwCodeError && <p className="text-xs text-destructive px-3">{pwCodeError}</p>}
+              {pwCodeError && (
+                <p className="text-xs text-destructive px-3">{pwCodeError}</p>
+              )}
             </div>
           )}
 
@@ -390,74 +381,72 @@ export default function SettingsPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {(["GOOGLE", "KAKAO", "LINE", "APPLE"] as SocialProvider[]).map(
-                (provider) => {
-                  const status = linkedProviders.find(
-                    (item) => item.provider === provider,
-                  ) ?? {
-                    provider,
-                    linked: false,
-                    providerEmail: null,
-                    linkedAt: null,
-                  };
-                  const meta = SOCIAL_PROVIDER_META[provider];
+              {(["GOOGLE"] as SocialProvider[]).map((provider) => {
+                const status = linkedProviders.find(
+                  (item) => item.provider === provider,
+                ) ?? {
+                  provider,
+                  linked: false,
+                  providerEmail: null,
+                  linkedAt: null,
+                };
+                const meta = SOCIAL_PROVIDER_META[provider];
 
-                  return (
-                    <div
-                      key={provider}
-                      className="rounded border border-border bg-background/50 p-4"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                        <div>
-                          <p className="font-medium">{meta.label}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {status.linked
-                              ? t("settings.social_linked")
-                              : provider === "GOOGLE"
-                                ? t("settings.social_available")
-                                : t("settings.social_coming_soon")}
-                          </p>
-                          {status.providerEmail && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                              <Mail className="h-4 w-4" />
-                              <span>{status.providerEmail}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {status.linked ? (
-                          <button
-                            type="button"
-                            disabled
-                            className="rounded bg-primary/10 px-4 py-2 text-sm font-medium text-primary opacity-80"
-                          >
-                            연동중
-                          </button>
-                        ) : provider === "GOOGLE" ? (
-                          <div className="min-h-10 w-full max-w-[280px]">
-                            <div
-                              ref={googleLinkButtonRef}
-                              className={
-                                socialSubmitting
-                                  ? "pointer-events-none opacity-70"
-                                  : ""
-                              }
-                            />
+                return (
+                  <div
+                    key={provider}
+                    className="rounded border border-border bg-background/50 p-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{meta.label}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {status.linked
+                            ? t("settings.social_linked")
+                            : provider === "GOOGLE"
+                              ? t("settings.social_available")
+                              : t("settings.social_coming_soon")}
+                        </p>
+                        {status.providerEmail && (
+                          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="h-4 w-4" />
+                            <span>{status.providerEmail}</span>
                           </div>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled
-                            className={`rounded px-4 py-2 text-sm font-medium opacity-60 ${meta.buttonClassName}`}
-                          >
-                            Coming Soon
-                          </button>
                         )}
                       </div>
+
+                      {status.linked ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="rounded bg-primary/10 px-4 py-2 text-sm font-medium text-primary opacity-80"
+                        >
+                          연동중
+                        </button>
+                      ) : provider === "GOOGLE" ? (
+                        <div className="min-h-10 w-full max-w-[280px]">
+                          <div
+                            ref={googleLinkButtonRef}
+                            className={
+                              socialSubmitting
+                                ? "pointer-events-none opacity-70"
+                                : ""
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className={`rounded px-4 py-2 text-sm font-medium opacity-60 ${meta.buttonClassName}`}
+                        >
+                          Coming Soon
+                        </button>
+                      )}
                     </div>
-                  );
-                },
-              )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -518,7 +507,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {showPrivacyModal && <PrivacyModal onClose={() => setShowPrivacyModal(false)} />}
+      {showPrivacyModal && (
+        <PrivacyModal onClose={() => setShowPrivacyModal(false)} />
+      )}
 
       {/* Account Deletion Modal */}
       {showDeleteModal && (

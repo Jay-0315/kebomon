@@ -16,7 +16,7 @@ CREATE TABLE users (
 CREATE TABLE user_identities (
   id               BIGINT        AUTO_INCREMENT PRIMARY KEY,
   user_id          VARCHAR(36)   NOT NULL,
-  provider         ENUM('GOOGLE','KAKAO','LINE','APPLE') NOT NULL,
+  provider         ENUM('GOOGLE') NOT NULL,
   provider_user_id VARCHAR(191)  NOT NULL,
   provider_email   VARCHAR(190)  NULL,
   created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

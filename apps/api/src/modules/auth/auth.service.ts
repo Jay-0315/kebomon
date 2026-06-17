@@ -27,16 +27,23 @@ export class AuthService {
     private readonly emailService: EmailService,
   ) {}
 
-  async sendVerificationCode(dto: SendVerificationDto): Promise<{ message: string }> {
+  async sendVerificationCode(
+    dto: SendVerificationDto,
+  ): Promise<{ message: string }> {
     if (dto.purpose === "SIGNUP") {
-      const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+      const existing = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
       if (existing) throw new ConflictException("이미 가입된 이메일입니다.");
     }
 
     if (dto.purpose === "RESET_PASSWORD") {
-      const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+      const existing = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
       // 서버 로직으로 제약: 비밀번호 없는 소셜 전용 계정은 재설정 불가
-      if (!existing) throw new BadRequestException("가입되지 않은 이메일입니다.");
+      if (!existing)
+        throw new BadRequestException("가입되지 않은 이메일입니다.");
       if (!existing.hasPassword) {
         throw new BadRequestException(
           "소셜 로그인으로만 가입된 계정입니다. 소셜 로그인을 이용해주세요.",
@@ -74,7 +81,9 @@ export class AuthService {
 
     await this.consumeVerificationCode(dto.email, dto.code, "RESET_PASSWORD");
 
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (!user) throw new BadRequestException("가입되지 않은 이메일입니다.");
 
     // 서버 로직으로 제약: 소셜 전용 계정은 비밀번호 재설정 불가
@@ -123,7 +132,9 @@ export class AuthService {
       throw new BadRequestException("인증번호가 올바르지 않습니다.");
     }
     if (record.expiresAt < new Date()) {
-      throw new BadRequestException("인증번호가 만료됐습니다. 다시 요청해주세요.");
+      throw new BadRequestException(
+        "인증번호가 만료됐습니다. 다시 요청해주세요.",
+      );
     }
 
     await this.prisma.emailVerificationCode.update({
@@ -133,7 +144,11 @@ export class AuthService {
   }
 
   async signup(dto: SignupDto) {
-    await this.consumeVerificationCode(dto.email, dto.verificationCode, "SIGNUP");
+    await this.consumeVerificationCode(
+      dto.email,
+      dto.verificationCode,
+      "SIGNUP",
+    );
 
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -167,12 +182,16 @@ export class AuthService {
     });
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+      throw new UnauthorizedException(
+        "이메일 또는 비밀번호가 올바르지 않습니다.",
+      );
     }
 
     const matched = await compare(dto.password, user.passwordHash);
     if (!matched) {
-      throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+      throw new UnauthorizedException(
+        "이메일 또는 비밀번호가 올바르지 않습니다.",
+      );
     }
 
     return this.buildAuthResponse(user);
@@ -192,7 +211,9 @@ export class AuthService {
     const profile = await this.verifyGoogleIdentityToken(dto.identityToken);
 
     if (!profile.email) {
-      throw new UnauthorizedException("Google 계정 이메일을 확인할 수 없습니다.");
+      throw new UnauthorizedException(
+        "Google 계정 이메일을 확인할 수 없습니다.",
+      );
     }
 
     const existingIdentity = await this.prisma.userIdentity.findUnique({
@@ -256,12 +277,7 @@ export class AuthService {
     });
 
     return {
-      providers: [
-        this.mapProviderStatus(SocialProvider.GOOGLE, identities),
-        this.mapProviderStatus(SocialProvider.KAKAO, identities),
-        this.mapProviderStatus(SocialProvider.LINE, identities),
-        this.mapProviderStatus(SocialProvider.APPLE, identities),
-      ],
+      providers: [this.mapProviderStatus(SocialProvider.GOOGLE, identities)],
     };
   }
 
@@ -304,7 +320,9 @@ export class AuthService {
       currentIdentity &&
       currentIdentity.providerUserId !== profile.providerUserId
     ) {
-      throw new ConflictException("이 계정에는 이미 다른 Google 계정이 연결되어 있습니다.");
+      throw new ConflictException(
+        "이 계정에는 이미 다른 Google 계정이 연결되어 있습니다.",
+      );
     }
 
     if (!currentIdentity) {
@@ -331,7 +349,9 @@ export class AuthService {
     );
 
     if (!response.ok) {
-      throw new UnauthorizedException("Google identity token 검증에 실패했습니다.");
+      throw new UnauthorizedException(
+        "Google identity token 검증에 실패했습니다.",
+      );
     }
 
     const payload = (await response.json()) as {
@@ -343,22 +363,30 @@ export class AuthService {
     };
 
     const clientIds = (
-      process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || ""
+      process.env.GOOGLE_CLIENT_IDS ||
+      process.env.GOOGLE_CLIENT_ID ||
+      ""
     )
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean);
 
     if (clientIds.length === 0) {
-      throw new NotImplementedException("GOOGLE_CLIENT_ID 또는 GOOGLE_CLIENT_IDS가 설정되지 않았습니다.");
+      throw new NotImplementedException(
+        "GOOGLE_CLIENT_ID 또는 GOOGLE_CLIENT_IDS가 설정되지 않았습니다.",
+      );
     }
 
     if (!payload.aud || !clientIds.includes(payload.aud)) {
-      throw new UnauthorizedException("Google identity token의 aud가 일치하지 않습니다.");
+      throw new UnauthorizedException(
+        "Google identity token의 aud가 일치하지 않습니다.",
+      );
     }
 
     if (!payload.sub) {
-      throw new UnauthorizedException("Google 계정 식별자를 확인할 수 없습니다.");
+      throw new UnauthorizedException(
+        "Google 계정 식별자를 확인할 수 없습니다.",
+      );
     }
 
     if (payload.email_verified !== "true") {
@@ -388,7 +416,9 @@ export class AuthService {
       createdAt: Date;
     }[],
   ) {
-    const matched = identities.find((identity) => identity.provider === provider);
+    const matched = identities.find(
+      (identity) => identity.provider === provider,
+    );
 
     return {
       provider,
@@ -400,13 +430,13 @@ export class AuthService {
 
   private async buildAuthResponse(
     user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    baseCountryCode: string;
-    baseCurrency: string;
-    hasPassword?: boolean;
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      baseCountryCode: string;
+      baseCurrency: string;
+      hasPassword?: boolean;
     },
     needsStarterOverride?: boolean,
   ) {

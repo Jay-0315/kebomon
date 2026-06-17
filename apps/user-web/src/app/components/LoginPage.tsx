@@ -7,17 +7,6 @@ import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { type CurrencyCode } from "../types/domain";
 
-const SOCIAL_PROVIDERS = [
-  {
-    id: "google",
-    label: "Google",
-    className: "bg-white text-[#1f1f1f] border border-border",
-  },
-  { id: "kakao", label: "Kakao", className: "bg-[#FEE500] text-[#191600]" },
-  { id: "line", label: "LINE", className: "bg-[#06C755] text-white" },
-  { id: "apple", label: "Apple", className: "bg-black text-white" },
-] as const;
-
 type AuthResponse = {
   accessToken: string;
   user: {
@@ -164,7 +153,9 @@ export default function LoginPage() {
               identityToken: response.credential,
             });
             setAuthSession(authResponse.accessToken, authResponse.user);
-            window.location.assign(authResponse.needsStarter ? "/starter" : "/");
+            window.location.assign(
+              authResponse.needsStarter ? "/starter" : "/",
+            );
           } catch {
             setErrorMessage("Google 로그인에 실패했습니다.");
           } finally {
@@ -195,12 +186,6 @@ export default function LoginPage() {
     }
   }, [googleClientId]);
 
-  const handleSocialLogin = (providerLabel: string) => {
-    setErrorMessage(
-      `${providerLabel} 소셜 로그인은 서버 앱 등록 후 활성화됩니다.`,
-    );
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -211,7 +196,9 @@ export default function LoginPage() {
         password,
       });
       setAuthSession(response.accessToken, response.user);
-      await api.patch(`/users/${response.user.id}/settings`, { language: lang }).catch(() => undefined);
+      await api
+        .patch(`/users/${response.user.id}/settings`, { language: lang })
+        .catch(() => undefined);
       window.location.assign(response.needsStarter ? "/starter" : "/");
     } catch {
       setErrorMessage(t("login.error"));
@@ -236,8 +223,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="mb-4">
-            <img src="/logo(light).png" alt="Kebo" className="h-28 w-auto object-contain mx-auto dark:hidden" />
-            <img src="/logo(dark).png"  alt="Kebo" className="h-28 w-auto object-contain mx-auto hidden dark:block" />
+            <img
+              src="/logo(light).png"
+              alt="Kebo"
+              className="h-28 w-auto object-contain mx-auto dark:hidden"
+            />
+            <img
+              src="/logo(dark).png"
+              alt="Kebo"
+              className="h-28 w-auto object-contain mx-auto hidden dark:block"
+            />
           </div>
           <p className="text-muted-foreground">{t("login.subtitle")}</p>
         </div>
@@ -310,20 +305,6 @@ export default function LoginPage() {
                 있습니다.
               </p>
             )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {SOCIAL_PROVIDERS.filter((p) => p.id !== "google").map(
-                (provider) => (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    onClick={() => handleSocialLogin(provider.label)}
-                    className={`rounded py-3 text-sm font-medium transition-all hover:opacity-90 ${provider.className}`}
-                  >
-                    {provider.label}
-                  </button>
-                ),
-              )}
-            </div>
           </div>
 
           <div className="mt-6 text-center">

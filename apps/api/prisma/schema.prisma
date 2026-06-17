@@ -14,9 +14,6 @@ enum CurrencyCode {
 
 enum AuthProvider {
   GOOGLE
-  KAKAO
-  LINE
-  APPLE
 }
 
 model User {

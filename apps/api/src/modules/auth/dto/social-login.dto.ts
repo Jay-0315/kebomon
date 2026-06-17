@@ -1,10 +1,13 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
 export enum SocialProvider {
   GOOGLE = "GOOGLE",
-  KAKAO = "KAKAO",
-  LINE = "LINE",
-  APPLE = "APPLE",
 }
 
 export class SocialLoginDto {
