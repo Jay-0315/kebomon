@@ -5645,6 +5645,7 @@ export default function RoguePage() {
                     animation: "rogue-in 0.4s 0.05s ease-out both",
                     position: "relative",
                   }}
+                  onMouseLeave={() => setShowStarterCards(false)}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p
@@ -5797,7 +5798,6 @@ export default function RoguePage() {
                       position: "relative",
                     }}
                     onMouseEnter={() => setShowStarterCards(true)}
-                    onMouseLeave={() => setShowStarterCards(false)}
                   >
                     <div
                       style={{
@@ -5822,116 +5822,118 @@ export default function RoguePage() {
                     >
                       {ko ? "카드 확인" : ja ? "カード確認" : "Cards"}
                     </p>
-                    {showStarterCards && (
-                      <div
+                  </div>
+                  {showStarterCards && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 20,
+                        background: C.panelDark,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 10,
+                        padding: 10,
+                        width: 200,
+                        boxShadow: "0 8px 24px #000a",
+                        animation: "rogue-in 0.15s ease-out both",
+                        overflowY: "auto",
+                      }}
+                    >
+                      <p
                         style={{
-                          position: "absolute",
-                          right: 0,
-                          top: "calc(100% + 4px)",
-                          zIndex: 20,
-                          background: C.panelDark,
-                          border: `1px solid ${C.border}`,
-                          borderRadius: 10,
-                          padding: 10,
-                          width: 200,
-                          boxShadow: "0 8px 24px #000a",
-                          animation: "rogue-in 0.15s ease-out both",
+                          margin: "0 0 6px",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: C.textBright,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
                         }}
                       >
-                        <p
+                        <Layers size={10} color={ac} />
+                        {ko
+                          ? "전용 스타터 카드"
+                          : ja
+                            ? "専用スターターカード"
+                            : "Unique Starter Cards"}
+                      </p>
+                      {uniqueCards.map((card) => (
+                        <div
+                          key={card.id}
                           style={{
-                            margin: "0 0 6px",
-                            fontSize: 10,
-                            fontWeight: 800,
-                            color: C.textBright,
                             display: "flex",
-                            alignItems: "center",
-                            gap: 4,
+                            alignItems: "flex-start",
+                            gap: 6,
+                            marginBottom: 5,
                           }}
                         >
-                          <Layers size={10} color={ac} />
-                          {ko
-                            ? "전용 스타터 카드"
-                            : ja
-                              ? "専用スターターカード"
-                              : "Unique Starter Cards"}
-                        </p>
-                        {uniqueCards.map((card) => (
-                          <div
-                            key={card.id}
+                          <span
                             style={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              marginBottom: 5,
+                              fontSize: 9,
+                              fontWeight: 800,
+                              color: "#0a0a0a",
+                              background: cardTypeColor(card.type),
+                              borderRadius: 3,
+                              padding: "1px 4px",
+                              flexShrink: 0,
+                              lineHeight: 1.6,
                             }}
                           >
-                            <span
+                            {cardTypeName(card.type)}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p
                               style={{
-                                fontSize: 9,
-                                fontWeight: 800,
-                                color: "#0a0a0a",
-                                background: cardTypeColor(card.type),
-                                borderRadius: 3,
-                                padding: "1px 4px",
-                                flexShrink: 0,
-                                lineHeight: 1.6,
+                                margin: 0,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: C.textBright,
+                                lineHeight: 1.2,
                               }}
                             >
-                              {cardTypeName(card.type)}
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  color: C.textBright,
-                                  lineHeight: 1.2,
-                                }}
-                              >
-                                [{card.cost}]{" "}
-                                {ko
-                                  ? card.name
-                                  : ja
-                                    ? card.nameJa
-                                    : card.nameEn}
-                              </p>
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 9,
-                                  color: C.textDim,
-                                  lineHeight: 1.3,
-                                }}
-                              >
-                                {ko
-                                  ? card.desc
-                                  : ja
-                                    ? card.descJa
-                                    : card.descEn}
-                              </p>
-                            </div>
+                              [{card.cost}]{" "}
+                              {ko
+                                ? card.name
+                                : ja
+                                  ? card.nameJa
+                                  : card.nameEn}
+                            </p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 9,
+                                color: C.textDim,
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {ko
+                                ? card.desc
+                                : ja
+                                  ? card.descJa
+                                  : card.descEn}
+                            </p>
                           </div>
-                        ))}
-                        <p
-                          style={{
-                            margin: "4px 0 0",
-                            fontSize: 9,
-                            color: C.textDim,
-                            borderTop: `1px solid ${C.border}`,
-                            paddingTop: 4,
-                          }}
-                        >
-                          {ko
-                            ? "공통: 스트라이크×4, 방어×3"
-                            : ja
-                              ? "共通: ストライク×4, ディフェンス×3"
-                              : "Common: Strike×4, Defend×3"}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      ))}
+                      <p
+                        style={{
+                          margin: "4px 0 0",
+                          fontSize: 9,
+                          color: C.textDim,
+                          borderTop: `1px solid ${C.border}`,
+                          paddingTop: 4,
+                        }}
+                      >
+                        {ko
+                          ? "공통: 스트라이크×4, 방어×3"
+                          : ja
+                            ? "共通: ストライク×4, ディフェンス×3"
+                            : "Common: Strike×4, Defend×3"}
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })()}

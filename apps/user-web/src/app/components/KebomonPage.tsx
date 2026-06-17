@@ -54,18 +54,19 @@ import type {
 } from "../data/characters";
 
 const CARD_ARCH_MAP: Partial<Record<string, string>> = {
-  wolf:"warrior", tiger:"warrior", lion:"warrior", bear:"warrior", eagle:"warrior", boar:"warrior",
-  cat:"rogue",    fox:"rogue",     rabbit:"rogue", monkey:"rogue", raven:"rogue",   deer:"rogue",
-  ghost:"mage",   owl:"mage",      dragon:"mage",  demon:"mage",   angel:"mage",    phoenix:"mage",
-  turtle:"tank",  elephant:"tank", whale:"tank",   beetle:"tank",  crocodile:"tank",
-  plant:"nature", fish:"nature",   snake:"nature", unicorn:"nature", horse:"nature",
-  robot:"wild",   slime:"wild",
+  wolf:"warrior",  tiger:"warrior",  lion:"warrior",   bear:"warrior",
+  cat:"rogue",     rabbit:"rogue",   deer:"rogue",     eagle:"rogue",
+  ghost:"mage",    owl:"mage",       dragon:"mage",    angel:"mage",    phoenix:"mage",
+  turtle:"tank",   elephant:"tank",  whale:"tank",     crocodile:"tank", boar:"tank",
+  plant:"nature",  fish:"nature",    unicorn:"nature", horse:"nature",
+  robot:"meka",    slime:"meka",     beetle:"meka",
+  fox:"cursed",    monkey:"cursed",  raven:"cursed",   snake:"cursed",  demon:"cursed",
 };
 function CardArchIcon({ type, className }: { type: string; className?: string }) {
   const ca = CARD_ARCH_MAP[type];
   if (!ca) return null;
-  const color = ca==="warrior"?"#f97316":ca==="rogue"?"#c084fc":ca==="mage"?"#60a5fa":ca==="tank"?"#94a3b8":ca==="nature"?"#4ade80":"#2dd4bf";
-  const Icon = ca==="warrior"?Sword:ca==="rogue"?Wind:ca==="mage"?Wand2:ca==="tank"?Layers:ca==="nature"?Leaf:Cpu;
+  const color = ca==="warrior"?"#f97316":ca==="rogue"?"#c084fc":ca==="mage"?"#60a5fa":ca==="tank"?"#94a3b8":ca==="nature"?"#4ade80":ca==="cursed"?"#7c3aed":ca==="meka"?"#2dd4bf":"#64748b";
+  const Icon = ca==="warrior"?Sword:ca==="rogue"?Wind:ca==="mage"?Wand2:ca==="tank"?Layers:ca==="nature"?Leaf:ca==="cursed"?Flame:Cpu;
   return <Icon className={className} style={{ color }} />;
 }
 
@@ -1503,10 +1504,10 @@ function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: num
 
   const ca = CARD_ARCH_MAP[char.type];
   const archLabel = ko
-    ? ca === "warrior" ? "전사" : ca === "rogue" ? "로그" : ca === "mage" ? "마법사" : ca === "tank" ? "탱커" : ca === "nature" ? "자연" : ca === "wild" ? "야생" : "공용"
+    ? ca === "warrior" ? "전사" : ca === "rogue" ? "도적" : ca === "mage" ? "마법사" : ca === "tank" ? "수호자" : ca === "nature" ? "자연" : ca === "meka" ? "메카" : ca === "cursed" ? "저주술사" : "공용"
     : ja
-      ? ca === "warrior" ? "戦士" : ca === "rogue" ? "ローグ" : ca === "mage" ? "魔法使い" : ca === "tank" ? "タンク" : ca === "nature" ? "自然" : ca === "wild" ? "ワイルド" : "全"
-      : ca === "warrior" ? "Warrior" : ca === "rogue" ? "Rogue" : ca === "mage" ? "Mage" : ca === "tank" ? "Tank" : ca === "nature" ? "Nature" : ca === "wild" ? "Wild" : "All";
+      ? ca === "warrior" ? "戦士" : ca === "rogue" ? "盗賊" : ca === "mage" ? "魔法使い" : ca === "tank" ? "守護者" : ca === "nature" ? "自然" : ca === "meka" ? "メカ" : ca === "cursed" ? "呪術師" : "全"
+      : ca === "warrior" ? "Warrior" : ca === "rogue" ? "Rogue" : ca === "mage" ? "Mage" : ca === "tank" ? "Guardian" : ca === "nature" ? "Nature" : ca === "meka" ? "Meka" : ca === "cursed" ? "Cursed" : "All";
 
   const sectionCls = "rounded-lg bg-muted/60 border border-border px-2.5 py-2 space-y-1";
   const labelCls   = "text-[9px] font-bold uppercase tracking-wider text-muted-foreground";
