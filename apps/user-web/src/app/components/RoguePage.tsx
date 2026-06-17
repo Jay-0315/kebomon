@@ -265,7 +265,7 @@ interface EnemyState extends EnemyDef {
   curseStacks: number;
   patternIdx: number;
 }
-type ShopConsumableId = "elixir_30" | "elixir_50" | "elixir_100" | "stat_str" | "stat_def" | "stat_maxhp";
+type ShopConsumableId = "elixir_30" | "elixir_50" | "elixir_100" | "stat_str" | "stat_def" | "stat_maxhp" | "antidote";
 interface ShopEntry {
   kind: "card" | "consumable" | "relic";
   card?: CardDef;
@@ -2506,6 +2506,7 @@ const CONSUMABLE_DEFS: Record<ShopConsumableId, { ko: string; ja: string; en: st
   stat_str:   { ko: "힘의 결정", ja: "力の結晶", en: "Strength Crystal", desc: "힘 +2 (영구)", descJa: "力+2（永続）", descEn: "Gain +2 strength permanently", basePrice: 120 },
   stat_def:   { ko: "방어의 결정", ja: "防御の結晶", en: "Armor Crystal", desc: "방어력 +2 (영구)", descJa: "防御力+2（永続）", descEn: "Gain +2 armor permanently", basePrice: 100 },
   stat_maxhp: { ko: "생명의 결정", ja: "生命の結晶", en: "Vitality Crystal", desc: "최대HP +15 (영구)", descJa: "最大HP+15（永続）", descEn: "Gain +15 max HP permanently", basePrice: 110 },
+  antidote:   { ko: "해독제", ja: "解毒剤", en: "Antidote", desc: "모든 상태이상 즉시 해제", descJa: "全状態異常を即座に解除", descEn: "Instantly clear all status effects", basePrice: 80 },
 };
 
 function makeShopItems(
@@ -3906,37 +3907,40 @@ export default function RoguePage() {
       // Curse amplifier
       const curseAmp = enemy.curseStacks > 0 ? 1.5 : 1;
 
+      // Status ticks decay every 2 turns (odd turnCount = decay turn)
+      const decayTurn = prev.turnCount % 2 === 1;
+
       // Enemy poison tick (nature: stacks don't decrease)
       if (enemy.poisonStacks > 0) {
         const pd = Math.floor(enemy.poisonStacks * curseAmp);
         enemy.currentHp = Math.max(0, enemy.currentHp - pd);
-        if (arch !== "nature") {
+        if (arch !== "nature" && decayTurn) {
           enemy.poisonStacks = Math.max(0, enemy.poisonStacks - 1);
         }
         logs.push(ko ? `[독] -${pd} HP` : ja ? `[毒] -${pd} HP` : `[Poison] -${pd} HP`);
       }
 
-      // Bleed tick (decreases each turn)
+      // Bleed tick (decreases every 2 turns)
       if (enemy.bleedStacks > 0) {
         const bd = Math.floor(enemy.bleedStacks * 2 * curseAmp);
         enemy.currentHp = Math.max(0, enemy.currentHp - bd);
-        enemy.bleedStacks = Math.max(0, enemy.bleedStacks - 1);
+        if (decayTurn) enemy.bleedStacks = Math.max(0, enemy.bleedStacks - 1);
         logs.push(ko ? `[출혈] -${bd} HP` : ja ? `[出血] -${bd} HP` : `[Bleed] -${bd} HP`);
       }
 
-      // Burn tick (decreases each turn)
+      // Burn tick (decreases every 2 turns)
       if (enemy.burnStacks > 0) {
         const fd = Math.floor(enemy.burnStacks * 3 * curseAmp);
         enemy.currentHp = Math.max(0, enemy.currentHp - fd);
-        enemy.burnStacks = Math.max(0, enemy.burnStacks - 1);
+        if (decayTurn) enemy.burnStacks = Math.max(0, enemy.burnStacks - 1);
         logs.push(ko ? `[화상] -${fd} HP` : ja ? `[火傷] -${fd} HP` : `[Burn] -${fd} HP`);
       }
 
-      // Curse tick & decay
+      // Curse tick & decay every 2 turns
       if (enemy.curseStacks > 0) {
         const cd = Math.floor(enemy.curseStacks * 4);
         enemy.currentHp = Math.max(0, enemy.currentHp - cd);
-        enemy.curseStacks = Math.max(0, enemy.curseStacks - 1);
+        if (decayTurn) enemy.curseStacks = Math.max(0, enemy.curseStacks - 1);
         logs.push(ko ? `[저주] -${cd} HP` : ja ? `[呪い] -${cd} HP` : `[Curse] -${cd} HP`);
       }
 
@@ -4316,8 +4320,8 @@ export default function RoguePage() {
       const id = item.consumableId;
       setGs((prev) => {
         if (!prev) return prev;
-        // Elixirs → store in potion slot
-        if (id === "elixir_30" || id === "elixir_50" || id === "elixir_100") {
+        // Elixirs & antidote → store in potion slot
+        if (id === "elixir_30" || id === "elixir_50" || id === "elixir_100" || id === "antidote") {
           const slotIdx = prev.potions.findIndex((p) => p === null);
           if (slotIdx === -1) return prev;
           const newPotions = [...prev.potions] as (ShopConsumableId | null)[];
@@ -4352,6 +4356,9 @@ export default function RoguePage() {
       if (potionId === "elixir_100") playerHp = playerMaxHp;
       const newPotions = [...prev.potions] as (ShopConsumableId | null)[];
       newPotions[slotIdx] = null;
+      if (potionId === "antidote") {
+        return { ...prev, poison: 0, potions: newPotions };
+      }
       return { ...prev, playerHp, potions: newPotions };
     });
   }, []);
@@ -5820,7 +5827,7 @@ export default function RoguePage() {
                         style={{
                           position: "absolute",
                           right: 0,
-                          bottom: "calc(100% + 8px)",
+                          top: "calc(100% + 4px)",
                           zIndex: 20,
                           background: C.panelDark,
                           border: `1px solid ${C.border}`,
@@ -8258,6 +8265,41 @@ export default function RoguePage() {
                   </p>
                 </div>
                 <HpBar hp={e.currentHp} max={e.hp} color="#ef4444" />
+                {(e.poisonStacks > 0 || e.bleedStacks > 0 || e.burnStacks > 0 || e.curseStacks > 0) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 5,
+                      marginTop: 4,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: 9, color: C.textDim, fontWeight: 600 }}>
+                      {ko ? "다음 턴:" : ja ? "次ターン:" : "Next:"}
+                    </span>
+                    {e.poisonStacks > 0 && (
+                      <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700 }}>
+                        {ko ? "독" : ja ? "毒" : "Psn"} -{e.poisonStacks}
+                      </span>
+                    )}
+                    {e.bleedStacks > 0 && (
+                      <span style={{ fontSize: 9, color: "#f87171", fontWeight: 700 }}>
+                        {ko ? "출혈" : ja ? "出血" : "Bld"} -{e.bleedStacks * 2}
+                      </span>
+                    )}
+                    {e.burnStacks > 0 && (
+                      <span style={{ fontSize: 9, color: "#fb923c", fontWeight: 700 }}>
+                        {ko ? "화상" : ja ? "火傷" : "Brn"} -{e.burnStacks * 3}
+                      </span>
+                    )}
+                    {e.curseStacks > 0 && (
+                      <span style={{ fontSize: 9, color: "#facc15", fontWeight: 700 }}>
+                        {ko ? "저주" : ja ? "呪い" : "Crs"} -{e.curseStacks * 4}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div
                   style={{
                     display: "flex",
@@ -8732,7 +8774,7 @@ export default function RoguePage() {
                   }}
                 >
                   {potionId
-                    ? <FlaskConical size={18} color="#60a5fa" />
+                    ? <FlaskConical size={18} color={potionId === "antidote" ? "#4ade80" : "#60a5fa"} />
                     : <span style={{ fontSize: 14, opacity: 0.25, color: C.textDim }}>○</span>}
                 </button>
               );
@@ -9099,11 +9141,13 @@ export default function RoguePage() {
                     <div style={{ color: "#e2e8f0" }}>
                       {item.consumableId.startsWith("elixir")
                         ? <FlaskConical size={36} color="#60a5fa" />
-                        : item.consumableId === "stat_str"
-                          ? <Swords size={36} color="#f87171" />
-                          : item.consumableId === "stat_def"
-                            ? <Shield size={36} color="#34d399" />
-                            : <Heart size={36} color="#f472b6" />}
+                        : item.consumableId === "antidote"
+                          ? <FlaskConical size={36} color="#4ade80" />
+                          : item.consumableId === "stat_str"
+                            ? <Swords size={36} color="#f87171" />
+                            : item.consumableId === "stat_def"
+                              ? <Shield size={36} color="#34d399" />
+                              : <Heart size={36} color="#f472b6" />}
                     </div>
                     <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13, color: "#e2e8f0", textAlign: "center" }}>{name}</div>
                     <div style={{ fontFamily: FONT, fontSize: 11, color: "#94a3b8", textAlign: "center" }}>{desc}</div>
