@@ -305,6 +305,7 @@ interface GameState {
   relics: RelicDef[];
   relicPending: boolean;
   potions: (ShopConsumableId | null)[];
+  infiniteMode: boolean;
 }
 
 // ── Card pool ─────────────────────────────────────────────────────────────
@@ -1997,6 +1998,22 @@ function generateChallengeMap(): { options: NodeType[] }[] {
     options: challengeFloorOptions(i),
   }));
 }
+// 무한모드 스테이지 선택지: 5스테이지마다 상점 선택지 추가, 나머지는 보스만
+function infiniteFloorOptions(floor: number): NodeType[] {
+  const inf = floor - CHALLENGE_FLOORS + 1; // 1-indexed within infinite
+  if (inf % 5 === 0) return ["boss", "shop"];
+  return ["boss"];
+}
+// 무한모드 HP 배율: 10스테이지(inf) 단위로 증가
+function infiniteHpMult(floor: number): number {
+  const tier = Math.floor((floor - CHALLENGE_FLOORS) / 10);
+  return challengeHpMult(CHALLENGE_FLOORS - 1) * (1 + tier * 0.4);
+}
+// 무한모드 공격력 보너스
+function infiniteAtkBonus(floor: number): number {
+  const tier = Math.floor((floor - CHALLENGE_FLOORS) / 10);
+  return challengeAtkBonus(CHALLENGE_FLOORS - 1) + tier * 10;
+}
 
 // ── Enemies ────────────────────────────────────────────────────────────────
 const ENEMY_DEFS: EnemyDef[] = [
@@ -2558,16 +2575,17 @@ function spawnEnemyForFloor(
   const id = pool[Math.floor(Math.random() * pool.length)];
   const def = ENEMY_DEFS.find((e) => e.id === id) ?? ENEMY_DEFS[0];
   // 도전 모드는 스테이지에 따라 계속 강해짐 (연속 스케일링)
-  const earlyMult = diff === "challenge" && floor < 50 ? 0.7 : 1;
+  const isInfinite = diff === "challenge" && floor >= CHALLENGE_FLOORS;
+  const earlyMult = diff === "challenge" && !isInfinite && floor < 50 ? 0.7 : 1;
   const hpMult =
     DIFF_HP_MULT[diff] *
-    (diff === "challenge" ? challengeHpMult(floor) : 1) *
+    (isInfinite ? infiniteHpMult(floor) : diff === "challenge" ? challengeHpMult(floor) : 1) *
     earlyMult;
   const atkBonus =
     DIFF_ATK_BONUS[diff] +
-    (diff === "challenge" ? challengeAtkBonus(floor) : 0);
+    (isInfinite ? infiniteAtkBonus(floor) : diff === "challenge" ? challengeAtkBonus(floor) : 0);
   const strBonus =
-    DIFF_STR_BONUS[diff] + (diff === "challenge" ? Math.floor(floor / 20) : 0);
+    DIFF_STR_BONUS[diff] + (diff === "challenge" ? Math.floor(Math.min(floor, CHALLENGE_FLOORS - 1) / 20) : 0);
   const scaledPatterns = def.patterns.map((p) => ({
     ...p,
     value:
@@ -3256,6 +3274,7 @@ export default function RoguePage() {
         relics: [],
         relicPending: false,
         potions: [null, null, null],
+        infiniteMode: false,
       });
       setSelIdx(null);
       immortalHeartUsedRef.current = false;
@@ -3716,7 +3735,8 @@ export default function RoguePage() {
         if (enemy.currentHp <= 0) {
           const nodeType = prev.chosenPath[prev.floor];
           const isFinal =
-            prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
+            !prev.infiniteMode &&
+            (prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1);
           // Relic: permanent stat gain on kill
           const killMaxHpGain =
             (hasRelic(prev.relics, "bandage") ? 1 : 0) +
@@ -4334,6 +4354,13 @@ export default function RoguePage() {
       newPotions[slotIdx] = null;
       return { ...prev, playerHp, potions: newPotions };
     });
+  }, []);
+
+  const enterInfiniteMode = useCallback(() => {
+    challengeSubmittedRef.current = false; // allow re-submit when dying in infinite mode
+    setGs((prev) =>
+      prev ? { ...prev, phase: "map", infiniteMode: true } : prev,
+    );
   }, []);
 
   const leaveShop = useCallback(
@@ -7158,39 +7185,66 @@ export default function RoguePage() {
                     },
                     {
                       icon: <Shield size={14} color="#60a5fa" />,
-                      title: ko ? "방어력" : ja ? "防御力" : "Shield",
+                      title: ko ? "방어력 (아머)" : ja ? "防御力（アーマー）" : "Armor",
                       desc: ko
-                        ? "카드로 쌓은 방어력은 HP보다 먼저 피해를 흡수합니다. 방어력은 매 턴 종료 시 초기화됩니다."
+                        ? "방어력은 영구적으로 유지됩니다. 피해를 받을 때 '방어력 초과분'만 HP가 감소합니다. (예: 방어력 5, 공격 8 → HP -3)"
                         : ja
-                          ? "カードで積んだ防御力はHPより先にダメージを吸収します。防御力はターン終了時にリセットされます。"
-                          : "Shield absorbs damage before HP. Shield resets at the end of every turn.",
+                          ? "防御力は永続します。ダメージを受けると「防御力超過分」のみHPが減少します。（例: 防御5, 攻撃8 → HP-3）"
+                          : "Armor persists permanently. Only damage exceeding your armor reduces HP. (e.g. 5 armor vs 8 atk → -3 HP)",
                     },
                     {
                       icon: <Heart size={14} color="#f87171" />,
                       title: "HP",
                       desc: ko
-                        ? "HP가 0이 되면 탐험이 종료됩니다. 휴식 노드나 일부 카드·기물로 HP를 회복할 수 있습니다."
+                        ? "HP가 0이 되면 탐험이 종료됩니다. 휴식 노드나 일부 카드·기물·포션으로 HP를 회복할 수 있습니다."
                         : ja
-                          ? "HPが0になると探検終了。休憩ノードや一部のカード・遺物でHPを回復できます。"
-                          : "Reaching 0 HP ends the run. Restore HP at rest nodes or via certain cards and relics.",
+                          ? "HPが0になると探検終了。休憩ノードや一部のカード・遺物・ポーションでHPを回復できます。"
+                          : "Reaching 0 HP ends the run. Restore HP at rest nodes or via cards, relics, or potions.",
+                    },
+                    {
+                      icon: <FlaskConical size={14} color="#60a5fa" />,
+                      title: ko ? "포션 슬롯" : ja ? "ポーションスロット" : "Potions",
+                      desc: ko
+                        ? "상점에서 구매한 엘릭서는 포션 슬롯(최대 3)에 보관됩니다. 전투 중 버튼을 눌러 즉시 사용할 수 있습니다."
+                        : ja
+                          ? "商店で購入したエリクサーはポーションスロット（最大3）に保管されます。戦闘中ボタンを押して即使用できます。"
+                          : "Elixirs bought in the shop are stored in potion slots (max 3). Use them mid-battle with a tap.",
+                    },
+                    {
+                      icon: <Skull size={14} color="#f97316" />,
+                      title: ko ? "상태이상" : ja ? "状態異常" : "Status Effects",
+                      desc: ko
+                        ? "출혈·화상·공포·속박·감전·저주는 60% 확률로 적용됩니다. 공포: 1턴 공격 불가. 속박: 1턴 행동 불가. 저주: 다른 상태이상 피해 1.5배."
+                        : ja
+                          ? "出血・火傷・恐怖・束縛・感電・呪いは60%の確率で付与されます。恐怖: 1ターン攻撃不可. 束縛: 1ターン行動不可. 呪い: 他状態異常1.5倍。"
+                          : "Bleed/Burn/Fear/Bind/Shock/Curse apply at 60%. Fear: skip attack 1 turn. Bind: skip all actions. Curse: 1.5× other status damage.",
                     },
                     {
                       icon: <Star size={14} color={C.gold} />,
                       title: ko ? "골드 & 상점" : ja ? "ゴールド & 商店" : "Gold & Shop",
                       desc: ko
-                        ? "전투마다 골드를 획득합니다. 상점 노드에서 새 카드를 구매하거나 기존 카드를 제거할 수 있습니다."
+                        ? "전투마다 골드를 획득합니다. 상점에서 카드·엘릭서·스탯 결정·기물 등을 구매할 수 있습니다."
                         : ja
-                          ? "戦闘ごとにゴールドを獲得。商店ノードで新カードを購入したり既存カードを除去できます。"
-                          : "Earn gold from battles. Use shop nodes to buy new cards or remove unwanted ones.",
+                          ? "戦闘ごとにゴールドを獲得。商店でカード・エリクサー・ステータス結晶・遺物などを購入できます。"
+                          : "Earn gold from battles. Buy cards, elixirs, stat crystals, and relics at the shop.",
                     },
                     {
                       icon: <Sparkles size={14} color="#a78bfa" />,
                       title: ko ? "기물" : ja ? "遺物" : "Relics",
                       desc: ko
-                        ? "기물을 획득하면 탐험 내내 지속되는 특수 효과가 적용됩니다. 기물의 시너지를 잘 활용하세요."
+                        ? "기물을 획득하면 탐험 내내 지속되는 특수 효과가 적용됩니다. 보스 처치 시 강력한 보스 기물 3개 중 1개를 선택합니다."
                         : ja
-                          ? "遺物を入手すると探検中ずっと続く特殊効果が発動します。遺物のシナジーを活用しましょう。"
-                          : "Relics grant persistent effects for the entire run. Combine them for powerful synergies.",
+                          ? "遺物を入手すると探検中ずっと続く特殊効果が発動します。ボス撃破時に強力なボス遺物3個から1つ選択できます。"
+                          : "Relics grant persistent effects. After beating a boss, choose 1 of 3 powerful boss relics.",
+                    },
+                    {
+                      icon: <Crown size={14} color="#ef4444" />,
+                      title: ko ? "도전 모드 & 무한 모드" : ja ? "チャレンジ & 無限モード" : "Challenge & Infinite Mode",
+                      desc: ko
+                        ? "도전 모드는 100층 클리어를 목표로 합니다. 100층 완주 후 무한 모드로 진입할 수 있습니다. 무한 모드는 매 스테이지 보스만 등장하며 5스테이지마다 상점이 열립니다. 더 멀리 갈수록 랭킹이 높아집니다."
+                        : ja
+                          ? "チャレンジモードは100層クリアが目標です。完走後に無限モードへ移行できます。無限モードは毎ステージボスのみ登場し5ステージごとに商店が開きます。遠くまで進むほどランキングが上がります。"
+                          : "Challenge mode aims for 100 floors. After clearing, enter Infinite Mode: boss every stage, shop every 5 stages. Go further for a higher ranking.",
                     },
                   ] as { icon: React.ReactNode; title: string; desc: string }[]
                 ).map((item, i) => (
@@ -7248,8 +7302,10 @@ export default function RoguePage() {
   if (gs.phase === "map" && gs.mode === "challenge") {
     const nextFloor = gs.floor + 1;
     const cleared = gs.floor + 1;
-    const options =
-      gs.mapLayout[nextFloor]?.options ?? (["fight"] as NodeType[]);
+    const isInfiniteMap = gs.infiniteMode;
+    const options: NodeType[] = isInfiniteMap && nextFloor >= CHALLENGE_FLOORS
+      ? infiniteFloorOptions(nextFloor)
+      : (gs.mapLayout[nextFloor]?.options ?? (["fight"] as NodeType[]));
     const cfg = DIFF_GOLD_FIGHT.challenge,
       ceg = DIFF_GOLD_ELITE.challenge;
     const ntMeta: Record<string, [string, string]> = {
@@ -7293,9 +7349,11 @@ export default function RoguePage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Crown size={18} color="#a855f7" />
-            <span style={{ color: "#c084fc", fontWeight: 800, fontSize: 15 }}>
-              {ko ? "도전 모드" : ja ? "チャレンジ" : "Challenge"}
+            <Crown size={18} color={isInfiniteMap ? "#ef4444" : "#a855f7"} />
+            <span style={{ color: isInfiniteMap ? "#fca5a5" : "#c084fc", fontWeight: 800, fontSize: 15 }}>
+              {isInfiniteMap
+                ? (ko ? "무한 모드" : ja ? "無限モード" : "Infinite Mode")
+                : (ko ? "도전 모드" : ja ? "チャレンジ" : "Challenge")}
             </span>
           </div>
           <button
@@ -7325,35 +7383,39 @@ export default function RoguePage() {
               margin: 0,
               fontSize: 44,
               fontWeight: 900,
-              color: "#c084fc",
+              color: isInfiniteMap ? "#fca5a5" : "#c084fc",
               lineHeight: 1,
             }}
           >
             {cleared}
-            <span style={{ fontSize: 20, color: C.textDim }}>
-              {" "}
-              / {CHALLENGE_FLOORS}
-            </span>
+            {!isInfiniteMap && (
+              <span style={{ fontSize: 20, color: C.textDim }}> / {CHALLENGE_FLOORS}</span>
+            )}
+            {isInfiniteMap && (
+              <span style={{ fontSize: 18, color: "#ef4444", marginLeft: 6 }}>∞</span>
+            )}
           </p>
-          <div
-            style={{
-              height: 8,
-              background: C.panelDark,
-              borderRadius: 6,
-              overflow: "hidden",
-              margin: "12px 0 0",
-            }}
-          >
+          {!isInfiniteMap && (
             <div
               style={{
-                height: "100%",
-                width: `${(cleared / CHALLENGE_FLOORS) * 100}%`,
-                background: "linear-gradient(90deg,#7c3aed,#c084fc)",
+                height: 8,
+                background: C.panelDark,
                 borderRadius: 6,
-                transition: "width 0.3s",
+                overflow: "hidden",
+                margin: "12px 0 0",
               }}
-            />
-          </div>
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${(cleared / CHALLENGE_FLOORS) * 100}%`,
+                  background: "linear-gradient(90deg,#7c3aed,#c084fc)",
+                  borderRadius: 6,
+                  transition: "width 0.3s",
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* HP */}
@@ -7411,7 +7473,9 @@ export default function RoguePage() {
             }}
           >
             {ko ? "다음 길을 선택" : ja ? "次の道を選択" : "Choose your path"} ·{" "}
-            {ko ? "스테이지" : ja ? "ステージ" : "Stage"} {nextFloor + 1}
+            {isInfiniteMap
+              ? (ko ? `무한 ${nextFloor - CHALLENGE_FLOORS + 1}스테이지` : ja ? `無限${nextFloor - CHALLENGE_FLOORS + 1}ステージ` : `Infinite Stage ${nextFloor - CHALLENGE_FLOORS + 1}`)
+              : `${ko ? "스테이지" : ja ? "ステージ" : "Stage"} ${nextFloor + 1}`}
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             {options.map((opt, idx) => {
@@ -9228,32 +9292,20 @@ export default function RoguePage() {
         >
           {gs.mode === "challenge" ? (
             <>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 26,
-                  fontWeight: 900,
-                  color: C.red,
-                }}
-              >
-                {ko ? "도전 종료" : ja ? "挑戦終了" : "Challenge Over"}
+              <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: C.red }}>
+                {gs.infiniteMode
+                  ? (ko ? "무한 모드 종료" : ja ? "無限モード終了" : "Infinite Mode Over")
+                  : (ko ? "도전 종료" : ja ? "挑戦終了" : "Challenge Over")}
               </p>
-              <p
-                style={{
-                  margin: "8px 0 0",
-                  fontSize: 16,
-                  fontWeight: 900,
-                  color: "#c084fc",
-                }}
-              >
-                {ko
-                  ? `${gs.floor}스테이지 도달`
-                  : ja
-                    ? `${gs.floor}ステージ到達`
-                    : `Reached Stage ${gs.floor}`}{" "}
-                <span style={{ color: C.textDim, fontWeight: 700 }}>
-                  / {CHALLENGE_FLOORS}
-                </span>
+              <p style={{ margin: "8px 0 0", fontSize: 16, fontWeight: 900, color: gs.infiniteMode ? "#fca5a5" : "#c084fc" }}>
+                {gs.infiniteMode
+                  ? (ko
+                      ? `무한 ${gs.floor - CHALLENGE_FLOORS + 1}스테이지 도달 (총 ${gs.floor}층)`
+                      : ja
+                        ? `無限${gs.floor - CHALLENGE_FLOORS + 1}ステージ到達（計${gs.floor}層）`
+                        : `Reached Infinite Stage ${gs.floor - CHALLENGE_FLOORS + 1} (Floor ${gs.floor})`)
+                  : (<>{ko ? `${gs.floor}스테이지 도달` : ja ? `${gs.floor}ステージ到達` : `Reached Stage ${gs.floor}`}{" "}<span style={{ color: C.textDim, fontWeight: 700 }}>/ {CHALLENGE_FLOORS}</span></>)
+                }
               </p>
               {challengeResult?.isNewRecord && (
                 <p
@@ -9273,10 +9325,10 @@ export default function RoguePage() {
               )}
               <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textDim }}>
                 {ko
-                  ? `역대 최고: ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}스테이지`
+                  ? `역대 최고: ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}층`
                   : ja
-                    ? `最高: ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}ステージ`
-                    : `Best: Stage ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}`}
+                    ? `最高: ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}層`
+                    : `Best: Floor ${Math.max(sessionChallengeBest, challengeResult?.challengeBest ?? 0)}`}
               </p>
             </>
           ) : (
@@ -9412,41 +9464,58 @@ export default function RoguePage() {
             }}
           >
             {gs.mode === "challenge"
-              ? ko
-                ? "100스테이지 완주!"
-                : ja
-                  ? "100ステージ完走！"
-                  : "100 Stages Cleared!"
-              : ko
-                ? "탐험 성공!"
-                : ja
-                  ? "探検成功！"
-                  : "Expedition Clear!"}
+              ? ko ? "100스테이지 완주!" : ja ? "100ステージ完走！" : "100 Stages Cleared!"
+              : ko ? "탐험 성공!" : ja ? "探検成功！" : "Expedition Clear!"}
           </p>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              marginTop: 8,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
             <Skull size={16} color="#4ade80" />
             <p style={{ margin: 0, fontSize: 14, color: "#4ade80" }}>
               {gs.mode === "challenge"
-                ? ko
-                  ? "도전 모드를 완전 정복했습니다!"
-                  : ja
-                    ? "チャレンジを完全制覇！"
-                    : "You conquered the Challenge!"
-                : ko
-                  ? "카오스 드래곤을 처치했습니다"
-                  : ja
-                    ? "カオスドラゴンを撃破しました"
-                    : "You defeated the Chaos Dragon"}
+                ? ko ? "도전 모드를 완전 정복했습니다!" : ja ? "チャレンジを完全制覇！" : "You conquered the Challenge!"
+                : ko ? "카오스 드래곤을 처치했습니다" : ja ? "カオスドラゴンを撃破しました" : "You defeated the Chaos Dragon"}
             </p>
           </div>
+          {gs.mode === "challenge" && (
+            <div
+              style={{
+                marginTop: 20,
+                background: "#1a0a0a",
+                border: "2px solid #ef4444",
+                borderRadius: 14,
+                padding: "18px 24px",
+                animation: "rogue-in 0.5s 0.3s ease-out both",
+                opacity: 0,
+              }}
+            >
+              <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900, color: "#ef4444", textAlign: "center" }}>
+                {ko ? "🏆 무한 모드 도전" : ja ? "🏆 無限モードへ挑む" : "🏆 Enter Infinite Mode"}
+              </p>
+              <p style={{ margin: "0 0 14px", fontSize: 12, color: "#fca5a5", textAlign: "center" }}>
+                {ko
+                  ? "101스테이지부터 무한히 계속됩니다. 매 스테이지 보스만 등장하며 랭킹에 기록됩니다."
+                  : ja
+                    ? "101ステージから無限に続きます。毎ステージボスのみ登場し、ランキングに記録されます。"
+                    : "From stage 101, boss only, endless. Your floor is recorded for ranking."}
+              </p>
+              <button
+                onClick={enterInfiniteMode}
+                style={{
+                  width: "100%",
+                  background: "linear-gradient(135deg,#7f1d1d,#ef4444cc)",
+                  border: "2px solid #ef4444",
+                  borderRadius: 10,
+                  padding: "12px 0",
+                  color: "#fff",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                }}
+              >
+                {ko ? "무한 모드 입장" : ja ? "無限モードへ入場" : "Enter Infinite Mode"}
+              </button>
+            </div>
+          )}
           <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textDim }}>
             {ko
               ? `HP ${gs.playerHp} / ${gs.playerMaxHp} · 덱 ${gs.deck.length}장`
