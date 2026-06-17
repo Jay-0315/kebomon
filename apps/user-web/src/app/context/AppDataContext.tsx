@@ -46,6 +46,7 @@ import type {
 } from "../types/domain";
 
 const SETTINGS_STORAGE_KEY = "kebo-local-settings";
+const LANG_OVERRIDE_KEY = "kebo-lang-pending";
 const profilePhotoKey = (userId: string) => `kebo-profile-photo-${userId}`;
 
 interface AppDataContextValue {
@@ -221,6 +222,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const pendingLang = localStorage.getItem(LANG_OVERRIDE_KEY) as import("../lib/i18n").Lang | null;
+    if (pendingLang) {
+      localStorage.removeItem(LANG_OVERRIDE_KEY);
+      api.patch(`/users/${currentUser.id}/settings`, { language: pendingLang }).catch(() => {});
+    }
+
     setIsLoading(true);
     const [profileResult, postsResult, rewardsResult] =
       await Promise.allSettled([
@@ -262,8 +269,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setSettings((prev) => ({
           ...prev,
           ...srv,
-          language: srv.language ?? prev.language,
+          language: pendingLang ?? srv.language ?? prev.language,
         }));
+      } else if (pendingLang) {
+        setSettings((prev) => ({ ...prev, language: pendingLang }));
       }
       if (p.profilePhoto !== undefined) {
         const key = profilePhotoKey(p.id);
@@ -625,6 +634,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setSettings((current) => ({ ...current, ...nextSettings }));
 
     if (!currentUser) {
+      if (nextSettings.language) {
+        localStorage.setItem(LANG_OVERRIDE_KEY, nextSettings.language);
+      }
       return;
     }
 

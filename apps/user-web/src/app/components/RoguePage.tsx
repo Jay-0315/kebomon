@@ -6094,17 +6094,19 @@ export default function RoguePage() {
                     >
                       {ko ? "도전 모드" : ja ? "チャレンジモード" : "Challenge"}
                     </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: C.textDim,
-                        marginLeft: "auto",
-                      }}
-                    >
-                      {ko ? "최고" : ja ? "最高" : "Best"}{" "}
-                      <b style={{ color: "#c084fc" }}>{sessionChallengeBest}</b>
-                      /100
-                    </span>
+                    {sessionChallengeBest > 0 && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: C.textDim,
+                          marginLeft: "auto",
+                        }}
+                      >
+                        {ko ? "최고" : ja ? "最高" : "Best"}{" "}
+                        <b style={{ color: "#c084fc" }}>{sessionChallengeBest}</b>
+                        {ko ? "스테이지" : ja ? "ステージ" : "st."}
+                      </span>
+                    )}
                   </div>
                   <p
                     style={{
