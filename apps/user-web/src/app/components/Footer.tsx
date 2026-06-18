@@ -17,10 +17,15 @@ function FooterContent() {
   const serviceLinks = [
     { to: "/", label: t("nav.home") },
     { to: "/community", label: t("nav.community") },
-    { to: "/kebomon", label: t("nav.kebomon") },
     { to: "/attendance", label: t("nav.attendance") },
+    { to: "/gacha", label: t("nav.gacha") },
+    { to: "/kebomon", label: t("nav.kebomon") },
     { to: "/live", label: t("nav.live") },
+    { to: "/mission", label: t("nav.mission") },
+    { to: "/colosseum", label: t("nav.colosseum") },
     { to: "/raid", label: t("nav.raid") },
+    { to: "/rogue", label: t("nav.rogue") },
+    { to: "/expedition", label: t("nav.expedition") },
   ];
 
   const legalLinks = [
@@ -137,7 +142,7 @@ function FooterContent() {
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>한국어 / 日本語 / English</span>
               <span>·</span>
-              <span>v0.1.0</span>
+              <span>v0.9.1</span>
             </div>
           </div>
         </div>

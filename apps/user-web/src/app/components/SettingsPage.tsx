@@ -502,7 +502,7 @@ export default function SettingsPage() {
             <span className="text-muted-foreground">
               {t("settings.version")}
             </span>
-            <span className="font-medium">1.0.0</span>
+            <span className="font-medium">0.9.1</span>
           </div>
         </div>
       </div>
