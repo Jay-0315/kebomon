@@ -1162,11 +1162,11 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "attack",
     rarity: "rare",
-    desc: "방어력 1/3만큼 피해, 방어력 +4",
-    descJa: "防御力1/3ダメージ・防御力+4",
-    descEn: "Deal 1/3 armor as damage, gain 4 armor",
+    desc: "현재 방어력만큼 피해, 방어력 +4",
+    descJa: "現在の防御力分ダメージ・防御力+4",
+    descEn: "Deal damage equal to current armor, gain 4 armor",
     archetype: "tank",
-    shieldStrike: 0.33,
+    shieldStrike: 1,
     shield: 4,
   },
   // Legendary
@@ -3439,6 +3439,8 @@ export default function RoguePage() {
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
   gsRef.current = gs;
+  const handScrollRef = useRef<HTMLDivElement>(null);
+  const handDragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, moved: false });
 
   // 전투/보상 phase 중 페이지 스크롤 방지
   useEffect(() => {
@@ -5017,6 +5019,9 @@ export default function RoguePage() {
     .rogue-reward-guide{scrollbar-width:none;-ms-overflow-style:none}
     .rogue-guide-scroll::-webkit-scrollbar{display:none}
     .rogue-guide-scroll{scrollbar-width:none;-ms-overflow-style:none}
+    .rogue-hand::-webkit-scrollbar{display:none}
+    .rogue-hand{scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}
+    .rogue-hand.dragging{cursor:grabbing}
   `;
 
   // ── Deck modal ────────────────────────────────────────────────────────────
@@ -9114,14 +9119,44 @@ export default function RoguePage() {
 
         {/* Hand */}
         <div
+          style={{ flexShrink: 0, position: "relative", zIndex: 20, paddingTop: 14 }}
+          onClickCapture={(e) => {
+            if (handDragRef.current.moved) {
+              e.stopPropagation();
+              handDragRef.current.moved = false;
+            }
+          }}
+        >
+        <div
+          ref={handScrollRef}
+          className="rogue-hand"
           style={{
-            flexShrink: 0,
             overflowX: "auto",
-            overflowY: "hidden",
+            overflowY: "visible",
             display: "flex",
             gap: 8,
-            padding: "4px 0 4px",
+            padding: "2px 4px 4px",
             alignItems: "flex-end",
+          }}
+          onPointerDown={(e) => {
+            if (!handScrollRef.current) return;
+            handDragRef.current = { isDown: true, startX: e.clientX, scrollLeft: handScrollRef.current.scrollLeft, moved: false };
+            handScrollRef.current.setPointerCapture(e.pointerId);
+            (e.currentTarget as HTMLDivElement).classList.add("dragging");
+          }}
+          onPointerMove={(e) => {
+            if (!handDragRef.current.isDown || !handScrollRef.current) return;
+            const dx = e.clientX - handDragRef.current.startX;
+            if (Math.abs(dx) > 5) handDragRef.current.moved = true;
+            handScrollRef.current.scrollLeft = handDragRef.current.scrollLeft - dx;
+          }}
+          onPointerUp={(e) => {
+            handDragRef.current.isDown = false;
+            (e.currentTarget as HTMLDivElement).classList.remove("dragging");
+          }}
+          onPointerLeave={(e) => {
+            handDragRef.current.isDown = false;
+            (e.currentTarget as HTMLDivElement).classList.remove("dragging");
           }}
         >
           {gs.hand.length === 0 ? (
@@ -9174,6 +9209,7 @@ export default function RoguePage() {
               </div>
             ))
           )}
+        </div>
         </div>
 
         {/* Bottom bar */}
