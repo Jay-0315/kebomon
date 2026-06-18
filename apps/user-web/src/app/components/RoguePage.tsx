@@ -4754,6 +4754,8 @@ export default function RoguePage() {
     .rogue-log{scrollbar-width:none;-ms-overflow-style:none}
     .rogue-reward-guide::-webkit-scrollbar{display:none}
     .rogue-reward-guide{scrollbar-width:none;-ms-overflow-style:none}
+    .rogue-guide-scroll::-webkit-scrollbar{display:none}
+    .rogue-guide-scroll{scrollbar-width:none;-ms-overflow-style:none}
   `;
 
   // ── Deck modal ────────────────────────────────────────────────────────────
@@ -6508,7 +6510,7 @@ export default function RoguePage() {
                   <button onClick={() => setShowRelicGuide(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, fontSize: 20, lineHeight: 1, padding: "0 2px" }}>×</button>
                 </div>
                 {/* 등급 탭 */}
-                <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 18px 0", flexShrink: 0 }}>
+                <div className="rogue-guide-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 18px 0", flexShrink: 0 }}>
                   {GRADE_TABS.map((g) => {
                     const cnt = g.key === "all" ? RELICS.length : RELICS.filter((r) => r.grade === g.key).length;
                     const active = relicGuideGrade === g.key;
@@ -6525,7 +6527,7 @@ export default function RoguePage() {
                 {/* 구분선 */}
                 <div style={{ height: 1, background: C.border, margin: "10px 0 0" }} />
                 {/* 기물 목록 */}
-                <div style={{ overflowY: "auto", padding: "12px 18px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="rogue-guide-scroll" style={{ overflowY: "auto", padding: "12px 18px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
                   {relicGuideGrade === "boss" && (
                     <p style={{ margin: "0 0 4px", fontSize: 10, color: C.textDim, background: "#ef444412", border: "1px solid #ef444430", borderRadius: 6, padding: "5px 8px" }}>
                       {ko ? "별도 슬롯 1개 · 보스 처치 후 제공 · 획득 선택 가능" : ja ? "専用スロット×1・ボス撃破後提供・取得は任意" : "Separate slot ×1 · Offered after boss · Optional to acquire"}
@@ -7073,8 +7075,8 @@ export default function RoguePage() {
                   </p>
                   <button onClick={() => setShowCardGuide(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, fontSize: 20, lineHeight: 1, padding: "0 2px" }}>×</button>
                 </div>
-                {/* 아키타입 탭 */}
-                <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 18px 0", flexShrink: 0 }}>
+                {/* 아키타입 탭 — 2줄 wrap */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "10px 18px 0", flexShrink: 0 }}>
                   {ARCH_TABS.map((a) => {
                     const cnt = a.key === "" ? CARDS.length : CARDS.filter((c) => c.archetype === a.key).length;
                     const active = cardGuideArch === a.key;
@@ -7096,7 +7098,7 @@ export default function RoguePage() {
                   </span>
                 </div>
                 {/* 카드 목록 */}
-                <div style={{ overflowY: "auto", padding: "8px 18px 18px", display: "flex", flexDirection: "column", gap: 5 }}>
+                <div className="rogue-guide-scroll" style={{ overflowY: "auto", padding: "8px 18px 18px", display: "flex", flexDirection: "column", gap: 5 }}>
                   {filtered.map((c) => {
                     const rc = CARD_RARITY_COLOR[c.rarity];
                     const tc = CARD_TYPE_COLOR[c.type];
