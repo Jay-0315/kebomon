@@ -3440,7 +3440,7 @@ export default function RoguePage() {
   const gsRef = useRef(gs);
   gsRef.current = gs;
   const handScrollRef = useRef<HTMLDivElement>(null);
-  const handDragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, moved: false });
+  const handDragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, moved: false, justDragged: false });
 
   // 전투/보상 phase 중 페이지 스크롤 방지
   useEffect(() => {
@@ -9121,9 +9121,9 @@ export default function RoguePage() {
         <div
           style={{ flexShrink: 0, position: "relative", zIndex: 20, paddingTop: 14 }}
           onClickCapture={(e) => {
-            if (handDragRef.current.moved) {
+            if (handDragRef.current.justDragged) {
               e.stopPropagation();
-              handDragRef.current.moved = false;
+              handDragRef.current.justDragged = false;
             }
           }}
         >
@@ -9135,22 +9135,24 @@ export default function RoguePage() {
             overflowY: "visible",
             display: "flex",
             gap: 8,
-            padding: "2px 4px 4px",
+            padding: "12px 4px 4px",
             alignItems: "flex-end",
           }}
           onPointerDown={(e) => {
             if (!handScrollRef.current) return;
-            handDragRef.current = { isDown: true, startX: e.clientX, scrollLeft: handScrollRef.current.scrollLeft, moved: false };
+            handDragRef.current = { isDown: true, startX: e.clientX, scrollLeft: handScrollRef.current.scrollLeft, moved: false, justDragged: false };
             handScrollRef.current.setPointerCapture(e.pointerId);
             (e.currentTarget as HTMLDivElement).classList.add("dragging");
           }}
           onPointerMove={(e) => {
             if (!handDragRef.current.isDown || !handScrollRef.current) return;
             const dx = e.clientX - handDragRef.current.startX;
-            if (Math.abs(dx) > 5) handDragRef.current.moved = true;
+            if (Math.abs(dx) > 12) handDragRef.current.moved = true;
             handScrollRef.current.scrollLeft = handDragRef.current.scrollLeft - dx;
           }}
           onPointerUp={(e) => {
+            handDragRef.current.justDragged = handDragRef.current.moved;
+            handDragRef.current.moved = false;
             handDragRef.current.isDown = false;
             (e.currentTarget as HTMLDivElement).classList.remove("dragging");
           }}
