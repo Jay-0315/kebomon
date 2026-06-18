@@ -3202,6 +3202,8 @@ export default function RoguePage() {
   );
   const [showRelicGuide, setShowRelicGuide] = useState(false);
   const [showCardGuide, setShowCardGuide] = useState(false);
+  const [cardGuideArch, setCardGuideArch] = useState<string>("all");
+  const [relicGuideGrade, setRelicGuideGrade] = useState<RelicGrade | "all">("all");
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showStarterCards, setShowStarterCards] = useState(false);
   const [hoveredPotionIdx, setHoveredPotionIdx] = useState<number | null>(null);
@@ -4838,7 +4840,7 @@ export default function RoguePage() {
         ? ko ? "레어" : ja ? "レア" : "Rare"
         : g === "unique"
           ? ko ? "유니크" : ja ? "ユニーク" : "Unique"
-          : ko ? "보스" : ja ? "ボス" : "Boss";
+          : ko ? "저주" : ja ? "呪い" : "Cursed";
   const RELIC_CAT_LABEL = (c: RelicCategory) =>
     c === "combat"
       ? ko
@@ -6476,108 +6478,65 @@ export default function RoguePage() {
         </div>
 
         {/* ── 기물 도감 모달 ── */}
-        {showRelicGuide && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 999,
-              background: "#000a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            onClick={() => setShowRelicGuide(false)}
-          >
+        {showRelicGuide && (() => {
+          const GRADE_TABS: Array<{ key: RelicGrade | "all"; label: string; color: string }> = [
+            { key: "all",    label: ko ? "전체" : ja ? "全部" : "All",      color: C.text },
+            { key: "common", label: ko ? "커먼" : ja ? "コモン" : "Common",  color: "#64748b" },
+            { key: "rare",   label: ko ? "레어" : ja ? "レア" : "Rare",      color: "#2563eb" },
+            { key: "unique", label: ko ? "유니크" : ja ? "ユニーク" : "Unique", color: "#a855f7" },
+            { key: "boss",   label: ko ? "저주" : ja ? "呪い" : "Cursed",    color: "#ef4444" },
+          ];
+          const visibleRelics = relicGuideGrade === "all"
+            ? RELICS
+            : RELICS.filter((r) => r.grade === relicGuideGrade);
+          return (
             <div
-              className="rogue-reward-guide"
-              style={{
-                background: C.panel,
-                border: `1px solid ${C.border}`,
-                borderRadius: 14,
-                padding: 20,
-                width: "min(520px,96vw)",
-                maxHeight: "88vh",
-                overflowY: "auto",
-                fontFamily: FONT,
-                animation: "rogue-in 0.22s ease-out both",
-              }}
-              onClick={(e) => e.stopPropagation()}
+              style={{ position: "fixed", inset: 0, zIndex: 999, background: "#000a", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => setShowRelicGuide(false)}
             >
               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 14,
-                }}
+                className="rogue-reward-guide"
+                style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, width: "min(520px,96vw)", maxHeight: "88vh", display: "flex", flexDirection: "column", fontFamily: FONT, animation: "rogue-in 0.22s ease-out both" }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 16,
-                    fontWeight: 800,
-                    color: C.gold,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Sparkles size={16} color={C.gold} />
-                  {ko ? "기물 도감" : ja ? "遺物図鑑" : "Relic Encyclopedia"}
-                </p>
-                <button
-                  onClick={() => setShowRelicGuide(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: C.textDim,
-                    fontSize: 18,
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              {(["common", "rare", "unique", "boss"] as RelicGrade[]).map((grade) => {
-                const gradeRelics = RELICS.filter((r) => r.grade === grade);
-                const gc = RELIC_GRADE_COLOR[grade];
-                const gl = RELIC_GRADE_LABEL(grade);
-                return (
-                  <div key={grade} style={{ marginBottom: 18 }}>
-                    <p
-                      style={{
-                        margin: "0 0 8px",
-                        fontSize: 12,
-                        fontWeight: 800,
-                        color: gc,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                        borderBottom: `1px solid ${gc}33`,
-                        paddingBottom: 6,
-                      }}
-                    >
-                      {gl} ({gradeRelics.length})
+                {/* 헤더 */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px 0" }}>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.gold, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Sparkles size={16} color={C.gold} />
+                    {ko ? "기물 도감" : ja ? "遺物図鑑" : "Relic Encyclopedia"}
+                  </p>
+                  <button onClick={() => setShowRelicGuide(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, fontSize: 20, lineHeight: 1, padding: "0 2px" }}>×</button>
+                </div>
+                {/* 등급 탭 */}
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 18px 0", flexShrink: 0 }}>
+                  {GRADE_TABS.map((g) => {
+                    const cnt = g.key === "all" ? RELICS.length : RELICS.filter((r) => r.grade === g.key).length;
+                    const active = relicGuideGrade === g.key;
+                    return (
+                      <button key={g.key} onClick={() => setRelicGuideGrade(g.key)}
+                        style={{ flexShrink: 0, border: `1px solid ${active ? g.color : C.border}`, background: active ? `${g.color}22` : "transparent", color: active ? g.color : C.textDim, borderRadius: 20, padding: "4px 11px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: FONT, display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        {g.label}
+                        <span style={{ fontSize: 9, opacity: 0.65, fontWeight: 600 }}>{cnt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 구분선 */}
+                <div style={{ height: 1, background: C.border, margin: "10px 0 0" }} />
+                {/* 기물 목록 */}
+                <div style={{ overflowY: "auto", padding: "12px 18px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {relicGuideGrade === "boss" && (
+                    <p style={{ margin: "0 0 4px", fontSize: 10, color: C.textDim, background: "#ef444412", border: "1px solid #ef444430", borderRadius: 6, padding: "5px 8px" }}>
+                      {ko ? "별도 슬롯 1개 · 보스 처치 후 제공 · 획득 선택 가능" : ja ? "専用スロット×1・ボス撃破後提供・取得は任意" : "Separate slot ×1 · Offered after boss · Optional to acquire"}
                     </p>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 6,
-                      }}
-                    >
-                      {gradeRelics.map((r) => (
-                        <RelicCard key={r.id} relic={r} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+                  )}
+                  {visibleRelics.map((r) => <RelicCard key={r.id} relic={r} />)}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── 보상 안내 모달 ── */}
         {showRewardGuide &&
@@ -7061,298 +7020,123 @@ export default function RoguePage() {
           })()}
 
         {/* ── 카드 도감 모달 ── */}
-        {showCardGuide &&
-          (() => {
-            const CARD_RARITY_ORDER: CardRarity[] = [
-              "common",
-              "uncommon",
-              "rare",
-              "epic",
-              "legendary",
-            ];
-            const CARD_RARITY_COLOR: Record<string, string> = {
-              common: "#64748b",
-              uncommon: "#16a34a",
-              rare: "#2563eb",
-              epic: "#9333ea",
-              legendary: "#d97706",
-            };
-            const CARD_RARITY_LABEL = (r: string) =>
-              r === "common"
-                ? ko
-                  ? "커먼"
-                  : ja
-                    ? "コモン"
-                    : "Common"
-                : r === "uncommon"
-                  ? ko
-                    ? "언커먼"
-                    : ja
-                      ? "アンコモン"
-                      : "Uncommon"
-                  : r === "rare"
-                    ? ko
-                      ? "레어"
-                      : ja
-                        ? "レア"
-                        : "Rare"
-                    : r === "epic"
-                      ? ko
-                        ? "에픽"
-                        : ja
-                          ? "エピック"
-                          : "Epic"
-                      : ko
-                        ? "레전드"
-                        : ja
-                          ? "レジェンド"
-                          : "Legendary";
-            const CARD_TYPE_COLOR: Record<string, string> = {
-              attack: "#ef4444",
-              skill: "#3b82f6",
-              power: "#f59e0b",
-            };
-            const CARD_TYPE_LABEL = (t: string) =>
-              t === "attack"
-                ? ko
-                  ? "공격"
-                  : ja
-                    ? "攻撃"
-                    : "Atk"
-                : t === "skill"
-                  ? ko
-                    ? "스킬"
-                    : ja
-                      ? "スキル"
-                      : "Skill"
-                  : ko
-                    ? "파워"
-                    : ja
-                      ? "パワー"
-                      : "Pwr";
-            const ARCH_LIST = [
-              {
-                key: "all",
-                label: ko ? "공용" : ja ? "汎用" : "Universal",
-                color: "#f59e0b",
-              },
-              {
-                key: "warrior",
-                label: ko ? "전사" : ja ? "戦士" : "Warrior",
-                color: "#f97316",
-              },
-              {
-                key: "rogue",
-                label: ko ? "로그" : ja ? "ローグ" : "Rogue",
-                color: "#c084fc",
-              },
-              {
-                key: "mage",
-                label: ko ? "마법사" : ja ? "魔法使い" : "Mage",
-                color: "#60a5fa",
-              },
-              {
-                key: "tank",
-                label: ko ? "탱커" : ja ? "タンク" : "Tank",
-                color: "#94a3b8",
-              },
-              {
-                key: "nature",
-                label: ko ? "자연" : ja ? "自然" : "Nature",
-                color: "#4ade80",
-              },
-              {
-                key: "meka",
-                label: ko ? "메카" : ja ? "メカ" : "Meka",
-                color: "#2dd4bf",
-              },
-              {
-                key: "cursed",
-                label: ko ? "저주술사" : ja ? "呪術師" : "Cursed",
-                color: "#7c3aed",
-              },
-            ];
-            return (
+        {showCardGuide && (() => {
+          const CARD_RARITY_ORDER: CardRarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+          const CARD_RARITY_COLOR: Record<string, string> = {
+            common: "#64748b", uncommon: "#16a34a", rare: "#2563eb", epic: "#9333ea", legendary: "#d97706",
+          };
+          const CARD_RARITY_LABEL = (r: string) =>
+            r === "common" ? (ko ? "커먼" : ja ? "コモン" : "Common")
+            : r === "uncommon" ? (ko ? "언커먼" : ja ? "アンコモン" : "Uncommon")
+            : r === "rare" ? (ko ? "레어" : ja ? "レア" : "Rare")
+            : r === "epic" ? (ko ? "에픽" : ja ? "エピック" : "Epic")
+            : (ko ? "레전드" : ja ? "レジェンド" : "Legendary");
+          const CARD_TYPE_COLOR: Record<string, string> = {
+            attack: "#ef4444", skill: "#3b82f6", power: "#f59e0b",
+          };
+          const CARD_TYPE_LABEL = (t: string) =>
+            t === "attack" ? (ko ? "공격" : ja ? "攻撃" : "Atk")
+            : t === "skill" ? (ko ? "스킬" : ja ? "スキル" : "Skill")
+            : (ko ? "파워" : ja ? "パワー" : "Pwr");
+          const ARCH_TABS = [
+            { key: "",        label: ko ? "전체" : ja ? "全部" : "All",        color: C.text },
+            { key: "all",     label: ko ? "공용" : ja ? "汎用" : "Universal",  color: "#f59e0b" },
+            { key: "warrior", label: ko ? "전사" : ja ? "戦士" : "Warrior",    color: "#f97316" },
+            { key: "rogue",   label: ko ? "로그" : ja ? "ローグ" : "Rogue",    color: "#c084fc" },
+            { key: "mage",    label: ko ? "마법사" : ja ? "魔法使い" : "Mage", color: "#60a5fa" },
+            { key: "tank",    label: ko ? "탱커" : ja ? "タンク" : "Tank",     color: "#94a3b8" },
+            { key: "nature",  label: ko ? "자연" : ja ? "自然" : "Nature",     color: "#4ade80" },
+            { key: "meka",    label: ko ? "메카" : ja ? "メカ" : "Meka",       color: "#2dd4bf" },
+            { key: "cursed",  label: ko ? "저주술사" : ja ? "呪術師" : "Cursed", color: "#7c3aed" },
+          ];
+          const filtered = (cardGuideArch === ""
+            ? CARDS
+            : CARDS.filter((c) => c.archetype === cardGuideArch)
+          ).slice().sort((a, b) =>
+            CARD_RARITY_ORDER.indexOf(a.rarity) - CARD_RARITY_ORDER.indexOf(b.rarity)
+          );
+          return (
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 999, background: "#000a", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => setShowCardGuide(false)}
+            >
               <div
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  zIndex: 999,
-                  background: "#000a",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onClick={() => setShowCardGuide(false)}
+                className="rogue-reward-guide"
+                style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, width: "min(540px,96vw)", maxHeight: "88vh", display: "flex", flexDirection: "column", fontFamily: FONT, animation: "rogue-in 0.22s ease-out both" }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  className="rogue-reward-guide"
-                  style={{
-                    background: C.panel,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 14,
-                    padding: 20,
-                    width: "min(540px,96vw)",
-                    maxHeight: "88vh",
-                    overflowY: "auto",
-                    fontFamily: FONT,
-                    animation: "rogue-in 0.22s ease-out both",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 14,
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 16,
-                        fontWeight: 800,
-                        color: C.gold,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <BookOpen size={16} color={C.gold} />
-                      {ko
-                        ? "카드 도감"
-                        : ja
-                          ? "カード図鑑"
-                          : "Card Encyclopedia"}
-                    </p>
-                    <button
-                      onClick={() => setShowCardGuide(false)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: C.textDim,
-                        fontSize: 18,
-                        lineHeight: 1,
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  {ARCH_LIST.map((arch) => {
-                    const archCards = CARDS.filter(
-                      (c) => c.archetype === arch.key,
-                    );
-                    const sorted = [...archCards].sort(
-                      (a, b) =>
-                        CARD_RARITY_ORDER.indexOf(a.rarity) -
-                        CARD_RARITY_ORDER.indexOf(b.rarity),
-                    );
+                {/* 헤더 */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px 0" }}>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.gold, display: "flex", alignItems: "center", gap: 6 }}>
+                    <BookOpen size={16} color={C.gold} />
+                    {ko ? "카드 도감" : ja ? "カード図鑑" : "Card Encyclopedia"}
+                  </p>
+                  <button onClick={() => setShowCardGuide(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, fontSize: 20, lineHeight: 1, padding: "0 2px" }}>×</button>
+                </div>
+                {/* 아키타입 탭 */}
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 18px 0", flexShrink: 0 }}>
+                  {ARCH_TABS.map((a) => {
+                    const cnt = a.key === "" ? CARDS.length : CARDS.filter((c) => c.archetype === a.key).length;
+                    const active = cardGuideArch === a.key;
                     return (
-                      <div key={arch.key} style={{ marginBottom: 18 }}>
-                        <p
-                          style={{
-                            margin: "0 0 8px",
-                            fontSize: 12,
-                            fontWeight: 800,
-                            color: arch.color,
-                            borderBottom: `1px solid ${arch.color}33`,
-                            paddingBottom: 6,
-                          }}
-                        >
-                          {arch.label} ({archCards.length})
-                        </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          {sorted.map((c) => (
-                            <div
-                              key={c.id}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                padding: "5px 8px",
-                                borderRadius: 7,
-                                background: `${CARD_RARITY_COLOR[c.rarity]}10`,
-                                border: `1px solid ${CARD_RARITY_COLOR[c.rarity]}30`,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 800,
-                                  color: CARD_RARITY_COLOR[c.rarity],
-                                  background: `${CARD_RARITY_COLOR[c.rarity]}20`,
-                                  borderRadius: 4,
-                                  padding: "1px 5px",
-                                  minWidth: 38,
-                                  textAlign: "center" as const,
-                                }}
-                              >
-                                {CARD_RARITY_LABEL(c.rarity)}
+                      <button key={a.key} onClick={() => setCardGuideArch(a.key)}
+                        style={{ flexShrink: 0, border: `1px solid ${active ? a.color : C.border}`, background: active ? `${a.color}22` : "transparent", color: active ? a.color : C.textDim, borderRadius: 20, padding: "4px 11px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: FONT, display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        {a.label}
+                        <span style={{ fontSize: 9, opacity: 0.65, fontWeight: 600 }}>{cnt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 구분선 + 카운트 */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 18px 0" }}>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                  <span style={{ fontSize: 10, color: C.textDim, flexShrink: 0 }}>
+                    {filtered.length}{ko ? "장" : ja ? "枚" : " cards"}
+                  </span>
+                </div>
+                {/* 카드 목록 */}
+                <div style={{ overflowY: "auto", padding: "8px 18px 18px", display: "flex", flexDirection: "column", gap: 5 }}>
+                  {filtered.map((c) => {
+                    const rc = CARD_RARITY_COLOR[c.rarity];
+                    const tc = CARD_TYPE_COLOR[c.type];
+                    const archColor = ARCH_TABS.find((a) => a.key === c.archetype)?.color ?? C.textDim;
+                    return (
+                      <div key={c.id} style={{ display: "flex", gap: 10, padding: "9px 10px", borderRadius: 9, background: `${rc}0d`, borderLeft: `3px solid ${rc}`, border: `1px solid ${rc}22`, borderLeftWidth: 3 }}>
+                        {/* 코스트 */}
+                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.panelDark, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, color: "#94a3b8", flexShrink: 0, marginTop: 1 }}>
+                          {c.cost}
+                        </div>
+                        {/* 내용 */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4, flexWrap: "wrap" as const }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: C.text, marginRight: "auto" }}>
+                              {ko ? c.name : ja ? c.nameJa : c.nameEn}
+                            </span>
+                            {cardGuideArch === "" && (
+                              <span style={{ fontSize: 9, fontWeight: 700, color: archColor, background: `${archColor}18`, borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                                {ARCH_TABS.find((a) => a.key === c.archetype)?.label ?? c.archetype}
                               </span>
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  color: CARD_TYPE_COLOR[c.type],
-                                  background: `${CARD_TYPE_COLOR[c.type]}18`,
-                                  borderRadius: 4,
-                                  padding: "1px 4px",
-                                  minWidth: 28,
-                                  textAlign: "center" as const,
-                                }}
-                              >
-                                {CARD_TYPE_LABEL(c.type)}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  color: "#94a3b8",
-                                  minWidth: 12,
-                                  textAlign: "center" as const,
-                                }}
-                              >
-                                {c.cost}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  color: C.text,
-                                  flex: 1,
-                                  minWidth: 0,
-                                }}
-                              >
-                                {ko ? c.name : ja ? c.nameJa : c.nameEn}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  color: C.textDim,
-                                  textAlign: "right" as const,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {ko ? c.desc : ja ? c.descJa : c.descEn}
-                              </span>
-                            </div>
-                          ))}
+                            )}
+                            <span style={{ fontSize: 9, fontWeight: 800, color: rc, background: `${rc}20`, borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                              {CARD_RARITY_LABEL(c.rarity)}
+                            </span>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: tc, background: `${tc}18`, borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                              {CARD_TYPE_LABEL(c.type)}
+                            </span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 11, color: C.textDim, lineHeight: 1.45 }}>
+                            {ko ? c.desc : ja ? c.descJa : c.descEn}
+                          </p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          );
+        })()}
 
         {/* ── 규칙 모달 ── */}
         {showRulesModal && (
