@@ -121,7 +121,7 @@ export default function PrivacyModal({ onClose }: Props) {
                   8. 個人情報保護管理者・お問い合わせ
                 </h4>
                 <p className="text-muted-foreground">
-                  メール: support@kebo.app
+                  ディスコード: discord.com/invite/BkD5qKG8Z
                 </p>
               </section>
             </>
@@ -220,7 +220,7 @@ export default function PrivacyModal({ onClose }: Props) {
                   8. 개인정보보호책임자
                 </h4>
                 <p className="text-muted-foreground">
-                  이메일: support@kebo.app
+                  디스코드: discord.com/invite/BkD5qKG8Z
                 </p>
               </section>
               <section className="space-y-1.5">
