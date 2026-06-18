@@ -480,7 +480,9 @@ export default function Layout() {
           </div>
         )}
 
-        <NotificationBell floating />
+        {!["/colosseum", "/raid", "/rogue"].includes(location.pathname) && (
+          <NotificationBell floating />
+        )}
 
         <main
           className={`flex-1 mt-14 lg:mt-0 overflow-x-hidden transition-all duration-200 ${
