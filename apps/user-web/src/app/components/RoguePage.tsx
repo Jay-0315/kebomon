@@ -7583,7 +7583,7 @@ export default function RoguePage() {
     return (
       <div
         style={{
-          height: "100dvh",
+          minHeight: "calc(100dvh - 96px)",
           background: C.bg,
           fontFamily: FONT,
           display: "flex",
@@ -7592,7 +7592,6 @@ export default function RoguePage() {
           gap: 14,
           maxWidth: 520,
           margin: "0 auto",
-          overflow: "hidden",
         }}
       >
         <style>{css}</style>
@@ -8211,8 +8210,7 @@ export default function RoguePage() {
     return (
       <div
         style={{
-          height: "100dvh",
-          maxHeight: "-webkit-fill-available",
+          height: "calc(100dvh - 96px)",
           background: C.bg,
           fontFamily: FONT,
           display: "flex",
@@ -9064,16 +9062,18 @@ export default function RoguePage() {
           </div>
         )}
 
+        {/* 중간 여백: 빈 공간 흡수해서 핸드+버튼을 바닥에 붙임 */}
+        <div style={{ flex: 1, minHeight: 0 }} />
+
         {/* Hand */}
         <div
           style={{
-            flex: 1,
-            minHeight: 0,
+            flexShrink: 0,
             overflowX: "auto",
             overflowY: "hidden",
             display: "flex",
             gap: 8,
-            padding: "4px 0 8px",
+            padding: "4px 0 4px",
             alignItems: "flex-end",
           }}
         >
