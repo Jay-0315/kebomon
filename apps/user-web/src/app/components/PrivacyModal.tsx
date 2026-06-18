@@ -34,7 +34,7 @@ export default function PrivacyModal({ onClose }: Props) {
           {lang === "ja" ? (
             <>
               <p className="text-muted-foreground text-xs">
-                最終更新日：2026年5月29日
+                最終更新日：2026年6月18日
               </p>
               <p className="text-muted-foreground">
                 KEBO（以下「本サービス」）は、個人情報の保護に関する法律（APPI）に基づき、以下のとおり個人情報を取り扱います。
@@ -121,14 +121,22 @@ export default function PrivacyModal({ onClose }: Props) {
                   8. 個人情報保護管理者・お問い合わせ
                 </h4>
                 <p className="text-muted-foreground">
-                  ディスコード: discord.com/invite/BkD5qKG8Z
+                  ディスコード:{" "}
+                  <a
+                    href="https://discord.com/invite/BkD5qKG8Z"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline"
+                  >
+                    discord.com/invite/BkD5qKG8Z
+                  </a>
                 </p>
               </section>
             </>
           ) : (
             <>
               <p className="text-muted-foreground text-xs">
-                최종 수정일: 2026년 5월 29일
+                최종 수정일: 2026년 6월 18일
               </p>
               <p className="text-muted-foreground">
                 KEBO(이하 "서비스")는 「개인정보 보호법」 제30조에 따라 이용자의
@@ -220,7 +228,15 @@ export default function PrivacyModal({ onClose }: Props) {
                   8. 개인정보보호책임자
                 </h4>
                 <p className="text-muted-foreground">
-                  디스코드: discord.com/invite/BkD5qKG8Z
+                  디스코드:{" "}
+                  <a
+                    href="https://discord.com/invite/BkD5qKG8Z"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline"
+                  >
+                    discord.com/invite/BkD5qKG8Z
+                  </a>
                 </p>
               </section>
               <section className="space-y-1.5">

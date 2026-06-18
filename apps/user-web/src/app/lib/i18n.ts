@@ -78,7 +78,8 @@ const dict = {
     "kebomon.equip": "장착하기",
     "kebomon.equipped": "장착 중",
     // Footer
-    "footer.description": "커뮤니티 & 케보몬 서비스",
+    "footer.description": "커뮤니티 게임플랫폼 KEBO",
+    "footer.discord": "디스코드",
     "footer.services": "서비스",
     "footer.policies": "약관 및 정책",
     "footer.privacy": "개인정보처리방침",
@@ -741,7 +742,8 @@ const dict = {
     "kebomon.equip": "装備する",
     "kebomon.equipped": "装備中",
     // Footer
-    "footer.description": "ゲームコミュニティ & ケボモンサービス",
+    "footer.description": "コミュニティゲームプラットフォーム KEBO",
+    "footer.discord": "ディスコード",
     "footer.services": "サービス",
     "footer.policies": "ポリシー",
     "footer.privacy": "プライバシーポリシー",
@@ -1373,7 +1375,8 @@ const dict = {
     "kebomon.equip": "Equip",
     "kebomon.equipped": "Equipped",
     // Footer
-    "footer.description": "Community & Kebomon service",
+    "footer.description": "Community Gaming Platform KEBO",
+    "footer.discord": "Discord",
     "footer.services": "Services",
     "footer.policies": "Policies",
     "footer.privacy": "Privacy Policy",
