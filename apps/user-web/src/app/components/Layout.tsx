@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { clearAuthSession } from "../lib/auth";
@@ -87,8 +87,13 @@ export default function Layout() {
     location.pathname.startsWith(path) &&
     location.search.includes(`tab=${tab}`);
 
+  const mainRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -485,7 +490,8 @@ export default function Layout() {
         )}
 
         <main
-          className={`flex-1 mt-14 lg:mt-0 overflow-x-hidden transition-all duration-200 ${
+          ref={mainRef}
+          className={`flex-1 mt-14 lg:mt-0 overflow-x-clip transition-all duration-200 ${
             isSidebarCollapsed ? "lg:ml-0" : "lg:ml-56"
           }`}
         >
