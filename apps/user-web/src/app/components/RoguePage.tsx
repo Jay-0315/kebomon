@@ -219,6 +219,7 @@ interface CardDef {
   selfDamage?: number;
   shieldStrike?: number;
   comboFinisherMult?: number;
+  doubleComboCount?: boolean;
   missingHpDamage?: boolean;
   maxHpScale?: number;
   maxHpGain?: number;
@@ -298,6 +299,7 @@ interface GameState {
   shopItems: ShopEntry[];
   turnCount: number;
   cardsPlayedCosts: number[];
+  comboCountMult: number;
   chainPending: EnemyState | null;
   cursedRest: boolean;
   shopInflated: boolean;
@@ -1227,6 +1229,220 @@ const CARDS: CardDef[] = [
     damage: 10,
     multiHit: 4,
   },
+  // ── Legendary (1코·2코) — 직업별 ──────────────────────────────────────────
+  // Warrior
+  {
+    id: "warlord_strike",
+    name: "군주의 강타",
+    nameJa: "君主の強打",
+    nameEn: "Warlord's Strike",
+    cost: 1,
+    type: "attack",
+    rarity: "legendary",
+    desc: "12 데미지, 힘 +3",
+    descJa: "12ダメージ・力+3",
+    descEn: "Deal 12 damage, gain 3 strength",
+    archetype: "warrior",
+    damage: 12,
+    strength: 3,
+  },
+  {
+    id: "titan_slam",
+    name: "타이탄 슬램",
+    nameJa: "タイタンスラム",
+    nameEn: "Titan Slam",
+    cost: 2,
+    type: "attack",
+    rarity: "legendary",
+    desc: "9 데미지 × 3, 힘 +4",
+    descJa: "9ダメージ×3・力+4",
+    descEn: "Deal 9 damage three times, gain 4 strength",
+    archetype: "warrior",
+    damage: 9,
+    multiHit: 3,
+    strength: 4,
+  },
+  // Mage
+  {
+    id: "arcane_bolt",
+    name: "비전 화살",
+    nameJa: "アルケイン・ボルト",
+    nameEn: "Arcane Bolt",
+    cost: 1,
+    type: "attack",
+    rarity: "legendary",
+    desc: "8 데미지 × 2, 화상 5",
+    descJa: "8ダメージ×2・火傷5",
+    descEn: "Deal 8 damage twice, burn 5",
+    archetype: "mage",
+    damage: 8,
+    multiHit: 2,
+    burn: 5,
+  },
+  {
+    id: "ancient_spell",
+    name: "고대 주문",
+    nameJa: "古代の呪文",
+    nameEn: "Ancient Spell",
+    cost: 2,
+    type: "attack",
+    rarity: "legendary",
+    desc: "10 데미지 × 3, 독 8",
+    descJa: "10ダメージ×3・毒8",
+    descEn: "Deal 10 damage three times, poison 8",
+    archetype: "mage",
+    damage: 10,
+    multiHit: 3,
+    poison: 8,
+  },
+  // Tank
+  {
+    id: "iron_will",
+    name: "강철 의지",
+    nameJa: "鋼鉄の意志",
+    nameEn: "Iron Will",
+    cost: 1,
+    type: "skill",
+    rarity: "legendary",
+    desc: "방어력 14, 힘 +2",
+    descJa: "防御力14・力+2",
+    descEn: "Gain 14 armor, 2 strength",
+    archetype: "tank",
+    shield: 14,
+    strength: 2,
+  },
+  {
+    id: "absolute_defense",
+    name: "절대 방어",
+    nameJa: "絶対防御",
+    nameEn: "Absolute Defense",
+    cost: 2,
+    type: "skill",
+    rarity: "legendary",
+    desc: "방어력 18, 체력 10 회복, 힘 +2",
+    descJa: "防御力18・HP10回復・力+2",
+    descEn: "Gain 18 armor, heal 10 HP, 2 strength",
+    archetype: "tank",
+    shield: 18,
+    heal: 10,
+    strength: 2,
+  },
+  // Rogue — 0코 전설
+  {
+    id: "shadow_fang",
+    name: "그림자 송곳니",
+    nameJa: "影の牙",
+    nameEn: "Shadow Fang",
+    cost: 0,
+    type: "attack",
+    rarity: "legendary",
+    desc: "8 데미지, 독 12 부여",
+    descJa: "8ダメージ・毒12付与",
+    descEn: "Deal 8 damage, poison 12",
+    archetype: "rogue",
+    damage: 8,
+    poison: 12,
+  },
+  // Nature
+  {
+    id: "gift_of_life",
+    name: "생명의 선물",
+    nameJa: "命の贈り物",
+    nameEn: "Gift of Life",
+    cost: 1,
+    type: "skill",
+    rarity: "legendary",
+    desc: "체력 15 회복, 최대 HP +10",
+    descJa: "HP15回復・最大HP+10",
+    descEn: "Heal 15 HP, gain 10 max HP",
+    archetype: "nature",
+    heal: 15,
+    maxHpGain: 10,
+  },
+  {
+    id: "natures_renewal",
+    name: "자연의 재생",
+    nameJa: "自然の再生",
+    nameEn: "Nature's Renewal",
+    cost: 2,
+    type: "skill",
+    rarity: "legendary",
+    desc: "체력 25 회복, 최대 HP +18, 드로우 1",
+    descJa: "HP25回復・最大HP+18・ドロー1",
+    descEn: "Heal 25 HP, gain 18 max HP, draw 1",
+    archetype: "nature",
+    heal: 25,
+    maxHpGain: 18,
+    draw: 1,
+  },
+  // Cursed
+  {
+    id: "pain_pact",
+    name: "고통의 계약",
+    nameJa: "苦痛の契約",
+    nameEn: "Pain Pact",
+    cost: 1,
+    type: "skill",
+    rarity: "legendary",
+    desc: "자신에게 6 피해, 힘 +8, 독 5 부여",
+    descJa: "自身6ダメージ・力+8・毒5付与",
+    descEn: "Take 6 damage, gain 8 strength, poison 5",
+    archetype: "cursed",
+    selfDamage: 6,
+    strength: 8,
+    poison: 5,
+  },
+  {
+    id: "curse_explosion",
+    name: "저주의 폭발",
+    nameJa: "呪いの爆発",
+    nameEn: "Curse Explosion",
+    cost: 2,
+    type: "attack",
+    rarity: "legendary",
+    desc: "자신에게 10 피해, 12 데미지 × 2, 화상 8, 출혈 6",
+    descJa: "自身10ダメージ・12ダメージ×2・火傷8・出血6",
+    descEn: "Take 10 damage, deal 12 damage twice, burn 8, bleed 6",
+    archetype: "cursed",
+    selfDamage: 10,
+    damage: 12,
+    multiHit: 2,
+    burn: 8,
+    bleed: 6,
+  },
+  // Meka
+  {
+    id: "overload",
+    name: "과부하",
+    nameJa: "オーバーロード",
+    nameEn: "Overload",
+    cost: 1,
+    type: "attack",
+    rarity: "legendary",
+    desc: "10 데미지, 에너지 +2",
+    descJa: "10ダメージ・エナジー+2",
+    descEn: "Deal 10 damage, gain 2 energy",
+    archetype: "meka",
+    damage: 10,
+    bonusEnergy: 2,
+  },
+  {
+    id: "energy_bomb",
+    name: "에너지 폭탄",
+    nameJa: "エネルギー爆弾",
+    nameEn: "Energy Bomb",
+    cost: 2,
+    type: "attack",
+    rarity: "legendary",
+    desc: "14 데미지 × 2, 에너지 +1",
+    descJa: "14ダメージ×2・エナジー+1",
+    descEn: "Deal 14 damage twice, gain 1 energy",
+    archetype: "meka",
+    damage: 14,
+    multiHit: 2,
+    bonusEnergy: 1,
+  },
+  // ── Legendary (3코) — 기존 유지 ──────────────────────────────────────────
   {
     id: "shadow_realm",
     name: "암흑 영역",
@@ -1259,48 +1475,60 @@ const CARDS: CardDef[] = [
     strength: 3,
   },
   {
-    id: "phantom_dance",
-    name: "환영 난무",
-    nameJa: "幻影乱舞",
-    nameEn: "Phantom Dance",
-    cost: 3,
-    type: "attack",
+    id: "phantom_echo",
+    name: "환영의 메아리",
+    nameJa: "幻影の残響",
+    nameEn: "Phantom Echo",
+    cost: 1,
+    type: "skill",
     rarity: "legendary",
-    desc: "8 데미지 × 3, 드로우 2",
-    descJa: "8ダメージ×3・ドロー2",
-    descEn: "Deal 8 damage three times, draw 2",
+    desc: "이번 턴 사용한 카드 수를 2배로 간주",
+    descJa: "このターン使ったカード枚数を2倍として扱う",
+    descEn: "Count cards played this turn as twice the amount",
     archetype: "rogue",
-    damage: 8,
-    multiHit: 3,
-    draw: 2,
+    doubleComboCount: true,
   },
   {
     id: "combo_finisher_1",
-    name: "콤보 피니셔 I",
-    nameJa: "コンボフィニッシャーI",
-    nameEn: "Combo Finisher I",
+    name: "콤보 피니셔 α",
+    nameJa: "コンボフィニッシャーα",
+    nameEn: "Combo Finisher α",
     cost: 1,
     type: "attack",
-    rarity: "rare",
-    desc: "이번 턴 사용한 카드 수 × 3 피해",
-    descJa: "このターン使ったカード数×3ダメージ",
-    descEn: "Deal damage equal to cards played this turn × 3",
-    archetype: "rogue",
-    comboFinisherMult: 3,
-  },
-  {
-    id: "combo_finisher_3",
-    name: "콤보 피니셔 II",
-    nameJa: "コンボフィニッシャーII",
-    nameEn: "Combo Finisher II",
-    cost: 3,
-    type: "attack",
-    rarity: "epic",
+    rarity: "legendary",
     desc: "이번 턴 사용한 카드 수 × 10 피해",
     descJa: "このターン使ったカード数×10ダメージ",
     descEn: "Deal damage equal to cards played this turn × 10",
     archetype: "rogue",
     comboFinisherMult: 10,
+  },
+  {
+    id: "combo_finisher_2",
+    name: "콤보 피니셔 β",
+    nameJa: "コンボフィニッシャーβ",
+    nameEn: "Combo Finisher β",
+    cost: 2,
+    type: "attack",
+    rarity: "legendary",
+    desc: "이번 턴 사용한 카드 수 × 20 피해",
+    descJa: "このターン使ったカード数×20ダメージ",
+    descEn: "Deal damage equal to cards played this turn × 20",
+    archetype: "rogue",
+    comboFinisherMult: 20,
+  },
+  {
+    id: "combo_finisher_3",
+    name: "콤보 피니셔 γ",
+    nameJa: "コンボフィニッシャーγ",
+    nameEn: "Combo Finisher γ",
+    cost: 3,
+    type: "attack",
+    rarity: "legendary",
+    desc: "이번 턴 사용한 카드 수 × 30 피해",
+    descJa: "このターン使ったカード数×30ダメージ",
+    descEn: "Deal damage equal to cards played this turn × 30",
+    archetype: "rogue",
+    comboFinisherMult: 30,
   },
   {
     id: "ancient_growth",
@@ -1870,10 +2098,10 @@ const RELICS: RelicDef[] = [
     name: "광전사의 왕관",
     nameJa: "狂戦士の王冠",
     nameEn: "Berserker Crown",
-    selfDmgPct: 0.10,
-    desc: "획득 시 힘 +9 (영구) / 단 매 전투 시작 체력 -15%",
-    descJa: "取得時、力+9（永続） / 戦闘開始HP-15%",
-    descEn: "Gain +9 strength / Battle start: -15% HP",
+    selfDmgPct: 0.20,
+    desc: "획득 시 힘 +10 (영구) · 전투 승리마다 힘 +2 (영구) / 단 매 전투 시작 체력 -20%",
+    descJa: "取得時、力+10（永続）・戦闘勝利ごとに力+2（永続） / 戦闘開始HP-20%",
+    descEn: "Gain +10 strength · +2 strength per battle win / Battle start: -20% HP",
   },
   {
     id: "cursed_sigil",
@@ -1893,9 +2121,9 @@ const RELICS: RelicDef[] = [
     name: "거인의 건틀릿",
     nameJa: "巨人のガントレット",
     nameEn: "Titan Gauntlet",
-    desc: "공격 카드 데미지 +8 / 단 획득 시 최대HP -20",
-    descJa: "攻撃カードダメージ+8 / 取得時、最大HP-20",
-    descEn: "Attack cards +8 damage / Lose 20 max HP on acquire",
+    desc: "공격 카드 데미지 +8 · 타수 +2 / 단 획득 시 최대HP -30",
+    descJa: "攻撃カードダメージ+8・ヒット数+2 / 取得時、最大HP-30",
+    descEn: "Attack cards +8 damage & +2 hits / Lose 30 max HP on acquire",
   },
   {
     id: "abyss_crown",
@@ -3212,6 +3440,16 @@ export default function RoguePage() {
   const gsRef = useRef(gs);
   gsRef.current = gs;
 
+  // 전투/보상 phase 중 페이지 스크롤 방지
+  useEffect(() => {
+    const inGame = gs != null;
+    if (inGame) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [gs?.phase]);
+
   // 피격 이펙트 — gs 변경 시 HP 델타 감지
   useEffect(() => {
     if (!gs || gs.phase !== "battle") {
@@ -3400,6 +3638,7 @@ export default function RoguePage() {
         shopItems: [],
         turnCount: 0,
         cardsPlayedCosts: [],
+        comboCountMult: 1,
         chainPending: null,
         cursedRest: false,
         shopInflated: false,
@@ -3482,7 +3721,7 @@ export default function RoguePage() {
               ? [ko ? "[저주의 인장] 적 독 +5, 내 독 +3" : ja ? "[呪いの印章] 敵毒+5, 自毒+3" : "[Cursed Sigil] Enemy +5 poison, self +3 poison"]
               : []),
             ...(berserkDmg > 0
-              ? [ko ? `[광전사의 왕관] 체력 -${berserkDmg}` : ja ? `[狂戦士の王冠] HP-${berserkDmg}` : `[Berserker Crown] -${berserkDmg} HP`]
+              ? [ko ? `[광전사의 왕관] 체력 -${berserkDmg} (-20%)` : ja ? `[狂戦士の王冠] HP-${berserkDmg} (-20%)` : `[Berserker Crown] -${berserkDmg} HP (-20%)`]
               : []),
           ];
           return {
@@ -3621,6 +3860,7 @@ export default function RoguePage() {
         let shield = prev.shield;
         let strength = prev.strength;
         let energy = prev.energy - card.cost;
+        let comboCountMult = prev.comboCountMult;
         let enemy = { ...prev.enemy };
         const logs: string[] = [];
 
@@ -3641,8 +3881,10 @@ export default function RoguePage() {
 
         // 2. Damage
         if (card.damage) {
-          const hits = card.multiHit ?? 1;
-          const gauntletBonus = (card.type === "attack" && hasRelic(getEffectiveRelics(prev), "titan_gauntlet")) ? 8 : 0;
+          const baseHits = card.multiHit ?? 1;
+          const hasGauntlet = card.type === "attack" && hasRelic(getEffectiveRelics(prev), "titan_gauntlet");
+          const gauntletBonus = hasGauntlet ? 8 : 0;
+          const hits = hasGauntlet ? baseHits + 2 : baseHits;
           let total = 0;
           for (let i = 0; i < hits; i++) {
             const raw = Math.floor((card.damage + strength + gauntletBonus) * (mekaDoubled ? 2 : 1));
@@ -3664,7 +3906,7 @@ export default function RoguePage() {
 
         // 2b. Combo Finisher: damage = cards played this turn × mult
         if (card.comboFinisherMult) {
-          const cardCount = prev.cardsPlayedCosts.length;
+          const cardCount = Math.floor(prev.cardsPlayedCosts.length * comboCountMult);
           const comboDmg = Math.floor(cardCount * card.comboFinisherMult * (mekaDoubled ? 2 : 1));
           if (comboDmg > 0) {
             const abs = Math.min(enemy.currentShield, comboDmg);
@@ -3680,7 +3922,19 @@ export default function RoguePage() {
           );
         }
 
-        // 2c. Missing-HP damage (minimum 5)
+        // 2c. Double combo count
+        if (card.doubleComboCount) {
+          comboCountMult = comboCountMult * 2;
+          logs.push(
+            ko
+              ? `콤보 카운트 2배 (현재 ×${comboCountMult})`
+              : ja
+                ? `コンボカウント2倍 (現在 ×${comboCountMult})`
+                : `Combo count doubled (now ×${comboCountMult})`,
+          );
+        }
+
+        // 2d. Missing-HP damage (minimum 5)
         if (card.missingHpDamage) {
           const missingHp = prev.playerMaxHp - playerHp;
           const rawMissingDmg = Math.max(5, missingHp);
@@ -3877,7 +4131,8 @@ export default function RoguePage() {
           const killStrGain =
             (hasRelic(getEffectiveRelics(prev), "blade_ring") ? 1 : 0) +
             (hasRelic(getEffectiveRelics(prev), "berserker_axe") ? 2 : 0) +
-            (hasRelic(getEffectiveRelics(prev), "abyss_crown") ? 1 : 0);
+            (hasRelic(getEffectiveRelics(prev), "abyss_crown") ? 1 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "berserker_crown") ? 2 : 0);
           const newMaxHp = prev.playerMaxHp + killMaxHpGain;
           const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
           if (nodeType === "boss" && isFinal) {
@@ -3895,6 +4150,7 @@ export default function RoguePage() {
               log: [...newLog, ko ? "승리!" : ja ? "クリア！" : "Victory!"],
               phase: "victory",
               cardsPlayedCosts: newCardsPlayedCosts,
+              comboCountMult: 1,
             };
           }
           if (prev.chainPending) {
@@ -3929,6 +4185,7 @@ export default function RoguePage() {
               ],
               turnCount: 1,
               cardsPlayedCosts: [],
+              comboCountMult: 1,
             };
           }
           const baseGold =
@@ -3971,6 +4228,7 @@ export default function RoguePage() {
             rewardCards: rewards,
             relicPending: newRelicPending,
             cardsPlayedCosts: newCardsPlayedCosts,
+            comboCountMult: 1,
           };
         }
 
@@ -3999,6 +4257,7 @@ export default function RoguePage() {
               drawPile,
               discardPile,
               cardsPlayedCosts: newCardsPlayedCosts,
+              comboCountMult: 1,
             };
           }
         }
@@ -4016,6 +4275,7 @@ export default function RoguePage() {
           discardPile,
           log: newLog,
           cardsPlayedCosts: newCardsPlayedCosts,
+          comboCountMult,
         };
       });
       setSelIdx(null);
@@ -4400,6 +4660,7 @@ export default function RoguePage() {
         ],
         turnCount: prev.turnCount + 1,
         cardsPlayedCosts: [],
+        comboCountMult: 1,
       };
     });
     setSelIdx(null);
@@ -4557,12 +4818,12 @@ export default function RoguePage() {
         if (!prev) return prev;
         let next = { ...prev, cursedRelic: relic };
         if (relic.id === "berserker_crown")
-          next = { ...next, strength: next.strength + 9 };
+          next = { ...next, strength: next.strength + 10 };
         if (relic.id === "titan_gauntlet")
           next = {
             ...next,
-            playerMaxHp: Math.max(1, next.playerMaxHp - 20),
-            playerHp: Math.min(Math.max(1, next.playerMaxHp - 20), next.playerHp),
+            playerMaxHp: Math.max(1, next.playerMaxHp - 30),
+            playerHp: Math.min(Math.max(1, next.playerMaxHp - 30), next.playerHp),
           };
         if (relic.id === "abyss_crown")
           next = { ...next, playerHp: Math.max(1, Math.floor(next.playerHp / 2)) };
