@@ -218,7 +218,7 @@ interface CardDef {
   bonusEnergy?: number;
   selfDamage?: number;
   shieldStrike?: number;
-  comboFinisher?: boolean;
+  comboFinisherMult?: number;
   missingHpDamage?: boolean;
   maxHpScale?: number;
   maxHpGain?: number;
@@ -302,6 +302,7 @@ interface GameState {
   cursedRest: boolean;
   shopInflated: boolean;
   relics: RelicDef[];
+  cursedRelic: RelicDef | null;
   relicPending: boolean;
   potions: (ShopConsumableId | null)[];
   infiniteMode: boolean;
@@ -318,11 +319,11 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "attack",
     rarity: "common",
-    desc: "6 데미지",
-    descJa: "6ダメージ",
-    descEn: "Deal 6 damage",
+    desc: "8 데미지",
+    descJa: "8ダメージ",
+    descEn: "Deal 8 damage",
     archetype: "all",
-    damage: 6,
+    damage: 8,
   },
   {
     id: "defend",
@@ -332,11 +333,11 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "skill",
     rarity: "common",
-    desc: "방어력 2",
-    descJa: "防御力2",
-    descEn: "Gain 2 armor",
+    desc: "방어력 3",
+    descJa: "防御力3",
+    descEn: "Gain 3 armor",
     archetype: "all",
-    shield: 2,
+    shield: 3,
   },
   {
     id: "bash",
@@ -346,11 +347,11 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "attack",
     rarity: "uncommon",
-    desc: "14 데미지",
-    descJa: "14ダメージ",
-    descEn: "Deal 14 damage",
+    desc: "16 데미지",
+    descJa: "16ダメージ",
+    descEn: "Deal 16 damage",
     archetype: "all",
-    damage: 14,
+    damage: 16,
   },
   {
     id: "fortify",
@@ -360,11 +361,11 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "skill",
     rarity: "uncommon",
-    desc: "방어력 5",
-    descJa: "防御力5",
-    descEn: "Gain 5 armor",
+    desc: "방어력 7",
+    descJa: "防御力7",
+    descEn: "Gain 7 armor",
     archetype: "all",
-    shield: 5,
+    shield: 7,
   },
   {
     id: "dual_strike",
@@ -374,11 +375,11 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "attack",
     rarity: "uncommon",
-    desc: "5 데미지 × 2",
-    descJa: "5ダメージ×2",
-    descEn: "Deal 5 damage twice",
+    desc: "6 데미지 × 2",
+    descJa: "6ダメージ×2",
+    descEn: "Deal 6 damage twice",
     archetype: "all",
-    damage: 5,
+    damage: 6,
     multiHit: 2,
   },
   {
@@ -389,11 +390,11 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "skill",
     rarity: "common",
-    desc: "방어력 2, 드로우 1",
-    descJa: "防御力2・ドロー1",
-    descEn: "Gain 2 armor, draw 1",
+    desc: "방어력 3, 드로우 1",
+    descJa: "防御力3・ドロー1",
+    descEn: "Gain 3 armor, draw 1",
     archetype: "all",
-    shield: 2,
+    shield: 3,
     draw: 1,
   },
   {
@@ -404,11 +405,11 @@ const CARDS: CardDef[] = [
     cost: 3,
     type: "attack",
     rarity: "rare",
-    desc: "8 데미지 × 3",
-    descJa: "8ダメージ×3",
-    descEn: "Deal 8 damage three times",
+    desc: "9 데미지 × 3",
+    descJa: "9ダメージ×3",
+    descEn: "Deal 9 damage three times",
     archetype: "all",
-    damage: 8,
+    damage: 9,
     multiHit: 3,
   },
   {
@@ -419,11 +420,11 @@ const CARDS: CardDef[] = [
     cost: 3,
     type: "skill",
     rarity: "rare",
-    desc: "방어력 9",
-    descJa: "防御力9",
-    descEn: "Gain 9 armor",
+    desc: "방어력 12",
+    descJa: "防御力12",
+    descEn: "Gain 12 armor",
     archetype: "all",
-    shield: 9,
+    shield: 12,
   },
   {
     id: "battle_cry",
@@ -433,12 +434,12 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "power",
     rarity: "rare",
-    desc: "힘 +1, 방어력 1",
-    descJa: "力+1・防御力1",
-    descEn: "Gain 1 strength, 1 armor",
+    desc: "힘 +1, 방어력 2",
+    descJa: "力+1・防御力2",
+    descEn: "Gain 1 strength, 2 armor",
     archetype: "all",
     strength: 1,
-    shield: 1,
+    shield: 2,
   },
   {
     id: "second_wind",
@@ -448,11 +449,11 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "skill",
     rarity: "epic",
-    desc: "방어력 4, 드로우 2",
-    descJa: "防御力4・ドロー2",
-    descEn: "Gain 4 armor, draw 2",
+    desc: "방어력 5, 드로우 2",
+    descJa: "防御力5・ドロー2",
+    descEn: "Gain 5 armor, draw 2",
     archetype: "all",
-    shield: 4,
+    shield: 5,
     draw: 2,
   },
   // Warrior
@@ -739,11 +740,11 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "skill",
     rarity: "common",
-    desc: "방어력 3",
-    descJa: "防御力3",
-    descEn: "Gain 3 armor",
+    desc: "방어력 5",
+    descJa: "防御力5",
+    descEn: "Gain 5 armor",
     archetype: "tank",
-    shield: 3,
+    shield: 5,
   },
   {
     id: "crush_bite",
@@ -767,11 +768,11 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "skill",
     rarity: "rare",
-    desc: "방어력 5, 힘 +1",
-    descJa: "防御力5・力+1",
-    descEn: "Gain 5 armor, 1 strength",
+    desc: "방어력 8, 힘 +1",
+    descJa: "防御力8・力+1",
+    descEn: "Gain 8 armor, 1 strength",
     archetype: "tank",
-    shield: 5,
+    shield: 8,
     strength: 1,
   },
   {
@@ -782,13 +783,13 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "attack",
     rarity: "rare",
-    desc: "7 데미지 × 2, 방어력 3",
-    descJa: "7ダメージ×2・防御力3",
-    descEn: "Deal 7 damage twice, gain 3 armor",
+    desc: "7 데미지 × 2, 방어력 5",
+    descJa: "7ダメージ×2・防御力5",
+    descEn: "Deal 7 damage twice, gain 5 armor",
     archetype: "tank",
     damage: 7,
     multiHit: 2,
-    shield: 3,
+    shield: 5,
   },
   {
     id: "shell_crush",
@@ -798,13 +799,13 @@ const CARDS: CardDef[] = [
     cost: 2,
     type: "attack",
     rarity: "epic",
-    desc: "8 데미지 × 2, 방어력 4",
-    descJa: "8ダメージ×2・防御力4",
-    descEn: "Deal 8 damage twice, gain 4 armor",
+    desc: "8 데미지 × 2, 방어력 6",
+    descJa: "8ダメージ×2・防御力6",
+    descEn: "Deal 8 damage twice, gain 6 armor",
     archetype: "tank",
     damage: 8,
     multiHit: 2,
-    shield: 4,
+    shield: 6,
   },
   {
     id: "endure",
@@ -814,11 +815,11 @@ const CARDS: CardDef[] = [
     cost: 0,
     type: "skill",
     rarity: "rare",
-    desc: "방어력 2",
-    descJa: "防御力2",
-    descEn: "Gain 2 armor",
+    desc: "방어력 4",
+    descJa: "防御力4",
+    descEn: "Gain 4 armor",
     archetype: "tank",
-    shield: 2,
+    shield: 4,
   },
   // Nature (healing & max-HP scaling)
   {
@@ -1159,12 +1160,12 @@ const CARDS: CardDef[] = [
     cost: 1,
     type: "attack",
     rarity: "rare",
-    desc: "방어력 1/3만큼 피해, 방어력 +2",
-    descJa: "防御力1/3ダメージ・防御力+2",
-    descEn: "Deal 1/3 armor as damage, gain 2 armor",
+    desc: "방어력 1/3만큼 피해, 방어력 +4",
+    descJa: "防御力1/3ダメージ・防御力+4",
+    descEn: "Deal 1/3 armor as damage, gain 4 armor",
     archetype: "tank",
     shieldStrike: 0.33,
-    shield: 2,
+    shield: 4,
   },
   // Legendary
   {
@@ -1250,11 +1251,11 @@ const CARDS: CardDef[] = [
     cost: 3,
     type: "skill",
     rarity: "legendary",
-    desc: "방어력 8, 힘 +3",
-    descJa: "防御力8・力+3",
-    descEn: "Gain 8 armor, 3 strength",
+    desc: "방어력 13, 힘 +3",
+    descJa: "防御力13・力+3",
+    descEn: "Gain 13 armor, 3 strength",
     archetype: "tank",
-    shield: 8,
+    shield: 13,
     strength: 3,
   },
   {
@@ -1274,18 +1275,32 @@ const CARDS: CardDef[] = [
     draw: 2,
   },
   {
-    id: "combo_finisher",
-    name: "콤보 피니셔",
-    nameJa: "コンボフィニッシャー",
-    nameEn: "Combo Finisher",
-    cost: 0,
+    id: "combo_finisher_1",
+    name: "콤보 피니셔 I",
+    nameJa: "コンボフィニッシャーI",
+    nameEn: "Combo Finisher I",
+    cost: 1,
     type: "attack",
     rarity: "rare",
-    desc: "이번 턴 사용한 카드 수 비례 피해 (0코×1.5, 1코×3, 2코×5, 3코×10)",
-    descJa: "このターン使ったカード数に比例ダメージ (0コ×1.5, 1コ×3, 2コ×5, 3コ×10)",
-    descEn: "Deal damage based on cards played this turn (0-cost×1.5, 1-cost×3, 2-cost×5, 3-cost×10)",
+    desc: "이번 턴 사용한 카드 수 × 3 피해",
+    descJa: "このターン使ったカード数×3ダメージ",
+    descEn: "Deal damage equal to cards played this turn × 3",
     archetype: "rogue",
-    comboFinisher: true,
+    comboFinisherMult: 3,
+  },
+  {
+    id: "combo_finisher_3",
+    name: "콤보 피니셔 II",
+    nameJa: "コンボフィニッシャーII",
+    nameEn: "Combo Finisher II",
+    cost: 3,
+    type: "attack",
+    rarity: "epic",
+    desc: "이번 턴 사용한 카드 수 × 10 피해",
+    descJa: "このターン使ったカード数×10ダメージ",
+    descEn: "Deal damage equal to cards played this turn × 10",
+    archetype: "rogue",
+    comboFinisherMult: 10,
   },
   {
     id: "ancient_growth",
@@ -1844,9 +1859,9 @@ const RELICS: RelicDef[] = [
     nameJa: "鉄の心臓",
     nameEn: "Iron Heart",
     handSizeMod: -1,
-    desc: "전투 시작 방어력 +20 / 단 시작 패 4장",
-    descJa: "戦闘開始時、防御+20 / ただし初期手札4枚",
-    descEn: "Battle start: +20 armor / start with 4 cards",
+    desc: "전투 시작 방어력 +25 / 단 시작 패 4장",
+    descJa: "戦闘開始時、防御+25 / ただし初期手札4枚",
+    descEn: "Battle start: +25 armor / start with 4 cards",
   },
   {
     id: "berserker_crown",
@@ -1856,9 +1871,9 @@ const RELICS: RelicDef[] = [
     nameJa: "狂戦士の王冠",
     nameEn: "Berserker Crown",
     selfDmgPct: 0.10,
-    desc: "획득 시 힘 +7 (영구) / 단 매 전투 시작 체력 -10%",
-    descJa: "取得時、力+7（永続） / 戦闘開始HP-10%",
-    descEn: "Gain +7 strength / Battle start: -10% HP",
+    desc: "획득 시 힘 +9 (영구) / 단 매 전투 시작 체력 -15%",
+    descJa: "取得時、力+9（永続） / 戦闘開始HP-15%",
+    descEn: "Gain +9 strength / Battle start: -15% HP",
   },
   {
     id: "cursed_sigil",
@@ -1867,9 +1882,9 @@ const RELICS: RelicDef[] = [
     name: "저주의 인장",
     nameJa: "呪いの印章",
     nameEn: "Cursed Sigil",
-    desc: "전투 시작 적 독 +8 / 단 본인도 독 +2",
-    descJa: "戦闘開始時、敵に毒+8 / 自分も毒+2",
-    descEn: "Battle start: enemy +8 poison / self +2 poison",
+    desc: "전투 시작 적 독 +12 / 단 본인도 독 +2",
+    descJa: "戦闘開始時、敵に毒+12 / 自分も毒+2",
+    descEn: "Battle start: enemy +12 poison / self +2 poison",
   },
   {
     id: "titan_gauntlet",
@@ -1878,9 +1893,9 @@ const RELICS: RelicDef[] = [
     name: "거인의 건틀릿",
     nameJa: "巨人のガントレット",
     nameEn: "Titan Gauntlet",
-    desc: "공격 카드 데미지 +6 / 단 획득 시 최대HP -20",
-    descJa: "攻撃カードダメージ+6 / 取得時、最大HP-20",
-    descEn: "Attack cards +6 damage / Lose 20 max HP on acquire",
+    desc: "공격 카드 데미지 +8 / 단 획득 시 최대HP -20",
+    descJa: "攻撃カードダメージ+8 / 取得時、最大HP-20",
+    descEn: "Attack cards +8 damage / Lose 20 max HP on acquire",
   },
   {
     id: "abyss_crown",
@@ -2385,6 +2400,9 @@ function toInst(d: CardDef): CardInstance {
 }
 function hasRelic(relics: RelicDef[], id: string): boolean {
   return relics.some((r) => r.id === id);
+}
+function getEffectiveRelics(gs: { relics: RelicDef[]; cursedRelic: RelicDef | null }): RelicDef[] {
+  return gs.cursedRelic ? [...gs.relics, gs.cursedRelic] : gs.relics;
 }
 function pickRelicOffer(owned: RelicDef[], count: number): RelicDef[] {
   const ownedIds = new Set(owned.map((r) => r.id));
@@ -3187,6 +3205,7 @@ export default function RoguePage() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showStarterCards, setShowStarterCards] = useState(false);
   const [hoveredPotionIdx, setHoveredPotionIdx] = useState<number | null>(null);
+  const [confirmQuit, setConfirmQuit] = useState(false);
   const immortalHeartUsedRef = useRef(false);
   const gsRef = useRef(gs);
   gsRef.current = gs;
@@ -3324,7 +3343,8 @@ export default function RoguePage() {
     ) {
       const nodeType = gs.chosenPath[gs.floor];
       if (nodeType === "boss") {
-        setPendingRelicOffer(pickBossRelicOffer(gs.relics));
+        const excludeForCurse = gs.cursedRelic ? [gs.cursedRelic] : [];
+        setPendingRelicOffer(pickBossRelicOffer([...excludeForCurse]));
       } else {
         setPendingRelicOffer(pickRelicOffer(gs.relics, 2));
       }
@@ -3382,6 +3402,7 @@ export default function RoguePage() {
         cursedRest: false,
         shopInflated: false,
         relics: [],
+        cursedRelic: null,
         relicPending: false,
         potions: [null, null, null],
         infiniteMode: false,
@@ -3412,9 +3433,9 @@ export default function RoguePage() {
           const drawPile = shuffle([...prev.deck]);
           // Relic: extra draws at battle start
           const extraDraw =
-            (hasRelic(prev.relics, "compass") ? 1 : 0) +
-            (hasRelic(prev.relics, "hourglass") ? 2 : 0);
-          const handSizeMod = hasRelic(prev.relics, "iron_heart") ? -1 : 0;
+            (hasRelic(getEffectiveRelics(prev), "compass") ? 1 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
+          const handSizeMod = hasRelic(getEffectiveRelics(prev), "iron_heart") ? -1 : 0;
           const drawn = drawN([], drawPile, [], 5 + extraDraw + handSizeMod);
           // 억까: 연전 - elite floor4+ 20% 확률로 2연전
           const chainPending =
@@ -3428,16 +3449,16 @@ export default function RoguePage() {
             (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
           const battleStartShield =
             (isDefenseType ? prev.shield : 0) +
-            (hasRelic(prev.relics, "iron_flask") ? 5 : 0) +
-            (hasRelic(prev.relics, "gilded_shield") ? 10 : 0) +
-            (hasRelic(prev.relics, "iron_heart") ? 20 : 0);
-          const manaBonus = hasRelic(prev.relics, "mana_shard") ? 1 : 0;
-          if (hasRelic(prev.relics, "battle_horn")) enemy.poisonStacks += 3;
-          // boss relic: cursed_sigil — 적 독 +8, 본인 독 +2
-          if (hasRelic(prev.relics, "cursed_sigil")) enemy.poisonStacks += 8;
-          const sigilSelfPoison = hasRelic(prev.relics, "cursed_sigil") ? 2 : 0;
+            (hasRelic(getEffectiveRelics(prev), "iron_flask") ? 5 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "gilded_shield") ? 10 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "iron_heart") ? 25 : 0);
+          const manaBonus = hasRelic(getEffectiveRelics(prev), "mana_shard") ? 1 : 0;
+          if (hasRelic(getEffectiveRelics(prev), "battle_horn")) enemy.poisonStacks += 3;
+          // 저주기물: cursed_sigil — 적 독 +12, 본인 독 +2
+          if (hasRelic(getEffectiveRelics(prev), "cursed_sigil")) enemy.poisonStacks += 12;
+          const sigilSelfPoison = hasRelic(getEffectiveRelics(prev), "cursed_sigil") ? 2 : 0;
           // boss relic: berserker_crown — 전투 시작 체력 -15%
-          const berserkDmg = hasRelic(prev.relics, "berserker_crown")
+          const berserkDmg = hasRelic(getEffectiveRelics(prev), "berserker_crown")
             ? Math.floor(prev.playerMaxHp * 0.15) : 0;
           const battleStartHp = Math.max(1, prev.playerHp - berserkDmg);
           const battleLog: string[] = [
@@ -3452,10 +3473,10 @@ export default function RoguePage() {
                 : ja
                   ? "バトル開始！"
                   : "Battle start!",
-            ...(hasRelic(prev.relics, "battle_horn")
+            ...(hasRelic(getEffectiveRelics(prev), "battle_horn")
               ? [ko ? "[전투 뿔피리] 독 3" : ja ? "[戦闘の角笛] 毒3" : "[Battle Horn] +3 poison"]
               : []),
-            ...(hasRelic(prev.relics, "cursed_sigil")
+            ...(hasRelic(getEffectiveRelics(prev), "cursed_sigil")
               ? [ko ? "[저주의 인장] 적 독 +5, 내 독 +3" : ja ? "[呪いの印章] 敵毒+5, 自毒+3" : "[Cursed Sigil] Enemy +5 poison, self +3 poison"]
               : []),
             ...(berserkDmg > 0
@@ -3486,7 +3507,7 @@ export default function RoguePage() {
         }
         if (nodeType === "treasure") {
           // 억까: 함정 보물 - 25% 확률로 적 매복 (master_key 기물로 방지)
-          if (!hasRelic(prev.relics, "master_key") && Math.random() < 0.25) {
+          if (!hasRelic(getEffectiveRelics(prev), "master_key") && Math.random() < 0.25) {
             const enemy = spawnEnemyForFloor(
               floorIdx,
               "fight",
@@ -3494,8 +3515,8 @@ export default function RoguePage() {
             );
             const drawPile = shuffle([...prev.deck]);
             const extraDraw =
-              (hasRelic(prev.relics, "compass") ? 1 : 0) +
-              (hasRelic(prev.relics, "hourglass") ? 2 : 0);
+              (hasRelic(getEffectiveRelics(prev), "compass") ? 1 : 0) +
+              (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
             const drawn = drawN([], drawPile, [], 5 + extraDraw);
             const attackStrBonus =
               (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
@@ -3503,10 +3524,10 @@ export default function RoguePage() {
               (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
             const battleStartShieldA =
               (isDefenseTypeA ? prev.shield : 0) +
-              (hasRelic(prev.relics, "iron_flask") ? 5 : 0) +
-              (hasRelic(prev.relics, "gilded_shield") ? 10 : 0);
-            const manaBonus = hasRelic(prev.relics, "mana_shard") ? 1 : 0;
-            if (hasRelic(prev.relics, "battle_horn")) enemy.poisonStacks += 3;
+              (hasRelic(getEffectiveRelics(prev), "iron_flask") ? 5 : 0) +
+              (hasRelic(getEffectiveRelics(prev), "gilded_shield") ? 10 : 0);
+            const manaBonus = hasRelic(getEffectiveRelics(prev), "mana_shard") ? 1 : 0;
+            if (hasRelic(getEffectiveRelics(prev), "battle_horn")) enemy.poisonStacks += 3;
             return {
               ...prev,
               phase: "battle",
@@ -3535,9 +3556,9 @@ export default function RoguePage() {
             };
           }
           const extraCard =
-            hasRelic(prev.relics, "lucky_coin") ||
-            hasRelic(prev.relics, "fate_dice");
-          const fateDice = hasRelic(prev.relics, "fate_dice");
+            hasRelic(getEffectiveRelics(prev), "lucky_coin") ||
+            hasRelic(getEffectiveRelics(prev), "fate_dice");
+          const fateDice = hasRelic(getEffectiveRelics(prev), "fate_dice");
           return {
             ...prev,
             phase: "reward",
@@ -3557,7 +3578,7 @@ export default function RoguePage() {
         if (nodeType === "shop") {
           // 억까: 바가지 상점 - 30% 확률로 가격 1.5배
           const inflated = Math.random() < 0.3;
-          const discount = hasRelic(prev.relics, "philosopher");
+          const discount = hasRelic(getEffectiveRelics(prev), "philosopher");
           return {
             ...prev,
             phase: "shop",
@@ -3619,7 +3640,7 @@ export default function RoguePage() {
         // 2. Damage
         if (card.damage) {
           const hits = card.multiHit ?? 1;
-          const gauntletBonus = (card.type === "attack" && hasRelic(prev.relics, "titan_gauntlet")) ? 6 : 0;
+          const gauntletBonus = (card.type === "attack" && hasRelic(getEffectiveRelics(prev), "titan_gauntlet")) ? 8 : 0;
           let total = 0;
           for (let i = 0; i < hits; i++) {
             const raw = Math.floor((card.damage + strength + gauntletBonus) * (mekaDoubled ? 2 : 1));
@@ -3639,27 +3660,21 @@ export default function RoguePage() {
           );
         }
 
-        // 2b. Combo Finisher: damage based on cards played this turn by cost
-        if (card.comboFinisher) {
-          const costs = prev.cardsPlayedCosts;
-          const comboDmg = Math.floor(
-            costs.filter((c) => c === 0).length * 1.5 +
-            costs.filter((c) => c === 1).length * 3 +
-            costs.filter((c) => c === 2).length * 5 +
-            costs.filter((c) => c === 3).length * 10,
-          );
-          const finalComboDmg = Math.floor(comboDmg * (mekaDoubled ? 2 : 1));
-          if (finalComboDmg > 0) {
-            const abs = Math.min(enemy.currentShield, finalComboDmg);
+        // 2b. Combo Finisher: damage = cards played this turn × mult
+        if (card.comboFinisherMult) {
+          const cardCount = prev.cardsPlayedCosts.length;
+          const comboDmg = Math.floor(cardCount * card.comboFinisherMult * (mekaDoubled ? 2 : 1));
+          if (comboDmg > 0) {
+            const abs = Math.min(enemy.currentShield, comboDmg);
             enemy.currentShield = Math.max(0, enemy.currentShield - abs);
-            enemy.currentHp = Math.max(0, enemy.currentHp - (finalComboDmg - abs));
+            enemy.currentHp = Math.max(0, enemy.currentHp - (comboDmg - abs));
           }
           logs.push(
             ko
-              ? `${finalComboDmg} 콤보 데미지 (${costs.length}장)`
+              ? `${comboDmg} 콤보 데미지 (${cardCount}장 × ${card.comboFinisherMult})`
               : ja
-                ? `${finalComboDmg} コンボダメージ (${costs.length}枚)`
-                : `${finalComboDmg} combo damage (${costs.length} cards)`,
+                ? `${comboDmg} コンボダメージ (${cardCount}枚 × ${card.comboFinisherMult})`
+                : `${comboDmg} combo damage (${cardCount} × ${card.comboFinisherMult})`,
           );
         }
 
@@ -3801,9 +3816,11 @@ export default function RoguePage() {
           logs.push(ko ? `${scaleDmg} 생명력 데미지 (최대HP×${card.maxHpScale})` : ja ? `${scaleDmg} 生命力ダメージ(最大HP×${card.maxHpScale})` : `${scaleDmg} life force dmg (maxHP×${card.maxHpScale})`);
         }
 
-        // 6. Self damage
+        // 6. Self damage (shield absorbs self-damage too, and is consumed)
         if (card.selfDamage) {
-          const direct = Math.max(0, card.selfDamage - shield); // armor reduces self-dmg too
+          const selfAbsorbed = Math.min(shield, card.selfDamage);
+          shield = Math.max(0, shield - selfAbsorbed);
+          const direct = Math.max(0, card.selfDamage - selfAbsorbed);
           playerHp = Math.max(0, playerHp - direct);
           if (direct > 0)
             logs.push(ko ? `자신 -${direct}` : ja ? `自身-${direct}` : `Self -${direct}`);
@@ -3850,15 +3867,15 @@ export default function RoguePage() {
             (prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1);
           // Relic: permanent stat gain on kill
           const killMaxHpGain =
-            (hasRelic(prev.relics, "bandage") ? 1 : 0) +
-            (hasRelic(prev.relics, "vampire_ring") ? 2 : 0) +
-            (hasRelic(prev.relics, "health_potion") ? 2 : 0) +
-            (hasRelic(prev.relics, "titan_core") ? 3 : 0) +
-            (hasRelic(prev.relics, "abyss_crown") ? 10 : 0);
+            (hasRelic(getEffectiveRelics(prev), "bandage") ? 1 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "vampire_ring") ? 2 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "health_potion") ? 2 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "titan_core") ? 3 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "abyss_crown") ? 10 : 0);
           const killStrGain =
-            (hasRelic(prev.relics, "blade_ring") ? 1 : 0) +
-            (hasRelic(prev.relics, "berserker_axe") ? 2 : 0) +
-            (hasRelic(prev.relics, "abyss_crown") ? 1 : 0);
+            (hasRelic(getEffectiveRelics(prev), "blade_ring") ? 1 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "berserker_axe") ? 2 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "abyss_crown") ? 1 : 0);
           const newMaxHp = prev.playerMaxHp + killMaxHpGain;
           const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
           if (nodeType === "boss" && isFinal) {
@@ -3881,8 +3898,8 @@ export default function RoguePage() {
           if (prev.chainPending) {
             const chainDrawPile = shuffle([...prev.deck]);
             const extraDraw =
-              (hasRelic(prev.relics, "compass") ? 1 : 0) +
-              (hasRelic(prev.relics, "hourglass") ? 2 : 0);
+              (hasRelic(getEffectiveRelics(prev), "compass") ? 1 : 0) +
+              (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
             const chainDrawn = drawN([], chainDrawPile, [], 5 + extraDraw);
             const chainStrBonus =
               (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
@@ -3917,21 +3934,21 @@ export default function RoguePage() {
               ? DIFF_GOLD_ELITE[prev.difficulty]
               : DIFF_GOLD_FIGHT[prev.difficulty];
           const bonusGold =
-            (hasRelic(prev.relics, "old_wallet") ? 15 : 0) +
-            (hasRelic(prev.relics, "rabbit_foot") ? 20 : 0);
+            (hasRelic(getEffectiveRelics(prev), "old_wallet") ? 15 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "rabbit_foot") ? 20 : 0);
           const finalGold =
-            (hasRelic(prev.relics, "gold_pouch")
+            (hasRelic(getEffectiveRelics(prev), "gold_pouch")
               ? Math.floor(baseGold * 1.3)
               : baseGold) + bonusGold;
           const extraCard =
-            hasRelic(prev.relics, "lucky_coin") ||
-            hasRelic(prev.relics, "fate_dice");
+            hasRelic(getEffectiveRelics(prev), "lucky_coin") ||
+            hasRelic(getEffectiveRelics(prev), "fate_dice");
           const rewards = pickRewards(
             prev.floor,
             arch,
             prev.difficulty,
             extraCard,
-            hasRelic(prev.relics, "fate_dice"),
+            hasRelic(getEffectiveRelics(prev), "fate_dice"),
             prev.deck,
           );
           const newRelicPending = nodeType === "elite" || nodeType === "boss";
@@ -3958,7 +3975,7 @@ export default function RoguePage() {
         // Player dead?
         if (playerHp <= 0) {
           if (
-            hasRelic(prev.relics, "immortal_heart") &&
+            hasRelic(getEffectiveRelics(prev), "immortal_heart") &&
             !immortalHeartUsedRef.current
           ) {
             immortalHeartUsedRef.current = true;
@@ -4061,15 +4078,15 @@ export default function RoguePage() {
         const isFinal =
           prev.mode !== "challenge" || prev.floor >= CHALLENGE_FLOORS - 1;
         const killMaxHpGain =
-          (hasRelic(prev.relics, "bandage") ? 1 : 0) +
-          (hasRelic(prev.relics, "vampire_ring") ? 2 : 0) +
-          (hasRelic(prev.relics, "health_potion") ? 2 : 0) +
-          (hasRelic(prev.relics, "titan_core") ? 3 : 0) +
-          (hasRelic(prev.relics, "abyss_crown") ? 8 : 0);
+          (hasRelic(getEffectiveRelics(prev), "bandage") ? 1 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "vampire_ring") ? 2 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "health_potion") ? 2 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "titan_core") ? 3 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "abyss_crown") ? 8 : 0);
         const killStrGain =
-          (hasRelic(prev.relics, "blade_ring") ? 1 : 0) +
-          (hasRelic(prev.relics, "berserker_axe") ? 2 : 0) +
-          (hasRelic(prev.relics, "abyss_crown") ? 1 : 0);
+          (hasRelic(getEffectiveRelics(prev), "blade_ring") ? 1 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "berserker_axe") ? 2 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "abyss_crown") ? 1 : 0);
         const newMaxHp = prev.playerMaxHp + killMaxHpGain;
         const hpAfterKill = Math.min(newMaxHp, playerHp + killMaxHpGain);
         if (nodeType === "boss" && isFinal) {
@@ -4091,8 +4108,8 @@ export default function RoguePage() {
         if (prev.chainPending) {
           const chainDrawPile = shuffle([...prev.deck]);
           const extraDraw =
-            (hasRelic(prev.relics, "compass") ? 1 : 0) +
-            (hasRelic(prev.relics, "hourglass") ? 2 : 0);
+            (hasRelic(getEffectiveRelics(prev), "compass") ? 1 : 0) +
+            (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
           const chainDrawn = drawN([], chainDrawPile, [], 5 + extraDraw);
           const chainStrBonus =
             (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
@@ -4128,15 +4145,15 @@ export default function RoguePage() {
             ? DIFF_GOLD_ELITE[prev.difficulty]
             : DIFF_GOLD_FIGHT[prev.difficulty];
         const bonusGold =
-          (hasRelic(prev.relics, "old_wallet") ? 15 : 0) +
-          (hasRelic(prev.relics, "rabbit_foot") ? 20 : 0);
+          (hasRelic(getEffectiveRelics(prev), "old_wallet") ? 15 : 0) +
+          (hasRelic(getEffectiveRelics(prev), "rabbit_foot") ? 20 : 0);
         const finalGold =
-          (hasRelic(prev.relics, "gold_pouch")
+          (hasRelic(getEffectiveRelics(prev), "gold_pouch")
             ? Math.floor(baseGold * 1.3)
             : baseGold) + bonusGold;
         const extraCard =
-          hasRelic(prev.relics, "lucky_coin") ||
-          hasRelic(prev.relics, "fate_dice");
+          hasRelic(getEffectiveRelics(prev), "lucky_coin") ||
+          hasRelic(getEffectiveRelics(prev), "fate_dice");
         const newRelicPending = nodeType === "elite" || nodeType === "boss";
         return {
           ...prev,
@@ -4151,7 +4168,7 @@ export default function RoguePage() {
             arch,
             prev.difficulty,
             extraCard,
-            hasRelic(prev.relics, "fate_dice"),
+            hasRelic(getEffectiveRelics(prev), "fate_dice"),
             prev.deck,
           ),
           relicPending: newRelicPending,
@@ -4186,13 +4203,15 @@ export default function RoguePage() {
       if (enemy.shockStacks > 0) enemy.shockStacks = Math.max(0, enemy.shockStacks - 1);
 
       if (pattern.intent === "attack" || pattern.intent === "poison") {
-        // Armor system: shield reduces damage but is NOT consumed
+        // Armor system: shield absorbs damage and is consumed
         const atkBase = pattern.value + enemy.currentStrength;
         const atk = enemy.shockStacks > 0 ? Math.floor(atkBase / 2) : atkBase;
-        const direct = Math.max(0, atk - shield); // shield reduces, not consumed
+        const absorbed = Math.min(shield, atk);
+        shield = Math.max(0, shield - absorbed);
+        const direct = Math.max(0, atk - absorbed);
         playerHp = Math.max(0, playerHp - direct);
         // Relic: thorn bracelet reflects 1 damage when hit
-        if (direct > 0 && hasRelic(prev.relics, "thorn_bracelet")) {
+        if (direct > 0 && hasRelic(getEffectiveRelics(prev), "thorn_bracelet")) {
           enemy.currentHp = Math.max(0, enemy.currentHp - 1);
           logs.push(
             ko
@@ -4203,7 +4222,7 @@ export default function RoguePage() {
           );
         }
         // Relic: soul mirror reflects 30% of direct damage
-        if (direct > 0 && hasRelic(prev.relics, "soul_mirror")) {
+        if (direct > 0 && hasRelic(getEffectiveRelics(prev), "soul_mirror")) {
           const mirrorDmg = Math.floor(direct * 0.3);
           if (mirrorDmg > 0) {
             enemy.currentHp = Math.max(0, enemy.currentHp - mirrorDmg);
@@ -4251,7 +4270,7 @@ export default function RoguePage() {
       // Player death check
       if (playerHp <= 0) {
         if (
-          hasRelic(prev.relics, "immortal_heart") &&
+          hasRelic(getEffectiveRelics(prev), "immortal_heart") &&
           !immortalHeartUsedRef.current
         ) {
           immortalHeartUsedRef.current = true;
@@ -4291,7 +4310,7 @@ export default function RoguePage() {
         );
         if (playerHp <= 0) {
           if (
-            hasRelic(prev.relics, "immortal_heart") &&
+            hasRelic(getEffectiveRelics(prev), "immortal_heart") &&
             !immortalHeartUsedRef.current
           ) {
             immortalHeartUsedRef.current = true;
@@ -4318,20 +4337,20 @@ export default function RoguePage() {
         }
       }
 
-      // Start new player turn: draw 5 (shield carries over within battle)
+      // Start new player turn: draw 5 (remaining shield carries over within battle)
       const newDisc = [...prev.discardPile, ...prev.hand];
       const extraDraw =
-        (hasRelic(prev.relics, "compass") ? 1 : 0) +
-        (hasRelic(prev.relics, "hourglass") ? 2 : 0);
+        (hasRelic(getEffectiveRelics(prev), "compass") ? 1 : 0) +
+        (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
       const drawn = drawN([], prev.drawPile, newDisc, 5 + extraDraw);
 
       // Relic: dragon scale - add shield on turn start
-      const dragonShield = hasRelic(prev.relics, "dragon_scale") ? 3 : 0;
+      const dragonShield = hasRelic(getEffectiveRelics(prev), "dragon_scale") ? 3 : 0;
       // Relic: poison bangle / cursed tome - apply poison to enemy on turn start
       let turnStartEnemy = { ...enemy };
       const turnLogs: string[] = [];
       if (
-        hasRelic(prev.relics, "poison_bangle") &&
+        hasRelic(getEffectiveRelics(prev), "poison_bangle") &&
         turnStartEnemy.currentHp > 0
       ) {
         turnStartEnemy.poisonStacks += 1;
@@ -4344,7 +4363,7 @@ export default function RoguePage() {
         );
       }
       if (
-        hasRelic(prev.relics, "cursed_tome") &&
+        hasRelic(getEffectiveRelics(prev), "cursed_tome") &&
         turnStartEnemy.currentHp > 0
       ) {
         turnStartEnemy.poisonStacks += 2;
@@ -4386,8 +4405,13 @@ export default function RoguePage() {
 
   // ── Pick reward ──────────────────────────────────────────────────────────
   const pickReward = useCallback((card: CardDef) => {
+    const gs = gsRef.current;
+    if (!gs) return;
+    const maxCopies = card.archetype === "all" ? 3 : 2;
+    const copies = gs.deck.filter((c) => c.id === card.id).length;
+    if (copies >= maxCopies) return; // 이미 최대 보유
     const newCard = toInst(card);
-    if (gsRef.current && gsRef.current.deck.length >= 20) {
+    if (gs.deck.length >= 20) {
       setPendingCardSwap(newCard);
       return;
     }
@@ -4417,6 +4441,9 @@ export default function RoguePage() {
     );
 
     if (item.kind === "card" && item.card) {
+      const maxCopies = item.card.archetype === "all" ? 3 : 2;
+      const copies = cur.deck.filter((c) => c.id === item.card!.id).length;
+      if (copies >= maxCopies) return; // 이미 최대 보유
       if (cur.deck.length >= 20) {
         setGs((prev) =>
           prev ? { ...prev, gold: prev.gold - item.price, shopItems: newItems } : prev,
@@ -4522,6 +4549,26 @@ export default function RoguePage() {
   // ── Relic offer handlers ──────────────────────────────────────────────────
   const handlePickRelic = useCallback((relic: RelicDef) => {
     if (!gsRef.current) return;
+    // 저주기물(boss)은 별도 cursedRelic 슬롯에 저장 (일반 5슬롯 미사용)
+    if (relic.grade === "boss") {
+      setGs((prev) => {
+        if (!prev) return prev;
+        let next = { ...prev, cursedRelic: relic };
+        if (relic.id === "berserker_crown")
+          next = { ...next, strength: next.strength + 9 };
+        if (relic.id === "titan_gauntlet")
+          next = {
+            ...next,
+            playerMaxHp: Math.max(1, next.playerMaxHp - 20),
+            playerHp: Math.min(Math.max(1, next.playerMaxHp - 20), next.playerHp),
+          };
+        if (relic.id === "abyss_crown")
+          next = { ...next, playerHp: Math.max(1, Math.floor(next.playerHp / 2)) };
+        return next;
+      });
+      setPendingRelicOffer(null);
+      return;
+    }
     if (gsRef.current.relics.length >= 5) {
       setPendingRelicSwap(relic);
       return;
@@ -4559,16 +4606,6 @@ export default function RoguePage() {
           maxEnergy: next.maxEnergy + 2,
           energy: next.energy + 2,
         };
-      if (relic.id === "berserker_crown")
-        next = { ...next, strength: next.strength + 7 };
-      if (relic.id === "titan_gauntlet")
-        next = {
-          ...next,
-          playerMaxHp: Math.max(1, next.playerMaxHp - 20),
-          playerHp: Math.min(Math.max(1, next.playerMaxHp - 20), next.playerHp),
-        };
-      if (relic.id === "abyss_crown")
-        next = { ...next, playerHp: Math.max(1, Math.floor(next.playerHp / 2)) };
       return next;
     });
     setPendingRelicOffer(null);
@@ -4970,7 +5007,7 @@ export default function RoguePage() {
             >
               <Sparkles size={15} />
               {ko ? "기물 보기" : ja ? "遺物確認" : "Relics"} (
-              {gs.relics.length}/5)
+              {gs.relics.length}/5{gs.cursedRelic ? (ko ? " + 저주1" : ja ? " +呪1" : " +curse") : ""})
             </p>
             <button
               onClick={() => setRelicOpen(false)}
@@ -5004,6 +5041,15 @@ export default function RoguePage() {
               {gs.relics.map((r) => (
                 <RelicCard key={r.id} relic={r} />
               ))}
+              {gs.cursedRelic && (
+                <div>
+                  <p style={{ margin: "8px 0 4px", fontSize: 11, color: "#ef4444", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+                    <Crown size={11} color="#ef4444" />
+                    {ko ? "저주 기물" : ja ? "呪い遺物" : "Cursed Relic"}
+                  </p>
+                  <RelicCard relic={gs.cursedRelic} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -5038,18 +5084,18 @@ export default function RoguePage() {
           }}
         >
           {(() => {
-            const isBossOffer = pendingRelicOffer?.some(r => r.grade === "boss");
+            const isCurseOffer = pendingRelicOffer?.some(r => r.grade === "boss");
             return (
               <>
-                <p style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900, color: isBossOffer ? "#ef4444" : "#a855f7", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
-                  {isBossOffer ? <Crown size={20} color="#ef4444" /> : <Sparkles size={20} color="#a855f7" />}
-                  {isBossOffer
-                    ? (ko ? "보스 기물 획득" : ja ? "ボス遺物獲得" : "Boss Relic Found")
+                <p style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900, color: isCurseOffer ? "#ef4444" : "#a855f7", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                  {isCurseOffer ? <Crown size={20} color="#ef4444" /> : <Sparkles size={20} color="#a855f7" />}
+                  {isCurseOffer
+                    ? (ko ? "저주 기물 획득" : ja ? "呪い遺物獲得" : "Cursed Relic Found")
                     : (ko ? "기물 획득" : ja ? "遺物獲得" : "Relic Found")}
                 </p>
-                <p style={{ margin: "0 0 16px", fontSize: 12, color: isBossOffer ? "#fca5a5" : C.textDim, textAlign: "center" }}>
-                  {isBossOffer
-                    ? (ko ? "강력하지만 단점이 있습니다 — 1개 선택" : ja ? "強力だが欠点あり — 1つ選択" : "Powerful but with a cost — pick 1")
+                <p style={{ margin: "0 0 16px", fontSize: 12, color: isCurseOffer ? "#fca5a5" : C.textDim, textAlign: "center" }}>
+                  {isCurseOffer
+                    ? (ko ? "강력하지만 저주가 따릅니다 — 1개 선택 (별도 슬롯)" : ja ? "強力だが呪いあり — 別スロット" : "Powerful but cursed — fills separate slot")
                     : (ko ? "1개를 선택해 보유하세요 (최대 5개)" : ja ? "1つ選んで所持してください（最大5個）" : "Pick 1 to keep (max 5 relics)")}
                 </p>
               </>
@@ -5293,6 +5339,81 @@ export default function RoguePage() {
     );
   };
 
+  // ── Quit confirm modal ────────────────────────────────────────────────────
+  const QuitConfirmModal = () => {
+    if (!confirmQuit) return null;
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          background: "#000c",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: FONT,
+        }}
+      >
+        <div
+          style={{
+            background: C.panel,
+            border: `2px solid ${C.red}66`,
+            borderRadius: 14,
+            padding: "28px 32px",
+            width: "min(340px,90vw)",
+            textAlign: "center",
+            animation: "rogue-in 0.2s ease-out both",
+          }}
+        >
+          <p style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900, color: C.red }}>
+            {ko ? "탐험 포기" : ja ? "探険を放棄" : "Abandon Run"}
+          </p>
+          <p style={{ margin: "0 0 24px", fontSize: 13, color: C.textDim }}>
+            {ko
+              ? "현재 탐험을 포기하시겠습니까? 진행 상황은 저장되지 않습니다."
+              : ja
+                ? "現在の探険を放棄しますか？進行状況は保存されません。"
+                : "Are you sure you want to abandon this run? Progress will not be saved."}
+          </p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button
+              onClick={() => setConfirmQuit(false)}
+              style={{
+                background: C.panelDark,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "10px 22px",
+                color: C.textDim,
+                cursor: "pointer",
+                fontFamily: FONT,
+                fontSize: 14,
+              }}
+            >
+              {ko ? "취소" : ja ? "キャンセル" : "Cancel"}
+            </button>
+            <button
+              onClick={() => { setConfirmQuit(false); abandonRun(); }}
+              style={{
+                background: "#3a0e0e",
+                border: `2px solid ${C.red}`,
+                borderRadius: 8,
+                padding: "10px 22px",
+                color: C.red,
+                cursor: "pointer",
+                fontFamily: FONT,
+                fontSize: 14,
+                fontWeight: 800,
+              }}
+            >
+              {ko ? "포기" : ja ? "放棄" : "Quit"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ── Global overlays (shown on top of any phase) ───────────────────────────
   const GlobalModals = () => (
     <>
@@ -5300,6 +5421,7 @@ export default function RoguePage() {
       <RelicSwapModal />
       <RelicOfferModal />
       <RelicModal />
+      <QuitConfirmModal />
     </>
   );
 
@@ -7366,10 +7488,10 @@ export default function RoguePage() {
                       icon: <Sparkles size={14} color="#a78bfa" />,
                       title: ko ? "기물" : ja ? "遺物" : "Relics",
                       desc: ko
-                        ? "기물을 획득하면 탐험 내내 지속되는 특수 효과가 적용됩니다. 보스 처치 시 강력한 보스 기물 3개 중 1개를 선택합니다. 보스 기물은 강력한 이득과 함께 패널티가 따릅니다."
+                        ? "기물을 획득하면 탐험 내내 지속되는 특수 효과가 적용됩니다. 보스 처치 시 저주 기물 3개 중 1개를 선택할 수 있습니다 (별도 슬롯, 선택 포기 가능). 저주 기물은 강력한 이득과 함께 패널티가 따릅니다."
                         : ja
-                          ? "遺物を入手すると探検中ずっと続く特殊効果が発動します。ボス撃破時に強力なボス遺物3個から1つ選択できます。ボス遺物は強力な恩恵と引き換えにデメリットがあります。"
-                          : "Relics grant persistent effects. After beating a boss, choose 1 of 3 powerful boss relics. Boss relics come with strong bonuses — and notable drawbacks.",
+                          ? "遺物を入手すると探検中ずっと続く特殊効果が発動します。ボス撃破時に呪い遺物3個から1つ選択できます（別スロット、スキップ可）。呪い遺物は強力な恩恵と引き換えにデメリットがあります。"
+                          : "Relics grant persistent effects. After beating a boss, choose 1 of 3 cursed relics (separate slot, skippable). Cursed relics come with strong bonuses — and notable drawbacks.",
                     },
                     {
                       icon: <Crown size={14} color="#ef4444" />,
@@ -7491,7 +7613,7 @@ export default function RoguePage() {
             </span>
           </div>
           <button
-            onClick={abandonRun}
+            onClick={() => setConfirmQuit(true)}
             style={{
               background: "none",
               border: `1px solid ${C.border}`,
@@ -7858,7 +7980,7 @@ export default function RoguePage() {
               {gs.relics.length}
             </button>
             <button
-              onClick={abandonRun}
+              onClick={() => setConfirmQuit(true)}
               style={{
                 background: "none",
                 border: "none",
@@ -8090,6 +8212,7 @@ export default function RoguePage() {
       <div
         style={{
           height: "100dvh",
+          maxHeight: "-webkit-fill-available",
           background: C.bg,
           fontFamily: FONT,
           display: "flex",
@@ -8099,6 +8222,7 @@ export default function RoguePage() {
           maxWidth: 640,
           margin: "0 auto",
           overflow: "hidden",
+          boxSizing: "border-box",
         }}
       >
         <style>{`${css} .rogue-card-hover{transition:transform 0.12s,box-shadow 0.12s}`}</style>
@@ -8190,7 +8314,7 @@ export default function RoguePage() {
             </button>
           )}
           <button
-            onClick={abandonRun}
+            onClick={() => setConfirmQuit(true)}
             style={{
               background: "none",
               border: `1px solid ${C.border}`,
@@ -8944,7 +9068,9 @@ export default function RoguePage() {
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             overflowX: "auto",
+            overflowY: "hidden",
             display: "flex",
             gap: 8,
             padding: "4px 0 8px",
@@ -9004,7 +9130,7 @@ export default function RoguePage() {
         </div>
 
         {/* Bottom bar */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           <div style={{ fontSize: 11, color: C.textDim }}>
             {ko
               ? `덱:${gs.drawPile.length} / 버림:${gs.discardPile.length}`
@@ -9055,6 +9181,7 @@ export default function RoguePage() {
               fontSize: 12,
               color: C.textDim,
               margin: 0,
+              flexShrink: 0,
             }}
           >
             {ko
@@ -9117,18 +9244,30 @@ export default function RoguePage() {
             animation: "rogue-in 0.3s 0.05s ease-out both",
           }}
         >
-          {gs.rewardCards.map((card, i) => (
-            <div
-              key={i}
-              onClick={() => pickReward(card)}
-              style={{
-                cursor: "pointer",
-                animation: `rogue-in 0.3s ${0.05 + i * 0.05}s ease-out both`,
-              }}
-            >
-              <CardView card={card} canPlay={true} lang={lang} />
-            </div>
-          ))}
+          {gs.rewardCards.map((card, i) => {
+            const maxCopies = card.archetype === "all" ? 3 : 2;
+            const copies = gs.deck.filter((c) => c.id === card.id).length;
+            const atMax = copies >= maxCopies;
+            return (
+              <div
+                key={i}
+                onClick={() => !atMax && pickReward(card)}
+                style={{
+                  cursor: atMax ? "not-allowed" : "pointer",
+                  opacity: atMax ? 0.4 : 1,
+                  animation: `rogue-in 0.3s ${0.05 + i * 0.05}s ease-out both`,
+                  position: "relative",
+                }}
+              >
+                <CardView card={card} canPlay={!atMax} lang={lang} />
+                {atMax && (
+                  <div style={{ position: "absolute", bottom: 4, left: 0, right: 0, textAlign: "center", fontSize: 10, color: C.red, fontWeight: 700, fontFamily: FONT }}>
+                    {ko ? `최대 ${maxCopies}장` : ja ? `最大${maxCopies}枚` : `Max ${maxCopies}`}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
         <button
           onClick={skipReward}
@@ -9612,7 +9751,7 @@ export default function RoguePage() {
             </div>
           </button>
           <button
-            onClick={abandonRun}
+            onClick={() => setConfirmQuit(true)}
             style={{
               background: C.panelDark,
               border: `1px solid ${C.border}`,
@@ -9800,7 +9939,7 @@ export default function RoguePage() {
             </div>
           </button>
           <button
-            onClick={abandonRun}
+            onClick={() => setConfirmQuit(true)}
             style={{
               background: C.panelDark,
               border: `1px solid ${C.border}`,
