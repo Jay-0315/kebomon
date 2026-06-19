@@ -110,24 +110,81 @@ const randomBossLine = (nick: string) => BOSS_LINES[(Math.random() * BOSS_LINES.
 // ─── 퀴즈 뱅크 (DB에서 onModuleInit에 로드됨) ───────────────────
 const QUIZ_BANK: { q: string; a: string[] }[] = [];
 
-// ─── 받아쓰기 문장 ────────────────────────────────────────────────
-const TYPING_SENTENCES = [
-  "천 리 길도 한 걸음부터", "시작이 반이다", "티끌 모아 태산",
-  "가랑비에 옷 젖는 줄 모른다", "돌다리도 두드려 보고 건너라",
-  "노력은 절대 배신하지 않는다", "오늘 할 수 있는 일을 내일로 미루지 마라",
-  "실패는 성공의 어머니다", "자신을 믿는 자만이 앞으로 나아갈 수 있다",
-  "작은 일에 최선을 다하는 사람이 큰 일도 해낸다",
-  "현재에 충실하면 미래는 저절로 열린다",
-  "꿈을 계속 간직하면 반드시 실현할 때가 온다",
-  "성공은 포기하지 않는 사람의 것이다",
-  "위대한 일은 작은 습관들이 쌓여 만들어진다",
-  "오늘의 절약이 내일의 풍요를 만든다",
-  "지출을 기록하면 소비가 줄어든다",
-  "현명한 소비가 미래를 바꾼다",
-  "절약은 어려운 일이 아니라 습관의 문제다",
-  "로마는 하루아침에 이루어지지 않았다",
-  "포기하지 않으면 끝난 것이 아니다",
-];
+// ─── 받아쓰기 문장 (언어별) ───────────────────────────────────────
+const TYPING_SENTENCES_BY_LANG: Record<string, string[]> = {
+  ko: [
+    "천 리 길도 한 걸음부터", "시작이 반이다", "티끌 모아 태산",
+    "가랑비에 옷 젖는 줄 모른다", "돌다리도 두드려 보고 건너라",
+    "노력은 절대 배신하지 않는다", "오늘 할 수 있는 일을 내일로 미루지 마라",
+    "실패는 성공의 어머니다", "자신을 믿는 자만이 앞으로 나아갈 수 있다",
+    "작은 일에 최선을 다하는 사람이 큰 일도 해낸다",
+    "현재에 충실하면 미래는 저절로 열린다",
+    "꿈을 계속 간직하면 반드시 실현할 때가 온다",
+    "성공은 포기하지 않는 사람의 것이다",
+    "위대한 일은 작은 습관들이 쌓여 만들어진다",
+    "로마는 하루아침에 이루어지지 않았다",
+    "포기하지 않으면 끝난 것이 아니다",
+    "백지장도 맞들면 낫다", "공든 탑이 무너지랴",
+    "세 살 버릇 여든까지 간다", "우물 안 개구리",
+  ],
+  ja: [
+    "七転び八起き", "継続は力なり", "千里の道も一歩から",
+    "塵も積もれば山となる", "急がば回れ", "猿も木から落ちる",
+    "一期一会", "失敗は成功のもと", "石の上にも三年",
+    "案ずるより産むが易し", "三人寄れば文殊の知恵",
+    "笑う門には福来たる", "出る杭は打たれる",
+    "光陰矢の如し", "一石二鳥",
+    "転ばぬ先の杖", "早起きは三文の徳",
+    "実るほど頭を垂れる稲穂かな", "類は友を呼ぶ",
+    "井の中の蛙大海を知らず",
+  ],
+  en: [
+    "Actions speak louder than words",
+    "A penny saved is a penny earned",
+    "The early bird catches the worm",
+    "Rome wasn't built in a day",
+    "You reap what you sow",
+    "Every cloud has a silver lining",
+    "Practice makes perfect",
+    "Don't judge a book by its cover",
+    "Better late than never",
+    "The pen is mightier than the sword",
+    "Fortune favors the bold",
+    "All that glitters is not gold",
+    "No pain no gain",
+    "Where there's a will there's a way",
+    "Knowledge is power",
+    "Look before you leap",
+    "All's well that ends well",
+    "Time heals all wounds",
+    "An apple a day keeps the doctor away",
+    "Don't put all your eggs in one basket",
+  ],
+};
+
+// DB에서 로드된 한국어 기여 문장 (active:true raidType:4)
+const TYPING_SENTENCES = TYPING_SENTENCES_BY_LANG.ko;
+
+type TypingSentences = { ko: string; ja: string; en: string };
+
+function pickTypingSentences(): TypingSentences {
+  const pick = (arr: string[]) => arr[(Math.random() * arr.length) | 0] ?? arr[0];
+  return {
+    ko: pick(TYPING_SENTENCES_BY_LANG.ko),
+    ja: pick(TYPING_SENTENCES_BY_LANG.ja),
+    en: pick(TYPING_SENTENCES_BY_LANG.en),
+  };
+}
+
+function typingFeedback(ok: boolean, lang: string, lives?: number): string {
+  if (ok) {
+    return lang === "ja" ? "正確！" : lang === "en" ? "Correct!" : "정확!";
+  }
+  if (!lives || lives <= 0) {
+    return lang === "ja" ? "ライフ消失！退場" : lang === "en" ? "Out of lives! Eliminated" : "라이프 소진! 퇴장";
+  }
+  return lang === "ja" ? `不正解！残りライフ ${lives}` : lang === "en" ? `Wrong! ${lives} lives left` : `틀렸습니다! 라이프 ${lives}개 남음`;
+}
 
 const ADJ = ["야비한", "수상한", "느긋한", "용감한", "엉뚱한", "도도한", "발랄한", "시크한", "엉큼한", "낭만적인", "까칠한", "천진한"];
 const ANI = ["바다코끼리", "너구리", "수달", "북극곰", "펭귄", "고슴도치", "미어캣", "알파카", "카피바라", "라쿤", "다람쥐", "판다"];
@@ -138,6 +195,7 @@ interface Player {
   characterId: number;
   nickname: string;
   raidType: number;
+  lang: string;
   userId: string | null;
   damage: number;
   lives: number; // 퀴즈·받아쓰기 전용 (5→0 소진 시 퇴장)
@@ -152,7 +210,7 @@ interface RaidRoom {
   cleared: boolean;
   bossCharId: number;
   quizIndex: number;
-  typingSentence: string;
+  typingSentences: TypingSentences;
 }
 
 /** 랭킹 보상 결정 */
@@ -176,7 +234,7 @@ function newRoom(type: number): RaidRoom {
     cleared: false,
     bossCharId: randomBoss(),
     quizIndex: (Math.random() * QUIZ_BANK.length) | 0,
-    typingSentence: TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0],
+    typingSentences: pickTypingSentences(),
   };
 }
 
@@ -229,11 +287,12 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   @SubscribeMessage("raid:join")
   join(
-    @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string },
+    @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string; lang?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const type = RAID_TYPES.includes(data?.raidType as 1 | 3 | 4) ? data.raidType : 1;
     const userId = data?.userId ?? null;
+    const lang = ["ko", "ja", "en"].includes(data?.lang ?? "") ? (data.lang as string) : "ko";
 
     // 쿨다운 체크
     const until = this.cooldowns.get(type) ?? 0;
@@ -269,6 +328,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       characterId: Number(data?.characterId) || 1,
       nickname,
       raidType: type,
+      lang,
       userId,
       damage: 0,
       lives: (type === 3 || type === 4) ? 5 : 0,
@@ -310,14 +370,6 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
           if (QUIZ_BANK.length > 500) QUIZ_BANK.splice(0, QUIZ_BANK.length - 500);
         } catch { /* DB 저장 실패 시 메모리에도 추가하지 않음 */ }
       }
-    } else if (type === 4) {
-      if (text.length >= 4 && !TYPING_SENTENCES.includes(text)) {
-        try {
-          await this.prisma.raidContent.create({ data: { raidType: 4, text, createdBy } });
-          TYPING_SENTENCES.push(text);
-          if (TYPING_SENTENCES.length > 500) TYPING_SENTENCES.splice(0, TYPING_SENTENCES.length - 500);
-        } catch { /* DB 저장 실패 시 메모리에도 추가하지 않음 */ }
-      }
     }
   }
 
@@ -338,10 +390,10 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       return;
     }
 
-    // 현재 출제 중인 문제
+    // 현재 출제 중인 문제 (type 4는 신고자 언어의 문장 기준)
     const text = type === 3
       ? (QUIZ_BANK.length > 0 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q : undefined)
-      : r.typingSentence;
+      : r.typingSentences[player.lang as keyof TypingSentences] ?? r.typingSentences.ko;
 
     if (!text) return;
 
@@ -393,9 +445,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
       }
     } else {
-      if (TYPING_SENTENCES.length > 0) {
-        r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
-      }
+      r.typingSentences = pickTypingSentences();
     }
 
     // 신고한 본인에게만 피드백, 방 전체엔 상태 갱신
@@ -556,17 +606,18 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         }
       }
     } else if (player.raidType === 4) {
-      if (text === r.typingSentence) {
+      const target = r.typingSentences[player.lang as keyof TypingSentences] ?? r.typingSentences.ko;
+      if (text === target) {
         dmg = rarityDamage(player.characterId);
         r.progress += dmg;
         player.damage += dmg;
         progressed = true;
-        r.typingSentence = TYPING_SENTENCES[(Math.random() * TYPING_SENTENCES.length) | 0];
-        feedback = "정확!";
+        r.typingSentences = pickTypingSentences();
+        feedback = typingFeedback(true, player.lang);
       } else {
         player.lives = Math.max(0, player.lives - 1);
         client.emit("raid:lives", { lives: player.lives });
-        client.emit("raid:feedback", { text: player.lives > 0 ? `틀렸습니다! 라이프 ${player.lives}개 남음` : "라이프 소진! 퇴장" });
+        client.emit("raid:feedback", { text: typingFeedback(false, player.lang, player.lives) });
         if (player.lives <= 0) {
           client.emit("raid:eliminated", {});
           this.removePlayer(client, true);
@@ -626,7 +677,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       return { label: "퀴즈를 맞혀라!", target: q, hint: "" };
     }
     if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −데미지" };
-    return { label: "이 문장을 그대로 받아써라!", target: r.typingSentence ?? "문장을 불러오는 중...", hint: "" };
+    return { label: "이 문장을 그대로 받아써라!", target: r.typingSentences.ko, targets: r.typingSentences, hint: "" };
   }
 
   private broadcastState(type: number) {

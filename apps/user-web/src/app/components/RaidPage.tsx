@@ -81,8 +81,8 @@ const getBossChar = (raidId: number) =>
   CHARACTERS[(raidId * 43) % CHARACTERS.length];
 
 const RAID_IDS = [1, 3, 4, 5];
-// 기여(문제 출제)를 받는 레이드 — 퀴즈·받아쓰기만
-const CONTRIBUTABLE = new Set([3, 4]);
+// 기여(문제 출제)를 받는 레이드 — 퀴즈만
+const CONTRIBUTABLE = new Set([3]);
 
 function fmtCooldown(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -94,7 +94,7 @@ function fmtCooldown(ms: number): string {
 
 type RosterEntry = { socketId: string; characterId: number; nickname: string };
 type SelfInfo = { socketId: string; nickname: string; characterId: number };
-type Mission = { label: string; target: string; hint: string };
+type Mission = { label: string; target: string; hint: string; targets?: Record<string, string> };
 type Boss = { characterId: number; name: string; cry: string };
 type RaidState = {
   raidType: number;
@@ -1367,12 +1367,6 @@ export default function RaidPage() {
       hasAnswer: true,
       answerPlaceholder: t("raid.contrib.3.answer_placeholder"),
     },
-    4: {
-      title: t("raid.contrib.4.title"),
-      field: t("raid.contrib.4.field"),
-      placeholder: t("raid.contrib.4.placeholder"),
-      hasAnswer: false,
-    },
   };
 
   const EGG_LABEL: Record<string, string> = {
@@ -1679,6 +1673,7 @@ export default function RaidPage() {
       characterId: myCharacterId,
       userId: user?.id,
       nickname: user?.name,
+      lang,
     });
     setView("room");
   };
@@ -2229,7 +2224,9 @@ export default function RaidPage() {
               raidType === 4 ? (e) => e.preventDefault() : undefined
             }
           >
-            {state?.mission.target}
+            {(raidType === 4 && state?.mission.targets)
+              ? (state.mission.targets as Record<string, string>)[lang] ?? state.mission.target
+              : state?.mission.target}
           </p>
           {RAID_MISSION_HINTS[raidType] ? (
             <p className="text-xs text-muted-foreground">
