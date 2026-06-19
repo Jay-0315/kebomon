@@ -345,15 +345,16 @@ export default function DuelPage() {
   // ───────── LOBBY ─────────
   if (!room) {
     return (
-      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)]">
+      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)] flex flex-col">
         <TavernBg />
-        <div className="relative z-10 mx-auto max-w-2xl px-4 py-8">
+        <div className="relative z-10 mt-auto mx-auto w-full max-w-2xl px-4 pb-8 pt-6"
+          style={{ background: "linear-gradient(to bottom, transparent, rgba(10,5,1,0.72) 18%, rgba(10,5,1,0.88))", borderRadius: "24px 24px 0 0" }}>
           {/* Title */}
-          <div className="mb-2 flex items-center gap-3">
+          <div className="mb-1 flex items-center gap-3">
             <Swords className="h-7 w-7 text-amber-400 drop-shadow-[0_0_6px_#f59e0b]" />
             <h1 className="text-3xl font-extrabold tracking-wide text-amber-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{t("duel.title")}</h1>
           </div>
-          <p className="mb-6 text-sm text-amber-200/50">{t("duel.desc")}</p>
+          <p className="mb-5 text-sm text-amber-200/50">{t("duel.desc")}</p>
 
           {error && <div className="mb-4 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
 
@@ -428,9 +429,10 @@ export default function DuelPage() {
     const isHost = room.hostId === selfId;
     const full = room.players.length >= 2;
     return (
-      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)]">
+      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)] flex flex-col">
         <TavernBg />
-        <div className="relative z-10 mx-auto max-w-2xl px-4 py-8">
+        <div className="relative z-10 mt-auto mx-auto w-full max-w-2xl px-4 pb-8 pt-6"
+          style={{ background: "linear-gradient(to bottom, transparent, rgba(10,5,1,0.72) 18%, rgba(10,5,1,0.88))", borderRadius: "24px 24px 0 0" }}>
           {/* Back button */}
           <button onClick={leaveRoom} className="mb-5 flex items-center gap-1 text-sm font-medium text-amber-300/70 hover:text-amber-200">
             <ArrowLeft className="h-4 w-4" /> {t("duel.leave")}
