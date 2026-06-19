@@ -419,7 +419,7 @@ export default function LiveChatPage() {
                   zIndex: Math.round(pos.y * 10),
                 }}
               >
-                <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={isSelf ? 58 : 42} float={isSelf} />
+                <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={isSelf ? 29 : 21} float={isSelf} />
                 <span className="mt-0.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white/90 backdrop-blur-sm whitespace-nowrap">
                   {isSelf && <Star className="w-2.5 h-2.5 fill-yellow-300 text-yellow-300 inline-block mr-0.5 shrink-0" />}{p.nickname}
                 </span>
