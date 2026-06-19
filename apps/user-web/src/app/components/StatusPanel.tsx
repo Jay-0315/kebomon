@@ -48,7 +48,7 @@ const RARITY_COLOR: Record<string, string> = {
   epic: "#c084fc", legendary: "#fbbf24", mythic: "#f472b6",
 };
 
-const RAID_IDS = [1, 3, 4, 5] as const;
+const RAID_IDS = [1, 5] as const;
 
 function getTierIdx(pts: number) {
   for (let i = TIERS.length - 1; i >= 0; i--) if (pts >= TIERS[i].min) return i;

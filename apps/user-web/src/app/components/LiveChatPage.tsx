@@ -34,21 +34,20 @@ const BG_MAP: Record<number, { desktop: string; mobile: string; fill: string; bo
 
 function ChannelBackground({ channelId }: { channelId: number }) {
   const bg = BG_MAP[channelId];
-  if (!bg) return <div className="absolute inset-0 bg-gray-900" />;
+  if (!bg) return <div className="w-full aspect-video bg-gray-900" />;
   return (
-    <>
-      <div className="absolute inset-0" style={{ backgroundColor: bg.fill }} />
+    <div className="relative w-full" style={{ backgroundColor: bg.fill }}>
       <picture>
         <source media="(max-width: 768px)" srcSet={bg.mobile} />
         <img
           src={bg.desktop}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="w-full h-auto block"
           style={{ imageRendering: "pixelated" }}
           alt="" aria-hidden
         />
       </picture>
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
-    </>
+    </div>
   );
 }
 
@@ -347,7 +346,7 @@ export default function LiveChatPage() {
                   <source media="(max-width: 768px)" srcSet={bg.mobile} />
                   <img
                     src={bg.desktop}
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-contain"
                     style={{ imageRendering: "pixelated" }}
                     alt="" aria-hidden
                   />
@@ -378,11 +377,11 @@ export default function LiveChatPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4">
-    <div ref={containerRef} className="relative flex flex-col overflow-hidden rounded-2xl shadow-2xl w-full" style={{ maxWidth: "56rem", height: "min(85vh, 700px)" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4 overflow-y-auto">
+    <div ref={containerRef} className="relative overflow-hidden rounded-2xl shadow-2xl w-full" style={{ maxWidth: "56rem" }}>
       <ChannelBackground channelId={channelId} />
 
-      <div className="relative z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
         <button
           onClick={leaveChannel}
           className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-200"
@@ -400,7 +399,7 @@ export default function LiveChatPage() {
         </div>
       </div>
 
-      <div className="relative z-10 flex-1 overflow-hidden">
+      <div className="absolute inset-0 z-10 overflow-hidden">
         {allChars
           .slice()
           .sort((a, b) => (positions[a.socketId]?.y ?? 78) - (positions[b.socketId]?.y ?? 78))
@@ -456,19 +455,19 @@ export default function LiveChatPage() {
         </div>
 
         {isTouchDevice && (
-          <div className="absolute bottom-6 left-6 z-30">
+          <div className="absolute bottom-16 left-6 z-30">
             <Joystick onChange={(dx, dy) => { joystickRef.current = { x: dx, y: dy }; }} />
           </div>
         )}
 
         {!isTouchDevice && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-3 py-1 text-[11px] text-white/70 backdrop-blur-sm">
+          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-3 py-1 text-[11px] text-white/70 backdrop-blur-sm">
             {t("live.movement_hint")}
           </div>
         )}
       </div>
 
-      <div className="relative z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
+      <div className="absolute bottom-0 inset-x-0 z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
         <input
           ref={inputRef}
           value={input}

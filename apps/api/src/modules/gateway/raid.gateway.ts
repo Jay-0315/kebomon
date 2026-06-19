@@ -11,7 +11,7 @@ import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
 
-export const RAID_TYPES = [1, 3, 4, 5] as const;
+export const RAID_TYPES = [1, 5] as const;
 export const MAX_PLAYERS = 5;
 export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
@@ -65,10 +65,8 @@ function rarityDamage(charId: number): number {
 }
 
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
-  1: { name: "점프 레이드",      points: 30, goal: 50, cry: "내 장애물을 피할 수 있겠나?!" },
-  3: { name: "퀴즈 레이드",      points: 50, goal: 50, cry: "내 물음에 답하라!" },
-  4: { name: "받아쓰기 레이드",  points: 80, goal: 50, cry: "정확히 받아써라. 오차는 없다." },
-  5: { name: "탄막 레이드",      points: 60, goal: 50, cry: "내 탄막을 피할 수 있겠나?!" },
+  1: { name: "점프 미니게임",  points: 30, goal: 50, cry: "내 장애물을 피할 수 있겠나?!" },
+  5: { name: "탄막 미니게임",  points: 60, goal: 50, cry: "내 탄막을 피할 수 있겠나?!" },
 };
 
 const BOSS_POOL = [
@@ -107,85 +105,6 @@ const BOSS_LINES = [
 ];
 const randomBossLine = (nick: string) => BOSS_LINES[(Math.random() * BOSS_LINES.length) | 0](nick);
 
-// ─── 퀴즈 뱅크 (DB에서 onModuleInit에 로드됨) ───────────────────
-const QUIZ_BANK: { q: string; a: string[] }[] = [];
-
-// ─── 받아쓰기 문장 (언어별) ───────────────────────────────────────
-const TYPING_SENTENCES_BY_LANG: Record<string, string[]> = {
-  ko: [
-    "천 리 길도 한 걸음부터", "시작이 반이다", "티끌 모아 태산",
-    "가랑비에 옷 젖는 줄 모른다", "돌다리도 두드려 보고 건너라",
-    "노력은 절대 배신하지 않는다", "오늘 할 수 있는 일을 내일로 미루지 마라",
-    "실패는 성공의 어머니다", "자신을 믿는 자만이 앞으로 나아갈 수 있다",
-    "작은 일에 최선을 다하는 사람이 큰 일도 해낸다",
-    "현재에 충실하면 미래는 저절로 열린다",
-    "꿈을 계속 간직하면 반드시 실현할 때가 온다",
-    "성공은 포기하지 않는 사람의 것이다",
-    "위대한 일은 작은 습관들이 쌓여 만들어진다",
-    "로마는 하루아침에 이루어지지 않았다",
-    "포기하지 않으면 끝난 것이 아니다",
-    "백지장도 맞들면 낫다", "공든 탑이 무너지랴",
-    "세 살 버릇 여든까지 간다", "우물 안 개구리",
-  ],
-  ja: [
-    "七転び八起き", "継続は力なり", "千里の道も一歩から",
-    "塵も積もれば山となる", "急がば回れ", "猿も木から落ちる",
-    "一期一会", "失敗は成功のもと", "石の上にも三年",
-    "案ずるより産むが易し", "三人寄れば文殊の知恵",
-    "笑う門には福来たる", "出る杭は打たれる",
-    "光陰矢の如し", "一石二鳥",
-    "転ばぬ先の杖", "早起きは三文の徳",
-    "実るほど頭を垂れる稲穂かな", "類は友を呼ぶ",
-    "井の中の蛙大海を知らず",
-  ],
-  en: [
-    "Actions speak louder than words",
-    "A penny saved is a penny earned",
-    "The early bird catches the worm",
-    "Rome wasn't built in a day",
-    "You reap what you sow",
-    "Every cloud has a silver lining",
-    "Practice makes perfect",
-    "Don't judge a book by its cover",
-    "Better late than never",
-    "The pen is mightier than the sword",
-    "Fortune favors the bold",
-    "All that glitters is not gold",
-    "No pain no gain",
-    "Where there's a will there's a way",
-    "Knowledge is power",
-    "Look before you leap",
-    "All's well that ends well",
-    "Time heals all wounds",
-    "An apple a day keeps the doctor away",
-    "Don't put all your eggs in one basket",
-  ],
-};
-
-// DB에서 로드된 한국어 기여 문장 (active:true raidType:4)
-const TYPING_SENTENCES = TYPING_SENTENCES_BY_LANG.ko;
-
-type TypingSentences = { ko: string; ja: string; en: string };
-
-function pickTypingSentences(): TypingSentences {
-  const pick = (arr: string[]) => arr[(Math.random() * arr.length) | 0] ?? arr[0];
-  return {
-    ko: pick(TYPING_SENTENCES_BY_LANG.ko),
-    ja: pick(TYPING_SENTENCES_BY_LANG.ja),
-    en: pick(TYPING_SENTENCES_BY_LANG.en),
-  };
-}
-
-function typingFeedback(ok: boolean, lang: string, lives?: number): string {
-  if (ok) {
-    return lang === "ja" ? "正確！" : lang === "en" ? "Correct!" : "정확!";
-  }
-  if (!lives || lives <= 0) {
-    return lang === "ja" ? "ライフ消失！退場" : lang === "en" ? "Out of lives! Eliminated" : "라이프 소진! 퇴장";
-  }
-  return lang === "ja" ? `不正解！残りライフ ${lives}` : lang === "en" ? `Wrong! ${lives} lives left` : `틀렸습니다! 라이프 ${lives}개 남음`;
-}
-
 const ADJ = ["야비한", "수상한", "느긋한", "용감한", "엉뚱한", "도도한", "발랄한", "시크한", "엉큼한", "낭만적인", "까칠한", "천진한"];
 const ANI = ["바다코끼리", "너구리", "수달", "북극곰", "펭귄", "고슴도치", "미어캣", "알파카", "카피바라", "라쿤", "다람쥐", "판다"];
 const nick = () => `${ADJ[(Math.random() * ADJ.length) | 0]} ${ANI[(Math.random() * ANI.length) | 0]}`;
@@ -195,10 +114,8 @@ interface Player {
   characterId: number;
   nickname: string;
   raidType: number;
-  lang: string;
   userId: string | null;
   damage: number;
-  lives: number; // 퀴즈·받아쓰기 전용 (5→0 소진 시 퇴장)
 }
 
 interface RaidRoom {
@@ -209,8 +126,6 @@ interface RaidRoom {
   progress: number;
   cleared: boolean;
   bossCharId: number;
-  quizIndex: number;
-  typingSentences: TypingSentences;
 }
 
 /** 랭킹 보상 결정 */
@@ -233,8 +148,6 @@ function newRoom(type: number): RaidRoom {
     progress: 0,
     cleared: false,
     bossCharId: randomBoss(),
-    quizIndex: (Math.random() * QUIZ_BANK.length) | 0,
-    typingSentences: pickTypingSentences(),
   };
 }
 
@@ -255,25 +168,9 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   private rooms = new Map<number, RaidRoom>();
   private cooldowns = new Map<number, number>();
   private lastRankings = new Map<number, { rank: number; nickname: string; damage: number }[]>();
-  /** 현재 레이드 슬롯에서 입장 제한된 userId 목록 (레이드 타입 → 금지 userId Set) */
+  /** 현재 미니게임 슬롯에서 입장 제한된 userId 목록 (타입 → 금지 userId Set) */
   private entryBans = new Map<number, Set<string>>();
-  /** 신고 중복 방지: socketId → 이미 신고한 문제 텍스트 Set */
-  private reportedBy = new Map<string, Set<string>>();
-  /** 신고 쿨다운: socketId → 마지막 신고 timestamp */
-  private reportCooldown = new Map<string, number>();
-
-  async onModuleInit() {
-    try {
-      const rows = await this.prisma.raidContent.findMany({ where: { active: true } });
-      for (const row of rows) {
-        if (row.raidType === 3 && row.answer) {
-          QUIZ_BANK.push({ q: row.text, a: [row.answer] });
-        } else if (row.raidType === 4) {
-          TYPING_SENTENCES.push(row.text);
-        }
-      }
-    } catch { /* ignore */ }
-  }
+  async onModuleInit() { /* no preload needed */ }
 
   private getRoom(type: number): RaidRoom {
     if (!this.rooms.has(type)) this.rooms.set(type, newRoom(type));
@@ -287,12 +184,11 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   @SubscribeMessage("raid:join")
   join(
-    @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string; lang?: string },
+    @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const type = RAID_TYPES.includes(data?.raidType as 1 | 3 | 4) ? data.raidType : 1;
+    const type = RAID_TYPES.includes(data?.raidType as 1 | 5) ? data.raidType : 1;
     const userId = data?.userId ?? null;
-    const lang = ["ko", "ja", "en"].includes(data?.lang ?? "") ? (data.lang as string) : "ko";
 
     // 쿨다운 체크
     const until = this.cooldowns.get(type) ?? 0;
@@ -328,10 +224,8 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       characterId: Number(data?.characterId) || 1,
       nickname,
       raidType: type,
-      lang,
       userId,
       damage: 0,
-      lives: (type === 3 || type === 4) ? 5 : 0,
     });
     client.join(room(type));
     client.emit("raid:self", { socketId: client.id, nickname, characterId: Number(data?.characterId) || 1 });
@@ -354,104 +248,6 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     // 화면은 프론트에서 게임오버로 전환됨
   }
 
-  @SubscribeMessage("raid:contribute")
-  async contribute(@MessageBody() data: { raidType: number; text: string; answer?: string; userId?: string }) {
-    const type = data?.raidType;
-    const text = String(data?.text ?? "").trim().slice(0, 80);
-    const createdBy = data?.userId ? String(data.userId).slice(0, 36) : null;
-    if (text.length < 1) return;
-
-    if (type === 3) {
-      const a = String(data?.answer ?? "").trim().slice(0, 40);
-      if (text.length >= 3 && a.length >= 1 && !QUIZ_BANK.some((q) => q.q === text)) {
-        try {
-          await this.prisma.raidContent.create({ data: { raidType: 3, text, answer: a, createdBy } });
-          QUIZ_BANK.push({ q: text, a: [a] });
-          if (QUIZ_BANK.length > 500) QUIZ_BANK.splice(0, QUIZ_BANK.length - 500);
-        } catch { /* DB 저장 실패 시 메모리에도 추가하지 않음 */ }
-      }
-    }
-  }
-
-  /** 부적절한 퀴즈·받아쓰기 문제 신고 → 다음 문제로 스킵, 10회 누적 시 삭제 */
-  @SubscribeMessage("raid:report")
-  async report(@ConnectedSocket() client: Socket) {
-    const player = this.findPlayer(client.id);
-    if (!player || (player.raidType !== 3 && player.raidType !== 4)) return;
-    const type = player.raidType;
-    const r = this.getRoom(type);
-    if (r.cleared) return;
-
-    // 신고 쿨다운 체크 (30초)
-    const now = Date.now();
-    const lastReport = this.reportCooldown.get(client.id) ?? 0;
-    if (now - lastReport < 30_000) {
-      client.emit("raid:feedback", { text: "신고는 30초에 한 번만 가능합니다" });
-      return;
-    }
-
-    // 현재 출제 중인 문제 (type 4는 신고자 언어의 문장 기준)
-    const text = type === 3
-      ? (QUIZ_BANK.length > 0 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q : undefined)
-      : r.typingSentences[player.lang as keyof TypingSentences] ?? r.typingSentences.ko;
-
-    if (!text) return;
-
-    // 같은 유저가 같은 문제를 중복 신고하는 것 방지
-    const alreadyReported = this.reportedBy.get(client.id) ?? new Set<string>();
-    if (alreadyReported.has(text)) {
-      client.emit("raid:feedback", { text: "이미 신고한 문제입니다" });
-      return;
-    }
-    alreadyReported.add(text);
-    this.reportedBy.set(client.id, alreadyReported);
-    this.reportCooldown.set(client.id, now);
-
-    // 신고 누적 → 10회 이상 시 출제 풀에서 제거
-    // active:true = 기여 문제, active:false = 하드코딩 문제 신고 기록용
-    try {
-      const row = await this.prisma.raidContent.findFirst({ where: { raidType: type, text } });
-      if (row) {
-        // 기존 행 있으면 신고 수 증가
-        const updated = await this.prisma.raidContent.update({
-          where: { id: row.id },
-          data: { reportCount: { increment: 1 } },
-        });
-        if (updated.reportCount >= 10 && row.active) {
-          // 기여 문제만 삭제 (active:true인 행만 제거)
-          await this.prisma.raidContent.delete({ where: { id: row.id } }).catch(() => undefined);
-          if (type === 3) {
-            const idx = QUIZ_BANK.findIndex((q) => q.q === text);
-            if (idx >= 0) QUIZ_BANK.splice(idx, 1);
-          } else {
-            const idx = TYPING_SENTENCES.indexOf(text);
-            if (idx >= 0) TYPING_SENTENCES.splice(idx, 1);
-          }
-        }
-      } else {
-        // DB에 없는 문제(하드코딩) → 신고 기록 생성 (active:false = 출제 풀에 추가 안 됨)
-        const quizAnswer = type === 3 ? (QUIZ_BANK.find((q) => q.q === text)?.a[0] ?? null) : null;
-        await this.prisma.raidContent.create({
-          data: { raidType: type, text, answer: quizAnswer, reportCount: 1, active: false },
-        });
-      }
-    } catch {
-      // DB 오류는 무시 (스킵은 그대로 동작)
-    }
-
-    // 다음 문제로 스킵 (뱅크가 비어있으면 스킵 생략)
-    if (type === 3) {
-      if (QUIZ_BANK.length > 0) {
-        r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
-      }
-    } else {
-      r.typingSentences = pickTypingSentences();
-    }
-
-    // 신고한 본인에게만 피드백, 방 전체엔 상태 갱신
-    client.emit("raid:feedback", { text: "🚩 신고 접수 · 다음 문제로 넘어갑니다" });
-    this.broadcastState(type);
-  }
 
   @SubscribeMessage("raid:gem")
   gem(@ConnectedSocket() client: Socket) {
@@ -546,7 +342,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
         data: {
           userId,
           type: "achievement",
-          title: "레이드 클리어!",
+          title: "미니게임 클리어!",
           body: `${rank}위 달성! 보상: ${rewardText}`,
           link: "/raid",
         },
@@ -580,55 +376,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (r.cleared) return;
 
     let progressed = false;
-    let feedback: string | null = null;
     let dmg = 0;
-
-    if (player.raidType === 3) {
-      const cur = QUIZ_BANK.length > 0 ? QUIZ_BANK[r.quizIndex % QUIZ_BANK.length] : undefined;
-      if (!cur) return;
-      if (cur.a.some((ans) =>
-        text.replace(/\s/g, "").toLowerCase() === ans.replace(/\s/g, "").toLowerCase()
-      )) {
-        dmg = rarityDamage(player.characterId);
-        r.progress += dmg;
-        player.damage += dmg;
-        progressed = true;
-        r.quizIndex = (r.quizIndex + 1) % QUIZ_BANK.length;
-        feedback = "정답!";
-      } else {
-        player.lives = Math.max(0, player.lives - 1);
-        client.emit("raid:lives", { lives: player.lives });
-        client.emit("raid:feedback", { text: player.lives > 0 ? `오답! 라이프 ${player.lives}개 남음` : "라이프 소진! 퇴장" });
-        if (player.lives <= 0) {
-          client.emit("raid:eliminated", {});
-          this.removePlayer(client, true);
-          return;
-        }
-      }
-    } else if (player.raidType === 4) {
-      const target = r.typingSentences[player.lang as keyof TypingSentences] ?? r.typingSentences.ko;
-      if (text === target) {
-        dmg = rarityDamage(player.characterId);
-        r.progress += dmg;
-        player.damage += dmg;
-        progressed = true;
-        r.typingSentences = pickTypingSentences();
-        feedback = typingFeedback(true, player.lang);
-      } else {
-        player.lives = Math.max(0, player.lives - 1);
-        client.emit("raid:lives", { lives: player.lives });
-        client.emit("raid:feedback", { text: typingFeedback(false, player.lang, player.lives) });
-        if (player.lives <= 0) {
-          client.emit("raid:eliminated", {});
-          this.removePlayer(client, true);
-          return;
-        }
-      }
-    }
-
-    if (feedback) {
-      client.emit("raid:feedback", { text: feedback });
-    }
 
     if (progressed) {
       this.applyProgress(r, player.raidType, player.nickname, dmg);
@@ -637,8 +385,6 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   handleDisconnect(client: Socket) {
     this.removePlayer(client, false);
-    this.reportedBy.delete(client.id);
-    this.reportCooldown.delete(client.id);
   }
 
   private findPlayer(socketId: string): Player | undefined {
@@ -672,12 +418,8 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   private missionView(r: RaidRoom) {
     if (r.type === 1) return { label: "장애물을 점프로 넘어라!", target: "SPACE ↑", hint: "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지" };
-    if (r.type === 3) {
-      const q = QUIZ_BANK.length > 0 ? (QUIZ_BANK[r.quizIndex % QUIZ_BANK.length]?.q ?? "문제를 불러오는 중...") : "문제를 불러오는 중...";
-      return { label: "퀴즈를 맞혀라!", target: q, hint: "" };
-    }
     if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −데미지" };
-    return { label: "이 문장을 그대로 받아써라!", target: r.typingSentences.ko, targets: r.typingSentences, hint: "" };
+    return { label: "", target: "", hint: "" };
   }
 
   private broadcastState(type: number) {

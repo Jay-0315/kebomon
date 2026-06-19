@@ -2707,7 +2707,8 @@ function pickRewards(
   const pool = CARDS.filter((c) => {
     if (c.rarity === "legendary" && !allowLeg) return false;
     if (c.rarity === "epic" && floor < allowEpicFloor) return false;
-    if ((deckCount.get(c.id) ?? 0) >= 3) return false;
+    const maxCopies = c.archetype === "all" ? 3 : 2;
+    if ((deckCount.get(c.id) ?? 0) >= maxCopies) return false;
     return c.archetype === arch || c.archetype === "all";
   });
   const weighted: CardDef[] = [];
@@ -2737,7 +2738,7 @@ function pickRewards(
   }
   while (res.length < count) {
     const fb = CARDS.find(
-      (c) => !seen.has(c.id) && (deckCount.get(c.id) ?? 0) < 3,
+      (c) => !seen.has(c.id) && (deckCount.get(c.id) ?? 0) < (c.archetype === "all" ? 3 : 2),
     );
     if (fb) {
       seen.add(fb.id);

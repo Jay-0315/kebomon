@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Swords,
   Users,
-  Send,
   ArrowLeft,
   Trophy,
   Egg,
@@ -10,7 +9,6 @@ import {
   Clock,
   Heart,
   Medal,
-  Flag,
 } from "lucide-react";
 import {
   useAppData,
@@ -80,9 +78,7 @@ function PixelEggSVG({
 const getBossChar = (raidId: number) =>
   CHARACTERS[(raidId * 43) % CHARACTERS.length];
 
-const RAID_IDS = [1, 3, 4, 5];
-// 기여(문제 출제)를 받는 레이드 — 퀴즈만
-const CONTRIBUTABLE = new Set([3]);
+const RAID_IDS = [1, 5];
 
 function fmtCooldown(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -107,13 +103,6 @@ type RaidState = {
   participants: RosterEntry[];
   count: number;
   maxPlayers: number;
-};
-type ChatMsg = {
-  id: string;
-  socketId: string;
-  nickname: string;
-  characterId: number;
-  text: string;
 };
 type Reward =
   | { kind: "points"; points: number }
@@ -1323,16 +1312,6 @@ export default function RaidPage() {
       bossName: t("raid.type.1.boss"),
       desc: t("raid.type.1.desc"),
     },
-    3: {
-      name: t("raid.type.3.name"),
-      bossName: t("raid.type.3.boss"),
-      desc: t("raid.type.3.desc"),
-    },
-    4: {
-      name: t("raid.type.4.name"),
-      bossName: t("raid.type.4.boss"),
-      desc: t("raid.type.4.desc"),
-    },
     5: {
       name: t("raid.type.5.name"),
       bossName: t("raid.type.5.boss"),
@@ -1341,32 +1320,11 @@ export default function RaidPage() {
   };
   const RAID_MISSION_LABELS: Record<number, TranslationKey> = {
     1: "raid.type.1.mission_label",
-    3: "raid.type.3.mission_label",
-    4: "raid.type.4.mission_label",
     5: "raid.type.5.mission_label",
   };
   const RAID_MISSION_HINTS: Partial<Record<number, TranslationKey>> = {
     1: "raid.type.1.mission_hint",
     5: "raid.type.5.mission_hint",
-  };
-
-  const CONTRIBUTE_META: Record<
-    number,
-    {
-      title: string;
-      field: string;
-      placeholder: string;
-      hasAnswer: boolean;
-      answerPlaceholder?: string;
-    }
-  > = {
-    3: {
-      title: t("raid.contrib.3.title"),
-      field: t("raid.contrib.3.field"),
-      placeholder: t("raid.contrib.3.placeholder"),
-      hasAnswer: true,
-      answerPlaceholder: t("raid.contrib.3.answer_placeholder"),
-    },
   };
 
   const EGG_LABEL: Record<string, string> = {
@@ -1454,17 +1412,14 @@ export default function RaidPage() {
     >
   >({
     1: { count: 0, cooldownUntil: 0 },
-    3: { count: 0, cooldownUntil: 0 },
-    4: { count: 0, cooldownUntil: 0 },
+    5: { count: 0, cooldownUntil: 0 },
   });
   const [now, setNow] = useState(Date.now());
   const [state, setState] = useState<RaidState | null>(null);
   const [self, setSelf] = useState<SelfInfo | null>(null);
-  const [bubbles, setBubbles] = useState<ChatMsg[]>([]);
   const [feedback, setFeedback] = useState<string>("");
   const [reward, setReward] = useState<Reward | null>(null);
   const [full, setFull] = useState(false);
-  const [input, setInput] = useState("");
   const [hit, setHit] = useState(false);
   const [bossLine, setBossLine] = useState<string>("");
   const [damageNums, setDamageNums] = useState<
@@ -1477,11 +1432,7 @@ export default function RaidPage() {
     raidType: number;
     rankings: RankEntry[];
   } | null>(null);
-  const [contributed, setContributed] = useState(false);
-  const [contribText, setContribText] = useState("");
-  const [contribAnswer, setContribAnswer] = useState("");
   const [jumpPlayerLives, setJumpPlayerLives] = useState<PlayerLiveMap>({});
-  const [chatLives, setChatLives] = useState(5);
   const [eliminated, setEliminated] = useState(false);
   const [showRewardGuide, setShowRewardGuide] = useState(false);
   const prevHp = useRef<number | null>(null);
@@ -1521,13 +1472,6 @@ export default function RaidPage() {
     ) => setLobby((p) => ({ ...p, ...d }));
     const onState = (d: RaidState) => setState(d);
     const onSelf = (d: SelfInfo) => setSelf(d);
-    const onMsg = (m: ChatMsg) => {
-      setBubbles((p) => [...p.slice(-12), m]);
-      timers.current[m.id] = setTimeout(
-        () => setBubbles((p) => p.filter((b) => b.id !== m.id)),
-        4000,
-      );
-    };
     const onFeedback = (d: { text: string }) => {
       setFeedback(d.text);
       setTimeout(() => setFeedback(""), 1500);
@@ -1541,9 +1485,6 @@ export default function RaidPage() {
       setReward(d.reward);
       setMyRank(d.rank ?? null);
       setRankings(d.rankings ?? []);
-      setContributed(false);
-      setContribText("");
-      setContribAnswer("");
       refreshRewardsWithCheck().catch(() => undefined);
       if (d.raidType != null) {
         const raw = localStorage.getItem("kebo_raid_first_clears");
@@ -1607,7 +1548,6 @@ export default function RaidPage() {
         },
       }));
     };
-    const onChatLives = (d: { lives: number }) => setChatLives(d.lives);
     const onEliminated = () => {
       setEliminated(true);
       setView("lobby");
@@ -1620,7 +1560,6 @@ export default function RaidPage() {
     s.on("raid:lobby", onLobby);
     s.on("raid:state", onState);
     s.on("raid:self", onSelf);
-    s.on("raid:message", onMsg);
     s.on("raid:feedback", onFeedback);
     s.on("raid:cleared", onCleared);
     s.on("raid:full", onFull);
@@ -1628,7 +1567,6 @@ export default function RaidPage() {
     s.on("raid:banned", onBanned);
     s.on("raid:bossHit", onBossHit);
     s.on("raid:jump_lives", onJumpLives);
-    s.on("raid:lives", onChatLives);
     s.on("raid:eliminated", onEliminated);
     s.on("raid:rankings", onRankings);
     s.emit("raid:counts");
@@ -1636,7 +1574,6 @@ export default function RaidPage() {
       s.off("raid:lobby", onLobby);
       s.off("raid:state", onState);
       s.off("raid:self", onSelf);
-      s.off("raid:message", onMsg);
       s.off("raid:feedback", onFeedback);
       s.off("raid:cleared", onCleared);
       s.off("raid:full", onFull);
@@ -1644,7 +1581,6 @@ export default function RaidPage() {
       s.off("raid:banned", onBanned);
       s.off("raid:bossHit", onBossHit);
       s.off("raid:jump_lives", onJumpLives);
-      s.off("raid:lives", onChatLives);
       s.off("raid:eliminated", onEliminated);
       s.off("raid:rankings", onRankings);
       Object.values(timers.current).forEach(clearTimeout);
@@ -1663,9 +1599,7 @@ export default function RaidPage() {
     setRaidType(id);
     setState(null);
     setSelf(null);
-    setBubbles([]);
     setReward(null);
-    setChatLives(5);
     setEliminated(false);
     const user = getStoredUser();
     getRaidSocket().emit("raid:join", {
@@ -1682,14 +1616,7 @@ export default function RaidPage() {
     setView("lobby");
     setState(null);
     setSelf(null);
-    setBubbles([]);
     setReward(null);
-  };
-  const send = () => {
-    const text = input.trim();
-    if (!text) return;
-    getRaidSocket().emit("raid:input", { text });
-    setInput("");
   };
   const emitJump = useCallback(() => {
     getRaidSocket().emit("raid:jump");
@@ -1700,28 +1627,6 @@ export default function RaidPage() {
   const emitDied = useCallback(() => {
     getRaidSocket().emit("raid:died");
   }, []);
-  const reportProblem = useCallback(() => {
-    if (!window.confirm(t("raid.report_confirm"))) return;
-    getRaidSocket().emit("raid:report");
-  }, [t]);
-  const submitContribution = () => {
-    const meta = CONTRIBUTE_META[raidType];
-    const text = contribText.trim();
-    const answer = contribAnswer.trim();
-    const ok = meta.hasAnswer
-      ? text.length >= 3 && answer.length >= 1
-      : text.length >= 2;
-    if (ok) {
-      getRaidSocket().emit("raid:contribute", {
-        raidType,
-        text,
-        answer: meta.hasAnswer ? answer : undefined,
-        userId: getStoredUser()?.id,
-      });
-    }
-    setContributed(true);
-  };
-
   if (view === "lobby") {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
@@ -2042,14 +1947,12 @@ export default function RaidPage() {
 
               {/* 참여 보상 */}
               <p className="mb-2 text-xs font-bold text-blue-400">
-                {lang === "ko" ? "참여 포인트 (레이드별)" : lang === "ja" ? "参加ポイント（レイド別）" : "Participation Points (per Raid)"}
+                {lang === "ko" ? "참여 포인트 (미니게임별)" : lang === "ja" ? "参加ポイント（ミニゲーム別）" : "Participation Points (per Minigame)"}
               </p>
               <div className="space-y-1.5">
                 {[
-                  { name: lang === "ko" ? "점프 레이드" : lang === "ja" ? "ジャンプレイド" : "Jump Raid", pts: 30 },
-                  { name: lang === "ko" ? "퀴즈 레이드" : lang === "ja" ? "クイズレイド" : "Quiz Raid", pts: 50 },
-                  { name: lang === "ko" ? "받아쓰기 레이드" : lang === "ja" ? "書き取りレイド" : "Dictation Raid", pts: 80 },
-                  { name: lang === "ko" ? "탄막 레이드" : lang === "ja" ? "弾幕レイド" : "Bullet Raid", pts: 60 },
+                  { name: lang === "ko" ? "점프 미니게임" : lang === "ja" ? "ジャンプミニゲーム" : "Jump Minigame", pts: 30 },
+                  { name: lang === "ko" ? "탄막 미니게임" : lang === "ja" ? "弾幕ミニゲーム" : "Bullet Minigame", pts: 60 },
                 ].map((row) => (
                   <div key={row.name} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
                     <span className="text-foreground">{row.name}</span>
@@ -2197,36 +2100,12 @@ export default function RaidPage() {
         </div>
         {/* boss-issued mission */}
         <div className="mt-2 rounded-lg bg-primary/10 px-3 py-2">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold text-primary">
-              「{bossName(state?.boss.characterId)}」{" "}
-              {t(RAID_MISSION_LABELS[raidType])}
-            </p>
-            {(raidType === 3 || raidType === 4) && !state?.cleared && (
-              <button
-                onClick={reportProblem}
-                title={t("raid.report")}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-red-500/15 hover:text-red-500 dark:bg-white/10"
-              >
-                <Flag className="h-3 w-3" /> {t("raid.report")}
-              </button>
-            )}
-          </div>
-          <p
-            className={`mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-50 ${raidType === 4 ? "select-none" : ""}`}
-            style={
-              raidType === 4
-                ? { WebkitUserSelect: "none", userSelect: "none" }
-                : undefined
-            }
-            onCopy={raidType === 4 ? (e) => e.preventDefault() : undefined}
-            onContextMenu={
-              raidType === 4 ? (e) => e.preventDefault() : undefined
-            }
-          >
-            {(raidType === 4 && state?.mission.targets)
-              ? (state.mission.targets as Record<string, string>)[lang] ?? state.mission.target
-              : state?.mission.target}
+          <p className="text-xs font-semibold text-primary">
+            「{bossName(state?.boss.characterId)}」{" "}
+            {t(RAID_MISSION_LABELS[raidType])}
+          </p>
+          <p className="mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-50">
+            {state?.mission.target}
           </p>
           {RAID_MISSION_HINTS[raidType] ? (
             <p className="text-xs text-muted-foreground">
@@ -2240,18 +2119,6 @@ export default function RaidPage() {
       {feedback && (
         <div className="pointer-events-none absolute left-1/2 top-52 z-40 -translate-x-1/2 rounded-full bg-black/70 px-4 py-1.5 text-sm font-bold text-white">
           {feedback}
-        </div>
-      )}
-
-      {/* 퀴즈·받아쓰기 라이프 표시 */}
-      {(raidType === 3 || raidType === 4) && (
-        <div className="pointer-events-none absolute left-2 top-[220px] z-40 flex items-center gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Heart
-              key={i}
-              className={`h-4 w-4 transition-colors ${i < chatLives ? "fill-red-500 text-red-500" : "text-gray-400/50"}`}
-            />
-          ))}
         </div>
       )}
 
@@ -2311,170 +2178,11 @@ export default function RaidPage() {
             onDied={emitDied}
           />
         </div>
-      ) : (
-        <>
-          {/* chat bubbles */}
-          <div className="pointer-events-none absolute inset-x-0 top-64 bottom-40 z-30 overflow-hidden">
-            {bubbles.map((b, i) => {
-              const def = charById(b.characterId);
-              const mine = b.socketId === self?.socketId;
-              return (
-                <div
-                  key={b.id}
-                  className="absolute left-1/2 -translate-x-1/2"
-                  style={{
-                    top: `${(i % 8) * 12}%`,
-                    animation: "raid-bubble 4s ease-out forwards",
-                  }}
-                >
-                  <div
-                    className={`flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-md ${mine ? "border-2 border-primary" : "border border-gray-200"}`}
-                  >
-                    <PixelSprite
-                      type={def.type}
-                      colors={def.colors}
-                      characterId={def.id}
-                      size={20}
-                    />
-                    <span
-                      className={`text-[11px] font-bold ${mine ? "text-primary" : "text-gray-500"}`}
-                    >
-                      {b.nickname}
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {b.text}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* party crowd */}
-          <div className="relative z-10 mt-auto flex flex-wrap items-end justify-center gap-1 px-4 pb-2">
-            {others.map((p) => {
-              const def = charById(p.characterId);
-              return (
-                <div key={p.socketId} title={p.nickname}>
-                  <PixelSprite
-                    type={def.type}
-                    colors={def.colors}
-                    characterId={def.id}
-                    size={44}
-                  />
-                </div>
-              );
-            })}
-          </div>
-          {self && (
-            <div className="relative z-10 flex flex-col items-center pb-4">
-              <div className="mb-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow">
-                {self.nickname}
-              </div>
-              <div
-                style={{ filter: "drop-shadow(0 0 8px rgba(255,213,79,0.8))" }}
-              >
-                <PixelSprite
-                  type={charById(self.characterId).type}
-                  colors={charById(self.characterId).colors}
-                  characterId={self.characterId}
-                  size={60}
-                  float
-                />
-              </div>
-            </div>
-          )}
-
-          {/* input */}
-          <div className="relative z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-3 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) send();
-              }}
-              maxLength={60}
-              placeholder={t("raid.input_placeholder")}
-              className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-            />
-            <button
-              onClick={send}
-              className="flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
-            >
-              <Send className="h-4 w-4" /> {t("raid.send")}
-            </button>
-          </div>
-        </>
-      )}
+      ) : null}
 
       {/* clear overlay */}
       {reward && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/75 px-6 text-center">
-          {!contributed && CONTRIBUTABLE.has(raidType) ? (
-            /* ── 1단계: 레이드별 콘텐츠 기여 (퀴즈·받아쓰기만) ── */
-            (() => {
-              const meta = CONTRIBUTE_META[raidType];
-              const valid = meta.hasAnswer
-                ? contribText.trim().length >= 3 &&
-                  contribAnswer.trim().length >= 1
-                : contribText.trim().length >= 2;
-              return (
-                <div className="w-full max-w-md rounded-2xl bg-card p-6 text-left">
-                  <h2 className="text-center text-2xl font-extrabold text-foreground">
-                    {bossName(state?.boss.characterId)}
-                    {t("raid.boss_defeated_suffix")}
-                  </h2>
-                  <p className="mt-1 text-center text-sm text-muted-foreground">
-                    {meta.title}
-                  </p>
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">
-                        {meta.field}
-                      </label>
-                      <input
-                        value={contribText}
-                        onChange={(e) => setContribText(e.target.value)}
-                        maxLength={80}
-                        placeholder={meta.placeholder}
-                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                      />
-                    </div>
-                    {meta.hasAnswer && (
-                      <div>
-                        <label className="text-xs font-semibold text-muted-foreground">
-                          {t("raid.answer")}
-                        </label>
-                        <input
-                          value={contribAnswer}
-                          onChange={(e) => setContribAnswer(e.target.value)}
-                          maxLength={40}
-                          placeholder={meta.answerPlaceholder}
-                          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-5 flex gap-2">
-                    <button
-                      onClick={() => setContributed(true)}
-                      className="flex-1 rounded-full bg-muted py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/70"
-                    >
-                      {t("raid.skip")}
-                    </button>
-                    <button
-                      onClick={submitContribution}
-                      disabled={!valid}
-                      className="flex-[2] rounded-full bg-primary py-2 text-sm font-bold text-primary-foreground transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {t("raid.submit")}
-                    </button>
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
-            /* ── 2단계: 보상 + 랭킹 ── */
             <div className="w-full max-w-md">
               <div className="flex flex-col items-center">
                 <Trophy className="h-14 w-14 text-yellow-400" />
@@ -2553,7 +2261,6 @@ export default function RaidPage() {
                 {t("raid.to_lobby")}
               </button>
             </div>
-          )}
         </div>
       )}
     </div>
