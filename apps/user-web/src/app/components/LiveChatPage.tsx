@@ -346,7 +346,7 @@ export default function LiveChatPage() {
                   <source media="(max-width: 768px)" srcSet={bg.mobile} />
                   <img
                     src={bg.desktop}
-                    className="absolute inset-0 h-full w-full object-contain"
+                    className="absolute inset-0 h-full w-full object-cover"
                     style={{ imageRendering: "pixelated" }}
                     alt="" aria-hidden
                   />

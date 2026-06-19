@@ -21,6 +21,7 @@ import {
   BookOpen,
   Star,
   Zap,
+  Radio,
 } from "lucide-react";
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
@@ -206,6 +207,12 @@ export default function Layout() {
         to="/gacha"
         icon={ShoppingBag}
         label={t("nav.gacha")}
+        onNav={onNav}
+      />
+      <NavLink
+        to="/live"
+        icon={Radio}
+        label={t("nav.live")}
         onNav={onNav}
       />
 
