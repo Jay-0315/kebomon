@@ -19,6 +19,8 @@ import {
   BookOpen,
   Info,
   FlaskConical,
+  Check,
+  Circle,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -8138,7 +8140,7 @@ export default function RoguePage() {
                           : C.textDim,
                     }}
                   >
-                    {isDone ? "✓" : floorIdx + 1}
+                    {isDone ? <Check size={8} /> : floorIdx + 1}
                   </div>
                   <div
                     style={{
@@ -8221,15 +8223,11 @@ export default function RoguePage() {
                           </p>
                         </div>
                         {isChosen && (
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: "#4ade80",
-                              flexShrink: 0,
-                            }}
-                          >
-                            ✓
-                          </span>
+                          <Check
+                            size={12}
+                            color="#4ade80"
+                            style={{ flexShrink: 0 }}
+                          />
                         )}
                         {isCurrent && (
                           <ChevronRight
@@ -9107,7 +9105,7 @@ export default function RoguePage() {
                   >
                     {potionId
                       ? <FlaskConical size={18} color={iconColor} />
-                      : <span style={{ fontSize: 14, opacity: 0.25, color: C.textDim }}>○</span>}
+                      : <Circle size={14} style={{ opacity: 0.25, color: C.textDim }} />}
                   </button>
                 </div>
               );
@@ -9925,7 +9923,7 @@ export default function RoguePage() {
               }}
             >
               <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900, color: "#ef4444", textAlign: "center" }}>
-                {ko ? "🏆 무한 모드 도전" : ja ? "🏆 無限モードへ挑む" : "🏆 Enter Infinite Mode"}
+                <><Trophy size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />{ko ? "무한 모드 도전" : ja ? "無限モードへ挑む" : "Enter Infinite Mode"}</>
               </p>
               <p style={{ margin: "0 0 14px", fontSize: 12, color: "#fca5a5", textAlign: "center" }}>
                 {ko

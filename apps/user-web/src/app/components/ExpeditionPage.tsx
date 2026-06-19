@@ -943,7 +943,7 @@ export default function ExpeditionPage() {
                           : <span style={{ fontSize:18, color:isRequired?"#2a4a2a":C.border, lineHeight:1 }}>+</span>
                         }
                         {isRequired && !char && (
-                          <span style={{ position:"absolute", bottom:2, right:3, fontSize:8, color:"#ef4444", fontWeight:900 }}>●</span>
+                          <span style={{ position:"absolute", bottom:2, right:3, width:6, height:6, borderRadius:"50%", background:"#ef4444" }} />
                         )}
                       </div>
                     );

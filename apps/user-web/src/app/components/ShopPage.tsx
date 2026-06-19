@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shield, ArrowLeft } from "lucide-react";
+import { Shield, ArrowLeft, Check } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -449,7 +449,7 @@ export default function ShopPage() {
                           {fx}
                         </span>
                         {done && (
-                          <span className="text-green-400 shrink-0">✓</span>
+                          <Check className="h-4 w-4 text-green-400 shrink-0" />
                         )}
                       </div>
                     );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy } from "lucide-react";
+import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy, Zap, Star, Skull, Check, ChevronRight } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getStoredUser } from "../lib/auth";
@@ -36,7 +36,183 @@ const DUEL_CSS = `
 @keyframes d-turn-in{from{opacity:0;transform:scale(0.85) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes d-victory{0%{transform:scale(0.5) rotate(-5deg)}50%{transform:scale(1.15) rotate(3deg)}75%{transform:scale(0.95) rotate(-1deg)}100%{transform:scale(1) rotate(0)}}
 @keyframes d-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes d-flicker{0%,100%{opacity:1;transform:scaleY(1)}25%{opacity:0.72;transform:scaleY(0.82)}50%{opacity:0.92;transform:scaleY(1.1)}75%{opacity:0.68;transform:scaleY(0.88)}}
+@keyframes d-flicker2{0%,100%{opacity:0.55}33%{opacity:0.22}66%{opacity:0.4}}
+@keyframes d-glow{0%,100%{opacity:1}50%{opacity:0.4}}
 `;
+
+function TavernBg() {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden>
+      <style>{DUEL_CSS}</style>
+      {/* Warm dark base */}
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#0d0702 0%,#1c0f05 55%,#0a0502 100%)" }} />
+
+      {/* Pixel art tavern scene */}
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMax meet"
+        style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%", imageRendering: "pixelated" }}>
+        <defs>
+          <pattern id="tv-bricks" width="40" height="30" patternUnits="userSpaceOnUse">
+            <rect width="40" height="30" fill="#130903"/>
+            <rect x="1" y="1" width="37" height="12" fill="#1e1208"/>
+            <rect x="1" y="16" width="17" height="12" fill="#221408"/>
+            <rect x="21" y="16" width="18" height="12" fill="#1a0e06"/>
+          </pattern>
+        </defs>
+
+        {/* ── CEILING BEAMS ── */}
+        <rect width="320" height="18" fill="#1e1208"/>
+        <rect width="320" height="2" fill="#4a2c10"/>
+        <rect y="16" width="320" height="2" fill="#2d1a08"/>
+        {[40,90,160,230,278].map(x=><rect key={x} x={x} y="0" width="5" height="18" fill="#2a1508"/>)}
+
+        {/* ── STONE WALL ── */}
+        <rect y="18" width="320" height="126" fill="url(#tv-bricks)"/>
+
+        {/* ── HANGING LANTERN (center top) ── */}
+        {[3,8,13,18].map(y=><rect key={y} x="159" y={y} width="2" height="4" fill="#6b5028" rx="1"/>)}
+        <rect x="153" y="22" width="14" height="4" fill="#7a5a18"/>
+        <rect x="156" y="20" width="8" height="3" fill="#9a7a28"/>
+        <rect x="152" y="26" width="16" height="18" fill="#3a2208"/>
+        <rect x="154" y="28" width="12" height="14" fill="#1c1004"/>
+        <rect x="154" y="28" width="12" height="14" fill="#ff8820" style={{animation:"d-flicker2 1.3s ease-in-out infinite"}}/>
+        <rect x="156" y="30" width="8" height="10" fill="#ffaa40" style={{animation:"d-flicker2 1s ease-in-out infinite",animationDelay:"0.3s"}}/>
+        <rect x="158" y="32" width="4" height="6" fill="#ffcc60" style={{animation:"d-flicker 0.9s ease-in-out infinite"}}/>
+        <rect x="154" y="42" width="12" height="3" fill="#5a4010"/>
+        <rect x="157" y="45" width="6" height="2" fill="#3d2808"/>
+
+        {/* ── LEFT TORCH ── */}
+        <rect x="12" y="62" width="12" height="3" fill="#5a3010"/>
+        <rect x="12" y="62" width="12" height="1" fill="#7a4820"/>
+        <rect x="17" y="46" width="4" height="20" fill="#8b5e30"/>
+        <rect x="18" y="46" width="2" height="20" fill="#a07040"/>
+        <rect x="15" y="41" width="8" height="8" fill="#7a3810"/>
+        <rect x="16" y="41" width="6" height="8" fill="#9a4a20"/>
+        <rect x="16" y="31" width="6" height="12" fill="#cc6600" style={{animation:"d-flicker 0.8s ease-in-out infinite"}}/>
+        <rect x="17" y="26" width="4" height="8" fill="#ff9900" style={{animation:"d-flicker 0.8s ease-in-out infinite",animationDelay:"0.12s"}}/>
+        <rect x="18" y="22" width="2" height="6" fill="#ffcc00" style={{animation:"d-flicker 0.7s ease-in-out infinite",animationDelay:"0.22s"}}/>
+        <rect x="18" y="19" width="2" height="4" fill="#ffee80" style={{animation:"d-flicker 0.6s ease-in-out infinite"}}/>
+
+        {/* ── RIGHT TORCH ── */}
+        <rect x="296" y="62" width="12" height="3" fill="#5a3010"/>
+        <rect x="296" y="62" width="12" height="1" fill="#7a4820"/>
+        <rect x="299" y="46" width="4" height="20" fill="#8b5e30"/>
+        <rect x="300" y="46" width="2" height="20" fill="#a07040"/>
+        <rect x="297" y="41" width="8" height="8" fill="#7a3810"/>
+        <rect x="298" y="41" width="6" height="8" fill="#9a4a20"/>
+        <rect x="298" y="31" width="6" height="12" fill="#cc6600" style={{animation:"d-flicker 0.78s ease-in-out infinite",animationDelay:"0.35s"}}/>
+        <rect x="299" y="26" width="4" height="8" fill="#ff9900" style={{animation:"d-flicker 0.78s ease-in-out infinite",animationDelay:"0.5s"}}/>
+        <rect x="300" y="22" width="2" height="6" fill="#ffcc00" style={{animation:"d-flicker 0.68s ease-in-out infinite",animationDelay:"0.32s"}}/>
+        <rect x="300" y="19" width="2" height="4" fill="#ffee80" style={{animation:"d-flicker 0.58s ease-in-out infinite",animationDelay:"0.18s"}}/>
+
+        {/* ── SHELF ── */}
+        <rect x="72" y="92" width="176" height="5" fill="#5a3010"/>
+        <rect x="72" y="92" width="176" height="1" fill="#8b5020"/>
+        <rect x="72" y="95" width="176" height="2" fill="#3a1e08"/>
+        <rect x="74" y="95" width="3" height="16" fill="#4a2808"/>
+        <rect x="160" y="95" width="3" height="16" fill="#4a2808"/>
+        <rect x="243" y="95" width="3" height="16" fill="#4a2808"/>
+
+        {/* ── BOTTLES on shelf ── */}
+        {/* tall green */}
+        <rect x="88" y="74" width="7" height="20" fill="#1a4a18"/>
+        <rect x="89" y="72" width="5" height="4" fill="#246024"/>
+        <rect x="90" y="70" width="3" height="4" fill="#0e2e0e"/>
+        <rect x="89" y="75" width="2" height="10" fill="#2a6028" opacity="0.7"/>
+        {/* brown squat */}
+        <rect x="102" y="78" width="10" height="16" fill="#5a1e05"/>
+        <rect x="104" y="76" width="6" height="4" fill="#6b2808"/>
+        <rect x="105" y="74" width="4" height="4" fill="#4a1804"/>
+        <rect x="103" y="78" width="2" height="9" fill="#7a3010" opacity="0.5"/>
+        {/* green slim */}
+        <rect x="120" y="75" width="6" height="19" fill="#1e5218"/>
+        <rect x="121" y="73" width="4" height="4" fill="#1a4a14"/>
+        <rect x="122" y="71" width="2" height="4" fill="#123010"/>
+        {/* amber */}
+        <rect x="134" y="77" width="9" height="17" fill="#8b4a08"/>
+        <rect x="136" y="75" width="5" height="4" fill="#a05810"/>
+        <rect x="137" y="73" width="3" height="4" fill="#6b3806"/>
+        <rect x="135" y="77" width="2" height="10" fill="#c07018" opacity="0.45"/>
+        {/* wine/purple */}
+        <rect x="197" y="74" width="7" height="20" fill="#3a1050"/>
+        <rect x="198" y="72" width="5" height="4" fill="#3a1050"/>
+        <rect x="199" y="70" width="3" height="4" fill="#260a36"/>
+        <rect x="198" y="74" width="2" height="10" fill="#5a1878" opacity="0.5"/>
+        {/* dark green */}
+        <rect x="212" y="76" width="9" height="18" fill="#2a5a08"/>
+        <rect x="214" y="74" width="5" height="4" fill="#2a5a08"/>
+        <rect x="215" y="72" width="3" height="4" fill="#1e4006"/>
+        {/* red small */}
+        <rect x="229" y="78" width="8" height="16" fill="#7a0808"/>
+        <rect x="231" y="76" width="4" height="4" fill="#8b1010"/>
+        <rect x="232" y="74" width="2" height="4" fill="#5a0606"/>
+
+        {/* ── BAR COUNTER ── */}
+        <rect x="0" y="150" width="320" height="50" fill="#2d1508"/>
+        <rect x="0" y="140" width="320" height="14" fill="#4a2a10"/>
+        <rect x="0" y="140" width="320" height="1" fill="#9b6030"/>
+        <rect x="0" y="141" width="320" height="2" fill="#7a4818"/>
+        {/* wood grain */}
+        {[10,70,130,190,250,310].map(x=><rect key={x} x={x} y="144" width="50" height="1" fill="#3d2010" opacity="0.4"/>)}
+        <rect x="0" y="153" width="320" height="2" fill="#3d1e08"/>
+        <rect x="0" y="170" width="320" height="2" fill="#3d1e08"/>
+        {[80,160,240].map(x=><rect key={x} x={x} y="153" width="2" height="47" fill="#221008"/>)}
+
+        {/* ── BARRELS left ── */}
+        <rect x="4" y="108" width="28" height="35" fill="#5a2e0a" rx="2"/>
+        {[108,120,132,140].map(y=><rect key={y} x="4" y={y} width="28" height="3" fill="#3a2008"/>)}
+        {[7,11,15,19,23,27].map(x=><rect key={x} x={x} y="108" width="2" height="35" fill="#4a2408" opacity="0.4"/>)}
+        <rect x="7" y="98" width="22" height="12" fill="#4a2408" rx="2"/>
+        <rect x="7" y="98" width="22" height="3" fill="#3a1e06"/>
+        <rect x="7" y="106" width="22" height="3" fill="#3a1e06"/>
+
+        {/* ── BARRELS right ── */}
+        <rect x="288" y="108" width="28" height="35" fill="#5a2e0a" rx="2"/>
+        {[108,120,132,140].map(y=><rect key={`r${y}`} x="288" y={y} width="28" height="3" fill="#3a2008"/>)}
+        {[291,295,299,303,307,311].map(x=><rect key={x} x={x} y="108" width="2" height="35" fill="#4a2408" opacity="0.4"/>)}
+        <rect x="291" y="98" width="22" height="12" fill="#4a2408" rx="2"/>
+        <rect x="291" y="98" width="22" height="3" fill="#3a1e06"/>
+        <rect x="291" y="106" width="22" height="3" fill="#3a1e06"/>
+
+        {/* ── MUGS on counter ── */}
+        {/* left mug */}
+        <rect x="54" y="129" width="14" height="13" fill="#8b5e30"/>
+        <rect x="54" y="129" width="14" height="3" fill="#a07040"/>
+        <rect x="68" y="132" width="4" height="7" fill="#6b4820"/>
+        <rect x="54" y="127" width="14" height="4" fill="#e8d8a0"/>
+        <rect x="55" y="126" width="12" height="3" fill="#f0e4b0"/>
+        <rect x="57" y="125" width="8" height="2" fill="#f8eecc"/>
+        {/* right mug */}
+        <rect x="250" y="129" width="14" height="13" fill="#8b5e30"/>
+        <rect x="250" y="129" width="14" height="3" fill="#a07040"/>
+        <rect x="264" y="132" width="4" height="7" fill="#6b4820"/>
+        <rect x="250" y="127" width="14" height="4" fill="#e8d8a0"/>
+        <rect x="251" y="126" width="12" height="3" fill="#f0e4b0"/>
+        <rect x="253" y="125" width="8" height="2" fill="#f8eecc"/>
+        {/* wine bottle on counter */}
+        <rect x="148" y="122" width="6" height="20" fill="#3a1050"/>
+        <rect x="149" y="120" width="4" height="4" fill="#3a1050"/>
+        <rect x="150" y="118" width="2" height="4" fill="#260a36"/>
+        <rect x="150" y="130" width="8" height="10" fill="#8b1818" opacity="0.8"/>
+        {/* candle */}
+        <rect x="172" y="129" width="5" height="13" fill="#e8e0c0"/>
+        <rect x="173" y="127" width="3" height="4" fill="#ff9900" style={{animation:"d-flicker 0.7s ease-in-out infinite"}}/>
+        <rect x="173" y="125" width="3" height="4" fill="#ffcc40" style={{animation:"d-flicker 0.6s ease-in-out infinite",animationDelay:"0.1s"}}/>
+        <rect x="174" y="123" width="1" height="4" fill="#ffee90" style={{animation:"d-flicker 0.5s ease-in-out infinite"}}/>
+        <rect x="170" y="140" width="11" height="3" fill="#5a5028"/>
+      </svg>
+
+      {/* ── Torch glow overlays ── */}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle 130px at 6% 32%,rgba(255,140,20,0.2) 0%,transparent 70%)",animation:"d-glow 2.1s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle 130px at 94% 32%,rgba(255,140,20,0.2) 0%,transparent 70%)",animation:"d-glow 2.3s ease-in-out infinite",animationDelay:"0.6s"}}/>
+      {/* Lantern glow */}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 180px 140px at 50% 20%,rgba(255,150,20,0.15) 0%,transparent 70%)",animation:"d-glow 1.6s ease-in-out infinite",animationDelay:"0.2s"}}/>
+      {/* Vignettes */}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 110% 70% at 50% 50%,transparent 40%,rgba(5,2,1,0.7) 100%)"}}/>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"25%",background:"linear-gradient(180deg,rgba(5,2,1,0.75) 0%,transparent 100%)"}}/>
+    </div>
+  );
+}
 
 export default function DuelPage() {
   const { rewardSummary, profile } = useAppData();
@@ -137,7 +313,7 @@ export default function DuelPage() {
   const cardName = (c: Card) => (ko ? c.name : ja ? c.nameJa : c.nameEn);
   const cardDesc = (c: Card) => (ko ? c.desc : ja ? c.descJa : c.descEn);
   const typeColor = (type: Card["type"]) => type === "attack" ? "#ef4444" : type === "skill" ? "#3b82f6" : "#f59e0b";
-  const typeIcon = (type: Card["type"]) => type === "attack" ? "⚔" : type === "skill" ? "✦" : "★";
+  const typeIcon = (type: Card["type"]) => type === "attack" ? <Swords className="inline h-2.5 w-2.5" /> : type === "skill" ? <Zap className="inline h-2.5 w-2.5" /> : <Star className="inline h-2.5 w-2.5" />;
 
   const HpBar = ({ side, big }: { side: Side; big?: boolean }) => {
     const pct = Math.max(0, side.hp / side.maxHp);
@@ -161,56 +337,87 @@ export default function DuelPage() {
   const StatBadges = ({ side }: { side: Side }) => (
     <div className="flex flex-wrap items-center gap-1">
       {side.shield > 0 && <span className="flex items-center gap-0.5 rounded border border-sky-500/30 bg-sky-500/20 px-1 py-0.5 text-[10px] font-bold text-sky-400"><Shield className="h-2.5 w-2.5" />{side.shield}</span>}
-      {side.strength > 0 && <span className="rounded border border-amber-500/30 bg-amber-500/20 px-1 py-0.5 text-[10px] font-bold text-amber-400">⚔+{side.strength}</span>}
-      {side.poison > 0 && <span className="rounded border border-purple-500/30 bg-purple-500/20 px-1 py-0.5 text-[10px] font-bold text-purple-400">☠{side.poison}</span>}
+      {side.strength > 0 && <span className="flex items-center gap-0.5 rounded border border-amber-500/30 bg-amber-500/20 px-1 py-0.5 text-[10px] font-bold text-amber-400"><Swords className="h-2.5 w-2.5" />+{side.strength}</span>}
+      {side.poison > 0 && <span className="flex items-center gap-0.5 rounded border border-purple-500/30 bg-purple-500/20 px-1 py-0.5 text-[10px] font-bold text-purple-400"><Skull className="h-2.5 w-2.5" />{side.poison}</span>}
     </div>
   );
 
   // ───────── LOBBY ─────────
   if (!room) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6">
-        <div className="mb-2 flex items-center gap-2">
-          <Swords className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("duel.title")}</h1>
-        </div>
-        <p className="mb-5 text-sm text-muted-foreground">{t("duel.desc")}</p>
-        {error && <div className="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</div>}
-        <button onClick={() => setCreating((v) => !v)} className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-primary-foreground transition-transform hover:scale-[1.01]">
-          <Plus className="h-5 w-5" /> {t("duel.create_room")}
-        </button>
-        {creating && (
-          <div className="mb-5 space-y-3 rounded-xl border border-border bg-card p-4">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground">{t("duel.room_title_label")}</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={30} placeholder={t("duel.room_title_ph")}
-                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground">{t("duel.password_opt")}</label>
-              <input value={pw} onChange={(e) => setPw(e.target.value)} maxLength={20} type="text"
-                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
-            </div>
-            <button onClick={createRoom} className="w-full rounded-lg bg-primary py-2 text-sm font-bold text-primary-foreground">{t("duel.create")}</button>
+      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)]">
+        <TavernBg />
+        <div className="relative z-10 mx-auto max-w-2xl px-4 py-8">
+          {/* Title */}
+          <div className="mb-2 flex items-center gap-3">
+            <Swords className="h-7 w-7 text-amber-400 drop-shadow-[0_0_6px_#f59e0b]" />
+            <h1 className="text-3xl font-extrabold tracking-wide text-amber-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{t("duel.title")}</h1>
           </div>
-        )}
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-muted-foreground">{t("duel.open_rooms")} ({rooms.length})</h2>
-          <button onClick={() => s.emit("duel:list")} className="text-xs text-primary hover:underline">{t("duel.refresh")}</button>
-        </div>
-        <div className="mt-3 space-y-2">
-          {rooms.length === 0 && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{t("duel.no_rooms")}</div>}
-          {rooms.map((r) => (
-            <button key={r.id} onClick={() => joinRoom(r)} disabled={r.count >= r.max}
-              className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50">
-              <Swords className="h-5 w-5 shrink-0 text-primary" />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate font-bold">{r.title}{r.hasPassword && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}</p>
-                <p className="text-xs text-muted-foreground">{t("duel.click_to_join")}</p>
+          <p className="mb-6 text-sm text-amber-200/50">{t("duel.desc")}</p>
+
+          {error && <div className="mb-4 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
+
+          {/* Create room button */}
+          <button onClick={() => setCreating((v) => !v)}
+            className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-base font-bold transition-all hover:scale-[1.02] hover:brightness-110"
+            style={{ background: "linear-gradient(135deg,#8b5e20,#c8a440)", color: "#1a0d03", boxShadow: "0 4px 18px rgba(200,164,64,0.35)" }}>
+            <Plus className="h-5 w-5" /> {t("duel.create_room")}
+          </button>
+
+          {/* Create room form */}
+          {creating && (
+            <div className="mb-5 space-y-3 rounded-xl border p-4 backdrop-blur-sm"
+              style={{ background: "rgba(15,8,2,0.88)", borderColor: "rgba(139,82,32,0.55)" }}>
+              <div>
+                <label className="text-xs font-semibold text-amber-300/70">{t("duel.room_title_label")}</label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={30} placeholder={t("duel.room_title_ph")}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ background: "rgba(8,4,1,0.75)", borderColor: "rgba(139,82,32,0.45)", color: "#e8d8b0" }} />
               </div>
-              <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground"><Users className="h-4 w-4" />{r.count}/{r.max}</span>
-            </button>
-          ))}
+              <div>
+                <label className="text-xs font-semibold text-amber-300/70">{t("duel.password_opt")}</label>
+                <input value={pw} onChange={(e) => setPw(e.target.value)} maxLength={20} type="text"
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ background: "rgba(8,4,1,0.75)", borderColor: "rgba(139,82,32,0.45)", color: "#e8d8b0" }} />
+              </div>
+              <button onClick={createRoom} className="w-full rounded-lg py-2 text-sm font-bold transition-all hover:brightness-110"
+                style={{ background: "linear-gradient(135deg,#8b5e20,#c8a440)", color: "#1a0d03" }}>
+                {t("duel.create")}
+              </button>
+            </div>
+          )}
+
+          {/* Room list header */}
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-amber-300/70">{t("duel.open_rooms")} ({rooms.length})</h2>
+            <button onClick={() => s.emit("duel:list")} className="text-xs text-amber-400 hover:text-amber-300 hover:underline">{t("duel.refresh")}</button>
+          </div>
+
+          {/* Room list */}
+          <div className="space-y-2">
+            {rooms.length === 0 && (
+              <div className="rounded-xl border border-dashed py-10 text-center text-sm text-amber-200/35 backdrop-blur-sm"
+                style={{ borderColor: "rgba(139,82,32,0.3)", background: "rgba(10,5,1,0.5)" }}>
+                {t("duel.no_rooms")}
+              </div>
+            )}
+            {rooms.map((r) => (
+              <button key={r.id} onClick={() => joinRoom(r)} disabled={r.count >= r.max}
+                className="flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ background: "rgba(15,8,2,0.82)", borderColor: "rgba(139,82,32,0.45)", backdropFilter: "blur(4px)" }}>
+                <Swords className="h-5 w-5 shrink-0 text-amber-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 truncate font-bold text-amber-100">
+                    {r.title}{r.hasPassword && <Lock className="h-3.5 w-3.5 text-amber-400/60" />}
+                  </p>
+                  <p className="text-xs text-amber-200/45">{t("duel.click_to_join")}</p>
+                </div>
+                <span className="flex shrink-0 items-center gap-1 text-sm text-amber-300/60">
+                  <Users className="h-4 w-4" />{r.count}/{r.max}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -221,62 +428,88 @@ export default function DuelPage() {
     const isHost = room.hostId === selfId;
     const full = room.players.length >= 2;
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6">
-        <button onClick={leaveRoom} className="mb-4 flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" /> {t("duel.leave")}</button>
-        <div className="mb-1 flex items-center gap-2">
-          <Swords className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">{room.title}</h1>
-          {room.hasPassword && <Lock className="h-4 w-4 text-muted-foreground" />}
-        </div>
-        {error && <div className="my-3 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</div>}
-        <div className="my-5 grid grid-cols-2 gap-3">
-          {[0, 1].map((i) => {
-            const p = room.players[i];
-            return (
-              <div key={i} className={`flex flex-col items-center gap-2 rounded-2xl border p-5 ${p ? "border-primary/40 bg-card" : "border-dashed border-border bg-muted/40"}`}>
-                {p ? (
-                  <>
-                    <PixelSprite type={charById(p.characterId).type} colors={charById(p.characterId).colors} characterId={p.characterId} rarity={charById(p.characterId).rarity} size={56} />
-                    <p className="flex items-center gap-1 text-sm font-bold">{p.socketId === room.hostId && <Crown className="h-3.5 w-3.5 text-amber-500" />}{p.nickname}</p>
-                    {room.phase === "deck" && <p className="text-xs text-muted-foreground">{p.deckId ? `✅ ${p.deckName}` : t("duel.choosing")}</p>}
-                  </>
-                ) : (
-                  <p className="py-6 text-sm text-muted-foreground">{t("duel.waiting_opp")}</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {room.phase === "waiting" ? (
-          isHost ? (
-            <button onClick={() => s.emit("duel:start")} disabled={!full}
-              className="w-full rounded-xl bg-primary py-3 font-bold text-primary-foreground transition-all disabled:cursor-not-allowed disabled:opacity-50">
-              {full ? t("duel.start") : t("duel.waiting_opp")}
-            </button>
-          ) : (
-            <p className="text-center text-sm text-muted-foreground">{t("duel.waiting_host")}</p>
-          )
-        ) : (
-          <div>
-            <p className="mb-3 text-center text-sm font-semibold">{t("duel.choose_deck")}</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {room.decks.map((d) => {
-                const myPick = room.players.find((p) => p.socketId === selfId)?.deckId;
-                const picked = myPick === d.id;
-                const label = ko ? d.name : ja ? d.nameJa : d.nameEn;
-                return (
-                  <button key={d.id} onClick={() => s.emit("duel:deck", { deckId: d.id })}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${picked ? "shadow-lg" : "hover:scale-[1.02]"}`}
-                    style={{ borderColor: picked ? d.color : "var(--border)", background: picked ? `${d.color}1a` : undefined }}>
-                    <PixelSprite type={d.charType as never} colors={{ p: d.color, s: d.color, a: d.color }} characterId={0} rarity="common" size={40} />
-                    <span className="text-sm font-bold" style={{ color: d.color }}>{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-4 text-center text-xs text-muted-foreground">{t("duel.auto_start")}</p>
+      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)]">
+        <TavernBg />
+        <div className="relative z-10 mx-auto max-w-2xl px-4 py-8">
+          {/* Back button */}
+          <button onClick={leaveRoom} className="mb-5 flex items-center gap-1 text-sm font-medium text-amber-300/70 hover:text-amber-200">
+            <ArrowLeft className="h-4 w-4" /> {t("duel.leave")}
+          </button>
+
+          {/* Room title */}
+          <div className="mb-1 flex items-center gap-2">
+            <Swords className="h-5 w-5 text-amber-400" />
+            <h1 className="text-xl font-extrabold text-amber-100">{room.title}</h1>
+            {room.hasPassword && <Lock className="h-4 w-4 text-amber-400/60" />}
           </div>
-        )}
+          {error && <div className="my-3 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
+
+          {/* Players */}
+          <div className="my-5 grid grid-cols-2 gap-3">
+            {[0, 1].map((i) => {
+              const p = room.players[i];
+              return (
+                <div key={i} className="flex flex-col items-center gap-2 rounded-2xl border p-5 backdrop-blur-sm"
+                  style={{
+                    background: p ? "rgba(15,8,2,0.88)" : "rgba(8,4,1,0.55)",
+                    borderColor: p ? "rgba(200,164,64,0.45)" : "rgba(100,60,20,0.3)",
+                    borderStyle: p ? "solid" : "dashed",
+                  }}>
+                  {p ? (
+                    <>
+                      <PixelSprite type={charById(p.characterId).type} colors={charById(p.characterId).colors} characterId={p.characterId} rarity={charById(p.characterId).rarity} size={56} />
+                      <p className="flex items-center gap-1 text-sm font-bold text-amber-100">
+                        {p.socketId === room.hostId && <Crown className="h-3.5 w-3.5 text-amber-400" />}{p.nickname}
+                      </p>
+                      {room.phase === "deck" && (
+                        <p className="flex items-center gap-1 text-xs text-amber-200/55">{p.deckId ? <><Check className="h-3 w-3 text-green-400" />{p.deckName}</> : t("duel.choosing")}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="py-6 text-sm text-amber-200/35">{t("duel.waiting_opp")}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Action area */}
+          {room.phase === "waiting" ? (
+            isHost ? (
+              <button onClick={() => s.emit("duel:start")} disabled={!full}
+                className="w-full rounded-xl py-3 text-base font-bold transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ background: full ? "linear-gradient(135deg,#8b5e20,#c8a440)" : "rgba(60,30,10,0.6)", color: full ? "#1a0d03" : "#a07040", boxShadow: full ? "0 4px 18px rgba(200,164,64,0.3)" : "none" }}>
+                {full ? t("duel.start") : t("duel.waiting_opp")}
+              </button>
+            ) : (
+              <p className="text-center text-sm text-amber-200/45">{t("duel.waiting_host")}</p>
+            )
+          ) : (
+            <div>
+              <p className="mb-3 text-center text-sm font-semibold text-amber-200/70">{t("duel.choose_deck")}</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {room.decks.map((d) => {
+                  const myPick = room.players.find((p) => p.socketId === selfId)?.deckId;
+                  const picked = myPick === d.id;
+                  const label = ko ? d.name : ja ? d.nameJa : d.nameEn;
+                  return (
+                    <button key={d.id} onClick={() => s.emit("duel:deck", { deckId: d.id })}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 backdrop-blur-sm transition-all ${picked ? "shadow-xl" : "hover:scale-[1.02]"}`}
+                      style={{
+                        borderColor: picked ? d.color : "rgba(139,82,32,0.4)",
+                        background: picked ? `${d.color}28` : "rgba(12,6,1,0.82)",
+                        boxShadow: picked ? `0 0 18px ${d.color}44` : "none",
+                      }}>
+                      <PixelSprite type={d.charType as never} colors={{ p: d.color, s: d.color, a: d.color }} characterId={0} rarity="common" size={40} />
+                      <span className="text-sm font-bold" style={{ color: picked ? d.color : "#c8a060" }}>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-4 text-center text-xs text-amber-200/40">{t("duel.auto_start")}</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -304,7 +537,7 @@ export default function DuelPage() {
           <span key={battle.yourTurn ? "your" : "opp"}
             className={`rounded-full px-4 py-1 text-sm font-bold tracking-wide ${battle.yourTurn ? "bg-primary text-primary-foreground" : "bg-slate-700 text-slate-300"}`}
             style={{ animation: "d-turn-in 0.3s ease-out", boxShadow: battle.yourTurn ? "0 0 14px var(--primary)" : "none" }}>
-            {battle.yourTurn ? `⚔ ${t("duel.your_turn")} · ${timeLeft}s` : `🛡 ${t("duel.opp_turn")}`}
+            {battle.yourTurn ? <><Swords className="inline h-3.5 w-3.5 mr-1" />{t("duel.your_turn")} · {timeLeft}s</> : <><Shield className="inline h-3.5 w-3.5 mr-1" />{t("duel.opp_turn")}</>}
           </span>
         ) : <span className="text-sm text-slate-400">—</span>}
         <span className="flex items-center gap-1 text-xs text-slate-400"><Swords className="h-4 w-4" />1:1</span>
@@ -458,7 +691,7 @@ export default function DuelPage() {
             background: battle.yourTurn && !over ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#334155",
             boxShadow: battle.yourTurn && !over ? "0 0 16px #22c55e55" : "none",
           }}>
-          {t("duel.end_turn")} {battle.yourTurn && !over ? "▶" : ""}
+          {t("duel.end_turn")} {battle.yourTurn && !over ? <ChevronRight className="inline h-4 w-4" /> : null}
         </button>
       </div>
 

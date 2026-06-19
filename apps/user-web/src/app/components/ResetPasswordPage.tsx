@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router";
-import { Wallet, Lock, ShieldCheck } from "lucide-react";
+import { Wallet, Lock, ShieldCheck, ArrowLeft } from "lucide-react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
 
@@ -154,7 +154,7 @@ export default function ResetPasswordPage() {
 
           <div className="mt-6 text-center">
             <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              ← {t("login.submit")} 페이지로 돌아가기
+              <ArrowLeft className="inline h-4 w-4 mr-1" />{t("login.submit")} 페이지로 돌아가기
             </Link>
           </div>
         </div>
