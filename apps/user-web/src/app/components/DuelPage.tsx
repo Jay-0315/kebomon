@@ -41,12 +41,9 @@ const DUEL_CSS = `
 @keyframes d-glow{0%,100%{opacity:1}50%{opacity:0.4}}
 `;
 
-function TavernBg() {
+function TavernBanner() {
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden>
-      <style>{DUEL_CSS}</style>
-      {/* Warm dark base */}
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#0d0702 0%,#1c0f05 55%,#0a0502 100%)" }} />
+    <div style={{ position: "relative", height: 260, overflow: "hidden", background: "linear-gradient(180deg,#0d0702 0%,#1c0f05 55%,#0a0502 100%)", borderBottom: "2px solid #3d1e08", pointerEvents: "none" }} aria-hidden>
 
       {/* Pixel art tavern scene */}
       <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMax meet"
@@ -207,9 +204,10 @@ function TavernBg() {
       <div style={{position:"absolute",inset:0,background:"radial-gradient(circle 130px at 94% 32%,rgba(255,140,20,0.2) 0%,transparent 70%)",animation:"d-glow 2.3s ease-in-out infinite",animationDelay:"0.6s"}}/>
       {/* Lantern glow */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 180px 140px at 50% 20%,rgba(255,150,20,0.15) 0%,transparent 70%)",animation:"d-glow 1.6s ease-in-out infinite",animationDelay:"0.2s"}}/>
-      {/* Vignettes */}
+      {/* Side vignette */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 110% 70% at 50% 50%,transparent 40%,rgba(5,2,1,0.7) 100%)"}}/>
-      <div style={{position:"absolute",top:0,left:0,right:0,height:"25%",background:"linear-gradient(180deg,rgba(5,2,1,0.75) 0%,transparent 100%)"}}/>
+      {/* Bottom fade into page background */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:90,background:"linear-gradient(to bottom,transparent,#0f0701)"}}/>
     </div>
   );
 }
@@ -345,10 +343,10 @@ export default function DuelPage() {
   // ───────── LOBBY ─────────
   if (!room) {
     return (
-      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)] flex flex-col">
-        <TavernBg />
-        <div className="relative z-10 mt-auto mx-auto w-full max-w-2xl px-4 pb-8 pt-6"
-          style={{ background: "linear-gradient(to bottom, transparent, rgba(10,5,1,0.72) 18%, rgba(10,5,1,0.88))", borderRadius: "24px 24px 0 0" }}>
+      <div className="-m-4 sm:-m-6" style={{ background: "#0f0701", minHeight: "calc(100dvh - 3.5rem)" }}>
+        <style>{DUEL_CSS}</style>
+        <TavernBanner />
+        <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
           {/* Title */}
           <div className="mb-1 flex items-center gap-3">
             <Swords className="h-7 w-7 text-amber-400 drop-shadow-[0_0_6px_#f59e0b]" />
@@ -429,10 +427,10 @@ export default function DuelPage() {
     const isHost = room.hostId === selfId;
     const full = room.players.length >= 2;
     return (
-      <div className="relative -m-4 sm:-m-6 min-h-[calc(100dvh-3.5rem)] flex flex-col">
-        <TavernBg />
-        <div className="relative z-10 mt-auto mx-auto w-full max-w-2xl px-4 pb-8 pt-6"
-          style={{ background: "linear-gradient(to bottom, transparent, rgba(10,5,1,0.72) 18%, rgba(10,5,1,0.88))", borderRadius: "24px 24px 0 0" }}>
+      <div className="-m-4 sm:-m-6" style={{ background: "#0f0701", minHeight: "calc(100dvh - 3.5rem)" }}>
+        <style>{DUEL_CSS}</style>
+        <TavernBanner />
+        <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
           {/* Back button */}
           <button onClick={leaveRoom} className="mb-5 flex items-center gap-1 text-sm font-medium text-amber-300/70 hover:text-amber-200">
             <ArrowLeft className="h-4 w-4" /> {t("duel.leave")}
