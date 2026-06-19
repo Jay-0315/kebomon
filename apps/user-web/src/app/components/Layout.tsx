@@ -280,6 +280,13 @@ export default function Layout() {
             onNav={onNav}
           />
           <NavLink
+            to="/duel"
+            icon={Swords}
+            label={t("nav.duel")}
+            sub
+            onNav={onNav}
+          />
+          <NavLink
             to="/expedition"
             icon={Map}
             label={t("nav.expedition")}
@@ -485,7 +492,7 @@ export default function Layout() {
           </div>
         )}
 
-        {!["/colosseum", "/raid", "/rogue"].includes(location.pathname) && (
+        {!["/colosseum", "/raid", "/rogue", "/duel"].includes(location.pathname) && (
           <NotificationBell floating />
         )}
 

@@ -74,3 +74,21 @@ export function disconnectBattleSocket() {
   _battleSocket?.disconnect();
   _battleSocket = null;
 }
+
+let _duelSocket: Socket | null = null;
+
+export function getDuelSocket(): Socket {
+  if (!_duelSocket) {
+    _duelSocket = io(`${socketBase()}/duel`, {
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+      autoConnect: true,
+    });
+  }
+  return _duelSocket;
+}
+
+export function disconnectDuelSocket() {
+  _duelSocket?.disconnect();
+  _duelSocket = null;
+}
