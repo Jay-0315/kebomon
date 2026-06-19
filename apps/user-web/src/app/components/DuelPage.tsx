@@ -41,13 +41,22 @@ const DUEL_CSS = `
 @keyframes d-glow{0%,100%{opacity:1}50%{opacity:0.4}}
 `;
 
-function TavernBanner() {
+function TavernBanner({ title, desc }: { title: string; desc: string }) {
   return (
-    <div style={{ position: "relative", height: "clamp(180px, 25vw, 280px)", overflow: "hidden", background: "linear-gradient(180deg,#0d0702 0%,#1c0f05 55%,#0a0502 100%)", borderBottom: "2px solid #3d1e08", pointerEvents: "none" }} aria-hidden>
+    <div style={{ position: "relative", background: "linear-gradient(180deg,#1c0d03 0%,#2a1508 55%,#1a0d02 100%)", borderBottom: "2px solid #5a2e0a", padding: "16px 16px 18px", textAlign: "center", boxShadow: "0 4px 24px rgba(180,80,0,0.2)", overflow: "hidden" }}>
+      {/* Brick texture overlay */}
+      <div style={{ position:"absolute", inset:0, opacity:0.04, pointerEvents:"none", backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 11px,rgba(255,210,160,1) 11px,rgba(255,210,160,1) 12px),repeating-linear-gradient(90deg,transparent,transparent 19px,rgba(255,210,160,0.3) 19px,rgba(255,210,160,0.3) 20px)" }}/>
+      {/* Warm radial glow */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"radial-gradient(ellipse 70% 50% at 50% 100%,rgba(200,100,20,0.1) 0%,transparent 70%)" }}/>
+      {/* Left torch glow */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"radial-gradient(circle 100px at 8% 55%,rgba(255,140,20,0.18) 0%,transparent 70%)", animation:"d-glow 2.1s ease-in-out infinite" }}/>
+      {/* Right torch glow */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"radial-gradient(circle 100px at 92% 55%,rgba(255,140,20,0.18) 0%,transparent 70%)", animation:"d-glow 2.3s ease-in-out infinite", animationDelay:"0.6s" }}/>
 
-      {/* Pixel art tavern scene */}
-      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", imageRendering: "pixelated" }}>
+      {/* Centered pixel art tavern scene */}
+      <div style={{ display:"flex", justifyContent:"center", marginBottom:10, position:"relative", zIndex:1 }}>
+        <svg viewBox="0 0 320 200" width={280} height={175}
+          style={{ maxWidth:"90%", height:"auto", imageRendering:"pixelated", display:"block" }}>
         <defs>
           <pattern id="tv-bricks" width="40" height="30" patternUnits="userSpaceOnUse">
             <rect width="40" height="30" fill="#130903"/>
@@ -197,17 +206,23 @@ function TavernBanner() {
         <rect x="173" y="125" width="3" height="4" fill="#ffcc40" style={{animation:"d-flicker 0.6s ease-in-out infinite",animationDelay:"0.1s"}}/>
         <rect x="174" y="123" width="1" height="4" fill="#ffee90" style={{animation:"d-flicker 0.5s ease-in-out infinite"}}/>
         <rect x="170" y="140" width="11" height="3" fill="#5a5028"/>
-      </svg>
+        </svg>
+      </div>
 
-      {/* ── Torch glow overlays ── */}
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle 130px at 6% 32%,rgba(255,140,20,0.2) 0%,transparent 70%)",animation:"d-glow 2.1s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle 130px at 94% 32%,rgba(255,140,20,0.2) 0%,transparent 70%)",animation:"d-glow 2.3s ease-in-out infinite",animationDelay:"0.6s"}}/>
-      {/* Lantern glow */}
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 180px 140px at 50% 20%,rgba(255,150,20,0.15) 0%,transparent 70%)",animation:"d-glow 1.6s ease-in-out infinite",animationDelay:"0.2s"}}/>
-      {/* Side vignette */}
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 110% 70% at 50% 50%,transparent 40%,rgba(5,2,1,0.7) 100%)"}}/>
-      {/* Bottom fade into page background */}
-      <div style={{position:"absolute",bottom:0,left:0,right:0,height:60,background:"linear-gradient(to bottom,transparent,#0f0701)"}}/>
+      {/* Title */}
+      <div style={{ position:"relative", zIndex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginBottom:5 }}>
+        <Swords style={{ width:18, height:18, color:"#f59e0b", filter:"drop-shadow(0 0 4px #f59e0b)" }} />
+        <h1 style={{ margin:0, fontFamily:"'Courier New',monospace", fontSize:22, fontWeight:900, letterSpacing:"0.14em", color:"#fef3c7", textShadow:"0 0 16px #92400e, 2px 2px 0 #1a0d02, -1px -1px 0 #1a0d02" }}>{title}</h1>
+        <Swords style={{ width:18, height:18, color:"#f59e0b", filter:"drop-shadow(0 0 4px #f59e0b)" }} />
+      </div>
+      {/* Separator */}
+      <div style={{ position:"relative", zIndex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:4 }}>
+        <div style={{ height:1, width:40, background:"linear-gradient(90deg,transparent,#92400e88)" }}/>
+        <span style={{ fontSize:11, color:"#b45309", opacity:0.7 }}>✦</span>
+        <div style={{ height:1, width:40, background:"linear-gradient(90deg,#92400e88,transparent)" }}/>
+      </div>
+      {/* Desc */}
+      <p style={{ position:"relative", zIndex:1, margin:0, fontSize:11, letterSpacing:"0.04em", color:"rgba(251,191,36,0.45)", fontFamily:"'Courier New',monospace" }}>{desc}</p>
     </div>
   );
 }
@@ -345,15 +360,8 @@ export default function DuelPage() {
     return (
       <div className="-m-4 sm:-m-6" style={{ background: "#0f0701", minHeight: "calc(100dvh - 3.5rem)" }}>
         <style>{DUEL_CSS}</style>
-        <TavernBanner />
+        <TavernBanner title={t("duel.title")} desc={t("duel.desc")} />
         <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
-          {/* Title */}
-          <div className="mb-1 flex items-center gap-3">
-            <Swords className="h-7 w-7 text-amber-400 drop-shadow-[0_0_6px_#f59e0b]" />
-            <h1 className="text-3xl font-extrabold tracking-wide text-amber-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{t("duel.title")}</h1>
-          </div>
-          <p className="mb-5 text-sm text-amber-200/50">{t("duel.desc")}</p>
-
           {error && <div className="mb-4 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
 
           {/* Create room button */}
@@ -429,19 +437,14 @@ export default function DuelPage() {
     return (
       <div className="-m-4 sm:-m-6" style={{ background: "#0f0701", minHeight: "calc(100dvh - 3.5rem)" }}>
         <style>{DUEL_CSS}</style>
-        <TavernBanner />
-        <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
+        <TavernBanner title={room.title} desc={t("duel.title")} />
+        <div className="mx-auto max-w-2xl px-4 pb-10 pt-4">
           {/* Back button */}
-          <button onClick={leaveRoom} className="mb-5 flex items-center gap-1 text-sm font-medium text-amber-300/70 hover:text-amber-200">
+          <button onClick={leaveRoom} className="mb-4 flex items-center gap-1 text-sm font-medium text-amber-300/70 hover:text-amber-200">
             <ArrowLeft className="h-4 w-4" /> {t("duel.leave")}
           </button>
 
-          {/* Room title */}
-          <div className="mb-1 flex items-center gap-2">
-            <Swords className="h-5 w-5 text-amber-400" />
-            <h1 className="text-xl font-extrabold text-amber-100">{room.title}</h1>
-            {room.hasPassword && <Lock className="h-4 w-4 text-amber-400/60" />}
-          </div>
+          {room.hasPassword && <div className="mb-3 flex items-center gap-1 text-xs text-amber-400/60"><Lock className="h-3.5 w-3.5" />{ko ? "비밀번호 방" : ja ? "パスワード部屋" : "Password room"}</div>}
           {error && <div className="my-3 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
 
           {/* Players */}
