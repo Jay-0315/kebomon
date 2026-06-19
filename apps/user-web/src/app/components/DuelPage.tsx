@@ -43,11 +43,11 @@ const DUEL_CSS = `
 
 function TavernBanner() {
   return (
-    <div style={{ position: "relative", height: 260, overflow: "hidden", background: "linear-gradient(180deg,#0d0702 0%,#1c0f05 55%,#0a0502 100%)", borderBottom: "2px solid #3d1e08", pointerEvents: "none" }} aria-hidden>
+    <div style={{ position: "relative", height: "clamp(180px, 25vw, 280px)", overflow: "hidden", background: "linear-gradient(180deg,#0d0702 0%,#1c0f05 55%,#0a0502 100%)", borderBottom: "2px solid #3d1e08", pointerEvents: "none" }} aria-hidden>
 
       {/* Pixel art tavern scene */}
-      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMax meet"
-        style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%", imageRendering: "pixelated" }}>
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", imageRendering: "pixelated" }}>
         <defs>
           <pattern id="tv-bricks" width="40" height="30" patternUnits="userSpaceOnUse">
             <rect width="40" height="30" fill="#130903"/>
@@ -207,7 +207,7 @@ function TavernBanner() {
       {/* Side vignette */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 110% 70% at 50% 50%,transparent 40%,rgba(5,2,1,0.7) 100%)"}}/>
       {/* Bottom fade into page background */}
-      <div style={{position:"absolute",bottom:0,left:0,right:0,height:90,background:"linear-gradient(to bottom,transparent,#0f0701)"}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:60,background:"linear-gradient(to bottom,transparent,#0f0701)"}}/>
     </div>
   );
 }
