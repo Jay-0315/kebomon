@@ -65,9 +65,9 @@ export class AuthService {
     });
 
     if (dto.purpose === "SIGNUP") {
-      await this.emailService.sendVerificationCode(dto.email, code);
+      await this.emailService.sendVerificationCode(dto.email, code, dto.lang);
     } else {
-      await this.emailService.sendPasswordResetCode(dto.email, code);
+      await this.emailService.sendPasswordResetCode(dto.email, code, dto.lang);
     }
 
     return { message: "인증번호가 발송됐습니다." };

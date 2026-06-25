@@ -25,6 +25,13 @@ function LangSwitcher() {
       >
         日本語
       </button>
+      <span className="text-border">|</span>
+      <button
+        onClick={() => void updateSettings({ language: "en" })}
+        className={`px-2 py-0.5 rounded transition-colors ${lang === "en" ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+      >
+        English
+      </button>
     </div>
   );
 }
@@ -42,7 +49,7 @@ type AuthResponse = {
 };
 
 export default function SignupPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -65,6 +72,7 @@ export default function SignupPage() {
       await api.post("/auth/send-verification", {
         email: formData.email,
         purpose: "SIGNUP",
+        lang,
       });
       setCodeSent(true);
       setVerificationCode("");

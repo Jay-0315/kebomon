@@ -23,7 +23,7 @@ type AuthResponse = {
   /* 비밀번호 찾기 모달 */
 }
 function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -36,6 +36,7 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
       await api.post("/auth/send-verification", {
         email,
         purpose: "RESET_PASSWORD",
+        lang,
       });
       onClose();
       navigate(`/reset-password?email=${encodeURIComponent(email)}`);
