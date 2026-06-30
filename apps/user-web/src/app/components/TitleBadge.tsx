@@ -37,7 +37,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
     border: isSeasonNeon
       ? "1.5px solid rgba(0,160,255,0.45)"
       : isSeasonFire
-      ? "1.5px solid rgba(255,140,0,0.5)"
+      ? "1.5px solid rgba(255,60,0,0.6)"
       : isLimited
       ? "1.5px solid rgba(180,120,0,0.55)"
       : undefined,
@@ -121,7 +121,7 @@ function LimitedAnimatedText({ text, size }: { text: string; size: "xs" | "sm" |
   );
 }
 
-// 시즌2 한정 칭호: 주황+금+노랑 파이어 스타일
+// 시즌2 한정 칭호: 진한 불꽃 스타일 (빨강→주황→노랑→흰빛)
 function SeasonFireText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
   const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
   return (
@@ -129,7 +129,7 @@ function SeasonFireText({ text, size }: { text: string; size: "xs" | "sm" | "md"
       style={{
         fontSize,
         fontWeight: 700,
-        background: "linear-gradient(90deg, #3a1000, #c05000, #ff8c00, #ffd700, #fff5a0, #ffd700, #ff8c00, #c05000, #3a1000)",
+        background: "linear-gradient(90deg, #ff2200, #ff6600, #ffaa00, #ffdd00, #ffffff, #ffdd00, #ffaa00, #ff6600, #ff2200)",
         backgroundSize: "300% auto",
         WebkitBackgroundClip: "text",
         backgroundClip: "text",
