@@ -35,7 +35,7 @@ export const TITLE_GLOW: Record<TitleGrade, string> = {
   epic:      "0 0 8px rgba(192, 132, 252, 0.9), 0 0 16px rgba(192, 132, 252, 0.5)",
   legendary: "0 0 10px rgba(251, 191, 36, 1), 0 0 20px rgba(251, 191, 36, 0.6), 0 0 40px rgba(251, 191, 36, 0.3)",
   mythic:    "0 0 12px rgba(255, 128, 171, 1), 0 0 24px rgba(206, 147, 216, 0.8), 0 0 48px rgba(128, 222, 234, 0.5)",
-  limited:   "0 0 10px rgba(255,215,0,1), 0 0 22px rgba(221,160,255,0.8), 0 0 44px rgba(255,215,0,0.5)",
+  limited:   "0 0 8px rgba(255,215,0,1), 0 0 18px rgba(180,0,0,0.8), 0 0 36px rgba(90,0,150,0.55)",
 };
 
 export const TITLE_GRADE_BG: Record<TitleGrade, string> = {
@@ -44,7 +44,7 @@ export const TITLE_GRADE_BG: Record<TitleGrade, string> = {
   epic:      "rgba(192, 132, 252, 0.12)",
   legendary: "rgba(251, 191, 36, 0.12)",
   mythic:    "rgba(255, 128, 171, 0.15)",
-  limited:   "rgba(255, 215, 0, 0.13)",
+  limited:   "rgba(12, 2, 22, 0.88)",
 };
 
 export const TITLES: TitleDef[] = [

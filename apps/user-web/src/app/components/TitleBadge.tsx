@@ -12,7 +12,6 @@ interface TitleBadgeProps {
 }
 
 const MYTHIC_COLORS = ["#FF80AB", "#CE93D8", "#80DEEA", "#FFD54F", "#FF80AB"];
-const LIMITED_COLORS = ["#FFD700", "#FFFACD", "#DDA0FF", "#B8E8FF", "#FFD700", "#FFF8DC"];
 
 export default function TitleBadge({ titleId, size = "sm", showGrade = false }: TitleBadgeProps) {
   const { t } = useLang();
@@ -30,7 +29,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const baseStyle: React.CSSProperties = {
     backgroundColor: TITLE_GRADE_BG[grade],
     borderRadius: "4px",
-    border: isLimited ? "1px solid rgba(255,215,0,0.35)" : undefined,
+    border: isLimited ? "1.5px solid rgba(180,120,0,0.55)" : undefined,
     display: "inline-flex",
     alignItems: "center",
     gap: size === "xs" ? "2px" : "4px",
@@ -85,7 +84,7 @@ function MythicAnimatedText({ text, size }: { text: string; size: "xs" | "sm" | 
   );
 }
 
-// 한정 등급: 골드-프리즘 shimmer — 신화와 구별되는 금빛 홀로그래픽 효과
+// 한정 등급: 카제로스 스타일 — 어비스 어둠 속에서 황금 에너지가 흐르고 붉은 카오스 글로우가 맥동
 function LimitedAnimatedText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
   const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
   return (
@@ -93,14 +92,13 @@ function LimitedAnimatedText({ text, size }: { text: string; size: "xs" | "sm" |
       style={{
         fontSize,
         fontWeight: 700,
-        background: `linear-gradient(90deg, ${LIMITED_COLORS.join(", ")})`,
-        backgroundSize: "200% auto",
+        background: "linear-gradient(90deg, #0d001a, #4a0040, #8B0000, #C8920A, #FFD700, #FFF5C3, #FFD700, #C8920A, #8B0000, #4a0040, #0d001a)",
+        backgroundSize: "300% auto",
         WebkitBackgroundClip: "text",
         backgroundClip: "text",
         WebkitTextFillColor: "transparent",
         color: "transparent",
-        animation: "limitedPrism 4s linear infinite",
-        filter: "drop-shadow(0 0 5px rgba(255,215,0,1)) drop-shadow(0 0 10px rgba(221,160,255,0.7))",
+        animation: "limitedGold 5s linear infinite, limitedAura 2.8s ease-in-out infinite",
       }}
     >
       {text}

@@ -509,13 +509,19 @@ export default function Layout() {
             isSidebarCollapsed ? "lg:ml-0" : "lg:ml-56"
           }`}
         >
-          <div
-            key={location.key}
-            className="p-4 sm:p-6 min-h-[calc(100vh-3.5rem)] lg:min-h-screen"
-          >
-            <Outlet />
-          </div>
-          <Footer />
+          {["/colosseum", "/raid", "/rogue", "/duel"].includes(location.pathname) ? (
+            <div key={location.key}><Outlet /></div>
+          ) : (
+            <>
+              <div
+                key={location.key}
+                className="p-4 sm:p-6 min-h-[calc(100vh-3.5rem)] lg:min-h-screen"
+              >
+                <Outlet />
+              </div>
+              <Footer />
+            </>
+          )}
         </main>
       </div>
     </>

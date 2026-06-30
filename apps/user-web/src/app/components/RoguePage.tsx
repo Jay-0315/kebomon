@@ -3117,12 +3117,8 @@ function CardView({
         flexDirection: "column",
         overflow: "hidden",
         opacity: canPlay ? 1 : 0.45,
-        transform: selected
-          ? "translateY(-10px)"
-          : canPlay
-            ? "translateY(0)"
-            : undefined,
-        transition: "transform 0.12s, box-shadow 0.12s",
+        transform: canPlay ? "translateY(0)" : undefined,
+        transition: "box-shadow 0.12s",
         flexShrink: 0,
         fontFamily: FONT,
       }}
@@ -9140,7 +9136,6 @@ export default function RoguePage() {
           onPointerDown={(e) => {
             if (!handScrollRef.current) return;
             handDragRef.current = { isDown: true, startX: e.clientX, scrollLeft: handScrollRef.current.scrollLeft, moved: false, justDragged: false };
-            handScrollRef.current.setPointerCapture(e.pointerId);
             (e.currentTarget as HTMLDivElement).classList.add("dragging");
           }}
           onPointerMove={(e) => {
@@ -9170,7 +9165,7 @@ export default function RoguePage() {
             </p>
           ) : (
             gs.hand.map((card, i) => (
-              <div key={card.uid} className="rogue-card-hover">
+              <div key={card.uid} className="rogue-card-hover" style={{ marginBottom: selIdx === i ? 10 : 0, transition: "margin-bottom 0.12s" }}>
                 <CardView
                   card={card}
                   canPlay={gs.energy >= card.cost}
