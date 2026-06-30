@@ -42,8 +42,19 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   { titleId: 38, type: "col_streak",  value: 10 },
   { titleId: 39, type: "col_points",  value: 4000 },
   { titleId: 40, type: "col_wins",    value: 150 },
-  { titleId: 41, type: "col_streak",  value: 15 },
-  { titleId: 42, type: "col_points",  value: 8000 },
+  { titleId: 41, type: "col_streak",     value: 15 },
+  { titleId: 42, type: "col_points",     value: 8000 },
+  // 로그라이크 / 원정 칭호
+  { titleId: 48, type: "rogue_clears",   value: 1 },
+  { titleId: 49, type: "expedition_count", value: 1 },
+  { titleId: 50, type: "rogue_clears",   value: 3 },
+  { titleId: 51, type: "expedition_count", value: 5 },
+  { titleId: 52, type: "rogue_clears",   value: 10 },
+  { titleId: 53, type: "expedition_count", value: 20 },
+  { titleId: 54, type: "rogue_clears",   value: 25 },
+  { titleId: 55, type: "expedition_count", value: 50 },
+  { titleId: 56, type: "rogue_clears",   value: 50 },
+  { titleId: 57, type: "expedition_count", value: 100 },
 ];
 
 // Character rarity duplicate point values (mirrors frontend constants)
@@ -706,10 +717,16 @@ export class RewardsService {
     });
 
     const todayKTC = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+    const yesterdayKTC = new Date(Date.now() + 9 * 3_600_000 - 86_400_000).toISOString().slice(0, 10);
+    // 오늘 또는 어제 출석한 경우에만 연속 기록 유효 — 그 외엔 0
+    const effectiveStreak =
+      reward.lastAttendanceDate === todayKTC || reward.lastAttendanceDate === yesterdayKTC
+        ? reward.streakDays
+        : 0;
     return {
       attendanceDays: reward.attendanceDays,
       missionPoints: reward.missionPoints,
-      streakDays: reward.streakDays,
+      streakDays: effectiveStreak,
       equippedCharacterId: reward.equippedCharacterId,
       equippedTitleId: reward.equippedTitleId,
       equippedBorderId: reward.equippedBorderId,

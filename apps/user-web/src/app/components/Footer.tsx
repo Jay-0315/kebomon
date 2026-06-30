@@ -142,7 +142,7 @@ function FooterContent() {
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>한국어 / 日本語 / English</span>
               <span>·</span>
-              <span>v0.9.1</span>
+              <span>v1.0</span>
             </div>
           </div>
         </div>
