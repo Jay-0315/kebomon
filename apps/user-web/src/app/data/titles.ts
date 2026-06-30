@@ -8,7 +8,8 @@ export interface TitleDef {
   conditionType: TitleConditionType;
   conditionValue: number;
   description: string;
-  hidden?: boolean; // 보유 시에만 목록에 표시 (업적 획득방법 비공개)
+  hidden?: boolean;
+  variant?: "season_neon"; // 시즌 한정 네온 스타일
 }
 
 export const TITLE_GRADE_LABEL: Record<TitleGrade, string> = {
@@ -92,10 +93,10 @@ export const TITLES: TitleDef[] = [
   { id: 41, name: "불멸의 연승",     grade: "mythic",    conditionType: "col_streak",  conditionValue: 15,    description: "15연승 달성" },
   { id: 42, name: "챌린저",          grade: "mythic",    conditionType: "col_points",  conditionValue: 8000,  description: "콜로세움 8000pts 달성" },
   // ── 시즌 랭킹 칭호 (한정) ──
-  { id: 43, name: "시즌1 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 1 최종 1위 달성",    hidden: true },
-  { id: 44, name: "시즌1 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성",    hidden: true },
-  { id: 45, name: "시즌1 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성",    hidden: true },
-  { id: 46, name: "시즌1 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성", hidden: true },
+  { id: 43, name: "시즌1 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 1 최종 1위 달성",    hidden: true, variant: "season_neon" },
+  { id: 44, name: "시즌1 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성",    hidden: true, variant: "season_neon" },
+  { id: 45, name: "시즌1 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성",    hidden: true, variant: "season_neon" },
+  { id: 46, name: "시즌1 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성", hidden: true, variant: "season_neon" },
   { id: 58, name: "시즌2 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 2 최종 1위 달성",    hidden: true },
   { id: 59, name: "시즌2 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 2 최종 2위 달성",    hidden: true },
   { id: 60, name: "시즌2 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 2 최종 3위 달성",    hidden: true },

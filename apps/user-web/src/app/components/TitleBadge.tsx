@@ -18,18 +18,23 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const title = TITLE_BY_ID.get(titleId);
   if (!title) return null;
 
-  const { grade } = title;
+  const { grade, variant } = title;
   const name = t(`title.${titleId}.name` as TranslationKey);
   const isMythic = grade === "mythic";
   const isLimited = grade === "limited";
+  const isSeasonNeon = isLimited && variant === "season_neon";
 
   const fontSizeClass = size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm";
   const paddingClass = size === "xs" ? "px-1 py-px" : size === "sm" ? "px-1.5 py-0.5" : "px-2 py-1";
 
   const baseStyle: React.CSSProperties = {
-    backgroundColor: TITLE_GRADE_BG[grade],
+    backgroundColor: isSeasonNeon ? "rgba(0,20,50,0.88)" : TITLE_GRADE_BG[grade],
     borderRadius: "4px",
-    border: isLimited ? "1.5px solid rgba(180,120,0,0.55)" : undefined,
+    border: isSeasonNeon
+      ? "1.5px solid rgba(0,160,255,0.45)"
+      : isLimited
+      ? "1.5px solid rgba(180,120,0,0.55)"
+      : undefined,
     display: "inline-flex",
     alignItems: "center",
     gap: size === "xs" ? "2px" : "4px",
@@ -47,6 +52,8 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
     <span style={baseStyle} className={`${fontSizeClass} ${paddingClass}`}>
       {isMythic ? (
         <MythicAnimatedText text={name} size={size} />
+      ) : isSeasonNeon ? (
+        <SeasonNeonText text={name} size={size} />
       ) : isLimited ? (
         <LimitedAnimatedText text={name} size={size} />
       ) : (
@@ -99,6 +106,28 @@ function LimitedAnimatedText({ text, size }: { text: string; size: "xs" | "sm" |
         WebkitTextFillColor: "transparent",
         color: "transparent",
         animation: "limitedGold 5s linear infinite, limitedAura 2.8s ease-in-out infinite",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+// 시즌 한정 칭호: 파란 네온 글로우 스타일
+function SeasonNeonText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
+  const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
+  return (
+    <span
+      style={{
+        fontSize,
+        fontWeight: 700,
+        background: "linear-gradient(90deg, #001a40, #0060c0, #00b4ff, #c0e8ff, #ffffff, #c0e8ff, #00b4ff, #0060c0, #001a40)",
+        backgroundSize: "300% auto",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        color: "transparent",
+        animation: "seasonNeonShimmer 4s linear infinite, seasonNeonGlow 2.4s ease-in-out infinite",
       }}
     >
       {text}
