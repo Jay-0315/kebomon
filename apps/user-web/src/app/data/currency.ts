@@ -1,4 +1,4 @@
-import type { CountryOption, CurrencyCode, ExchangeRate } from "../types/domain";
+import type { CountryOption, ExchangeRate } from "../types/domain";
 
 export const countries: CountryOption[] = [
   { code: "KR", name: "대한민국", currency: "KRW", flag: "🇰🇷" },
@@ -14,30 +14,4 @@ export const exchangeRates: ExchangeRate[] = [
 
 export function getCountryByCode(code: string) {
   return countries.find((country) => country.code === code) ?? countries[0];
-}
-
-export function getCurrencySymbol(currency: CurrencyCode) {
-  switch (currency) {
-    case "KRW":
-      return "₩";
-    case "JPY":
-      return "¥";
-  }
-}
-
-export function getExchangeRate(
-  from: CurrencyCode,
-  to: CurrencyCode,
-  rates: ExchangeRate[],
-) {
-  const rate = rates.find((item) => item.from === from && item.to === to);
-  return rate?.rate ?? 1;
-}
-
-export function formatCurrency(amount: number, currency: CurrencyCode) {
-  return new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
 }

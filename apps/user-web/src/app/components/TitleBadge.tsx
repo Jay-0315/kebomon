@@ -11,7 +11,6 @@ interface TitleBadgeProps {
   showGrade?: boolean;
 }
 
-const MYTHIC_COLORS = ["#FF80AB", "#CE93D8", "#80DEEA", "#FFD54F", "#FF80AB"];
 
 export default function TitleBadge({ titleId, size = "sm", showGrade = false }: TitleBadgeProps) {
   const { t } = useLang();
@@ -23,15 +22,22 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const isMythic = grade === "mythic";
   const isLimited = grade === "limited";
   const isSeasonNeon = isLimited && variant === "season_neon";
+  const isSeasonFire = isLimited && variant === "season_fire";
 
   const fontSizeClass = size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm";
   const paddingClass = size === "xs" ? "px-1 py-px" : size === "sm" ? "px-1.5 py-0.5" : "px-2 py-1";
 
   const baseStyle: React.CSSProperties = {
-    backgroundColor: isSeasonNeon ? "rgba(0,20,50,0.88)" : TITLE_GRADE_BG[grade],
+    backgroundColor: isSeasonNeon
+      ? "rgba(0,20,50,0.88)"
+      : isSeasonFire
+      ? "rgba(30,10,0,0.88)"
+      : TITLE_GRADE_BG[grade],
     borderRadius: "4px",
     border: isSeasonNeon
       ? "1.5px solid rgba(0,160,255,0.45)"
+      : isSeasonFire
+      ? "1.5px solid rgba(255,140,0,0.5)"
       : isLimited
       ? "1.5px solid rgba(180,120,0,0.55)"
       : undefined,
@@ -54,6 +60,8 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
         <MythicAnimatedText text={name} size={size} />
       ) : isSeasonNeon ? (
         <SeasonNeonText text={name} size={size} />
+      ) : isSeasonFire ? (
+        <SeasonFireText text={name} size={size} />
       ) : isLimited ? (
         <LimitedAnimatedText text={name} size={size} />
       ) : (
@@ -113,7 +121,29 @@ function LimitedAnimatedText({ text, size }: { text: string; size: "xs" | "sm" |
   );
 }
 
-// 시즌 한정 칭호: 파란 네온 글로우 스타일
+// 시즌2 한정 칭호: 주황+금+노랑 파이어 스타일
+function SeasonFireText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
+  const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
+  return (
+    <span
+      style={{
+        fontSize,
+        fontWeight: 700,
+        background: "linear-gradient(90deg, #3a1000, #c05000, #ff8c00, #ffd700, #fff5a0, #ffd700, #ff8c00, #c05000, #3a1000)",
+        backgroundSize: "300% auto",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        color: "transparent",
+        animation: "seasonFireShimmer 4s linear infinite, seasonFireGlow 2.4s ease-in-out infinite",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+// 시즌1 한정 칭호: 파란 네온 글로우 스타일
 function SeasonNeonText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
   const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
   return (

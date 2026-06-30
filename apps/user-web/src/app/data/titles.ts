@@ -9,17 +9,9 @@ export interface TitleDef {
   conditionValue: number;
   description: string;
   hidden?: boolean;
-  variant?: "season_neon"; // 시즌 한정 네온 스타일
+  variant?: "season_neon" | "season_fire"; // 시즌 한정 스타일
 }
 
-export const TITLE_GRADE_LABEL: Record<TitleGrade, string> = {
-  common:    "일반",
-  rare:      "희귀",
-  epic:      "영웅",
-  legendary: "전설",
-  mythic:    "신화",
-  limited:   "한정",
-};
 
 export const TITLE_GRADE_COLOR: Record<TitleGrade, string> = {
   common:    "#9CA3AF",
@@ -97,10 +89,10 @@ export const TITLES: TitleDef[] = [
   { id: 44, name: "시즌1 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성",    hidden: true, variant: "season_neon" },
   { id: 45, name: "시즌1 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성",    hidden: true, variant: "season_neon" },
   { id: 46, name: "시즌1 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성", hidden: true, variant: "season_neon" },
-  { id: 58, name: "시즌2 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 2 최종 1위 달성",    hidden: true },
-  { id: 59, name: "시즌2 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 2 최종 2위 달성",    hidden: true },
-  { id: 60, name: "시즌2 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 2 최종 3위 달성",    hidden: true },
-  { id: 61, name: "시즌2 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 2 최종 TOP 10 달성", hidden: true },
+  { id: 58, name: "시즌2 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 2 최종 1위 달성",    hidden: true, variant: "season_fire" },
+  { id: 59, name: "시즌2 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 2 최종 2위 달성",    hidden: true, variant: "season_fire" },
+  { id: 60, name: "시즌2 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 2 최종 3위 달성",    hidden: true, variant: "season_fire" },
+  { id: 61, name: "시즌2 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 2 최종 TOP 10 달성", hidden: true, variant: "season_fire" },
   // ── 로그라이크 ──
   { id: 48, name: "덱의 입문자",     grade: "common",    conditionType: "rogue_clears",    conditionValue: 1,   description: "로그라이크 첫 클리어" },
   { id: 49, name: "탐험의 첫걸음",   grade: "common",    conditionType: "expedition_count",conditionValue: 1,   description: "원정 첫 완료" },

@@ -31,6 +31,22 @@
   0%   { background-position: 0% center; }
   100% { background-position: 300% center; }
 }
+@keyframes seasonFireShimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 300% center; }
+}
+@keyframes seasonFireGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px rgba(255,140,0,1))
+            drop-shadow(0 0 8px rgba(255,200,0,0.75))
+            drop-shadow(0 0 16px rgba(255,100,0,0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 5px rgba(255,180,0,1))
+            drop-shadow(0 0 14px rgba(255,220,0,0.9))
+            drop-shadow(0 0 28px rgba(255,140,0,0.65));
+  }
+}
 @keyframes seasonNeonGlow {
   0%, 100% {
     filter: drop-shadow(0 0 3px rgba(0,180,255,1))

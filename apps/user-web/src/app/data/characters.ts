@@ -180,30 +180,6 @@ export const ROGUE_TYPE_MAP: Record<CharacterType, RogueArchetype> = {
   horse: "defense",
 };
 
-// ── Per-rarity base stats (for status display) ────────────────────────────
-export const RARITY_RAID_STATS: Record<
-  CharacterRarity,
-  { atk: number; crit: number }
-> = {
-  common: { atk: 50, crit: 5 },
-  uncommon: { atk: 70, crit: 8 },
-  rare: { atk: 95, crit: 12 },
-  epic: { atk: 125, crit: 16 },
-  legendary: { atk: 160, crit: 22 },
-  mythic: { atk: 200, crit: 30 },
-};
-export const RARITY_COL_STATS: Record<
-  CharacterRarity,
-  { hp: number; def: number; spd: number }
-> = {
-  common: { hp: 400, def: 30, spd: 50 },
-  uncommon: { hp: 520, def: 45, spd: 65 },
-  rare: { hp: 660, def: 65, spd: 80 },
-  epic: { hp: 820, def: 90, spd: 95 },
-  legendary: { hp: 1000, def: 120, spd: 110 },
-  mythic: { hp: 1200, def: 160, spd: 130 },
-};
-
 export const CHARACTER_JP_NAMES: Record<number, string> = {
   1: "アモルフェクス",
   2: "シェイドヴェイル",
@@ -3602,9 +3578,6 @@ export const CHARACTERS: CharacterDef[] = [
     "#E6222D",
   ),
 ];
-export const GACHA_IDS = CHARACTERS.filter(
-  (ch) => ch.obtainMethod === "gacha",
-).map((ch) => ch.id);
 
 // Achievement definitions – maps achievement condition to character reward
 export const ACHIEVEMENTS: AchievementDef[] = [
