@@ -73,3 +73,16 @@ ALTER TABLE app_settings
 ALTER TABLE `notifications`
   ADD COLUMN `title_key` VARCHAR(80) NULL AFTER `body`,
   ADD COLUMN `body_key`  VARCHAR(80) NULL AFTER `title_key`;
+
+-- ============================================================
+-- Migration: Add arena_decks table (콜로세움 공격/방어 덱)
+-- Applied: 2026-06-30
+-- ============================================================
+CREATE TABLE IF NOT EXISTS arena_decks (
+  user_id    VARCHAR(36)  NOT NULL,
+  deck_type  VARCHAR(10)  NOT NULL,
+  slots      JSON         NOT NULL,
+  updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, deck_type),
+  CONSTRAINT fk_arena_decks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

@@ -61,28 +61,100 @@ const SEASON_REWARDS = [
 
 // ─── 스탯/직업 ────────────────────────────────────────────────────────────────
 
-const RARITY_COLOR: Record<string, string> = {
-  common:"#94a3b8", uncommon:"#4ade80", rare:"#60a5fa",
-  epic:"#c084fc", legendary:"#fbbf24", mythic:"#f472b6",
-};
-const RARITY_BORDER: Record<string, string> = {
-  common:"#475569", uncommon:"#15803d", rare:"#1d4ed8",
-  epic:"#7e22ce", legendary:"#b45309", mythic:"#be185d",
-};
-
 // ─── 색상 팔레트 ──────────────────────────────────────────────────────────────
 const C = {
-  bg:         "linear-gradient(180deg,#0c0905 0%,#1a1208 40%,#100d07 70%,#0a0805 100%)",
-  panel:      "linear-gradient(135deg,#1e1508 0%,#120e06 100%)",
-  border:     "#5a3d0e",
-  borderFaint:"#2e1f06",
-  gold:       "#c8a44a",
-  goldGlow:   "#8b6020",
-  parchment:  "#e8d9b0",
-  stone:      "#8b6f3a",
-  stoneFaint: "#4a3010",
+  bg:           "linear-gradient(180deg,#0c0905 0%,#1a1208 40%,#100d07 70%,#0a0805 100%)",
+  panel:        "linear-gradient(135deg,#1e1508 0%,#120e06 100%)",
+  panelDark:    "linear-gradient(135deg,#130f05 0%,#0c0903 100%)",
+  border:       "#5a3d0e",
+  borderFaint:  "#2e1f06",
+  gold:         "#c8a44a",
+  goldGlow:     "#8b6020",
+  parchment:    "#e8d9b0",
+  stone:        "#8b6f3a",
+  stoneFaint:   "#4a3010",
+  playerBg:     "linear-gradient(180deg,#061a30 0%,#040f1c 100%)",
+  playerBorder: "#1e3a5f",
+  enemyBg:      "linear-gradient(180deg,#1f0707 0%,#130404 100%)",
+  enemyBorder:  "#4f0e0e",
 };
 const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
+
+const RARITY_THEME: Record<CharacterRarity, { color: string; glow: string; border: string; bg: string }> = {
+  common:    { color:"#94a3b8", glow:"#64748b", border:"#475569", bg:"#0f172a" },
+  uncommon:  { color:"#4ade80", glow:"#22c55e", border:"#15803d", bg:"#052e16" },
+  rare:      { color:"#60a5fa", glow:"#3b82f6", border:"#1d4ed8", bg:"#082f49" },
+  epic:      { color:"#c084fc", glow:"#a855f7", border:"#7e22ce", bg:"#2e1065" },
+  legendary: { color:"#fbbf24", glow:"#f59e0b", border:"#b45309", bg:"#451a03" },
+  mythic:    { color:"#f472b6", glow:"#ec4899", border:"#be185d", bg:"#500724" },
+};
+
+const RARITY_KO: Record<string,string> = { common:"커먼", uncommon:"언커먼", rare:"레어", epic:"에픽", legendary:"레전더리", mythic:"신화" };
+const RARITY_JA: Record<string,string> = { common:"コモン", uncommon:"アンコモン", rare:"レア", epic:"エピック", legendary:"レジェンダリー", mythic:"ミシック" };
+const RARITY_EN: Record<string,string> = { common:"Common", uncommon:"Uncommon", rare:"Rare", epic:"Epic", legendary:"Legendary", mythic:"Mythic" };
+
+// ─── 콜로세움 스탯 계산 (서버 로직 미러) ────────────────────────────────────────
+const ARENA_TYPE_ARCHETYPE: Record<string,string> = {
+  wolf:"warrior", tiger:"warrior", lion:"warrior", bear:"warrior",
+  cat:"rogue",    rabbit:"rogue",  deer:"rogue",   eagle:"rogue",
+  ghost:"mage",   owl:"mage",      dragon:"mage",  angel:"mage",  phoenix:"mage",
+  turtle:"tank",  elephant:"tank", whale:"tank",   crocodile:"tank", boar:"tank",
+  plant:"nature", fish:"nature",   unicorn:"nature", horse:"nature",
+  robot:"meka",   slime:"meka",    beetle:"meka",
+  fox:"cursed",   monkey:"cursed", raven:"cursed", snake:"cursed", demon:"cursed",
+};
+const ARENA_RARITY_BASE: Record<string,{hp:number;atk:number;spd:number}> = {
+  common:    {hp:80,  atk:10, spd:80  },
+  uncommon:  {hp:90,  atk:12, spd:85  },
+  rare:      {hp:100, atk:15, spd:90  },
+  epic:      {hp:115, atk:19, spd:95  },
+  legendary: {hp:130, atk:24, spd:100 },
+  mythic:    {hp:150, atk:30, spd:110 },
+};
+const ARENA_ARCH_MULT: Record<string,{hp:number;atk:number;spd:number}> = {
+  warrior:{hp:0.90,atk:1.30,spd:1.00}, tank:   {hp:1.50,atk:0.60,spd:0.75},
+  mage:   {hp:0.80,atk:1.50,spd:1.00}, rogue:  {hp:0.85,atk:1.10,spd:1.40},
+  nature: {hp:1.30,atk:0.75,spd:0.85}, meka:   {hp:1.10,atk:1.00,spd:1.10},
+  cursed: {hp:0.80,atk:1.40,spd:1.10}, all:    {hp:1.00,atk:1.00,spd:1.00},
+};
+const ARENA_ENH_PER_LV: Record<string,{hp:number;atk:number;spd:number}> = {
+  warrior:{hp:3,atk:5,spd:2}, tank:   {hp:6,atk:2,spd:1},
+  mage:   {hp:2,atk:6,spd:1}, rogue:  {hp:2,atk:3,spd:5},
+  nature: {hp:5,atk:2,spd:2}, meka:   {hp:3,atk:3,spd:3},
+  cursed: {hp:2,atk:4,spd:4}, all:    {hp:3,atk:3,spd:3},
+};
+const ARENA_ARCH_SKILLS: Record<string,{basic:string;skill:string;ultimate:string}> = {
+  warrior:{basic:"강타",        skill:"연격",        ultimate:"폭풍검"    },
+  tank:   {basic:"방패 치기",   skill:"방어 태세",   ultimate:"철벽 방어" },
+  mage:   {basic:"마법탄",      skill:"파이어볼",    ultimate:"메테오"    },
+  rogue:  {basic:"단검 찌르기", skill:"연속 베기",   ultimate:"암살"      },
+  nature: {basic:"넝쿨 채찍",   skill:"치유의 손길", ultimate:"대자연의 힘"},
+  meka:   {basic:"레이저",      skill:"미사일",      ultimate:"에너지 캐논"},
+  cursed: {basic:"저주 공격",   skill:"저주의 낙인", ultimate:"재앙 선포" },
+  all:    {basic:"공격",        skill:"강화 공격",   ultimate:"전력 공격" },
+};
+const ARCH_LABEL_KO: Record<string,string> = {
+  warrior:"전사", tank:"탱커", mage:"마법사", rogue:"도적",
+  nature:"자연",  meka:"메카", cursed:"저주술사", all:"올라운더",
+};
+function calcArenaStat(charType: string, rarity: string, enhLevel = 0) {
+  const arch = ARENA_TYPE_ARCHETYPE[charType] ?? "all";
+  const base = ARENA_RARITY_BASE[rarity]   ?? ARENA_RARITY_BASE.common;
+  const mult = ARENA_ARCH_MULT[arch]       ?? ARENA_ARCH_MULT.all;
+  const enh  = ARENA_ENH_PER_LV[arch]     ?? ARENA_ENH_PER_LV.all;
+  return {
+    arch,
+    hp:  Math.round(base.hp  * mult.hp  * (1 + enhLevel * enh.hp  / 100)),
+    atk: Math.round(base.atk * mult.atk * (1 + enhLevel * enh.atk / 100)),
+    spd: Math.round(base.spd * mult.spd * (1 + enhLevel * enh.spd / 100)),
+    enhHp:  enhLevel > 0 ? Math.round(base.hp  * mult.hp  * (1 + (enhLevel-1) * enh.hp  / 100)) : null,
+    enhAtk: enhLevel > 0 ? Math.round(base.atk * mult.atk * (1 + (enhLevel-1) * enh.atk / 100)) : null,
+    enhSpd: enhLevel > 0 ? Math.round(base.spd * mult.spd * (1 + (enhLevel-1) * enh.spd / 100)) : null,
+    skills: ARENA_ARCH_SKILLS[arch] ?? ARENA_ARCH_SKILLS.all,
+    enhLevel,
+    enh,
+  };
+}
 
 // ─── 입장권 ───────────────────────────────────────────────────────────────────
 const MAX_TICKETS = 5;
@@ -207,10 +279,12 @@ const CSS = `
 @keyframes col-hit{0%{transform:translateX(0) scale(1.06);filter:brightness(40) saturate(0)}20%{transform:translateX(-8px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}100%{transform:translateX(0);filter:brightness(1)}}
 @keyframes col-win-in{0%{letter-spacing:0.6em;opacity:0}100%{letter-spacing:0.12em;opacity:1}}
 @keyframes col-log-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@keyframes col-roll-in{0%{opacity:0;transform:scale(0.5)}100%{opacity:1;transform:scale(1)}}
+@keyframes col-roll-in{0%{opacity:0;transform:scale(0.5) rotate(-12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes col-active-glow{0%,100%{filter:drop-shadow(0 0 6px #c8a44a)}50%{filter:drop-shadow(0 0 18px #c8a44a)}}
 @keyframes col-dead{to{filter:grayscale(1) brightness(0.3);opacity:0.4}}
 @keyframes cr-fill{from{width:0}}
+@keyframes col-hp-flash{0%{opacity:0.7}100%{opacity:0}}
+@keyframes col-stone-glow{0%,100%{opacity:0.55}50%{opacity:0.9}}
 .col-rank-scroll::-webkit-scrollbar{display:none}
 .col-rank-scroll{-ms-overflow-style:none;scrollbar-width:none}
 @media(min-width:640px){.col-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
@@ -225,6 +299,83 @@ const CSS = `
 @keyframes ult-line-grow{0%{width:0;opacity:0}60%{opacity:1}100%{opacity:0}}
 @keyframes ult-vignette{0%{opacity:0}30%{opacity:1}80%{opacity:1}100%{opacity:0}}
 `;
+
+// ─── 픽셀 불꽃 / 횃불 ──────────────────────────────────────────────────────────
+function PixelFlame({ delay = 0 }: { delay?: number }) {
+  return (
+    <div style={{ animation:`col-flame 0.22s ease-in-out ${delay}s infinite`, transformOrigin:"bottom center", display:"inline-block" }}>
+      <svg width="16" height="24" viewBox="0 0 4 6" style={{ imageRendering:"pixelated", display:"block" }}>
+        <rect x="1" y="0" width="2" height="1" fill="#fff7ed"/>
+        <rect x="1" y="1" width="2" height="1" fill="#fde68a"/>
+        <rect x="0" y="2" width="4" height="1" fill="#fbbf24"/>
+        <rect x="0" y="3" width="4" height="1" fill="#f97316"/>
+        <rect x="1" y="4" width="2" height="1" fill="#ea580c"/>
+        <rect x="1" y="5" width="2" height="1" fill="#92400e"/>
+      </svg>
+    </div>
+  );
+}
+function Torch({ flip }: { flip?: boolean }) {
+  return (
+    <div style={{ transform: flip ? "scaleX(-1)" : undefined, display:"inline-flex", flexDirection:"column", alignItems:"center" }}>
+      <PixelFlame delay={flip ? 0.07 : 0}/>
+      <svg width="12" height="20" viewBox="0 0 3 5" style={{ imageRendering:"pixelated", display:"block" }}>
+        <rect x="1" y="0" width="1" height="4" fill="#92400e"/>
+        <rect x="0" y="3" width="3" height="1" fill="#78350f"/>
+        <rect x="1" y="4" width="1" height="1" fill="#451a03"/>
+      </svg>
+    </div>
+  );
+}
+
+// ─── 콜로세움 경기장 픽셀아트 ─────────────────────────────────────────────────
+function ArenaFlag({ flip }: { flip?: boolean }) {
+  return (
+    <svg width="28" height="60" viewBox="0 0 7 15" style={{ imageRendering:"pixelated", display:"block", transform: flip ? "scaleX(-1)" : undefined }}>
+      <rect x="3" y="0" width="1" height="15" fill="#6b3a0a"/>
+      <rect x="2" y="0" width="1" height="15" fill="#7c4010"/>
+      <rect x="2" y="0" width="2" height="1" fill="#c8a44a"/>
+      <rect x="4" y="1" width="3" height="6" fill="#b45309"/>
+      <rect x="4" y="1" width="3" height="1" fill="#d97706"/>
+      <rect x="4" y="3" width="3" height="1" fill="#c8a44a" opacity="0.5"/>
+      <rect x="5" y="5" width="2" height="1" fill="#c8a44a" opacity="0.3"/>
+      <rect x="4" y="7" width="2" height="1" fill="#b45309"/>
+      <rect x="4" y="8" width="1" height="1" fill="#b45309"/>
+      <rect x="0" y="13" width="7" height="2" fill="#3a2008"/>
+      <rect x="1" y="12" width="5" height="2" fill="#4a2c10"/>
+    </svg>
+  );
+}
+function ArenaGate() {
+  return (
+    <svg width="104" height="56" viewBox="0 0 26 14" style={{ imageRendering:"pixelated", display:"block", filter:"drop-shadow(0 0 8px #c8a44a2a)" }}>
+      <rect x="0"  y="2" width="6" height="12" fill="#2a1608"/>
+      <rect x="1"  y="2" width="4" height="12" fill="#3a2010"/>
+      <rect x="0"  y="0" width="7" height="3"  fill="#4a2c14"/>
+      <rect x="1"  y="0" width="5" height="1"  fill="#c8a44a" opacity="0.4"/>
+      <rect x="20" y="2" width="6" height="12" fill="#2a1608"/>
+      <rect x="21" y="2" width="4" height="12" fill="#3a2010"/>
+      <rect x="19" y="0" width="7" height="3"  fill="#4a2c14"/>
+      <rect x="20" y="0" width="5" height="1"  fill="#c8a44a" opacity="0.4"/>
+      <rect x="6"  y="0" width="14" height="3" fill="#4a2c14"/>
+      <rect x="5"  y="1" width="16" height="2" fill="#3a2010"/>
+      <rect x="11" y="0" width="4"  height="1" fill="#c8a44a" opacity="0.5"/>
+      <rect x="6"  y="3" width="14" height="11" fill="#0c0603"/>
+      <rect x="7"  y="3" width="1"  height="10" fill="#2a1a08"/>
+      <rect x="10" y="3" width="1"  height="10" fill="#2a1a08"/>
+      <rect x="13" y="3" width="1"  height="10" fill="#2a1a08"/>
+      <rect x="16" y="3" width="1"  height="10" fill="#2a1a08"/>
+      <rect x="19" y="3" width="1"  height="10" fill="#2a1a08"/>
+      <rect x="7"  y="7" width="13" height="1"  fill="#2a1a08"/>
+      <rect x="8"  y="4" width="2"  height="3"  fill="#c8a44a" opacity="0.06"/>
+      <rect x="11" y="4" width="2"  height="3"  fill="#c8a44a" opacity="0.06"/>
+      <rect x="14" y="4" width="2"  height="3"  fill="#c8a44a" opacity="0.06"/>
+      <rect x="17" y="4" width="2"  height="3"  fill="#c8a44a" opacity="0.06"/>
+      <rect x="1"  y="5" width="1"  height="4"  fill="#c8a44a" opacity="0.2"/>
+      <rect x="24" y="5" width="1"  height="4"  fill="#c8a44a" opacity="0.2"/>
+    </svg>
+  );
+}
 
 // ─── 작은 서브 컴포넌트들 ─────────────────────────────────────────────────────
 
@@ -250,11 +401,25 @@ function TierBadgeSvg({ idx, size = 44 }: { idx: number; size?: number }) {
 }
 
 function HpBar({ hp, maxHp, height = 6 }: { hp: number; maxHp: number; height?: number }) {
+  const prevRef = useRef(hp);
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (hp < prevRef.current) {
+      setFlash(true);
+      const tid = setTimeout(() => setFlash(false), 480);
+      prevRef.current = hp;
+      return () => clearTimeout(tid);
+    }
+    prevRef.current = hp;
+  }, [hp]);
   const pct = Math.max(0, hp / maxHp);
-  const col = pct > 0.5 ? "#4ade80" : pct > 0.25 ? "#facc15" : "#f87171";
+  const col  = pct > 0.5 ? "#4ade80" : pct > 0.25 ? "#facc15" : "#f87171";
+  const glow = pct > 0.5 ? "#22c55e" : "#ef4444";
   return (
-    <div style={{ height, background:"#050a05", borderRadius:2, overflow:"hidden", border:"1px solid #0a150a" }}>
-      <div style={{ height:"100%", width:`${pct*100}%`, background:col, transition:"width 0.3s", borderRadius:2 }}/>
+    <div style={{ position:"relative", height, background:"#050a05", border:"1px solid #0a150a", borderRadius:3, overflow:"hidden" }}>
+      <div style={{ position:"absolute", inset:"0 auto 0 0", width:`${pct*100}%`, background:`linear-gradient(180deg,${col}cc,${col})`, boxShadow:`0 0 8px ${glow}55`, borderRadius:3, transition:"width 0.45s cubic-bezier(0.25,0.8,0.25,1),background 0.4s" }}/>
+      <div style={{ position:"absolute", top:0, left:0, right:`${(1-pct)*100}%`, height:"45%", background:"rgba(255,255,255,0.2)", borderRadius:"3px 3px 0 0", transition:"right 0.45s cubic-bezier(0.25,0.8,0.25,1)", pointerEvents:"none" }}/>
+      {flash && <div style={{ position:"absolute", inset:0, background:"rgba(255,255,255,0.5)", animation:"col-hp-flash 0.45s ease-out forwards", pointerEvents:"none" }}/>}
     </div>
   );
 }
@@ -276,9 +441,9 @@ function DeckSlotCard({
   return (
     <div style={{
       position:"relative", width:size+16, height:size+16, flexShrink:0,
-      border:`2px solid ${RARITY_BORDER[char.rarity] ?? C.border}`,
-      borderRadius:6, background:"#0a0805", overflow:"visible",
-      boxShadow:`0 0 10px ${RARITY_COLOR[char.rarity] ?? C.border}44`,
+      border:`2px solid ${RARITY_THEME[char.rarity as CharacterRarity]?.border ?? C.border}`,
+      borderRadius:6, background:RARITY_THEME[char.rarity as CharacterRarity]?.bg ?? "#0a0805", overflow:"visible",
+      boxShadow:`0 0 12px ${RARITY_THEME[char.rarity as CharacterRarity]?.glow ?? C.border}44`,
     }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%" }}>
         <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={size}/>
@@ -438,9 +603,107 @@ function PixelBtn({ onClick, disabled, children, color="amber" }: { onClick:()=>
   );
 }
 
+// ─── 스탯 툴팁 ────────────────────────────────────────────────────────────────
+function StatTooltip({
+  charId, charType, rarity, enhLevel, ko, ja,
+  anchorRect,
+}: {
+  charId: number; charType: string; rarity: string; enhLevel: number;
+  ko: boolean; ja: boolean; anchorRect: DOMRect;
+}) {
+  const s  = calcArenaStat(charType, rarity, enhLevel);
+  const th = RARITY_THEME[rarity as CharacterRarity] ?? RARITY_THEME.common;
+  const char = charById(charId);
+
+  // 툴팁 너비 280px, 화면 안에서 좌우 조정
+  const tipW = 256;
+  let left = anchorRect.left + anchorRect.width / 2 - tipW / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+  // 위에 공간이 충분하면 위에, 아니면 아래에
+  const spaceAbove = anchorRect.top;
+  const top = spaceAbove > 200
+    ? anchorRect.top - 8   // 위쪽에 붙임 (translateY(-100%))
+    : anchorRect.bottom + 8; // 아래쪽
+
+  const statRow = (label: string, val: number, prev: number | null, color: string) => (
+    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+      <span style={{ fontSize:10, color:C.stoneFaint, width:28, flexShrink:0 }}>{label}</span>
+      <div style={{ flex:1, height:4, background:"#0a0703", borderRadius:2, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${Math.min(100, val / 2)}%`, background:color, borderRadius:2, transition:"width 0.3s" }}/>
+      </div>
+      <span style={{ fontFamily:"monospace", fontSize:11, fontWeight:900, color, width:34, textAlign:"right" }}>{val}</span>
+      {prev !== null && val !== prev && (
+        <span style={{ fontFamily:"monospace", fontSize:9, color:"#4ade80" }}>+{val-prev}</span>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position:"fixed",
+      left, top,
+      transform: spaceAbove > 200 ? "translateY(-100%)" : undefined,
+      width: tipW,
+      zIndex: 9999,
+      background:"linear-gradient(135deg,#1e1508 0%,#0c0903 100%)",
+      border:`2px solid ${th.border}`,
+      borderRadius:8,
+      boxShadow:`0 0 24px ${th.glow}55, 0 8px 32px rgba(0,0,0,0.8)`,
+      padding:"12px 14px",
+      pointerEvents:"none",
+      fontFamily:FONT,
+    }}>
+      {/* 헤더 */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, paddingBottom:8, borderBottom:`1px solid ${C.borderFaint}` }}>
+        <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={32}/>
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ margin:0, fontSize:12, fontWeight:900, color:th.color, textShadow:`0 0 8px ${th.glow}`, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {getCharName(char, ko?"ko":ja?"ja":"en")}
+          </p>
+          <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
+            <span style={{ fontSize:9, color:th.color, background:`${th.color}18`, border:`1px solid ${th.border}`, borderRadius:3, padding:"1px 5px", fontWeight:700 }}>
+              {ko?RARITY_KO[rarity]:ja?RARITY_JA[rarity]:RARITY_EN[rarity]}
+            </span>
+            <span style={{ fontSize:9, color:"#94a3b8", background:"#1e293b", border:"1px solid #334155", borderRadius:3, padding:"1px 5px", fontWeight:700 }}>
+              {ARCH_LABEL_KO[s.arch]}
+            </span>
+            {enhLevel > 0 && (
+              <span style={{ fontSize:9, color:"#60a5fa", background:"#1e3a5f", border:"1px solid #2563eb", borderRadius:3, padding:"1px 5px", fontWeight:900 }}>
+                +{enhLevel}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 스탯 바 */}
+      <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:10 }}>
+        {statRow("HP",  s.hp,  s.enhHp,  "#4ade80")}
+        {statRow("ATK", s.atk, s.enhAtk, "#f87171")}
+        {statRow("SPD", s.spd, s.enhSpd, "#60a5fa")}
+      </div>
+
+      {/* 스킬 목록 */}
+      <div style={{ borderTop:`1px solid ${C.borderFaint}`, paddingTop:8, display:"flex", flexDirection:"column", gap:4 }}>
+        {[
+          { label:"평타",   name:s.skills.basic,    color:"#94a3b8", cd:"--" },
+          { label:"스킬",   name:s.skills.skill,    color:"#60a5fa", cd:"3턴" },
+          { label:"궁극기", name:s.skills.ultimate, color:"#ffd700", cd:"5턴" },
+        ].map(sk => (
+          <div key={sk.label} style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <span style={{ fontSize:8, fontWeight:900, color:sk.color, background:`${sk.color}18`, border:`1px solid ${sk.color}44`, borderRadius:3, padding:"1px 5px", width:36, textAlign:"center", flexShrink:0 }}>{sk.label}</span>
+            <span style={{ fontSize:11, fontWeight:700, color:C.parchment, flex:1 }}>{sk.name}</span>
+            <span style={{ fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>{sk.cd}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── 덱 편집 화면 ─────────────────────────────────────────────────────────────
 function DeckEditor({
-  deckType, currentSlots, ownedIds, onSave, onBack, ko, ja,
+  deckType, currentSlots, ownedIds, onSave, onBack, ko, ja, charEnhancements,
 }: {
   deckType: "attack" | "defense";
   currentSlots: number[];
@@ -448,8 +711,10 @@ function DeckEditor({
   onSave: (slots: number[]) => void;
   onBack: () => void;
   ko: boolean; ja: boolean;
+  charEnhancements: Record<number, number>;
 }) {
-  const [slots, setSlots] = useState<number[]>(currentSlots);
+  const [slots, setSlots]       = useState<number[]>(currentSlots);
+  const [tooltipInfo, setTooltipInfo] = useState<{ charId: number; rect: DOMRect } | null>(null);
 
   const addChar = (id: number) => {
     if (slots.includes(id) || slots.length >= 4) return;
@@ -505,19 +770,42 @@ function DeckEditor({
         {ownedChars.map(char => {
           const inDeck  = slots.includes(char.id);
           const isFull  = slots.length >= 4;
+          const th      = RARITY_THEME[char.rarity as CharacterRarity];
           return (
-            <button key={char.id} onClick={() => inDeck ? setSlots(p => p.filter(x => x !== char.id)) : addChar(char.id)}
+            <button key={char.id}
+              onClick={() => inDeck ? setSlots(p => p.filter(x => x !== char.id)) : addChar(char.id)}
               disabled={!inDeck && isFull}
-              style={{ background: inDeck ? `${RARITY_COLOR[char.rarity]}22` : "#0a0805", border:`2px solid ${inDeck ? RARITY_COLOR[char.rarity] : RARITY_BORDER[char.rarity]}`, borderRadius:6, padding:"8px 4px", cursor:(!inDeck && isFull)?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, opacity:(!inDeck && isFull)?0.4:1, position:"relative" }}>
+              onMouseEnter={e => setTooltipInfo({ charId: char.id, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
+              onMouseLeave={() => setTooltipInfo(null)}
+              style={{ background: inDeck ? `${th?.color}22` : "#0a0805", border:`2px solid ${inDeck ? th?.color : th?.border}`, borderRadius:6, padding:"8px 4px", cursor:(!inDeck && isFull)?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, opacity:(!inDeck && isFull)?0.4:1, position:"relative" }}>
               <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={40}/>
-              <span style={{ fontSize:9, color:RARITY_COLOR[char.rarity], fontWeight:700, textAlign:"center", lineHeight:1.2, wordBreak:"break-all" }}>
+              <span style={{ fontSize:9, color:th?.color, fontWeight:700, textAlign:"center", lineHeight:1.2, wordBreak:"break-all" }}>
                 {getCharName(char, "ko")}
+              </span>
+              <span style={{ fontSize:8, color:th?.color, opacity:0.7, textAlign:"center" }}>
+                {ko ? RARITY_KO[char.rarity] : ja ? RARITY_JA[char.rarity] : RARITY_EN[char.rarity]}
               </span>
               {inDeck && <div style={{ position:"absolute", top:2, right:2, width:12, height:12, background:"#4ade80", borderRadius:"50%", border:"1px solid #052e16" }}/>}
             </button>
           );
         })}
       </div>
+
+      {/* 스탯 툴팁 */}
+      {tooltipInfo && (() => {
+        const c = charById(tooltipInfo.charId);
+        const enh = charEnhancements[tooltipInfo.charId] ?? 0;
+        return (
+          <StatTooltip
+            charId={tooltipInfo.charId}
+            charType={c.type}
+            rarity={c.rarity}
+            enhLevel={enh}
+            ko={ko} ja={ja}
+            anchorRect={tooltipInfo.rect}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -1015,6 +1303,7 @@ export default function ColosseumPage() {
         onSave={slots => saveDeck(editingDeckType, slots)}
         onBack={() => setPhase("lobby")}
         ko={ko} ja={ja}
+        charEnhancements={rewardSummary.characterEnhancements ?? {}}
       />
     );
   }
@@ -1134,19 +1423,37 @@ export default function ColosseumPage() {
 
       {/* 배너 */}
       <div style={{ position:"relative", background:"linear-gradient(180deg,#1e1006 0%,#120a04 55%,#0c0703 100%)", borderBottom:"3px solid #6b3a0e", padding:"18px 16px 16px", textAlign:"center", boxShadow:`0 4px 32px ${C.goldGlow}44` }}>
+        {/* 석재 질감 */}
         <div style={{ position:"absolute", inset:0, opacity:0.06, pointerEvents:"none", backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(255,255,255,0.5) 31px,rgba(255,255,255,0.5) 32px)" }}/>
-        <button onClick={() => setShowSeason(true)} style={{ position:"absolute", top:12, right:14, zIndex:2, display:"flex", alignItems:"center", gap:5, background:"rgba(200,164,74,0.12)", border:"1px solid #5a3d0e", borderRadius:5, padding:"5px 10px", cursor:"pointer", fontFamily:FONT, fontSize:11, fontWeight:900, color:C.gold }}>
+        {/* 금빛 방사광 */}
+        <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:`radial-gradient(ellipse 70% 50% at 50% 100%,${C.goldGlow}14 0%,transparent 70%)` }}/>
+        {/* 횃불 장식 (좌우) */}
+        <div style={{ position:"absolute", top:10, left:10, zIndex:1 }}><Torch/></div>
+        <div style={{ position:"absolute", top:10, right:10, zIndex:1 }}><Torch flip/></div>
+        {/* 시즌보상 버튼 */}
+        <button onClick={() => setShowSeason(true)} style={{ position:"absolute", top:12, right:46, zIndex:2, display:"flex", alignItems:"center", gap:5, background:"rgba(200,164,74,0.12)", border:"1px solid #5a3d0e", borderRadius:5, padding:"5px 10px", cursor:"pointer", fontFamily:FONT, fontSize:11, fontWeight:900, color:C.gold }}>
           <Gift size={13} color={C.gold}/>{ko?`시즌 ${SEASON.number} 보상`:ja?`シーズン${SEASON.number}報酬`:`Season ${SEASON.number}`}
         </button>
         <p style={{ margin:"0 0 6px", fontSize:10, letterSpacing:"0.5em", color:C.stone, fontWeight:900, position:"relative", zIndex:1 }}>KEBOMON</p>
-        <h1 style={{ margin:"0 0 6px", position:"relative", zIndex:1, fontFamily:"'Courier New',monospace", fontSize:28, fontWeight:900, letterSpacing:"0.22em", color:C.gold, textShadow:`0 0 24px ${C.goldGlow}, 2px 2px 0 #3a2508`, display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
+        {/* 경기장 게이트 픽셀아트 */}
+        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:12, marginBottom:6, position:"relative", zIndex:1 }}>
+          <ArenaFlag/>
+          <ArenaGate/>
+          <ArenaFlag flip/>
+        </div>
+        <h1 style={{ margin:"0 0 8px", position:"relative", zIndex:1, fontFamily:"'Courier New',monospace", fontSize:28, fontWeight:900, letterSpacing:"0.22em", color:C.gold, textShadow:`0 0 24px ${C.goldGlow}, 2px 2px 0 #3a2508, -1px -1px 0 #3a2508`, display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
           <Swords size={22} color={C.gold} strokeWidth={2.5}/> COLOSSEUM <Swords size={22} color={C.gold} strokeWidth={2.5}/>
         </h1>
+        {/* 시즌 배지 */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, position:"relative", zIndex:1 }}>
           <div style={{ height:1, width:40, background:`linear-gradient(90deg,transparent,${C.gold}88)` }}/>
-          <span style={{ fontFamily:FONT, fontSize:11, fontWeight:900, color:C.gold, letterSpacing:"0.12em" }}>
-            Season {SEASON.number} · {ko?"4v4 오토배틀":"4v4 Auto Battle"}
-          </span>
+          <div style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(200,164,74,0.08)", border:`1px solid ${C.gold}44`, borderRadius:20, padding:"3px 14px" }}>
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/></svg>
+            <span style={{ fontFamily:FONT, fontSize:11, fontWeight:900, letterSpacing:"0.12em", color:C.gold, textShadow:`0 0 10px ${C.goldGlow}` }}>
+              {ko?`시즌 ${SEASON.number}  ·  영광의 시작`:ja?`シーズン${SEASON.number}  ·  栄光の始まり`:`Season ${SEASON.number}  ·  Glory Begins`}
+            </span>
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/></svg>
+          </div>
           <div style={{ height:1, width:40, background:`linear-gradient(90deg,${C.gold}88,transparent)` }}/>
         </div>
       </div>

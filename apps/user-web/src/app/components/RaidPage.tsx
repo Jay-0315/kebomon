@@ -771,7 +771,7 @@ function ShootingGame({
         }
       }
       st.formOX = 0;
-      st.formVX = Math.min(1.5, 0.6 + (wave - 1) * 0.12);
+      st.formVX = Math.min(2.2, 1.0 + (wave - 1) * 0.18);
       st.formDY = 0;
       st.waveTimer = -1;
       st.wave = wave;
@@ -829,8 +829,9 @@ function ShootingGame({
 
     const resize = () => {
       const w = wrapRef.current?.clientWidth ?? 400;
+      const h = wrapRef.current?.clientHeight ?? 440;
       canvas.width = Math.max(280, w);
-      canvas.height = 300;
+      canvas.height = Math.max(360, h);
       g.current.px = canvas.width / 2;
       g.current.py = canvas.height - 36;
     };
@@ -876,7 +877,7 @@ function ShootingGame({
         if (mx !== 0 && my !== 0) { const d = Math.sqrt(mx*mx+my*my); mx/=d; my/=d; }
         const spd = P_SPEED * dtf;
         st.px = Math.max(P_HIT_R+4, Math.min(W-P_HIT_R-4, st.px + mx*spd));
-        st.py = Math.max(H*0.52, Math.min(H-14, st.py + my*spd));
+        st.py = Math.max(H*0.32, Math.min(H-14, st.py + my*spd));
 
         // 자동 발사
         const fireInterval = 260;
@@ -909,11 +910,11 @@ function ShootingGame({
           const maxOX = W/2 - (COLS*E_CW)/2 - 18;
           if (st.formOX > maxOX) st.formVX = -Math.abs(st.formVX);
           if (st.formOX < -maxOX) st.formVX = Math.abs(st.formVX);
-          st.formDY = Math.min(50, st.formDY + 0.006 * dtf);
+          st.formDY = Math.min(50, st.formDY + 0.010 * dtf);
         }
 
         // 다이브 공격 (갤로그 스타일)
-        const diveInterval = Math.max(2200, 5000 - st.elapsed / 150);
+        const diveInterval = Math.max(1400, 3800 - st.elapsed / 100);
         if (realNow - st.lastDive > diveInterval) {
           const candidates = inForm.filter(e => e.row === ROWS - 1);
           if (candidates.length > 0) {
@@ -923,7 +924,7 @@ function ShootingGame({
             chosen.diveX = enemyX(chosen, W);
             chosen.diveY = enemyY(chosen);
             chosen.diveAngle = Math.PI * 0.9 + (Math.random() - 0.5) * 0.6;
-            const dspd = 2.8;
+            const dspd = 3.8;
             chosen.diveVX = Math.sin(chosen.diveAngle) * dspd;
             chosen.diveVY = Math.cos(chosen.diveAngle) * dspd;
           }
@@ -932,8 +933,8 @@ function ShootingGame({
         // 다이버 이동
         for (const e of st.enemies) {
           if (!e.alive || e.divePhase === 0) continue;
-          e.diveAngle += 0.03 * dtf;
-          const dspd = 2.8;
+          e.diveAngle += 0.04 * dtf;
+          const dspd = 3.8;
           e.diveVX = Math.sin(e.diveAngle) * dspd;
           e.diveVY = Math.cos(e.diveAngle) * dspd;
           e.diveX += e.diveVX * dtf;
@@ -946,7 +947,7 @@ function ShootingGame({
         }
 
         // 적 탄막 발사
-        const fireRate = Math.max(700, 2200 - st.elapsed / 25);
+        const fireRate = Math.max(450, 1600 - st.elapsed / 18);
         for (const e of st.enemies) {
           if (!e.alive) continue;
           if (realNow - e.lastFire > fireRate) {
@@ -954,7 +955,7 @@ function ShootingGame({
             const ex = enemyX(e, W), ey = enemyY(e);
             const dx = st.px - ex, dy = st.py - ey;
             const d = Math.sqrt(dx*dx+dy*dy) || 1;
-            const espd = Math.min(3.2, 1.6 + st.elapsed / 80000);
+            const espd = Math.min(4.8, 2.4 + st.elapsed / 50000);
             st.eBullets.push({ id: st.nextId++, x: ex, y: ey+8, vx: (dx/d)*espd, vy: (dy/d)*espd });
           }
         }
@@ -1103,12 +1104,12 @@ function ShootingGame({
   return (
     <div
       ref={wrapRef}
-      className="relative mx-3 mb-2 mt-1 select-none overflow-hidden rounded-xl border border-border"
-      style={{ height: 300, touchAction: "none" }}
+      className="relative mx-3 mb-2 mt-1 flex-1 select-none overflow-hidden rounded-xl border border-border"
+      style={{ minHeight: 360, touchAction: "none" }}
     >
       <canvas
         ref={canvasRef}
-        className="block h-[300px] w-full"
+        className="block h-full w-full"
         onPointerDown={onPtrMove}
         onPointerMove={onPtrMove}
         onPointerUp={onPtrEnd}
@@ -2004,7 +2005,7 @@ export default function RaidPage() {
         </div>
       ) : raidType === 5 ? (
         /* ── 탄막 피하기 게임 ── */
-        <div className="relative z-10 mt-auto flex flex-1 flex-col justify-end">
+        <div className="relative z-10 mt-auto flex flex-1 flex-col">
           {others.length > 0 && (
             <div className="flex flex-wrap items-end justify-center gap-1 px-4 pb-1">
               {others.map((p) => {
