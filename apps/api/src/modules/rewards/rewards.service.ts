@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -1376,5 +1377,90 @@ export class RewardsService {
     });
 
     return { ...data, pointsDelta };
+  }
+
+  // ─── 시즌 자동 리셋 ────────────────────────────────────────────────────────
+  private readonly logger = new Logger(RewardsService.name);
+
+  // 시즌 1 시작: 2026년 6월 (기준점)
+  private readonly SEASON_BASE = { year: 2026, month: 6 };
+
+  private getEndingSeasonNumber(): number {
+    // 크론이 매월 1일 00:00 KST에 실행되므로 직전 달이 종료 시즌
+    const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const year = kstNow.getUTCFullYear();
+    const month = kstNow.getUTCMonth() + 1; // 1~12
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    return (prevYear - this.SEASON_BASE.year) * 12 + (prevMonth - this.SEASON_BASE.month) + 1;
+  }
+
+  private getTierKey(tierPoints: number): string | null {
+    if (tierPoints >= 18000) return "challenger";
+    if (tierPoints >= 15000) return "master";
+    if (tierPoints >= 12000) return "diamond";
+    if (tierPoints >= 9000) return "platinum";
+    if (tierPoints >= 6000) return "gold";
+    if (tierPoints >= 3000) return "silver";
+    return null; // 브론즈 - 보상 없음
+  }
+
+  async grantSeasonTierBorders(seasonId: number) {
+    const rows = await this.prisma.battleStats.findMany({
+      where: { tierPoints: { gte: 3000 } },
+      select: { userId: true, tierPoints: true },
+    });
+
+    const grants = rows.map((r) => ({
+      userId: r.userId,
+      borderId: `s${seasonId}_${this.getTierKey(r.tierPoints)}`,
+    }));
+
+    if (grants.length === 0) return { granted: 0 };
+
+    await this.prisma.userBorder.createMany({
+      data: grants.map(({ userId, borderId }) => ({ userId, borderId })),
+      skipDuplicates: true,
+    });
+
+    for (const { userId } of grants) {
+      void this.notifications.create({
+        userId,
+        type: "achievement",
+        title: `시즌 ${seasonId} 티어 테두리 획득!`,
+        body: "시즌 종료 보상으로 프로필 테두리가 지급되었습니다.",
+        titleKey: "notification.season_border_title",
+        bodyKey: "notification.season_border_body",
+        titleJa: `シーズン${seasonId} ティアボーダー獲得！`,
+        bodyJa: "シーズン終了報酬としてプロフィールボーダーが付与されました。",
+        titleEn: `Season ${seasonId} Tier Border Earned!`,
+        bodyEn: "Profile border awarded as season-end reward.",
+        link: "/mypage",
+      }).catch(() => undefined);
+    }
+
+    return { granted: grants.length };
+  }
+
+  async resetSeasonStats() {
+    await this.prisma.battleStats.updateMany({
+      data: { tierPoints: 0, wins: 0, losses: 0, winStreak: 0 },
+    });
+    this.rankingsCache = null;
+  }
+
+  // 매월 1일 00:00 KST에 실행 — 직전 달 시즌 종료 처리
+  @Cron("0 0 1 * *", { timeZone: "Asia/Seoul" })
+  async handleSeasonReset() {
+    const seasonId = this.getEndingSeasonNumber();
+    this.logger.log(`시즌 ${seasonId} 종료 처리 시작`);
+    try {
+      await this.grantSeasonRankTitles(seasonId);
+      await this.grantSeasonTierBorders(seasonId);
+      await this.resetSeasonStats();
+      this.logger.log(`시즌 ${seasonId} 종료 처리 완료`);
+    } catch (err) {
+      this.logger.error(`시즌 ${seasonId} 종료 처리 실패`, err);
+    }
   }
 }

@@ -115,9 +115,9 @@ const TIERS = [
 
 // ─── 시즌 ────────────────────────────────────────────────────────────────────
 const SEASON = {
-  number: 1,
-  startDate: "2026-06-09",
-  endDate: "2026-06-30",
+  number: 2,
+  startDate: "2026-07-01",
+  endDate: "2026-07-31",
 };
 
 const SEASON_REWARDS = [
@@ -183,31 +183,43 @@ const SEASON_REWARDS = [
   },
 ] as const;
 
-// 프로필 테두리 id (tierKey → borderId)
-export const SEASON_BORDER_ID = (tierKey: string) => `s1_${tierKey}`;
+// 프로필 테두리 id (tierKey → borderId) — 현재 시즌 번호 자동 반영
+export const SEASON_BORDER_ID = (tierKey: string) => `s${SEASON.number}_${tierKey}`;
 export const BORDER_STYLES: Record<string, { image: string }> = {
+  // 시즌 1
   s1_silver: { image: "/silver.png" },
   s1_gold: { image: "/gold.png" },
   s1_platinum: { image: "/platinum.png" },
   s1_diamond: { image: "/diamond.png" },
   s1_master: { image: "/master.png" },
   s1_challenger: { image: "/challenger.png" },
+  // 시즌 2
+  s2_silver: { image: "/silver.png" },
+  s2_gold: { image: "/gold.png" },
+  s2_platinum: { image: "/platinum.png" },
+  s2_diamond: { image: "/diamond.png" },
+  s2_master: { image: "/master.png" },
+  s2_challenger: { image: "/challenger.png" },
   gm: { image: "/GM.png" },
 };
 export const BORDER_NAMES: Record<
   string,
   { ko: string; ja: string; en: string }
 > = {
+  // 시즌 1
   s1_silver: { ko: "S1 실버", ja: "S1シルバー", en: "S1 Silver" },
   s1_gold: { ko: "S1 골드", ja: "S1ゴールド", en: "S1 Gold" },
   s1_platinum: { ko: "S1 플레티넘", ja: "S1プラチナ", en: "S1 Platinum" },
   s1_diamond: { ko: "S1 다이아몬드", ja: "S1ダイヤ", en: "S1 Diamond" },
   s1_master: { ko: "S1 마스터", ja: "S1マスター", en: "S1 Master" },
-  s1_challenger: {
-    ko: "S1 챌린저",
-    ja: "S1チャレンジャー",
-    en: "S1 Challenger",
-  },
+  s1_challenger: { ko: "S1 챌린저", ja: "S1チャレンジャー", en: "S1 Challenger" },
+  // 시즌 2
+  s2_silver: { ko: "S2 실버", ja: "S2シルバー", en: "S2 Silver" },
+  s2_gold: { ko: "S2 골드", ja: "S2ゴールド", en: "S2 Gold" },
+  s2_platinum: { ko: "S2 플레티넘", ja: "S2プラチナ", en: "S2 Platinum" },
+  s2_diamond: { ko: "S2 다이아몬드", ja: "S2ダイヤ", en: "S2 Diamond" },
+  s2_master: { ko: "S2 마스터", ja: "S2マスター", en: "S2 Master" },
+  s2_challenger: { ko: "S2 챌린저", ja: "S2チャレンジャー", en: "S2 Challenger" },
   gm: { ko: "GM", ja: "GM", en: "GM" },
 };
 

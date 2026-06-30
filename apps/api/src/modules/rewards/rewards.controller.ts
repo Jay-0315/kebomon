@@ -130,4 +130,14 @@ export class RewardsController {
   grantSeasonRankTitles(@Body() body: { seasonId: number }) {
     return this.rewardsService.grantSeasonRankTitles(body.seasonId ?? 1);
   }
+
+  @Post("season/grant-tier-borders")
+  grantSeasonTierBorders(@Body() body: { seasonId: number }) {
+    return this.rewardsService.grantSeasonTierBorders(body.seasonId ?? 1);
+  }
+
+  @Post("season/reset-stats")
+  resetSeasonStats() {
+    return this.rewardsService.resetSeasonStats();
+  }
 }
