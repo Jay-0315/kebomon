@@ -1,4 +1,4 @@
-export type TitleGrade = "common" | "rare" | "epic" | "legendary" | "mythic";
+export type TitleGrade = "common" | "rare" | "epic" | "legendary" | "mythic" | "limited";
 export type TitleConditionType = "raid_count" | "attendance" | "streak" | "post_count" | "points" | "col_wins" | "col_streak" | "col_points" | "season_rank" | "rogue_clears" | "expedition_count";
 
 export interface TitleDef {
@@ -17,6 +17,7 @@ export const TITLE_GRADE_LABEL: Record<TitleGrade, string> = {
   epic:      "영웅",
   legendary: "전설",
   mythic:    "신화",
+  limited:   "한정",
 };
 
 export const TITLE_GRADE_COLOR: Record<TitleGrade, string> = {
@@ -25,6 +26,7 @@ export const TITLE_GRADE_COLOR: Record<TitleGrade, string> = {
   epic:      "#C084FC",
   legendary: "#FBBF24",
   mythic:    "#f472b6",
+  limited:   "#FFD700",
 };
 
 export const TITLE_GLOW: Record<TitleGrade, string> = {
@@ -33,6 +35,7 @@ export const TITLE_GLOW: Record<TitleGrade, string> = {
   epic:      "0 0 8px rgba(192, 132, 252, 0.9), 0 0 16px rgba(192, 132, 252, 0.5)",
   legendary: "0 0 10px rgba(251, 191, 36, 1), 0 0 20px rgba(251, 191, 36, 0.6), 0 0 40px rgba(251, 191, 36, 0.3)",
   mythic:    "0 0 12px rgba(255, 128, 171, 1), 0 0 24px rgba(206, 147, 216, 0.8), 0 0 48px rgba(128, 222, 234, 0.5)",
+  limited:   "0 0 10px rgba(255,215,0,1), 0 0 22px rgba(221,160,255,0.8), 0 0 44px rgba(255,215,0,0.5)",
 };
 
 export const TITLE_GRADE_BG: Record<TitleGrade, string> = {
@@ -41,6 +44,7 @@ export const TITLE_GRADE_BG: Record<TitleGrade, string> = {
   epic:      "rgba(192, 132, 252, 0.12)",
   legendary: "rgba(251, 191, 36, 0.12)",
   mythic:    "rgba(255, 128, 171, 0.15)",
+  limited:   "rgba(255, 215, 0, 0.13)",
 };
 
 export const TITLES: TitleDef[] = [
@@ -87,11 +91,15 @@ export const TITLES: TitleDef[] = [
   { id: 40, name: "콜로세움의 왕",   grade: "mythic",    conditionType: "col_wins",    conditionValue: 150,   description: "콜로세움 150승 달성" },
   { id: 41, name: "불멸의 연승",     grade: "mythic",    conditionType: "col_streak",  conditionValue: 15,    description: "15연승 달성" },
   { id: 42, name: "챌린저",          grade: "mythic",    conditionType: "col_points",  conditionValue: 8000,  description: "콜로세움 8000pts 달성" },
-  // ── 시즌 1 랭킹 칭호 (season_rank: 1/2/3/10) ──
-  { id: 43, name: "시즌1 황제",       grade: "mythic",    conditionType: "season_rank", conditionValue: 1,     description: "시즌 1 최종 1위 달성" },
-  { id: 44, name: "시즌1 기사장",     grade: "legendary", conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성" },
-  { id: 45, name: "시즌1 용사",       grade: "legendary", conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성" },
-  { id: 46, name: "시즌1 투사",       grade: "epic",      conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성" },
+  // ── 시즌 랭킹 칭호 (한정) ──
+  { id: 43, name: "시즌1 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 1 최종 1위 달성",    hidden: true },
+  { id: 44, name: "시즌1 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 1 최종 2위 달성",    hidden: true },
+  { id: 45, name: "시즌1 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 1 최종 3위 달성",    hidden: true },
+  { id: 46, name: "시즌1 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 1 최종 TOP 10 달성", hidden: true },
+  { id: 58, name: "시즌2 황제",       grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 2 최종 1위 달성",    hidden: true },
+  { id: 59, name: "시즌2 기사장",     grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 2 최종 2위 달성",    hidden: true },
+  { id: 60, name: "시즌2 용사",       grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 2 최종 3위 달성",    hidden: true },
+  { id: 61, name: "시즌2 투사",       grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 2 최종 TOP 10 달성", hidden: true },
   // ── 로그라이크 ──
   { id: 48, name: "덱의 입문자",     grade: "common",    conditionType: "rogue_clears",    conditionValue: 1,   description: "로그라이크 첫 클리어" },
   { id: 49, name: "탐험의 첫걸음",   grade: "common",    conditionType: "expedition_count",conditionValue: 1,   description: "원정 첫 완료" },
@@ -104,7 +112,7 @@ export const TITLES: TitleDef[] = [
   { id: 56, name: "전설의 카드마스터",grade: "mythic",   conditionType: "rogue_clears",    conditionValue: 50,  description: "로그라이크 50회 클리어" },
   { id: 57, name: "불굴의 탐험가",   grade: "mythic",    conditionType: "expedition_count",conditionValue: 100, description: "원정 100회 완료" },
   // ── GM 전용 ──
-  { id: 47, name: "GM",              grade: "mythic",    conditionType: "raid_count",  conditionValue: 0,     description: "케보 운영진", hidden: true },
+  { id: 47, name: "GM",              grade: "limited",   conditionType: "raid_count",  conditionValue: 0,     description: "케보 운영진", hidden: true },
 ];
 
 export const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

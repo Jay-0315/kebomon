@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import NetworkErrorToast from "./components/NetworkErrorToast";
 import Layout from "./components/Layout";
@@ -22,7 +23,8 @@ import AttendancePage from "./components/AttendancePage";
 import MissionPage from "./components/MissionPage";
 import GachaPage from "./components/GachaPage";
 import { useAppData } from "./context/AppDataContext";
-import { isAuthenticated } from "./lib/auth";
+import { isAuthenticated, getStoredUser } from "./lib/auth";
+import { api } from "./lib/api";
 import { LangProvider } from "./context/LangContext";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -58,6 +60,24 @@ function StarterSelectionRoute() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const ping = () => {
+      if (!isAuthenticated()) return;
+      const user = getStoredUser();
+      if (!user) return;
+      const todayKST = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+      if (localStorage.getItem("kebo-last-ping") === todayKST) return;
+      localStorage.setItem("kebo-last-ping", todayKST);
+      api.post("/rewards/ping", { userId: user.id }).catch(() => {});
+    };
+
+    ping();
+
+    const onVisibility = () => { if (document.visibilityState === "visible") ping(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
   return (
     <BrowserRouter>
       <LangProvider>

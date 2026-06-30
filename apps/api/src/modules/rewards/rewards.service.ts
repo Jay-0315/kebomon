@@ -1333,10 +1333,12 @@ export class RewardsService {
       select: { userId: true },
     });
 
-    // rank → titleId 매핑 (1→43, 2→44, 3→45, 4~10→46)
+    // 시즌별 한정 칭호 base ID: 시즌1=43, 시즌2=58, 시즌N(N>=2)=58+(N-2)*4
+    const base = seasonId === 1 ? 43 : 58 + (seasonId - 2) * 4;
+    // rank → titleId 매핑 (1위→base, 2위→base+1, 3위→base+2, 4~10위→base+3)
     const grants: { userId: string; titleId: number }[] = rows.map((r, i) => ({
       userId: r.userId,
-      titleId: i === 0 ? 43 : i === 1 ? 44 : i === 2 ? 45 : 46,
+      titleId: i === 0 ? base : i === 1 ? base + 1 : i === 2 ? base + 2 : base + 3,
     }));
 
     await this.prisma.$transaction(

@@ -12,6 +12,7 @@ interface TitleBadgeProps {
 }
 
 const MYTHIC_COLORS = ["#FF80AB", "#CE93D8", "#80DEEA", "#FFD54F", "#FF80AB"];
+const LIMITED_COLORS = ["#FFD700", "#FFFACD", "#DDA0FF", "#B8E8FF", "#FFD700", "#FFF8DC"];
 
 export default function TitleBadge({ titleId, size = "sm", showGrade = false }: TitleBadgeProps) {
   const { t } = useLang();
@@ -21,6 +22,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const { grade } = title;
   const name = t(`title.${titleId}.name` as TranslationKey);
   const isMythic = grade === "mythic";
+  const isLimited = grade === "limited";
 
   const fontSizeClass = size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm";
   const paddingClass = size === "xs" ? "px-1 py-px" : size === "sm" ? "px-1.5 py-0.5" : "px-2 py-1";
@@ -28,6 +30,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const baseStyle: React.CSSProperties = {
     backgroundColor: TITLE_GRADE_BG[grade],
     borderRadius: "4px",
+    border: isLimited ? "1px solid rgba(255,215,0,0.35)" : undefined,
     display: "inline-flex",
     alignItems: "center",
     gap: size === "xs" ? "2px" : "4px",
@@ -36,24 +39,17 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
     whiteSpace: "nowrap" as const,
   };
 
-  const textStyle: React.CSSProperties = isMythic
-    ? {
-        background: `linear-gradient(90deg, ${MYTHIC_COLORS.join(", ")})`,
-        WebkitBackgroundClip: "text",
-        backgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        color: "transparent",
-        filter: "drop-shadow(0 0 6px rgba(255,128,171,0.9)) drop-shadow(0 0 12px rgba(206,147,216,0.6))",
-      }
-    : {
-        color: TITLE_GRADE_COLOR[grade],
-        textShadow: TITLE_GLOW[grade],
-      };
+  const textStyle: React.CSSProperties = {
+    color: TITLE_GRADE_COLOR[grade],
+    textShadow: TITLE_GLOW[grade],
+  };
 
   return (
     <span style={baseStyle} className={`${fontSizeClass} ${paddingClass}`}>
       {isMythic ? (
         <MythicAnimatedText text={name} size={size} />
+      ) : isLimited ? (
+        <LimitedAnimatedText text={name} size={size} />
       ) : (
         <span style={textStyle}>{name}</span>
       )}
@@ -82,6 +78,29 @@ function MythicAnimatedText({ text, size }: { text: string; size: "xs" | "sm" | 
         color: "transparent",
         animation: "titleShimmer 3s linear infinite",
         filter: "drop-shadow(0 0 4px rgba(255,128,171,0.8))",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+// 한정 등급: 골드-프리즘 shimmer — 신화와 구별되는 금빛 홀로그래픽 효과
+function LimitedAnimatedText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
+  const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
+  return (
+    <span
+      style={{
+        fontSize,
+        fontWeight: 700,
+        background: `linear-gradient(90deg, ${LIMITED_COLORS.join(", ")})`,
+        backgroundSize: "200% auto",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        color: "transparent",
+        animation: "limitedPrism 4s linear infinite",
+        filter: "drop-shadow(0 0 5px rgba(255,215,0,1)) drop-shadow(0 0 10px rgba(221,160,255,0.7))",
       }}
     >
       {text}
@@ -133,11 +152,11 @@ export function TitleSelector({
   const { t } = useLang();
   const ownedSet = new Set(ownedTitleIds);
 
-  const gradeOrder: TitleGrade[] = ["common", "rare", "epic", "legendary", "mythic"];
+  const gradeOrder: TitleGrade[] = ["common", "rare", "epic", "legendary", "mythic", "limited"];
   const byGrade = gradeOrder.map((grade) => ({
     grade,
     titles: TITLES.filter((tt) => tt.grade === grade && (!tt.hidden || ownedSet.has(tt.id))),
-  }));
+  })).filter(({ titles }) => titles.length > 0);
 
   const [openGrades, setOpenGrades] = useState<Set<TitleGrade>>(new Set(gradeOrder));
   const toggleGrade = (grade: TitleGrade) =>

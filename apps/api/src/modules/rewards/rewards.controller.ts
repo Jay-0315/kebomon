@@ -70,6 +70,11 @@ export class RewardsController {
     return this.rewardsService.grantBorders(body.userId, body.borderIds);
   }
 
+  @Post("ping")
+  ping(@Body() body: { userId: string }) {
+    return this.rewardsService.recordAttendance(body.userId);
+  }
+
   @Post("attendance/claim")
   claimAttendance(@Body() body: { userId: string }) {
     return this.rewardsService.claimAttendance(body.userId);
