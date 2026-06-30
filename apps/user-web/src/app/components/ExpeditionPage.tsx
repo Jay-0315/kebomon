@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Map, Lock, Clock, Users, Star, CheckCircle2,
   ChevronRight, AlertCircle, RefreshCw, Package, X,
-  Castle, Landmark, Waves, Flame, HelpCircle, Swords, Trophy,
+  Castle, Landmark, Flame, HelpCircle, Swords, Trophy,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
@@ -161,34 +161,6 @@ const REGIONS: RegionDef[] = [
     unlockDescJa: "ジャンプレイド初回クリア",
     unlockDescEn: "Clear the Jump Raid for the first time",
     rewardBase: { points: 150, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
-  },
-  {
-    id: "plaza",
-    nameKo: "광장의 시장", nameJa: "広場の市場", nameEn: "Ancient Bazaar",
-    descKo: "활기 넘치는 고대 시장의 유물. 퀴즈 레이드 클리어 후 해금됩니다.",
-    descJa: "賑わいの古代市場の遺物。クイズレイドクリア後に解放されます。",
-    descEn: "Relics of a once-thriving ancient market. Unlocked after clearing the Quiz Raid.",
-    difficulty: "medium", minParty: 3, minRarity: "uncommon",
-    color: "#b45309", borderColor: "#92400e",
-    icon: <Landmark size={18}/>, unlockRaidId: 3,
-    unlockDescKo: "퀴즈 레이드 최초 클리어",
-    unlockDescJa: "クイズレイド初回クリア",
-    unlockDescEn: "Clear the Quiz Raid for the first time",
-    rewardBase: { points: 160, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
-  },
-  {
-    id: "beach",
-    nameKo: "해변의 보물섬", nameJa: "海辺の宝島", nameEn: "Treasure Island",
-    descKo: "바닷가에 숨겨진 전설의 보물. 받아쓰기 레이드 클리어 후 해금됩니다.",
-    descJa: "海岸に隠された伝説の宝。書き取りレイドクリア後に解放されます。",
-    descEn: "A legendary treasure hidden along the shore. Unlocked after clearing the Dictation Raid.",
-    difficulty: "high", minParty: 4, minRarity: "rare",
-    color: "#38bdf8", borderColor: "#0369a1",
-    icon: <Waves size={18}/>, unlockRaidId: 4,
-    unlockDescKo: "받아쓰기 레이드 최초 클리어",
-    unlockDescJa: "書き取りレイド初回クリア",
-    unlockDescEn: "Clear the Dictation Raid for the first time",
-    rewardBase: { points: 220, stones: 3, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
   },
   {
     id: "altar",

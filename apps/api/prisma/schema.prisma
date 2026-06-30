@@ -42,6 +42,7 @@ model User {
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
   battleStats           BattleStats?
+  arenaDecks            ArenaDeck[]
   @@map("users")
 }
 
@@ -175,6 +176,18 @@ model BattleStats {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("battle_stats")
+}
+
+/** 아레나 공격/방어 덱 */
+model ArenaDeck {
+  userId    String   @map("user_id")
+  deckType  String   @map("deck_type") @db.VarChar(10)
+  slots     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, deckType])
+  @@map("arena_decks")
 }
 
 model AppSetting {

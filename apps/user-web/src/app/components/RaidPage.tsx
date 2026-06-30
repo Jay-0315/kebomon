@@ -670,19 +670,20 @@ function JumpGame({
   );
 }
 
-// ─── 탄막 피하기 게임 (탄막 레이드 / 타입5) ──────────────────────────────────
-type BulletT = {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  r: number;
-  side?: boolean;
+// ─── 슈팅 게임 (갤로그 스타일 / 타입5) ────────────────────────────────────────
+type PBullet = { id: number; x: number; y: number };
+type EBullet = { id: number; x: number; y: number; vx: number; vy: number };
+type SGEnemy = {
+  id: number; col: number; row: number;
+  hp: number; alive: boolean;
+  divePhase: 0 | 1;
+  diveX: number; diveY: number;
+  diveVX: number; diveVY: number;
+  diveAngle: number;
+  lastFire: number;
 };
-type GemT = { id: number; x: number; y: number; born: number; life: number };
 
-function BulletHellGame({
+function ShootingGame({
   charDef,
   cleared,
   onGemCollect,
@@ -697,8 +698,8 @@ function BulletHellGame({
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
-  const onGemRef = useRef(onGemCollect);
-  onGemRef.current = onGemCollect;
+  const onKillRef = useRef(onGemCollect);
+  onKillRef.current = onGemCollect;
   const onDiedRef = useRef(onDied);
   onDiedRef.current = onDied;
   const clearedRef = useRef(cleared);
@@ -708,242 +709,142 @@ function BulletHellGame({
   const [deadUntil, setDeadUntil] = useState(0);
 
   const MAX_HITS = 5;
-  const P_SPEED = 3.2;
+  const P_SPEED = 3.8;
   const P_HIT_R = 7;
-  const GEM_R = 16;
+  const COLS = 4;
+  const ROWS = 3;
+  const E_CW = 38;
+  const E_RH = 30;
 
   const g = useRef({
-    px: 0,
-    py: 0,
+    px: 0, py: 0,
     keys: new Set<string>(),
-    pointerX: -1,
-    pointerY: -1,
-    bullets: [] as BulletT[],
-    gems: [] as GemT[],
+    pointerX: -1, pointerY: -1,
+    pBullets: [] as PBullet[],
+    eBullets: [] as EBullet[],
+    enemies: [] as SGEnemy[],
     nextId: 0,
-    bulletPhase: 0,
-    lastBullet: 0,
-    lastSideBullet: 0,
-    sideBulletPhase: 0,
-    lastGem: 0,
-    elapsed: 0,
+    lastFire: 0,
     hits: 0,
-    deadUntil: 0,
     invUntil: 0,
+    deadUntil: 0,
+    elapsed: 0,
+    formOX: 0,
+    formVX: 0.6,
+    formDY: 0,
+    wave: 1,
+    waveTimer: -1,
+    lastDive: 0,
   });
 
   useEffect(() => {
-    const KEYS = new Set([
-      "ArrowLeft",
-      "ArrowRight",
-      "ArrowUp",
-      "ArrowDown",
-      "a",
-      "A",
-      "w",
-      "W",
-      "s",
-      "S",
-      "d",
-      "D",
-    ]);
-    const down = (e: KeyboardEvent) => {
-      if (KEYS.has(e.key)) {
-        e.preventDefault();
-        g.current.keys.add(e.key);
-      }
-    };
+    const KEYS = new Set(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","a","A","w","W","s","S","d","D"]);
+    const down = (e: KeyboardEvent) => { if (KEYS.has(e.key)) { e.preventDefault(); g.current.keys.add(e.key); } };
     const up = (e: KeyboardEvent) => g.current.keys.delete(e.key);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
-    let raf = 0,
-      last = performance.now();
+    let raf = 0, last = performance.now();
+
+    const spawnWave = (wave: number) => {
+      const W = canvas.width;
+      const st = g.current;
+      st.enemies = [];
+      const now = Date.now();
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          st.enemies.push({
+            id: st.nextId++, col, row,
+            hp: row === 0 ? 2 : 1,
+            alive: true,
+            divePhase: 0,
+            diveX: (W - COLS * E_CW) / 2 + E_CW / 2 + col * E_CW,
+            diveY: 22 + row * E_RH,
+            diveVX: 0, diveVY: 0, diveAngle: 0,
+            lastFire: now + 800 + Math.random() * 2000,
+          });
+        }
+      }
+      st.formOX = 0;
+      st.formVX = Math.min(1.5, 0.6 + (wave - 1) * 0.12);
+      st.formDY = 0;
+      st.waveTimer = -1;
+      st.wave = wave;
+      st.eBullets = [];
+    };
+
+    const enemyX = (e: SGEnemy, W: number) =>
+      e.divePhase === 1
+        ? e.diveX
+        : (W - COLS * E_CW) / 2 + E_CW / 2 + e.col * E_CW + g.current.formOX;
+    const enemyY = (e: SGEnemy) =>
+      e.divePhase === 1 ? e.diveY : 22 + e.row * E_RH + g.current.formDY;
+
+    const drawEnemy = (x: number, y: number, row: number, hp: number) => {
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      const p = 2;
+      if (row === 0) {
+        ctx.fillStyle = hp >= 2 ? "#f97316" : "#fde68a";
+        ctx.fillRect(-6*p,-3*p,12*p,6*p);
+        ctx.fillRect(-4*p,-5*p,8*p,2*p);
+        ctx.fillRect(-4*p,-7*p,2*p,2*p);
+        ctx.fillRect(2*p,-7*p,2*p,2*p);
+        ctx.fillRect(-8*p,0,2*p,4*p);
+        ctx.fillRect(6*p,0,2*p,4*p);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect(-3*p,-2*p,2*p,2*p);
+        ctx.fillRect(1*p,-2*p,2*p,2*p);
+      } else if (row === 1) {
+        ctx.fillStyle = "#a78bfa";
+        ctx.fillRect(-5*p,-3*p,10*p,6*p);
+        ctx.fillRect(-3*p,-5*p,6*p,2*p);
+        ctx.fillRect(-4*p,-7*p,2*p,2*p);
+        ctx.fillRect(2*p,-7*p,2*p,2*p);
+        ctx.fillRect(-7*p,1*p,2*p,3*p);
+        ctx.fillRect(-2*p,1*p,2*p,3*p);
+        ctx.fillRect(2*p,1*p,2*p,3*p);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect(-2*p,-2*p,2*p,2*p);
+        ctx.fillRect(1*p,-2*p,2*p,2*p);
+      } else {
+        ctx.fillStyle = "#34d399";
+        ctx.fillRect(-4*p,-2*p,8*p,5*p);
+        ctx.fillRect(-3*p,-4*p,6*p,2*p);
+        ctx.fillRect(-3*p,-6*p,2*p,2*p);
+        ctx.fillRect(1*p,-6*p,2*p,2*p);
+        ctx.fillRect(-6*p,2*p,2*p,3*p);
+        ctx.fillRect(4*p,2*p,2*p,3*p);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect(-2*p,-1*p,2*p,2*p);
+        ctx.fillRect(1*p,-1*p,2*p,2*p);
+      }
+      ctx.restore();
+    };
 
     const resize = () => {
       const w = wrapRef.current?.clientWidth ?? 400;
       canvas.width = Math.max(280, w);
       canvas.height = 300;
       g.current.px = canvas.width / 2;
-      g.current.py = canvas.height - 70;
+      g.current.py = canvas.height - 36;
     };
     resize();
     window.addEventListener("resize", resize);
 
-    const fireBullets = (W: number, _H: number, now: number) => {
-      const st = g.current;
-      const bx = W / 2,
-        by = 55;
-      const add = (vx: number, vy: number, r = 5) =>
-        st.bullets.push({ id: st.nextId++, x: bx, y: by, vx, vy, r });
-      const phase = st.bulletPhase % 8;
-      if (phase === 0) {
-        // 3-way 부채꼴
-        [-25, 0, 25].forEach((a) => {
-          const rad = (a * Math.PI) / 180,
-            spd = 2.4;
-          add(Math.sin(rad) * spd, Math.cos(rad) * spd);
-        });
-      } else if (phase === 1) {
-        // 8방향 폭발
-        for (let i = 0; i < 8; i++) {
-          const rad = (i / 8) * Math.PI * 2;
-          add(Math.sin(rad) * 1.9, Math.cos(rad) * 1.9, 4);
-        }
-      } else if (phase === 2) {
-        // 플레이어 조준 + 양옆 보조
-        const dx = st.px - bx,
-          dy = st.py - by;
-        const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const nx = dx / d,
-          ny = dy / d,
-          px = -ny,
-          py = nx,
-          spd = 2.9;
-        add(nx * spd, ny * spd, 6);
-        add((nx + px * 0.4) * spd * 0.9, (ny + py * 0.4) * spd * 0.9, 5);
-        add((nx - px * 0.4) * spd * 0.9, (ny - py * 0.4) * spd * 0.9, 5);
-      } else if (phase === 3) {
-        // 6방향 나선
-        const base = (now * 0.045) % (Math.PI * 2);
-        for (let i = 0; i < 6; i++) {
-          const rad = base + (i / 6) * Math.PI * 2;
-          add(Math.sin(rad) * 2.0, Math.cos(rad) * 2.0, 4);
-        }
-      } else if (phase === 4) {
-        // 5-way 웨이브
-        for (let i = -2; i <= 2; i++) {
-          const rad = (i * 14 * Math.PI) / 180;
-          add(Math.sin(rad) * 2.5, Math.cos(rad) * 2.5, 4);
-        }
-      } else if (phase === 5) {
-        // 12방향 전방위
-        for (let i = 0; i < 12; i++) {
-          const rad = (i / 12) * Math.PI * 2;
-          add(Math.sin(rad) * 1.6, Math.cos(rad) * 1.6, 4);
-        }
-      } else if (phase === 6) {
-        // 이중 링 (안 4개 빠름 + 밖 6개 느림, 역방향)
-        const base = (now * 0.05) % (Math.PI * 2);
-        for (let i = 0; i < 4; i++) {
-          const rad = base + (i / 4) * Math.PI * 2;
-          add(Math.sin(rad) * 3.0, Math.cos(rad) * 3.0, 5);
-        }
-        for (let i = 0; i < 6; i++) {
-          const rad = -base * 0.6 + (i / 6) * Math.PI * 2;
-          add(Math.sin(rad) * 1.5, Math.cos(rad) * 1.5, 4);
-        }
-      } else {
-        // 부채꼴 스윕 (7발, 좌우 스윙)
-        const sweep = Math.sin(now * 0.003) * 38;
-        for (let i = -3; i <= 3; i++) {
-          const rad = ((sweep + i * 11) * Math.PI) / 180;
-          add(Math.sin(rad) * 2.3, Math.cos(rad) * 2.3, 4);
-        }
-      }
-      st.bulletPhase++;
-    };
-
-    const fireSideBullets = (W: number, H: number) => {
-      const st = g.current;
-      const phase = st.sideBulletPhase % 6;
-      const spd = Math.min(3.2, 1.8 + st.elapsed / 80000);
-      const addL = (sy: number, vx: number, vy: number, r = 5) =>
-        st.bullets.push({
-          id: st.nextId++,
-          x: -8,
-          y: sy,
-          vx,
-          vy,
-          r,
-          side: true,
-        });
-      const addR = (sy: number, vx: number, vy: number, r = 5) =>
-        st.bullets.push({
-          id: st.nextId++,
-          x: W + 8,
-          y: sy,
-          vx,
-          vy,
-          r,
-          side: true,
-        });
-      const yStep = (H - 180) / 2;
-
-      if (phase === 0) {
-        // 왼쪽 3발 균등 간격 수평
-        for (let i = 0; i < 3; i++) addL(100 + i * yStep, spd, 0);
-      } else if (phase === 1) {
-        // 오른쪽 3발 균등 간격 수평
-        for (let i = 0; i < 3; i++) addR(100 + i * yStep, -spd, 0);
-      } else if (phase === 2) {
-        // 양쪽 동시 플레이어 조준탄
-        const ly = 90 + Math.random() * (H - 160);
-        const ldx = st.px + 8,
-          ldy = st.py - ly;
-        const ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
-        addL(ly, (ldx / ld) * spd * 1.1, (ldy / ld) * spd * 1.1, 6);
-        const ry = 90 + Math.random() * (H - 160);
-        const rdx = st.px - (W + 8),
-          rdy = st.py - ry;
-        const rd = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
-        addR(ry, (rdx / rd) * spd * 1.1, (rdy / rd) * spd * 1.1, 6);
-      } else if (phase === 3) {
-        // 왼쪽 5-way 부채꼴
-        for (let i = -2; i <= 2; i++) {
-          const a = (i * 16 * Math.PI) / 180;
-          addL(H / 2 + i * 28, Math.cos(a) * spd, Math.sin(a) * spd);
-        }
-      } else if (phase === 4) {
-        // 오른쪽 5-way 부채꼴
-        for (let i = -2; i <= 2; i++) {
-          const a = (i * 16 * Math.PI) / 180;
-          addR(H / 2 + i * 28, -Math.cos(a) * spd, Math.sin(a) * spd);
-        }
-      } else {
-        // 양쪽 동시 2발씩 랜덤 y + 미세 각도
-        for (let i = 0; i < 2; i++) {
-          addL(
-            100 + Math.random() * (H - 180),
-            spd * 1.05,
-            (Math.random() - 0.5) * 1.4,
-          );
-          addR(
-            100 + Math.random() * (H - 180),
-            -spd * 1.05,
-            (Math.random() - 0.5) * 1.4,
-          );
-        }
-      }
-      st.sideBulletPhase++;
-    };
-
-    const spawnGem = (W: number, H: number) => {
-      const st = g.current;
-      st.gems.push({
-        id: st.nextId++,
-        x: 30 + Math.random() * (W - 60),
-        y: 90 + Math.random() * (H - 170),
-        born: Date.now(),
-        life: 5000 + Math.random() * 3000,
-      });
-    };
+    spawnWave(1);
 
     const loop = (now: number) => {
       const dt = Math.min(now - last, 50);
       last = now;
       const dtf = dt / 16.67;
       const st = g.current;
-      const W = canvas.width,
-        H = canvas.height;
+      const W = canvas.width, H = canvas.height;
       const realNow = Date.now();
       const dead = st.deadUntil > realNow;
 
@@ -951,75 +852,130 @@ function BulletHellGame({
         if (st.deadUntil !== 0 && realNow >= st.deadUntil) {
           st.deadUntil = 0;
           st.hits = 0;
-          st.bullets = [];
+          st.eBullets = [];
+          st.pBullets = [];
           st.px = W / 2;
-          st.py = H - 70;
+          st.py = H - 36;
           setDeadUntil(0);
           setLives(MAX_HITS);
         }
         st.elapsed += dt;
 
-        // 이동
-        let mx = 0,
-          my = 0;
+        // 플레이어 이동
+        let mx = 0, my = 0;
         const k = st.keys;
         if (k.has("ArrowLeft") || k.has("a") || k.has("A")) mx -= 1;
         if (k.has("ArrowRight") || k.has("d") || k.has("D")) mx += 1;
         if (k.has("ArrowUp") || k.has("w") || k.has("W")) my -= 1;
         if (k.has("ArrowDown") || k.has("s") || k.has("S")) my += 1;
         if (st.pointerX >= 0) {
-          const tdx = st.pointerX - st.px,
-            tdy = st.pointerY - st.py;
-          const td = Math.sqrt(tdx * tdx + tdy * tdy);
-          if (td > 8) {
-            mx = tdx / td;
-            my = tdy / td;
+          const tdx = st.pointerX - st.px, tdy = st.pointerY - st.py;
+          const td = Math.sqrt(tdx*tdx + tdy*tdy);
+          if (td > 8) { mx = tdx/td; my = tdy/td; }
+        }
+        if (mx !== 0 && my !== 0) { const d = Math.sqrt(mx*mx+my*my); mx/=d; my/=d; }
+        const spd = P_SPEED * dtf;
+        st.px = Math.max(P_HIT_R+4, Math.min(W-P_HIT_R-4, st.px + mx*spd));
+        st.py = Math.max(H*0.52, Math.min(H-14, st.py + my*spd));
+
+        // 자동 발사
+        const fireInterval = 260;
+        if (realNow - st.lastFire > fireInterval) {
+          st.lastFire = realNow;
+          st.pBullets.push({ id: st.nextId++, x: st.px, y: st.py - 20 });
+        }
+
+        // 플레이어 탄 이동 + 적 충돌
+        const aliveEnemies = st.enemies.filter(e => e.alive);
+        st.pBullets = st.pBullets.filter(b => {
+          b.y -= 9 * dtf;
+          if (b.y < -10) return false;
+          for (const e of aliveEnemies) {
+            const ex = enemyX(e, W), ey = enemyY(e);
+            const dx = b.x - ex, dy = b.y - ey;
+            if (Math.sqrt(dx*dx+dy*dy) < 13) {
+              e.hp--;
+              if (e.hp <= 0) { e.alive = false; onKillRef.current(); }
+              return false;
+            }
+          }
+          return true;
+        });
+
+        // 편대 이동
+        const inForm = st.enemies.filter(e => e.alive && e.divePhase === 0);
+        if (inForm.length > 0) {
+          st.formOX += st.formVX * dtf;
+          const maxOX = W/2 - (COLS*E_CW)/2 - 18;
+          if (st.formOX > maxOX) st.formVX = -Math.abs(st.formVX);
+          if (st.formOX < -maxOX) st.formVX = Math.abs(st.formVX);
+          st.formDY = Math.min(50, st.formDY + 0.006 * dtf);
+        }
+
+        // 다이브 공격 (갤로그 스타일)
+        const diveInterval = Math.max(2200, 5000 - st.elapsed / 150);
+        if (realNow - st.lastDive > diveInterval) {
+          const candidates = inForm.filter(e => e.row === ROWS - 1);
+          if (candidates.length > 0) {
+            st.lastDive = realNow;
+            const chosen = candidates[(Math.random() * candidates.length) | 0];
+            chosen.divePhase = 1;
+            chosen.diveX = enemyX(chosen, W);
+            chosen.diveY = enemyY(chosen);
+            chosen.diveAngle = Math.PI * 0.9 + (Math.random() - 0.5) * 0.6;
+            const dspd = 2.8;
+            chosen.diveVX = Math.sin(chosen.diveAngle) * dspd;
+            chosen.diveVY = Math.cos(chosen.diveAngle) * dspd;
           }
         }
-        if (mx !== 0 && my !== 0) {
-          const d = Math.sqrt(mx * mx + my * my);
-          mx /= d;
-          my /= d;
-        }
-        const spd = P_SPEED * dtf;
-        st.px = Math.max(
-          P_HIT_R + 4,
-          Math.min(W - P_HIT_R - 4, st.px + mx * spd),
-        );
-        st.py = Math.max(82, Math.min(H - P_HIT_R - 4, st.py + my * spd));
 
-        // 탄막 발사 (상단)
-        const interval = Math.max(650, 1500 - st.elapsed / 50);
-        if (realNow - st.lastBullet > interval) {
-          st.lastBullet = realNow;
-          fireBullets(W, H, now);
-        }
-        // 탄막 발사 (사이드)
-        const sideInterval = Math.max(500, 1100 - st.elapsed / 60);
-        if (realNow - st.lastSideBullet > sideInterval) {
-          st.lastSideBullet = realNow;
-          fireSideBullets(W, H);
+        // 다이버 이동
+        for (const e of st.enemies) {
+          if (!e.alive || e.divePhase === 0) continue;
+          e.diveAngle += 0.03 * dtf;
+          const dspd = 2.8;
+          e.diveVX = Math.sin(e.diveAngle) * dspd;
+          e.diveVY = Math.cos(e.diveAngle) * dspd;
+          e.diveX += e.diveVX * dtf;
+          e.diveY += e.diveVY * dtf;
+          if (e.diveY > H + 20 || e.diveX < -20 || e.diveX > W + 20) {
+            e.divePhase = 0;
+            e.diveX = enemyX(e, W);
+            e.diveY = enemyY(e);
+          }
         }
 
-        // 탄막 이동 + 충돌
+        // 적 탄막 발사
+        const fireRate = Math.max(700, 2200 - st.elapsed / 25);
+        for (const e of st.enemies) {
+          if (!e.alive) continue;
+          if (realNow - e.lastFire > fireRate) {
+            e.lastFire = realNow + Math.random() * 400;
+            const ex = enemyX(e, W), ey = enemyY(e);
+            const dx = st.px - ex, dy = st.py - ey;
+            const d = Math.sqrt(dx*dx+dy*dy) || 1;
+            const espd = Math.min(3.2, 1.6 + st.elapsed / 80000);
+            st.eBullets.push({ id: st.nextId++, x: ex, y: ey+8, vx: (dx/d)*espd, vy: (dy/d)*espd });
+          }
+        }
+
+        // 적 탄 이동 + 플레이어 충돌
         const inv = realNow < st.invUntil;
-        st.bullets = st.bullets.filter((b) => {
+        st.eBullets = st.eBullets.filter(b => {
           b.x += b.vx * dtf;
           b.y += b.vy * dtf;
-          if (b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20)
-            return false;
+          if (b.x < -10 || b.x > W+10 || b.y < -10 || b.y > H+10) return false;
           if (!inv) {
-            const dx = b.x - st.px,
-              dy = b.y - st.py;
-            if (Math.sqrt(dx * dx + dy * dy) < P_HIT_R + b.r) {
+            const dx = b.x - st.px, dy = b.y - st.py;
+            if (Math.sqrt(dx*dx+dy*dy) < P_HIT_R + 4) {
               st.hits++;
               setLives(Math.max(0, MAX_HITS - st.hits));
               st.invUntil = realNow + 1500;
               if (st.hits >= MAX_HITS) {
                 st.deadUntil = realNow + 1;
-                st.bullets = [];
-                st.px = W / 2;
-                st.py = H - 70;
+                st.eBullets = [];
+                st.pBullets = [];
+                st.px = W/2; st.py = H - 36;
                 setDeadUntil(st.deadUntil);
                 onDiedRef.current?.();
               }
@@ -1029,195 +985,94 @@ function BulletHellGame({
           return true;
         });
 
-        // 보석 생성 + 수집
-        const gemInterval = Math.max(1400, 2800 - st.elapsed / 50);
-        if (realNow - st.lastGem > gemInterval && st.gems.length < 4) {
-          st.lastGem = realNow;
-          spawnGem(W, H);
+        // 웨이브 클리어 체크
+        if (st.enemies.every(e => !e.alive) && st.waveTimer < 0) {
+          st.waveTimer = 1400;
         }
-        let collected = 0;
-        st.gems = st.gems.filter((gem) => {
-          if (realNow - gem.born > gem.life) return false;
-          const dx = gem.x - st.px,
-            dy = gem.y - st.py;
-          if (Math.sqrt(dx * dx + dy * dy) < GEM_R + P_HIT_R) {
-            collected++;
-            return false;
-          }
-          return true;
-        });
-        for (let i = 0; i < collected; i++) onGemRef.current();
+        if (st.waveTimer >= 0) {
+          st.waveTimer -= dt;
+          if (st.waveTimer < 0) spawnWave(st.wave + 1);
+        }
       }
 
       // ── 렌더링 ──
       ctx.clearRect(0, 0, W, H);
 
-      // 우주 배경
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, "#06060f");
-      bg.addColorStop(1, "#140920");
+      // 배경
+      const bg = ctx.createLinearGradient(0,0,0,H);
+      bg.addColorStop(0,"#06060f");
+      bg.addColorStop(1,"#0d1020");
       ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0,0,W,H);
 
       // 별
-      for (let i = 0; i < 55; i++) {
-        const sx = (i * 137.5 + 11) % W,
-          sy = (i * 91.3 + 19) % H;
-        ctx.fillStyle = `rgba(255,255,255,${0.25 + (i % 5) * 0.1})`;
+      for (let i=0;i<60;i++) {
+        const sx=(i*137.5+11)%W, sy=(i*91.3+19)%H;
+        ctx.fillStyle=`rgba(255,255,255,${0.2+(i%5)*0.1})`;
         ctx.beginPath();
-        ctx.arc(sx, sy, i % 4 === 0 ? 1.4 : 0.7, 0, Math.PI * 2);
+        ctx.arc(sx,sy,i%4===0?1.4:0.7,0,Math.PI*2);
         ctx.fill();
       }
 
-      // 보스 발광 영역
-      const bx = W / 2,
-        by = 55;
-      const bg2 = ctx.createRadialGradient(bx, by, 0, bx, by, 62);
-      bg2.addColorStop(0, "rgba(160,40,255,0.38)");
-      bg2.addColorStop(1, "rgba(80,0,160,0)");
-      ctx.fillStyle = bg2;
-      ctx.beginPath();
-      ctx.arc(bx, by, 62, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 경계선
-      ctx.strokeStyle = "rgba(160,40,255,0.14)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 8]);
-      ctx.beginPath();
-      ctx.moveTo(0, 82);
-      ctx.lineTo(W, 82);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // 보석
-      const rn = Date.now();
-      for (const gem of g.current.gems) {
-        const age = rn - gem.born;
-        const alpha = age > gem.life - 1200 ? (gem.life - age) / 1200 : 1;
-        const pulse = 1 + Math.sin(now * 0.006 + gem.id) * 0.13;
-        const s = 9 * pulse;
-        const gg = ctx.createRadialGradient(
-          gem.x,
-          gem.y,
-          0,
-          gem.x,
-          gem.y,
-          s * 2.6,
-        );
-        gg.addColorStop(0, `rgba(255,218,50,${alpha * 0.65})`);
-        gg.addColorStop(1, "rgba(255,160,0,0)");
-        ctx.fillStyle = gg;
-        ctx.beginPath();
-        ctx.arc(gem.x, gem.y, s * 2.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.translate(gem.x, gem.y);
-        ctx.rotate(now * 0.0016 + gem.id * 0.9);
-        ctx.fillStyle = "#FFD700";
-        ctx.beginPath();
-        ctx.moveTo(0, -s);
-        ctx.lineTo(s * 0.65, 0);
-        ctx.lineTo(0, s);
-        ctx.lineTo(-s * 0.65, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "rgba(255,255,180,0.72)";
-        ctx.beginPath();
-        ctx.moveTo(0, -s * 0.45);
-        ctx.lineTo(s * 0.28, 0);
-        ctx.lineTo(0, s * 0.2);
-        ctx.lineTo(-s * 0.28, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+      // 적 렌더링
+      for (const e of g.current.enemies) {
+        if (!e.alive) continue;
+        drawEnemy(enemyX(e, W), enemyY(e), e.row, e.hp);
       }
 
-      // 탄막
-      for (const b of g.current.bullets) {
-        const bg3 = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 2.6);
-        if (b.side) {
-          bg3.addColorStop(0, "rgba(0,210,255,0.9)");
-          bg3.addColorStop(0.5, "rgba(0,120,230,0.5)");
-          bg3.addColorStop(1, "rgba(0,60,160,0)");
-          ctx.fillStyle = bg3;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r * 2.6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#00d2ff";
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#aaefff";
-          ctx.beginPath();
-          ctx.arc(
-            b.x - b.r * 0.32,
-            b.y - b.r * 0.32,
-            b.r * 0.38,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fill();
-        } else {
-          bg3.addColorStop(0, "rgba(255,55,80,0.9)");
-          bg3.addColorStop(0.5, "rgba(200,0,60,0.5)");
-          bg3.addColorStop(1, "rgba(140,0,50,0)");
-          ctx.fillStyle = bg3;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r * 2.6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#ff5577";
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#ffaacc";
-          ctx.beginPath();
-          ctx.arc(
-            b.x - b.r * 0.32,
-            b.y - b.r * 0.32,
-            b.r * 0.38,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fill();
-        }
+      // 플레이어 탄
+      for (const b of g.current.pBullets) {
+        const bgrad = ctx.createLinearGradient(b.x, b.y-14, b.x, b.y+2);
+        bgrad.addColorStop(0,"rgba(80,255,160,0)");
+        bgrad.addColorStop(0.5,"rgba(80,255,160,0.6)");
+        bgrad.addColorStop(1,"rgba(120,255,200,0.9)");
+        ctx.fillStyle = bgrad;
+        ctx.fillRect(b.x-3, b.y-14, 6, 16);
+        ctx.fillStyle = "#ccffe8";
+        ctx.fillRect(Math.round(b.x)-1, Math.round(b.y)-10, 2, 10);
+      }
+
+      // 적 탄
+      for (const b of g.current.eBullets) {
+        const eg = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,7);
+        eg.addColorStop(0,"rgba(255,80,50,0.95)");
+        eg.addColorStop(0.5,"rgba(220,20,0,0.5)");
+        eg.addColorStop(1,"rgba(140,0,0,0)");
+        ctx.fillStyle=eg;
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,7,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle="#ff8866";
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,3,0,Math.PI*2);
+        ctx.fill();
       }
 
       // 플레이어 발광
+      const rn = Date.now();
       if (!dead) {
-        const inv = rn < g.current.invUntil;
-        const blink = inv && Math.floor(rn / 80) % 2 === 0;
+        const inv2 = rn < g.current.invUntil;
+        const blink = inv2 && Math.floor(rn/80)%2===0;
         if (!blink) {
-          const pg = ctx.createRadialGradient(
-            st.px,
-            st.py,
-            0,
-            st.px,
-            st.py,
-            22,
-          );
-          pg.addColorStop(
-            0,
-            inv ? "rgba(255,200,80,0.55)" : "rgba(80,130,255,0.48)",
-          );
-          pg.addColorStop(1, "rgba(0,0,0,0)");
-          ctx.fillStyle = pg;
+          const pg = ctx.createRadialGradient(st.px,st.py,0,st.px,st.py,22);
+          pg.addColorStop(0,inv2?"rgba(255,200,80,0.55)":"rgba(80,200,255,0.45)");
+          pg.addColorStop(1,"rgba(0,0,0,0)");
+          ctx.fillStyle=pg;
           ctx.beginPath();
-          ctx.arc(st.px, st.py, 22, 0, Math.PI * 2);
+          ctx.arc(st.px,st.py,22,0,Math.PI*2);
           ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.fillStyle="rgba(255,255,255,0.85)";
           ctx.beginPath();
-          ctx.arc(st.px, st.py, 2.5, 0, Math.PI * 2);
+          ctx.arc(st.px,st.py,2.5,0,Math.PI*2);
           ctx.fill();
         }
         if (playerRef.current) {
-          playerRef.current.style.left = `${Math.round(st.px - 22)}px`;
-          playerRef.current.style.top = `${Math.round(st.py - 22)}px`;
-          playerRef.current.style.opacity = blink ? "0.25" : "1";
+          playerRef.current.style.left=`${Math.round(st.px-22)}px`;
+          playerRef.current.style.top=`${Math.round(st.py-22)}px`;
+          playerRef.current.style.opacity=blink?"0.25":"1";
         }
       } else if (playerRef.current) {
-        playerRef.current.style.opacity = "0";
+        playerRef.current.style.opacity="0";
       }
 
       raf = requestAnimationFrame(loop);
@@ -1259,7 +1114,6 @@ function BulletHellGame({
         onPointerUp={onPtrEnd}
         onPointerLeave={onPtrEnd}
       />
-      {/* 플레이어 스프라이트 */}
       <div
         ref={playerRef}
         className="pointer-events-none absolute"
@@ -1272,7 +1126,6 @@ function BulletHellGame({
           size={44}
         />
       </div>
-      {/* 목숨 */}
       <div className="pointer-events-none absolute left-2 top-2 z-10 flex gap-0.5">
         {Array.from({ length: MAX_HITS }).map((_, i) => (
           <Heart
@@ -1281,11 +1134,9 @@ function BulletHellGame({
           />
         ))}
       </div>
-      {/* 조작 안내 */}
       <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold text-white">
         {t("raid.bullet_hint")}
       </div>
-      {/* 사망 오버레이 */}
       {isDead && (
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/72 text-white">
           <div className="text-lg font-extrabold">{t("raid.eliminated")}</div>
@@ -2171,7 +2022,7 @@ export default function RaidPage() {
               })}
             </div>
           )}
-          <BulletHellGame
+          <ShootingGame
             charDef={charById(self?.characterId ?? myCharacterId)}
             cleared={state?.cleared ?? false}
             onGemCollect={emitGem}

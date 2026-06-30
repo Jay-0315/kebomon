@@ -66,7 +66,7 @@ function rarityDamage(charId: number): number {
 
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
   1: { name: "점프 미니게임",  points: 30, goal: 50, cry: "내 장애물을 피할 수 있겠나?!" },
-  5: { name: "탄막 미니게임",  points: 60, goal: 50, cry: "내 탄막을 피할 수 있겠나?!" },
+  5: { name: "슈팅 미니게임",  points: 60, goal: 50, cry: "내 군단을 뚫을 수 있겠나?!" },
 };
 
 const BOSS_POOL = [
@@ -418,7 +418,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   private missionView(r: RaidRoom) {
     if (r.type === 1) return { label: "장애물을 점프로 넘어라!", target: "SPACE ↑", hint: "스페이스바(또는 화면 터치)로 점프 · 넘을 때마다 데미지" };
-    if (r.type === 5) return { label: "탄막을 피하며 보석을 모아라!", target: "← → ↑ ↓ / WASD", hint: "보석 1개 = 보스 HP −데미지" };
+    if (r.type === 5) return { label: "적을 격추하여 보스를 공격하라!", target: "← → ↑ ↓ / WASD", hint: "적 격추 1기 = 보스 HP −데미지 · 자동 발사" };
     return { label: "", target: "", hint: "" };
   }
 

@@ -27,8 +27,6 @@ const REGION_NAME: Record<string, { ko: string; ja: string }> = {
   grassland: { ko: "초원의 평야", ja: "草原の平野" },
   forest:    { ko: "삼림의 비경", ja: "森の秘境" },
   ruins:     { ko: "폐허의 유적", ja: "廃墟の遺跡" },
-  plaza:     { ko: "광장의 시장", ja: "広場の市場" },
-  beach:     { ko: "해변의 보물섬", ja: "海辺の宝島" },
   altar:     { ko: "제단의 신비", ja: "祭壇の神秘" },
 };
 
