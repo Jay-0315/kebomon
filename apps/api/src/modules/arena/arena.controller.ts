@@ -33,4 +33,21 @@ export class ArenaController {
   ) {
     return this.arena.attack(body.userId, defenderId);
   }
+
+  /** NPC 전투 실행 */
+  @Post("attack-npc")
+  attackNpc(
+    @Body() body: {
+      userId: string;
+      npcSlots: number[];
+      npcEnhLvs: number[];
+      pointsOnWin: number;
+      pointsOnLoss: number;
+    },
+  ) {
+    return this.arena.attackNpc(
+      body.userId, body.npcSlots, body.npcEnhLvs,
+      body.pointsOnWin, body.pointsOnLoss,
+    );
+  }
 }

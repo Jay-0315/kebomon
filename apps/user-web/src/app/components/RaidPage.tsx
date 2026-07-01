@@ -672,15 +672,19 @@ function JumpGame({
 
 // ─── 슈팅 게임 (갤로그 스타일 / 타입5) ────────────────────────────────────────
 type PBullet = { id: number; x: number; y: number };
-type EBullet = { id: number; x: number; y: number; vx: number; vy: number };
+type EBullet = { id: number; x: number; y: number; vx: number; vy: number; kind: number };
+// eType: 0=오렌지리더, 1=퍼플, 2=그린, 3=방패(시안), 4=봄버(황금), 5=스피더(핑크), 6=팬텀, 7=엘리트(레드)
 type SGEnemy = {
   id: number; col: number; row: number;
-  hp: number; alive: boolean;
+  hp: number; maxHp: number; alive: boolean;
+  eType: number;
   divePhase: 0 | 1;
   diveX: number; diveY: number;
   diveVX: number; diveVY: number;
   diveAngle: number;
   lastFire: number;
+  blinkVis: boolean; blinkNext: number;
+  formX: number; formY: number;
 };
 
 function ShootingGame({
@@ -711,8 +715,6 @@ function ShootingGame({
   const MAX_HITS = 5;
   const P_SPEED = 3.8;
   const P_HIT_R = 7;
-  const COLS = 4;
-  const ROWS = 3;
   const E_CW = 38;
   const E_RH = 30;
 
@@ -756,22 +758,78 @@ function ShootingGame({
       const st = g.current;
       st.enemies = [];
       const now = Date.now();
-      for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-          st.enemies.push({
-            id: st.nextId++, col, row,
-            hp: row === 0 ? 2 : 1,
-            alive: true,
-            divePhase: 0,
-            diveX: (W - COLS * E_CW) / 2 + E_CW / 2 + col * E_CW,
-            diveY: 22 + row * E_RH,
-            diveVX: 0, diveVY: 0, diveAngle: 0,
-            lastFire: now + 800 + Math.random() * 2000,
-          });
+      const CW = E_CW, RH = E_RH;
+      type Spec = { fx: number; fy: number; eType: number; hp: number };
+      const specs: Spec[] = [];
+      const wi = ((wave - 1) % 7) + 1;
+
+      if (wi === 1) {
+        // 웨이브1: 클래식 3×4 그리드
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+          const eType = r === 0 ? 0 : r === 1 ? 1 : 2;
+          specs.push({ fx: (c - 1.5) * CW, fy: 22 + r * RH, eType, hp: eType === 0 ? 2 : 1 });
+        }
+      } else if (wi === 2) {
+        // 웨이브2: 방패 선봉 3×5 (방패→리더→그린)
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) {
+          const eType = r === 0 ? 3 : r === 1 ? 0 : 2;
+          const hp = eType === 3 ? 3 : eType === 0 ? 2 : 1;
+          specs.push({ fx: (c - 2) * CW, fy: 22 + r * RH, eType, hp });
+        }
+      } else if (wi === 3) {
+        // 웨이브3: 봄버 V자 대형
+        const v: [number, number, number][] = [
+          [-2*CW, 22, 4], [-CW, 22, 2], [0, 22, 2], [CW, 22, 2], [2*CW, 22, 4],
+          [-1.5*CW, 22+RH, 4], [-0.5*CW, 22+RH, 1], [0.5*CW, 22+RH, 1], [1.5*CW, 22+RH, 4],
+          [-0.5*CW, 22+RH*2, 2], [0.5*CW, 22+RH*2, 2],
+        ];
+        for (const [fx, fy, eType] of v) specs.push({ fx, fy, eType, hp: 1 });
+      } else if (wi === 4) {
+        // 웨이브4: 스피더 군집 4×5
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++)
+          specs.push({ fx: (c - 2) * CW, fy: 14 + r * RH, eType: 5, hp: 1 });
+      } else if (wi === 5) {
+        // 웨이브5: 팬텀 혼성 3×4
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+          const eType = r <= 1 ? 6 : 2;
+          specs.push({ fx: (c - 1.5) * CW, fy: 22 + r * RH, eType, hp: eType === 6 ? 2 : 1 });
+        }
+      } else if (wi === 6) {
+        // 웨이브6: 엘리트 정예대 2×3
+        for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++)
+          specs.push({ fx: (c - 1) * CW * 1.4, fy: 26 + r * RH * 1.6, eType: 7, hp: 4 });
+      } else {
+        // 웨이브7+: 카오스 혼합 4행
+        const chaos = [7, 3, 6, 4, 5, 7, 3, 4, 6, 5, 0, 1, 2, 7, 3, 4, 5, 6, 2, 1];
+        let ti = 0;
+        const rowCols = [3, 4, 5, 4];
+        for (let r = 0; r < 4; r++) {
+          const cols = rowCols[r];
+          for (let c = 0; c < cols; c++) {
+            const eType = chaos[ti++ % chaos.length];
+            const hp = eType === 7 ? 4 : eType === 3 ? 3 : eType === 6 ? 2 : eType === 0 ? 2 : 1;
+            specs.push({ fx: (c - (cols - 1) / 2) * CW, fy: 14 + r * RH, eType, hp });
+          }
         }
       }
+
+      for (let i = 0; i < specs.length; i++) {
+        const s = specs[i];
+        st.enemies.push({
+          id: st.nextId++, col: i, row: 0,
+          hp: s.hp, maxHp: s.hp, alive: true,
+          eType: s.eType,
+          divePhase: 0,
+          diveX: W / 2 + s.fx, diveY: s.fy,
+          diveVX: 0, diveVY: 0, diveAngle: 0,
+          lastFire: now + 500 + Math.random() * 2500,
+          blinkVis: true, blinkNext: now + 800 + Math.random() * 400,
+          formX: s.fx, formY: s.fy,
+        });
+      }
+
       st.formOX = 0;
-      st.formVX = Math.min(2.2, 1.0 + (wave - 1) * 0.18);
+      st.formVX = Math.min(2.8, 0.9 + (wave - 1) * 0.22);
       st.formDY = 0;
       st.waveTimer = -1;
       st.wave = wave;
@@ -779,17 +837,19 @@ function ShootingGame({
     };
 
     const enemyX = (e: SGEnemy, W: number) =>
-      e.divePhase === 1
-        ? e.diveX
-        : (W - COLS * E_CW) / 2 + E_CW / 2 + e.col * E_CW + g.current.formOX;
+      e.divePhase === 1 ? e.diveX : W / 2 + e.formX + g.current.formOX;
     const enemyY = (e: SGEnemy) =>
-      e.divePhase === 1 ? e.diveY : 22 + e.row * E_RH + g.current.formDY;
+      e.divePhase === 1 ? e.diveY : e.formY + g.current.formDY;
 
-    const drawEnemy = (x: number, y: number, row: number, hp: number) => {
+    const drawEnemy = (x: number, y: number, e: SGEnemy) => {
+      const { eType, hp, maxHp, blinkVis } = e;
+      if (eType === 6 && !blinkVis) return;
       ctx.save();
       ctx.translate(Math.round(x), Math.round(y));
+      if (eType === 6) ctx.globalAlpha = 0.55;
       const p = 2;
-      if (row === 0) {
+      if (eType === 0) {
+        // 오렌지 리더
         ctx.fillStyle = hp >= 2 ? "#f97316" : "#fde68a";
         ctx.fillRect(-6*p,-3*p,12*p,6*p);
         ctx.fillRect(-4*p,-5*p,8*p,2*p);
@@ -800,7 +860,8 @@ function ShootingGame({
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillRect(-3*p,-2*p,2*p,2*p);
         ctx.fillRect(1*p,-2*p,2*p,2*p);
-      } else if (row === 1) {
+      } else if (eType === 1) {
+        // 퍼플 미드
         ctx.fillStyle = "#a78bfa";
         ctx.fillRect(-5*p,-3*p,10*p,6*p);
         ctx.fillRect(-3*p,-5*p,6*p,2*p);
@@ -812,7 +873,8 @@ function ShootingGame({
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillRect(-2*p,-2*p,2*p,2*p);
         ctx.fillRect(1*p,-2*p,2*p,2*p);
-      } else {
+      } else if (eType === 2) {
+        // 그린 그런트
         ctx.fillStyle = "#34d399";
         ctx.fillRect(-4*p,-2*p,8*p,5*p);
         ctx.fillRect(-3*p,-4*p,6*p,2*p);
@@ -823,6 +885,88 @@ function ShootingGame({
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillRect(-2*p,-1*p,2*p,2*p);
         ctx.fillRect(1*p,-1*p,2*p,2*p);
+      } else if (eType === 3) {
+        // 방패병 (시안, 3HP)
+        ctx.fillStyle = hp >= 2 ? "#06b6d4" : "#67e8f9";
+        ctx.fillRect(-6*p,-4*p,12*p,7*p);
+        ctx.fillRect(-4*p,-6*p,8*p,2*p);
+        ctx.fillRect(-4*p,-8*p,2*p,2*p);
+        ctx.fillRect(2*p,-8*p,2*p,2*p);
+        if (hp > 1) {
+          ctx.fillStyle = "rgba(186,248,255,0.9)";
+          ctx.fillRect(-8*p,2*p,16*p,2*p);
+          ctx.fillRect(-9*p,-1*p,2*p,7*p);
+          ctx.fillRect(7*p,-1*p,2*p,7*p);
+        }
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillRect(-3*p,-3*p,2*p,2*p);
+        ctx.fillRect(1*p,-3*p,2*p,2*p);
+      } else if (eType === 4) {
+        // 봄버 (황금, 넓은 날개)
+        ctx.fillStyle = "#fbbf24";
+        ctx.fillRect(-8*p,-2*p,16*p,5*p);
+        ctx.fillRect(-5*p,-5*p,10*p,3*p);
+        ctx.fillRect(-2*p,-7*p,4*p,2*p);
+        ctx.fillRect(-12*p,0,4*p,3*p);
+        ctx.fillRect(8*p,0,4*p,3*p);
+        ctx.fillRect(-10*p,3*p,2*p,2*p);
+        ctx.fillRect(8*p,3*p,2*p,2*p);
+        ctx.fillStyle = "#7c3aed";
+        ctx.fillRect(-2*p,-4*p,4*p,3*p);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect(-1*p,-3*p,2*p,2*p);
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(-6*p,2*p,2*p,2*p);
+        ctx.fillRect(-1*p,2*p,2*p,2*p);
+        ctx.fillRect(4*p,2*p,2*p,2*p);
+      } else if (eType === 5) {
+        // 스피더 (핑크, 슬림)
+        ctx.fillStyle = "#f472b6";
+        ctx.fillRect(-3*p,-6*p,6*p,10*p);
+        ctx.fillRect(-5*p,-2*p,10*p,4*p);
+        ctx.fillRect(-9*p,0,4*p,2*p);
+        ctx.fillRect(5*p,0,4*p,2*p);
+        ctx.fillRect(-8*p,-2*p,2*p,2*p);
+        ctx.fillRect(6*p,-2*p,2*p,2*p);
+        ctx.fillRect(-1*p,-8*p,2*p,2*p);
+        ctx.fillStyle = "#c026d3";
+        ctx.fillRect(-2*p,4*p,4*p,2*p);
+        ctx.fillStyle = "rgba(255,200,255,0.85)";
+        ctx.fillRect(-1*p,-4*p,2*p,2*p);
+      } else if (eType === 6) {
+        // 팬텀 (반투명 유령)
+        ctx.fillStyle = "rgba(200,200,255,0.95)";
+        ctx.fillRect(-5*p,-4*p,10*p,8*p);
+        ctx.fillRect(-3*p,-6*p,6*p,2*p);
+        ctx.fillRect(-5*p,2*p,2*p,4*p);
+        ctx.fillRect(3*p,2*p,2*p,4*p);
+        ctx.fillRect(-3*p,4*p,2*p,3*p);
+        ctx.fillRect(1*p,4*p,2*p,3*p);
+        ctx.fillStyle = hp <= 1 ? "rgba(255,80,80,1)" : "rgba(140,60,255,1)";
+        ctx.fillRect(-3*p,-2*p,2*p,2*p);
+        ctx.fillRect(1*p,-2*p,2*p,2*p);
+      } else if (eType === 7) {
+        // 엘리트 (레드, 4HP, 대형)
+        const hf = hp / maxHp;
+        ctx.fillStyle = hf > 0.5 ? "#dc2626" : hf > 0.25 ? "#f97316" : "#fde68a";
+        ctx.fillRect(-7*p,-4*p,14*p,8*p);
+        ctx.fillRect(-5*p,-7*p,10*p,3*p);
+        ctx.fillRect(-3*p,-9*p,6*p,2*p);
+        ctx.fillRect(-2*p,-11*p,4*p,2*p);
+        ctx.fillRect(-11*p,0,4*p,5*p);
+        ctx.fillRect(7*p,0,4*p,5*p);
+        ctx.fillRect(-13*p,2*p,2*p,3*p);
+        ctx.fillRect(11*p,2*p,2*p,3*p);
+        ctx.fillStyle = "#450a0a";
+        ctx.fillRect(-6*p,4*p,2*p,4*p);
+        ctx.fillRect(4*p,4*p,2*p,4*p);
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.fillRect(-4*p,-2*p,2*p,3*p);
+        ctx.fillRect(2*p,-2*p,2*p,3*p);
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(-6*p,-13*p,12*p,2*p);
+        ctx.fillStyle = hf > 0.5 ? "#22c55e" : hf > 0.25 ? "#f59e0b" : "#ef4444";
+        ctx.fillRect(-6*p,-13*p,Math.round(12*hf)*p,2*p);
       }
       ctx.restore();
     };
@@ -892,11 +1036,17 @@ function ShootingGame({
           b.y -= 9 * dtf;
           if (b.y < -10) return false;
           for (const e of aliveEnemies) {
+            if (e.eType === 6 && !e.blinkVis) continue; // 팬텀 비가시 = 무적
             const ex = enemyX(e, W), ey = enemyY(e);
             const dx = b.x - ex, dy = b.y - ey;
-            if (Math.sqrt(dx*dx+dy*dy) < 13) {
+            const hitR = e.eType === 5 ? 10 : e.eType === 7 ? 16 : 13;
+            if (Math.sqrt(dx*dx+dy*dy) < hitR) {
               e.hp--;
-              if (e.hp <= 0) { e.alive = false; onKillRef.current(); }
+              if (e.hp <= 0) {
+                e.alive = false;
+                const kills = e.eType === 7 ? 3 : e.eType === 3 ? 2 : 1;
+                for (let k = 0; k < kills; k++) onKillRef.current();
+              }
               return false;
             }
           }
@@ -907,34 +1057,46 @@ function ShootingGame({
         const inForm = st.enemies.filter(e => e.alive && e.divePhase === 0);
         if (inForm.length > 0) {
           st.formOX += st.formVX * dtf;
-          const maxOX = W/2 - (COLS*E_CW)/2 - 18;
+          const maxFormX = inForm.reduce((m, e) => Math.max(m, Math.abs(e.formX)), 0);
+          const maxOX = Math.max(16, W / 2 - maxFormX - 24);
           if (st.formOX > maxOX) st.formVX = -Math.abs(st.formVX);
           if (st.formOX < -maxOX) st.formVX = Math.abs(st.formVX);
-          st.formDY = Math.min(50, st.formDY + 0.010 * dtf);
+          st.formDY = Math.min(60, st.formDY + 0.012 * dtf);
         }
 
         // 다이브 공격 (갤로그 스타일)
-        const diveInterval = Math.max(1400, 3800 - st.elapsed / 100);
+        const diveInterval = Math.max(1200, 3500 - st.elapsed / 90);
         if (realNow - st.lastDive > diveInterval) {
-          const candidates = inForm.filter(e => e.row === ROWS - 1);
-          if (candidates.length > 0) {
+          const speeders = inForm.filter(e => e.eType === 5);
+          const maxFY = inForm.reduce((m, e) => Math.max(m, e.formY + st.formDY), 0);
+          const frontRow = inForm.filter(e => e.formY + st.formDY >= maxFY - 4);
+          const pool = speeders.length > 0 ? speeders : frontRow.length > 0 ? frontRow : inForm;
+          if (pool.length > 0) {
             st.lastDive = realNow;
-            const chosen = candidates[(Math.random() * candidates.length) | 0];
-            chosen.divePhase = 1;
-            chosen.diveX = enemyX(chosen, W);
-            chosen.diveY = enemyY(chosen);
-            chosen.diveAngle = Math.PI * 0.9 + (Math.random() - 0.5) * 0.6;
-            const dspd = 3.8;
-            chosen.diveVX = Math.sin(chosen.diveAngle) * dspd;
-            chosen.diveVY = Math.cos(chosen.diveAngle) * dspd;
+            // 봄버·엘리트는 2기 동시 다이브
+            const chosen = pool[(Math.random() * pool.length) | 0];
+            const diveCount = (chosen.eType === 4 || chosen.eType === 7) ? Math.min(2, pool.length) : 1;
+            const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+            for (let d = 0; d < diveCount; d++) {
+              const e = shuffled[d];
+              if (e.divePhase === 1) continue;
+              e.divePhase = 1;
+              e.diveX = enemyX(e, W);
+              e.diveY = enemyY(e);
+              const dspd = e.eType === 5 ? 6.5 : e.eType === 7 ? 4.5 : 3.8;
+              e.diveAngle = Math.PI * 0.9 + (Math.random() - 0.5) * 0.7;
+              e.diveVX = Math.sin(e.diveAngle) * dspd;
+              e.diveVY = Math.cos(e.diveAngle) * dspd;
+            }
           }
         }
 
         // 다이버 이동
         for (const e of st.enemies) {
           if (!e.alive || e.divePhase === 0) continue;
-          e.diveAngle += 0.04 * dtf;
-          const dspd = 3.8;
+          const angleRate = e.eType === 5 ? 0.07 : 0.04;
+          e.diveAngle += angleRate * dtf;
+          const dspd = e.eType === 5 ? 6.5 : e.eType === 7 ? 4.5 : 3.8;
           e.diveVX = Math.sin(e.diveAngle) * dspd;
           e.diveVY = Math.cos(e.diveAngle) * dspd;
           e.diveX += e.diveVX * dtf;
@@ -946,17 +1108,42 @@ function ShootingGame({
           }
         }
 
+        // 팬텀 깜빡임
+        for (const e of st.enemies) {
+          if (!e.alive || e.eType !== 6) continue;
+          if (realNow >= e.blinkNext) {
+            e.blinkVis = !e.blinkVis;
+            e.blinkNext = realNow + (e.blinkVis ? 700 + Math.random() * 600 : 300 + Math.random() * 300);
+          }
+        }
+
         // 적 탄막 발사
-        const fireRate = Math.max(450, 1600 - st.elapsed / 18);
+        const fireRate = Math.max(380, 1500 - st.elapsed / 16);
         for (const e of st.enemies) {
           if (!e.alive) continue;
           if (realNow - e.lastFire > fireRate) {
-            e.lastFire = realNow + Math.random() * 400;
+            e.lastFire = realNow + Math.random() * 350;
             const ex = enemyX(e, W), ey = enemyY(e);
             const dx = st.px - ex, dy = st.py - ey;
             const d = Math.sqrt(dx*dx+dy*dy) || 1;
-            const espd = Math.min(4.8, 2.4 + st.elapsed / 50000);
-            st.eBullets.push({ id: st.nextId++, x: ex, y: ey+8, vx: (dx/d)*espd, vy: (dy/d)*espd });
+            const baseSpd = Math.min(5.0, 2.4 + st.elapsed / 45000);
+            if (e.eType === 4) {
+              // 봄버: 3방향 부채꼴 탄막
+              const baseAng = Math.atan2(dy, dx);
+              for (const offset of [-0.32, 0, 0.32]) {
+                const ang = baseAng + offset;
+                st.eBullets.push({ id: st.nextId++, x: ex, y: ey+8, vx: Math.cos(ang)*baseSpd, vy: Math.sin(ang)*baseSpd, kind: 1 });
+              }
+            } else if (e.eType === 7) {
+              // 엘리트: 좌우 쌍발
+              st.eBullets.push({ id: st.nextId++, x: ex-4, y: ey+8, vx: (dx/d)*(baseSpd+0.8), vy: (dy/d)*(baseSpd+0.8), kind: 2 });
+              st.eBullets.push({ id: st.nextId++, x: ex+4, y: ey+8, vx: (dx/d)*(baseSpd+0.8), vy: (dy/d)*(baseSpd+0.8), kind: 2 });
+            } else if (e.eType === 5) {
+              // 스피더: 고속 단발
+              st.eBullets.push({ id: st.nextId++, x: ex, y: ey+8, vx: (dx/d)*(baseSpd*1.7), vy: (dy/d)*(baseSpd*1.7), kind: 3 });
+            } else {
+              st.eBullets.push({ id: st.nextId++, x: ex, y: ey+8, vx: (dx/d)*baseSpd, vy: (dy/d)*baseSpd, kind: 0 });
+            }
           }
         }
 
@@ -1018,7 +1205,7 @@ function ShootingGame({
       // 적 렌더링
       for (const e of g.current.enemies) {
         if (!e.alive) continue;
-        drawEnemy(enemyX(e, W), enemyY(e), e.row, e.hp);
+        drawEnemy(enemyX(e, W), enemyY(e), e);
       }
 
       // 플레이어 탄
@@ -1033,20 +1220,41 @@ function ShootingGame({
         ctx.fillRect(Math.round(b.x)-1, Math.round(b.y)-10, 2, 10);
       }
 
-      // 적 탄
+      // 적 탄 (종류별 색상)
       for (const b of g.current.eBullets) {
-        const eg = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,7);
-        eg.addColorStop(0,"rgba(255,80,50,0.95)");
-        eg.addColorStop(0.5,"rgba(220,20,0,0.5)");
-        eg.addColorStop(1,"rgba(140,0,0,0)");
-        ctx.fillStyle=eg;
-        ctx.beginPath();
-        ctx.arc(b.x,b.y,7,0,Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle="#ff8866";
-        ctx.beginPath();
-        ctx.arc(b.x,b.y,3,0,Math.PI*2);
-        ctx.fill();
+        if (b.kind === 1) {
+          // 봄버 탄 (황금)
+          const eg = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,8);
+          eg.addColorStop(0,"rgba(255,210,0,0.95)");
+          eg.addColorStop(0.5,"rgba(200,140,0,0.5)");
+          eg.addColorStop(1,"rgba(120,80,0,0)");
+          ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(b.x,b.y,8,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle="#ffe066"; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2); ctx.fill();
+        } else if (b.kind === 2) {
+          // 엘리트 탄 (보라)
+          const eg = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,6);
+          eg.addColorStop(0,"rgba(180,50,255,0.95)");
+          eg.addColorStop(0.5,"rgba(120,0,200,0.5)");
+          eg.addColorStop(1,"rgba(60,0,120,0)");
+          ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(b.x,b.y,6,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle="#d580ff"; ctx.beginPath(); ctx.arc(b.x,b.y,2.5,0,Math.PI*2); ctx.fill();
+        } else if (b.kind === 3) {
+          // 스피더 탄 (핑크, 소형 고속)
+          const eg = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,5);
+          eg.addColorStop(0,"rgba(255,100,200,0.95)");
+          eg.addColorStop(0.5,"rgba(200,0,120,0.4)");
+          eg.addColorStop(1,"rgba(120,0,60,0)");
+          ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(b.x,b.y,5,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle="#ff80cc"; ctx.beginPath(); ctx.arc(b.x,b.y,2,0,Math.PI*2); ctx.fill();
+        } else {
+          // 기본 탄 (빨강)
+          const eg = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,7);
+          eg.addColorStop(0,"rgba(255,80,50,0.95)");
+          eg.addColorStop(0.5,"rgba(220,20,0,0.5)");
+          eg.addColorStop(1,"rgba(140,0,0,0)");
+          ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(b.x,b.y,7,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle="#ff8866"; ctx.beginPath(); ctx.arc(b.x,b.y,3,0,Math.PI*2); ctx.fill();
+        }
       }
 
       // 플레이어 발광

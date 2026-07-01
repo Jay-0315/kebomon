@@ -156,6 +156,85 @@ function calcArenaStat(charType: string, rarity: string, enhLevel = 0) {
   };
 }
 
+// ─── NPC 대전 상대 정의 ───────────────────────────────────────────────────────
+interface NpcOpponent {
+  id:          string;
+  nameKo:      string;
+  nameJa:      string;
+  nameEn:      string;
+  tierIdx:     number;
+  fakePts:     number;
+  slots:       number[];   // 방어 덱 character IDs
+  enhLvs:      number[];   // 각 캐릭터 강화 레벨
+  stars:       number;     // 1~5 난이도
+  winPts:      number;
+  lossPts:     number;
+  descKo:      string;
+}
+
+const NPC_OPPONENTS: NpcOpponent[] = [
+  {
+    id:"npc_1", nameKo:"브론즈 훈련병",     nameJa:"ブロンズ訓練兵",   nameEn:"Bronze Recruit",
+    tierIdx:0, fakePts:400,
+    slots:[4,7,8,9], enhLvs:[0,0,0,0], stars:1, winPts:50, lossPts:0,
+    descKo:"기초 훈련 중인 새내기. 쉽게 이길 수 있다.",
+  },
+  {
+    id:"npc_2", nameKo:"견습 수비대",        nameJa:"見習い守備隊",     nameEn:"Rookie Guard",
+    tierIdx:0, fakePts:1000,
+    slots:[5,6,11,12], enhLvs:[0,0,0,0], stars:1, winPts:60, lossPts:0,
+    descKo:"균형 잡힌 입문자 편성. 무난한 상대.",
+  },
+  {
+    id:"npc_3", nameKo:"실버 검사",          nameJa:"シルバー剣士",     nameEn:"Silver Swordsman",
+    tierIdx:1, fakePts:3200,
+    slots:[20,14,22,84], enhLvs:[0,0,0,0], stars:2, winPts:90, lossPts:0,
+    descKo:"언커먼 캐릭터로 구성된 전투 베테랑.",
+  },
+  {
+    id:"npc_4", nameKo:"저주의 술사",        nameJa:"呪いの術師",       nameEn:"Cursed Warlock",
+    tierIdx:1, fakePts:4500,
+    slots:[16,91,90,21], enhLvs:[1,1,0,0], stars:2, winPts:100, lossPts:0,
+    descKo:"저주와 회피가 특기. 방심하면 위험하다.",
+  },
+  {
+    id:"npc_5", nameKo:"골드 전사단",        nameJa:"ゴールド戦士団",   nameEn:"Gold Warriors",
+    tierIdx:2, fakePts:7500,
+    slots:[26,35,33,36], enhLvs:[2,2,1,1], stars:3, winPts:150, lossPts:0,
+    descKo:"레어 등급 4인 균형 편성. 전략이 필요하다.",
+  },
+  {
+    id:"npc_6", nameKo:"에픽 마법군단",      nameJa:"エピック魔法軍団", nameEn:"Epic Spellcasters",
+    tierIdx:3, fakePts:9800,
+    slots:[40,39,99,131], enhLvs:[2,2,3,2], stars:3, winPts:180, lossPts:0,
+    descKo:"에픽 마법사와 도적의 연합. 화력이 강력하다.",
+  },
+  {
+    id:"npc_7", nameKo:"레전더리 수호자",    nameJa:"レジェンダリー守護者",nameEn:"Legendary Guards",
+    tierIdx:4, fakePts:13000,
+    slots:[57,53,52,135], enhLvs:[3,3,3,4], stars:4, winPts:250, lossPts:-20,
+    descKo:"레전더리 등급의 엘리트 부대. 쉽지 않은 상대.",
+  },
+  {
+    id:"npc_8", nameKo:"황금 전설 부대",     nameJa:"黄金伝説部隊",    nameEn:"Golden Legends",
+    tierIdx:4, fakePts:14500,
+    slots:[137,154,191,216], enhLvs:[4,4,3,4], stars:4, winPts:280, lossPts:-30,
+    descKo:"피닉스·드래곤·고래·말의 드림팀.",
+  },
+  {
+    id:"npc_9", nameKo:"신화 챔피언",        nameJa:"ミシックチャンピオン",nameEn:"Mythic Champion",
+    tierIdx:5, fakePts:16500,
+    slots:[64,72,83,150], enhLvs:[5,5,5,5], stars:5, winPts:350, lossPts:-50,
+    descKo:"신화 등급 최강자들의 집합. 승리하면 큰 보상.",
+  },
+  {
+    id:"npc_10", nameKo:"무패의 챌린저",     nameJa:"無敗のチャレンジャー",nameEn:"Undefeated Challenger",
+    tierIdx:6, fakePts:21000,
+    slots:[158,204,208,235], enhLvs:[6,6,6,6], stars:5, winPts:500, lossPts:-100,
+    descKo:"전설의 챌린저. 이기면 명예를, 지면 굴욕을.",
+  },
+];
+
 // ─── 입장권 ───────────────────────────────────────────────────────────────────
 const MAX_TICKETS = 5;
 const REGEN_MS    = 2 * 60 * 60 * 1000;
@@ -285,6 +364,14 @@ const CSS = `
 @keyframes cr-fill{from{width:0}}
 @keyframes col-hp-flash{0%{opacity:0.7}100%{opacity:0}}
 @keyframes col-stone-glow{0%,100%{opacity:0.55}50%{opacity:0.9}}
+@keyframes col-shine{0%{transform:translateX(-120%) skewX(-20deg)}100%{transform:translateX(220%) skewX(-20deg)}}
+@keyframes col-tier-pulse{0%,100%{filter:drop-shadow(0 0 4px currentColor)}50%{filter:drop-shadow(0 0 16px currentColor)}}
+@keyframes col-border-glow{0%,100%{box-shadow:0 0 12px var(--glow-col,#c8a44a44),inset 0 0 8px var(--glow-col,#c8a44a11)}50%{box-shadow:0 0 28px var(--glow-col,#c8a44a88),inset 0 0 20px var(--glow-col,#c8a44a22)}}
+@keyframes col-float-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes col-ticket-appear{0%{opacity:0;transform:scale(0) rotate(-30deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes col-battle-ready{0%,100%{box-shadow:0 6px 0 #5a2d00,0 0 24px #c8a44a33}50%{box-shadow:0 6px 0 #5a2d00,0 0 48px #c8a44a88}}
+.col-btn-shine{overflow:hidden;position:relative}
+.col-btn-shine::after{content:'';position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);animation:col-shine 2.4s ease-in-out 0.8s infinite}
 .col-rank-scroll::-webkit-scrollbar{display:none}
 .col-rank-scroll{-ms-overflow-style:none;scrollbar-width:none}
 @media(min-width:640px){.col-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
@@ -1202,7 +1289,6 @@ export default function ColosseumPage() {
   // 세션 상태
   const [phase, setPhase]             = useState<Phase>("lobby");
   const [showSeason, setShowSeason]   = useState(false);
-  const [rankTab, setRankTab]         = useState<"deck"|"ranking">("deck");
 
   // 내 스탯 / 덱
   const [tierPts, setTierPts]         = useState(0);
@@ -1214,11 +1300,13 @@ export default function ColosseumPage() {
   const [editingDeckType, setEditingDeckType] = useState<"attack"|"defense">("attack");
 
   // 공격 확인
-  const [targetUser, setTargetUser]   = useState<{ userId:string; nickname:string; tierPoints:number } | null>(null);
+  const [targetUser, setTargetUser]     = useState<{ userId:string; nickname:string; tierPoints:number } | null>(null);
   const [targetDefSlots, setTargetDefSlots] = useState<number[]>([]);
+  const [npcTarget, setNpcTarget]       = useState<NpcOpponent | null>(null);
 
   // 배틀 / 결과
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
+  const [npcSection, setNpcSection]     = useState(true); // NPC 섹션 펼침 여부
 
   // 랭킹
   const [rankings, setRankings]       = useState<RankingEntry[]>([]);
@@ -1265,14 +1353,23 @@ export default function ColosseumPage() {
     setPhase("lobby");
   };
 
-  // ── 공격 확인 단계 ──
+  // ── 공격 확인 (실제 플레이어) ──
   const startAttackConfirm = async (target: RankingEntry) => {
     try {
       const res = await api.get<{ slots:number[]; defenderName:string }>(`/arena/defense/${encodeURIComponent(target.userId)}`);
       setTargetUser({ userId: target.userId, nickname: target.nickname, tierPoints: target.tierPoints });
       setTargetDefSlots(res.slots);
+      setNpcTarget(null);
       setPhase("attack-confirm");
     } catch { /* silent */ }
+  };
+
+  // ── 공격 확인 (NPC) ──
+  const startNpcAttackConfirm = (npc: NpcOpponent) => {
+    setTargetUser({ userId: npc.id, nickname: npc.nameKo, tierPoints: npc.fakePts });
+    setTargetDefSlots(npc.slots);
+    setNpcTarget(npc);
+    setPhase("attack-confirm");
   };
 
   // ── 배틀 실행 ──
@@ -1281,9 +1378,19 @@ export default function ColosseumPage() {
     if (!consume()) return;
     setPhase("battle");
     try {
-      const res = await api.post<BattleResult>(`/arena/attack/${encodeURIComponent(targetUser.userId)}`, { userId: user.id });
+      let res: BattleResult;
+      if (npcTarget) {
+        res = await api.post<BattleResult>("/arena/attack-npc", {
+          userId:       user.id,
+          npcSlots:     npcTarget.slots,
+          npcEnhLvs:    npcTarget.enhLvs,
+          pointsOnWin:  npcTarget.winPts,
+          pointsOnLoss: npcTarget.lossPts,
+        });
+      } else {
+        res = await api.post<BattleResult>(`/arena/attack/${encodeURIComponent(targetUser.userId)}`, { userId: user.id });
+      }
       setBattleResult(res);
-      // 통계 즉시 반영
       setTierPts(res.tierPoints);
       setStats({ wins:res.wins, losses:res.losses, winStreak:res.winStreak });
     } catch {
@@ -1344,7 +1451,7 @@ export default function ColosseumPage() {
           <PixelBtn onClick={() => setPhase("lobby")} color="gray">
             {ko?"돌아가기":ja?"戻る":"Back"}
           </PixelBtn>
-          <PixelBtn onClick={() => { setBattleResult(null); setPhase("lobby"); setRankTab("ranking"); }}>
+          <PixelBtn onClick={() => { setBattleResult(null); setPhase("lobby"); }}>
             {ko?"재도전":ja?"再挑戦":"Retry"}
           </PixelBtn>
         </div>
@@ -1364,6 +1471,15 @@ export default function ColosseumPage() {
           <h2 style={{ margin:0, color:C.gold, fontSize:17, fontWeight:900 }}>{ko?"전투 확인":ja?"戦闘確認":"Battle Preview"}</h2>
         </div>
         <div style={{ maxWidth:480, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+          {/* NPC 배지 */}
+          {npcTarget && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.35)", borderRadius:7 }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#60a5fa" strokeWidth="1.5"/><rect x="5" y="4" width="4" height="1.5" rx="0.5" fill="#60a5fa"/><rect x="5" y="6.5" width="4" height="1.5" rx="0.5" fill="#60a5fa"/><rect x="5" y="9" width="4" height="1.5" rx="0.5" fill="#60a5fa"/></svg>
+              <span style={{ fontSize:11, color:"#60a5fa", fontWeight:900 }}>AI 수련 전투</span>
+              <span style={{ marginLeft:"auto", fontSize:10, color:"#4ade80", fontWeight:900 }}>승리 시 +{npcTarget.winPts}P{npcTarget.lossPts < 0 ? ` / 패배 시 ${npcTarget.lossPts}P` : " / 패배 무손실"}</span>
+            </div>
+          )}
+
           {/* 내 공격 덱 */}
           <div style={{ background:"linear-gradient(135deg,#061a30,#040f1c)", border:"1px solid #1e3a5f", borderRadius:8, padding:"14px 12px" }}>
             <p style={{ margin:"0 0 10px", fontSize:11, color:"#60a5fa", fontWeight:900, letterSpacing:"0.12em" }}>
@@ -1375,22 +1491,34 @@ export default function ColosseumPage() {
                 : myAtkSlots.map((id,i) => <DeckSlotCard key={i} charId={id} small/>)}
             </div>
           </div>
+
           {/* vs */}
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ flex:1, height:1, background:`linear-gradient(90deg,transparent,${C.border})` }}/>
             <Swords size={18} color={C.gold}/>
             <div style={{ flex:1, height:1, background:`linear-gradient(90deg,${C.border},transparent)` }}/>
           </div>
+
           {/* 상대 방어 덱 */}
-          <div style={{ background:"linear-gradient(135deg,#1f0606,#130404)", border:"1px solid #4f0e0e", borderRadius:8, padding:"14px 12px" }}>
-            <p style={{ margin:"0 0 4px", fontSize:11, color:"#f87171", fontWeight:900, letterSpacing:"0.12em" }}>
-              {targetUser.nickname} {ko?"방어 덱":ja?"防御デッキ":"Defense Deck"}
-            </p>
+          <div style={{ background: npcTarget ? "linear-gradient(135deg,#0f1a2e,#090f1c)" : "linear-gradient(135deg,#1f0606,#130404)", border: npcTarget ? "1px solid #1e3a5f88" : "1px solid #4f0e0e", borderRadius:8, padding:"14px 12px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+              <p style={{ margin:0, fontSize:11, fontWeight:900, letterSpacing:"0.12em", color: npcTarget ? "#60a5fa" : "#f87171" }}>
+                {npcTarget ? (ko?"AI 방어 덱":ja?"AI防御デッキ":"AI Defense Deck") : `${targetUser.nickname} ${ko?"방어 덱":ja?"防御デッキ":"Defense Deck"}`}
+              </p>
+              {npcTarget && (
+                <span style={{ display:"flex", gap:1 }}>
+                  {Array.from({length:5},(_,i)=>(
+                    <svg key={i} width="9" height="9" viewBox="0 0 10 10"><polygon points="5,1 6.2,3.8 9.5,4 7,6.2 7.8,9.5 5,7.8 2.2,9.5 3,6.2 0.5,4 3.8,3.8" fill={i<npcTarget.stars?"#fbbf24":"#2e1f06"}/></svg>
+                  ))}
+                </span>
+              )}
+            </div>
             <p style={{ margin:"0 0 10px", fontSize:10, color:C.stoneFaint }}>{targetUser.tierPoints.toLocaleString()} pts</p>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {targetDefSlots.map((id,i) => <DeckSlotCard key={i} charId={id} small/>)}
             </div>
           </div>
+
           {/* 티켓 */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"#0a0805", border:`1px solid ${C.borderFaint}`, borderRadius:6 }}>
             <span style={{ fontSize:13, color:C.stone }}>{ko?"입장권":ja?"入場券":"Tickets"}</span>
@@ -1417,189 +1545,380 @@ export default function ColosseumPage() {
   const rankPage5 = rankings.slice(rankPage * RANK_PAGE_SZ, (rankPage + 1) * RANK_PAGE_SZ);
   const myRankEntry = rankings.find(e => e.userId === user?.id);
 
+  // ── 공격 가능한 유효한 타겟 (나 제외) ──
+  const attackableEntries = rankings.filter(e => e.userId !== user?.id);
+
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, padding:"0 0 40px", fontFamily:FONT }}>
+    <div style={{ minHeight:"100vh", background:C.bg, padding:"0 0 60px", fontFamily:FONT }}>
       <style>{CSS}</style>
 
-      {/* 배너 */}
-      <div style={{ position:"relative", background:"linear-gradient(180deg,#1e1006 0%,#120a04 55%,#0c0703 100%)", borderBottom:"3px solid #6b3a0e", padding:"18px 16px 16px", textAlign:"center", boxShadow:`0 4px 32px ${C.goldGlow}44` }}>
+      {/* ══ 히어로 배너 ══════════════════════════════════════════════════════ */}
+      <div style={{ position:"relative", background:"linear-gradient(180deg,#1e1006 0%,#120a04 55%,#0c0703 100%)", borderBottom:`3px solid #6b3a0e`, boxShadow:`0 6px 40px ${C.goldGlow}55` }}>
         {/* 석재 질감 */}
-        <div style={{ position:"absolute", inset:0, opacity:0.06, pointerEvents:"none", backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(255,255,255,0.5) 31px,rgba(255,255,255,0.5) 32px)" }}/>
+        <div style={{ position:"absolute", inset:0, opacity:0.05, pointerEvents:"none", backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 15px,#fff 15px,#fff 16px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(255,255,255,0.5) 31px,rgba(255,255,255,0.5) 32px)" }}/>
         {/* 금빛 방사광 */}
-        <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:`radial-gradient(ellipse 70% 50% at 50% 100%,${C.goldGlow}14 0%,transparent 70%)` }}/>
-        {/* 횃불 장식 (좌우) */}
-        <div style={{ position:"absolute", top:10, left:10, zIndex:1 }}><Torch/></div>
-        <div style={{ position:"absolute", top:10, right:10, zIndex:1 }}><Torch flip/></div>
-        {/* 시즌보상 버튼 */}
-        <button onClick={() => setShowSeason(true)} style={{ position:"absolute", top:12, right:46, zIndex:2, display:"flex", alignItems:"center", gap:5, background:"rgba(200,164,74,0.12)", border:"1px solid #5a3d0e", borderRadius:5, padding:"5px 10px", cursor:"pointer", fontFamily:FONT, fontSize:11, fontWeight:900, color:C.gold }}>
-          <Gift size={13} color={C.gold}/>{ko?`시즌 ${SEASON.number} 보상`:ja?`シーズン${SEASON.number}報酬`:`Season ${SEASON.number}`}
+        <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:`radial-gradient(ellipse 80% 60% at 50% 110%,${C.goldGlow}22 0%,transparent 65%)` }}/>
+        {/* 사이드 그라디언트 */}
+        <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(90deg,rgba(0,0,0,0.35) 0%,transparent 30%,transparent 70%,rgba(0,0,0,0.35) 100%)" }}/>
+
+        {/* 횃불 */}
+        <div style={{ position:"absolute", top:14, left:14, zIndex:2 }}><Torch/></div>
+        <div style={{ position:"absolute", top:14, right:14, zIndex:2 }}><Torch flip/></div>
+
+        {/* 시즌 보상 버튼 (우상단) */}
+        <button onClick={() => setShowSeason(true)} style={{ position:"absolute", top:14, right:48, zIndex:3, display:"flex", alignItems:"center", gap:5, background:"rgba(200,164,74,0.14)", border:"1px solid #6b4a12", borderRadius:6, padding:"5px 11px", cursor:"pointer", fontFamily:FONT, fontSize:11, fontWeight:900, color:C.gold, backdropFilter:"blur(4px)" }}>
+          <Gift size={12} color={C.gold}/>{ko?`S${SEASON.number} 보상`:ja?`S${SEASON.number}報酬`:`S${SEASON.number}`}
         </button>
-        <p style={{ margin:"0 0 6px", fontSize:10, letterSpacing:"0.5em", color:C.stone, fontWeight:900, position:"relative", zIndex:1 }}>KEBOMON</p>
-        {/* 경기장 게이트 픽셀아트 */}
-        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:12, marginBottom:6, position:"relative", zIndex:1 }}>
-          <ArenaFlag/>
-          <ArenaGate/>
-          <ArenaFlag flip/>
-        </div>
-        <h1 style={{ margin:"0 0 8px", position:"relative", zIndex:1, fontFamily:"'Courier New',monospace", fontSize:28, fontWeight:900, letterSpacing:"0.22em", color:C.gold, textShadow:`0 0 24px ${C.goldGlow}, 2px 2px 0 #3a2508, -1px -1px 0 #3a2508`, display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
-          <Swords size={22} color={C.gold} strokeWidth={2.5}/> COLOSSEUM <Swords size={22} color={C.gold} strokeWidth={2.5}/>
-        </h1>
-        {/* 시즌 배지 */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, position:"relative", zIndex:1 }}>
-          <div style={{ height:1, width:40, background:`linear-gradient(90deg,transparent,${C.gold}88)` }}/>
-          <div style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(200,164,74,0.08)", border:`1px solid ${C.gold}44`, borderRadius:20, padding:"3px 14px" }}>
-            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/></svg>
-            <span style={{ fontFamily:FONT, fontSize:11, fontWeight:900, letterSpacing:"0.12em", color:C.gold, textShadow:`0 0 10px ${C.goldGlow}` }}>
-              {ko?`시즌 ${SEASON.number}  ·  영광의 시작`:ja?`シーズン${SEASON.number}  ·  栄光の始まり`:`Season ${SEASON.number}  ·  Glory Begins`}
-            </span>
-            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/></svg>
+
+        {/* 상단 컨텐츠 */}
+        <div style={{ padding:"20px 16px 0", textAlign:"center", position:"relative", zIndex:1 }}>
+          <p style={{ margin:"0 0 4px", fontSize:9, letterSpacing:"0.6em", color:C.stone, fontWeight:900 }}>K E B O M O N</p>
+          {/* 경기장 게이트 */}
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:10, marginBottom:2 }}>
+            <ArenaFlag/><ArenaGate/><ArenaFlag flip/>
           </div>
-          <div style={{ height:1, width:40, background:`linear-gradient(90deg,${C.gold}88,transparent)` }}/>
+          <h1 style={{ margin:"0 0 4px", fontFamily:"'Courier New',monospace", fontSize:26, fontWeight:900, letterSpacing:"0.25em", color:C.gold, textShadow:`0 0 32px ${C.goldGlow}, 2px 2px 0 #3a2508, -1px -1px 0 #3a2508`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+            <Swords size={20} color={C.gold} strokeWidth={2.5}/>COLOSSEUM<Swords size={20} color={C.gold} strokeWidth={2.5}/>
+          </h1>
+          {/* 시즌 배지 */}
+          <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(200,164,74,0.09)", border:`1px solid ${C.gold}33`, borderRadius:20, padding:"3px 16px", marginBottom:14 }}>
+            <svg width="11" height="11" viewBox="0 0 14 14"><polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/></svg>
+            <span style={{ fontFamily:FONT, fontSize:10, fontWeight:900, letterSpacing:"0.14em", color:C.gold }}>
+              {ko?`시즌 ${SEASON.number} · 영광의 시작`:ja?`S${SEASON.number} · 栄光の始まり`:`Season ${SEASON.number} · Glory Begins`}
+            </span>
+            <svg width="11" height="11" viewBox="0 0 14 14"><polygon points="7,1 8.8,5.2 13.5,5.5 10,8.5 11.1,13 7,10.5 2.9,13 4,8.5 0.5,5.5 5.2,5.2" fill="#c8a44a" opacity="0.9"/></svg>
+          </div>
         </div>
+
+        {/* 티어 + 스탯 통합 카드 (배너 하단에 붙음) */}
+        <div style={{ margin:"0 12px", padding:"14px 16px", background:`linear-gradient(135deg,${tier.glow}22 0%,rgba(0,0,0,0.55) 100%)`, border:`1px solid ${tier.color}55`, borderRadius:"8px 8px 0 0", backdropFilter:"blur(8px)", position:"relative", zIndex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {/* 티어 배지 */}
+            <div style={{ flexShrink:0, animation:"col-tier-pulse 3s ease-in-out infinite", color:tier.color }}>
+              <TierBadgeSvg idx={tierIdx} size={56}/>
+            </div>
+            {/* 티어 정보 */}
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                <span style={{ fontFamily:FONT, fontSize:20, fontWeight:900, color:tier.color, textShadow:`0 0 12px ${tier.glow}` }}>{tierLabel}</span>
+                <span style={{ fontFamily:"monospace", fontSize:12, color:C.stone }}>{tierPts.toLocaleString()} pts</span>
+              </div>
+              {/* 진행 바 */}
+              <div style={{ height:10, background:"rgba(0,0,0,0.6)", border:`1px solid ${tier.color}44`, borderRadius:4, overflow:"hidden", marginTop:6, boxShadow:`0 0 8px ${tier.glow}33` }}>
+                <div style={{ height:"100%", width:`${tierProgress*100}%`, background:`linear-gradient(90deg,${tier.glow},${tier.color})`, boxShadow:`0 0 16px ${tier.color}aa`, borderRadius:4, transition:"width 0.6s cubic-bezier(0.25,0.8,0.25,1)", position:"relative" }}>
+                  <div style={{ position:"absolute", inset:"0 auto 0 0", width:"100%", background:"linear-gradient(180deg,rgba(255,255,255,0.3) 0%,transparent 60%)", borderRadius:4 }}/>
+                </div>
+              </div>
+              <p style={{ margin:"4px 0 0", fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>
+                {tierPts.toLocaleString()} / {(TIERS[tierIdx+1]?.min ?? tier.min+1000).toLocaleString()} pts
+              </p>
+            </div>
+          </div>
+
+          {/* 승/패/연승 가로 통계 */}
+          <div style={{ display:"flex", marginTop:12, paddingTop:10, borderTop:`1px solid ${tier.color}33`, gap:0 }}>
+            {[
+              { lk:"승", lj:"勝", le:"WIN",    val:stats.wins,      col:"#4ade80", bg:"rgba(74,222,128,0.08)" },
+              { lk:"패", lj:"敗", le:"LOSE",   val:stats.losses,    col:"#f87171", bg:"rgba(248,113,113,0.08)" },
+              { lk:"연승", lj:"連勝", le:"STREAK", val:stats.winStreak, col:C.gold,   bg:`rgba(200,164,74,0.08)` },
+            ].map((s,i) => (
+              <div key={i} style={{ flex:1, textAlign:"center", padding:"6px 0", background:s.bg, borderRadius:4, margin:"0 3px" }}>
+                <p style={{ margin:0, fontFamily:"monospace", fontSize:22, fontWeight:900, color:s.col, lineHeight:1, textShadow:`0 0 10px ${s.col}88` }}>{s.val}</p>
+                <p style={{ margin:"3px 0 0", fontFamily:FONT, fontSize:9, color:C.stoneFaint, letterSpacing:"0.08em" }}>{ko?s.lk:ja?s.lj:s.le}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 배너 하단 border 연결 */}
+        <div style={{ height:3, margin:"0 12px", background:`linear-gradient(90deg,transparent,${tier.color}88,${tier.color},${tier.color}88,transparent)` }}/>
       </div>
 
       {showSeason && <SeasonRewardModal onClose={() => setShowSeason(false)} ko={ko} ja={ja} myPts={tierPts}/>}
 
-      <div style={{ maxWidth:860, margin:"0 auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:12 }}>
+      <div style={{ maxWidth:860, margin:"0 auto", padding:"14px 12px", display:"flex", flexDirection:"column", gap:12 }}>
 
-        {/* 티어 카드 */}
-        <div style={{ background:C.panel, border:`2px solid ${tier.color}`, boxShadow:`0 0 20px ${tier.glow}66,inset 0 0 24px ${tier.glow}18`, borderRadius:6, padding:"16px 18px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <TierBadgeSvg idx={tierIdx} size={52}/>
-            <div style={{ flex:1 }}>
-              <p style={{ fontFamily:FONT, fontSize:18, fontWeight:900, color:tier.color, textShadow:`0 0 8px ${tier.glow}`, margin:0 }}>{tierLabel}</p>
-              <p style={{ fontFamily:FONT, fontSize:12, color:C.stone, margin:"2px 0 8px" }}>{tierPts.toLocaleString()} pts</p>
-              <div style={{ height:8, background:"#0a0703", border:`1px solid ${tier.glow}`, borderRadius:2, overflow:"hidden", boxShadow:`0 0 10px ${tier.glow}44` }}>
-                <div style={{ height:"100%", width:`${tierProgress*100}%`, background:`linear-gradient(90deg,${tier.glow}88,${tier.color})`, boxShadow:`0 0 12px ${tier.color}`, transition:"width 0.4s" }}/>
-              </div>
-            </div>
+        {/* ══ 덱 구성 섹션 ═══════════════════════════════════════════════════ */}
+        <div style={{ background:"linear-gradient(135deg,#18120a 0%,#0e0b06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
+          {/* 헤더 */}
+          <div style={{ padding:"10px 14px", background:"rgba(200,164,74,0.06)", borderBottom:`1px solid ${C.borderFaint}`, display:"flex", alignItems:"center", gap:8 }}>
+            <Swords size={13} color={C.gold} strokeWidth={2.5}/>
+            <span style={{ fontFamily:FONT, fontSize:12, fontWeight:900, color:C.gold, letterSpacing:"0.1em" }}>{ko?"전투 덱 구성":ja?"戦闘デッキ":"Battle Deck"}</span>
           </div>
-          <div style={{ display:"flex", gap:0, marginTop:12, borderTop:`1px solid ${C.borderFaint}`, paddingTop:10 }}>
-            {[{ label:ko?"승":"Win",  val:stats.wins,      col:"#4ade80" },
-              { label:ko?"패":"Loss", val:stats.losses,    col:"#f87171" },
-              { label:ko?"연승":"Streak", val:stats.winStreak, col:C.gold }].map(s=>(
-              <div key={s.label} style={{ flex:1, textAlign:"center" }}>
-                <p style={{ fontFamily:FONT, fontSize:20, fontWeight:900, color:s.col, margin:0 }}>{s.val}</p>
-                <p style={{ fontFamily:FONT, fontSize:10, color:C.stoneFaint, margin:0 }}>{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* 탭 */}
-        <div style={{ display:"flex", gap:0 }}>
-          {[{ key:"deck", label:ko?"내 덱":ja?"マイデッキ":"My Deck" },
-            { key:"ranking", label:ko?"랭킹":ja?"ランキング":"Ranking" }].map(tab=>(
-            <button key={tab.key} onClick={() => setRankTab(tab.key as "deck"|"ranking")}
-              style={{ flex:1, padding:"10px 0", fontFamily:FONT, fontWeight:900, fontSize:13, cursor:"pointer", background: rankTab===tab.key ? "#1e1508" : "transparent", borderBottom: rankTab===tab.key ? `2px solid ${C.gold}` : `2px solid ${C.borderFaint}`, border:"none", borderRadius:0, color: rankTab===tab.key ? C.gold : C.stone, transition:"color 0.15s" }}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* 내 덱 탭 */}
-        {rankTab === "deck" && (
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {/* 공격 덱 */}
-            {[{ type:"attack" as const, label:ko?"공격 덱":ja?"攻撃デッキ":"Attack Deck", slots:myAtkSlots, accent:"#60a5fa", bg:"linear-gradient(135deg,#061a30,#040f1c)", border:"#1e3a5f" },
-              { type:"defense" as const, label:ko?"방어 덱":ja?"防御デッキ":"Defense Deck", slots:myDefSlots, accent:"#f87171", bg:"linear-gradient(135deg,#1f0606,#130404)", border:"#4f0e0e" }].map(dk=>(
-              <div key={dk.type} style={{ background:dk.bg, border:`2px solid ${dk.border}`, borderRadius:8, padding:"14px 12px" }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                  <p style={{ margin:0, fontSize:12, fontWeight:900, color:dk.accent, letterSpacing:"0.1em" }}>{dk.label}</p>
+          {/* 공격/방어 덱 나란히 */}
+          <div style={{ display:"flex", gap:0 }}>
+            {[
+              { type:"attack" as const,  label:ko?"공격 덱":ja?"攻撃":"ATK", slots:myAtkSlots,  accent:"#60a5fa", bgGrad:"linear-gradient(135deg,#061a30 0%,#040f1c 100%)", bdr:"#1e3a5f", icon:"⚔" },
+              { type:"defense" as const, label:ko?"방어 덱":ja?"防御":"DEF", slots:myDefSlots, accent:"#f87171", bgGrad:"linear-gradient(135deg,#200707 0%,#130404 100%)", bdr:"#4f0e0e", icon:"🛡" },
+            ].map((dk, di) => (
+              <div key={dk.type} style={{ flex:1, padding:"12px 10px", background:dk.bgGrad, borderLeft: di===1 ? `1px solid ${C.borderFaint}` : undefined }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                  <span style={{ fontSize:11, fontWeight:900, color:dk.accent, letterSpacing:"0.08em" }}>{dk.label}</span>
                   <button onClick={() => { setEditingDeckType(dk.type); setPhase("deck-edit"); }}
-                    style={{ background:`${dk.accent}22`, border:`1px solid ${dk.accent}88`, color:dk.accent, fontFamily:FONT, fontSize:11, fontWeight:900, padding:"4px 12px", borderRadius:3, cursor:"pointer" }}>
+                    style={{ display:"flex", alignItems:"center", gap:3, background:`${dk.accent}18`, border:`1px solid ${dk.accent}55`, color:dk.accent, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"3px 10px", borderRadius:4, cursor:"pointer", transition:"background 0.15s" }}>
                     {ko?"편집":ja?"編集":"Edit"}
                   </button>
                 </div>
-                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                  {dk.slots.length === 0
-                    ? <p style={{ fontSize:11, color:C.stoneFaint, margin:0 }}>{ko?"슬롯 비어있음":ja?"スロット空":"Empty"}</p>
-                    : dk.slots.map((id,i)=><DeckSlotCard key={i} charId={id} small/>)}
-                  {dk.slots.length < 4 && dk.slots.length > 0 && Array.from({length:4-dk.slots.length},(_,i)=>(
-                    <DeckSlotCard key={`empty-${i}`} charId={null}/>
-                  ))}
+                <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                  {Array.from({length:4}, (_,i) => {
+                    const id = dk.slots[i];
+                    if (!id) return (
+                      <div key={i} style={{ width:44, height:44, border:`2px dashed ${dk.bdr}`, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <Plus size={13} color={dk.bdr}/>
+                      </div>
+                    );
+                    const ch = charById(id);
+                    const th = RARITY_THEME[ch.rarity as CharacterRarity];
+                    return (
+                      <div key={i} style={{ width:44, height:44, border:`2px solid ${th?.border ?? dk.bdr}`, borderRadius:6, background:th?.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 0 8px ${th?.glow ?? dk.accent}44`, position:"relative" }}>
+                        <PixelSprite type={ch.type as CharacterType} rarity={ch.rarity as CharacterRarity} size={34}/>
+                      </div>
+                    );
+                  })}
                 </div>
+                <p style={{ margin:"6px 0 0", fontSize:9, color:`${dk.accent}88`, fontFamily:"monospace" }}>
+                  {dk.slots.length}/4 {ko?"편성":ja?"編成":"slots"}
+                </p>
               </div>
             ))}
-
-            {/* 입장권 */}
-            <div style={{ background:C.panel, border:`1px solid ${C.borderFaint}`, borderRadius:6, padding:"12px 14px" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <p style={{ margin:0, fontSize:12, color:C.stone }}>{ko?"입장권":ja?"入場券":"Tickets"}</p>
-                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  {Array.from({length:MAX_TICKETS},(_,i)=>(
-                    <div key={i} style={{ width:12, height:18, borderRadius:2, background: i<tickets ? C.gold : C.borderFaint, transition:"background 0.3s" }}/>
-                  ))}
-                </div>
-              </div>
-              {msToNext && tickets < MAX_TICKETS && (
-                <p style={{ margin:"6px 0 0", fontSize:10, color:C.stoneFaint, fontFamily:"monospace" }}>
-                  {ko?"다음 충전":ja?"次の補充":"Next"}: {fmtMs(msToNext)}
-                </p>
-              )}
-            </div>
           </div>
-        )}
+        </div>
 
-        {/* 랭킹 탭 */}
-        {rankTab === "ranking" && (
-          <div style={{ background:C.panel, border:`2px solid ${C.border}`, borderRadius:6, overflow:"hidden" }}>
-            <div style={{ padding:"10px 14px", borderBottom:`1px solid ${C.borderFaint}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <p style={{ margin:0, fontSize:12, fontWeight:900, color:C.gold, letterSpacing:"0.1em" }}>
-                <Crown size={13} color={C.gold} style={{ verticalAlign:"middle", marginRight:5 }}/>{ko?"실시간 랭킹":ja?"リアルタイムランキング":"Live Rankings"}
-              </p>
-              {rankLoading && <span style={{ fontSize:10, color:C.stoneFaint }}>로딩...</span>}
+        {/* ══ 입장권 + 전투 시작 CTA ══════════════════════════════════════════ */}
+        <div style={{ background:"linear-gradient(135deg,#1a1208 0%,#0e0b06 100%)", border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 14px 16px" }}>
+          {/* 입장권 */}
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:5, flex:1 }}>
+              <span style={{ fontSize:11, color:C.stone, fontWeight:700 }}>{ko?"입장권":ja?"入場券":"Tickets"}</span>
+              <div style={{ display:"flex", gap:4, marginLeft:4 }}>
+                {Array.from({length:MAX_TICKETS}, (_,i) => (
+                  <div key={i} style={{ width:10, height:22, borderRadius:3, background: i < tickets ? `linear-gradient(180deg,${C.gold},#8b6020)` : "#2e1f06", border: i < tickets ? `1px solid ${C.gold}66` : `1px solid #1a1005`, boxShadow: i < tickets ? `0 0 6px ${C.goldGlow}88` : "none", transition:"all 0.3s", flexShrink:0 }}/>
+                ))}
+              </div>
+              <span style={{ fontFamily:"monospace", fontSize:13, fontWeight:900, color: tickets > 0 ? C.gold : "#f87171", marginLeft:4 }}>
+                {tickets}/{MAX_TICKETS}
+              </span>
             </div>
-
-            {/* 내 랭킹 */}
-            {myRankEntry && (
-              <div style={{ padding:"8px 14px", background:`${C.gold}12`, borderBottom:`1px solid ${C.borderFaint}` }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontFamily:"monospace", fontSize:12, fontWeight:900, color:C.gold, width:28 }}>#{myRankEntry.rank}</span>
-                  <span style={{ flex:1, fontSize:12, color:C.parchment, fontWeight:700 }}>{myRankEntry.nickname} <span style={{ fontSize:10, color:C.gold }}>(나)</span></span>
-                  <span style={{ fontFamily:"monospace", fontSize:12, color:C.gold }}>{myRankEntry.tierPoints.toLocaleString()}</span>
-                </div>
+            {msToNext && tickets < MAX_TICKETS && (
+              <div style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(0,0,0,0.4)", border:`1px solid ${C.borderFaint}`, borderRadius:5, padding:"3px 8px" }}>
+                <span style={{ fontSize:10, color:C.stoneFaint }}>{ko?"충전":ja?"補充":"next"}</span>
+                <span style={{ fontFamily:"monospace", fontSize:11, fontWeight:900, color:"#60a5fa" }}>{fmtMs(msToNext)}</span>
               </div>
             )}
+          </div>
 
-            {/* 랭킹 리스트 */}
-            <div>
-              {rankPage5.map(entry => {
-                const isMe = entry.userId === user?.id;
-                const entryTierIdx = getTierIdx(entry.tierPoints);
-                return (
-                  <div key={entry.userId} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 14px", borderBottom:`1px solid ${C.borderFaint}`, background: isMe ? `${C.gold}0a` : "transparent" }}>
-                    <span style={{ fontFamily:"monospace", fontSize:12, fontWeight:900, color: entry.rank<=3?C.gold:C.stone, width:28 }}>#{entry.rank}</span>
-                    <TierBadgeSvg idx={entryTierIdx} size={20}/>
-                    <span style={{ flex:1, fontSize:12, color:C.parchment, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.nickname}</span>
-                    <span style={{ fontFamily:"monospace", fontSize:11, color:C.stone }}>{entry.tierPoints.toLocaleString()}</span>
-                    {!isMe && (
-                      <button onClick={() => startAttackConfirm(entry)}
-                        style={{ display:"flex", alignItems:"center", gap:4, background:"linear-gradient(180deg,#60a5fa,#2563eb)", border:"1px solid #1e3a5f", color:"#fff", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 10px", borderRadius:3, cursor:"pointer", flexShrink:0 }}>
-                        <Swords size={10}/>{ko?"공격":ja?"攻撃":"Attack"}
-                      </button>
+          {/* 전투 시작 버튼 */}
+          <button
+            disabled={tickets === 0 || myAtkSlots.length === 0 || rankings.filter(e=>e.userId!==user?.id).length === 0}
+            onClick={() => document.getElementById("col-ranking")?.scrollIntoView({ behavior:"smooth" })}
+            className="col-btn-shine"
+            style={{
+              width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+              background: tickets===0||myAtkSlots.length===0 ? "linear-gradient(180deg,#374151,#1f2937)" : "linear-gradient(180deg,#d4a84b 0%,#c8a44a 40%,#8b6020 100%)",
+              border: tickets===0||myAtkSlots.length===0 ? "3px solid #1f2937" : "3px solid #5a3d0e",
+              boxShadow: tickets===0||myAtkSlots.length===0 ? "0 5px 0 #0f172a" : undefined,
+              color: tickets===0||myAtkSlots.length===0 ? "#6b7280" : "#1c1101",
+              fontFamily:FONT, fontWeight:900, fontSize:18, letterSpacing:"0.1em",
+              padding:"14px 0", borderRadius:6, cursor: tickets===0||myAtkSlots.length===0?"not-allowed":"pointer",
+              animation: tickets>0&&myAtkSlots.length>0 ? "col-battle-ready 2.4s ease-in-out infinite" : undefined,
+              transition:"opacity 0.2s",
+            }}
+          >
+            <Swords size={20} strokeWidth={2.5}/>{" "}
+            {tickets===0 ? (ko?"입장권 소진":ja?"入場券なし":"No Tickets")
+             : myAtkSlots.length===0 ? (ko?"공격 덱 없음":ja?"デッキなし":"Set Attack Deck")
+             : (ko?"결투 상대 선택":ja?"対戦相手選択":"Select Opponent")}
+          </button>
+          {myAtkSlots.length===0 && tickets>0 && (
+            <p style={{ margin:"8px 0 0", fontSize:10, color:"#f87171", textAlign:"center" }}>
+              {ko?"↑ 공격 덱을 먼저 편성해주세요":ja?"↑ 攻撃デッキを先に編成してください":"↑ Please set up your attack deck first"}
+            </p>
+          )}
+        </div>
+
+        {/* ══ AI 수련 상대 ══════════════════════════════════════════════════ */}
+        <div style={{ background:"linear-gradient(135deg,#12100a 0%,#0c0a06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
+          {/* 헤더 (토글) */}
+          <button onClick={() => setNpcSection(p => !p)} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 14px", background:"rgba(96,165,250,0.06)", borderBottom: npcSection ? `1px solid ${C.borderFaint}` : "none", border:"none", cursor:"pointer", fontFamily:FONT }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6" stroke="#60a5fa" strokeWidth="1.5"/>
+                <rect x="5" y="4" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
+                <rect x="5" y="6.5" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
+                <rect x="5" y="9" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
+              </svg>
+              <span style={{ fontSize:12, fontWeight:900, color:"#60a5fa", letterSpacing:"0.1em" }}>
+                {ko?"AI 수련 상대":ja?"AI練習相手":"AI Practice"}
+              </span>
+              <span style={{ fontSize:9, color:"#60a5fa88", background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.3)", borderRadius:10, padding:"1px 7px" }}>
+                {ko?"패배 페널티 없음":ja?"敗北ペナルティなし":"No loss penalty"}
+              </span>
+            </div>
+            <ChevronRight size={14} color="#60a5fa" style={{ transform: npcSection ? "rotate(90deg)" : "rotate(0deg)", transition:"transform 0.2s" }}/>
+          </button>
+
+          {npcSection && (
+            <div style={{ padding:"10px 10px 12px" }}>
+              <p style={{ margin:"0 0 10px", fontSize:10, color:C.stoneFaint, lineHeight:1.5, paddingLeft:4 }}>
+                {ko?"유저가 적을 때도 언제든 연습하세요. 승리 시 포인트를 획득합니다.":ja?"いつでも練習できます。勝利でポイント獲得！":"Practice anytime. Win points for victories!"}
+              </p>
+              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                {NPC_OPPONENTS.map(npc => {
+                  const t   = TIERS[npc.tierIdx];
+                  const can = tickets > 0 && myAtkSlots.length > 0;
+                  return (
+                    <div key={npc.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 10px", background:`linear-gradient(90deg,${t.glow}10,transparent)`, border:`1px solid ${t.color}33`, borderRadius:7, transition:"border-color 0.15s" }}>
+                      {/* 티어 배지 */}
+                      <div style={{ flexShrink:0 }}>
+                        <TierBadgeSvg idx={npc.tierIdx} size={28}/>
+                      </div>
+                      {/* 덱 미리보기 */}
+                      <div style={{ display:"flex", gap:3, flexShrink:0 }}>
+                        {npc.slots.map((id, si) => {
+                          const ch = charById(id);
+                          const th = RARITY_THEME[ch.rarity as CharacterRarity];
+                          return (
+                            <div key={si} style={{ width:30, height:30, border:`1.5px solid ${th?.border ?? C.borderFaint}`, borderRadius:4, background:th?.bg ?? "#0a0805", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 0 5px ${th?.glow ?? "#000"}33` }}>
+                              <PixelSprite type={ch.type as CharacterType} rarity={ch.rarity as CharacterRarity} size={22}/>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* 이름 + 설명 + 난이도 */}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                          <span style={{ fontSize:12, fontWeight:900, color:t.color }}>{ko?npc.nameKo:ja?npc.nameJa:npc.nameEn}</span>
+                          <span style={{ display:"flex", gap:1 }}>
+                            {Array.from({length:5}, (_,i) => (
+                              <svg key={i} width="9" height="9" viewBox="0 0 10 10">
+                                <polygon points="5,1 6.2,3.8 9.5,4 7,6.2 7.8,9.5 5,7.8 2.2,9.5 3,6.2 0.5,4 3.8,3.8" fill={i < npc.stars ? "#fbbf24" : "#2e1f06"}/>
+                              </svg>
+                            ))}
+                          </span>
+                        </div>
+                        <p style={{ margin:0, fontSize:9, color:C.stoneFaint, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{npc.descKo}</p>
+                      </div>
+                      {/* 보상 + 도전 버튼 */}
+                      <div style={{ flexShrink:0, textAlign:"right" }}>
+                        <p style={{ margin:"0 0 4px", fontSize:10, fontWeight:900, color:"#4ade80", fontFamily:"monospace" }}>+{npc.winPts}P</p>
+                        <button onClick={() => startNpcAttackConfirm(npc)} disabled={!can}
+                          style={{ display:"flex", alignItems:"center", gap:3, background: can ? `linear-gradient(180deg,${t.color},${t.glow})` : "#1e1508", border:`1px solid ${can?t.color:C.borderFaint}`, color: can ? "#0c0903" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 11px", borderRadius:4, cursor:can?"pointer":"not-allowed", boxShadow: can ? `0 3px 0 ${t.glow}88` : "none", transition:"all 0.15s" }}>
+                          <Swords size={9} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ══ 랭킹 (항상 표시) ═════════════════════════════════════════════ */}
+        <div id="col-ranking" style={{ background:"linear-gradient(135deg,#16110a 0%,#0e0b06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
+          {/* 랭킹 헤더 */}
+          <div style={{ padding:"11px 14px", background:"rgba(200,164,74,0.06)", borderBottom:`1px solid ${C.borderFaint}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <Crown size={13} color={C.gold}/>
+              <span style={{ fontFamily:FONT, fontSize:12, fontWeight:900, color:C.gold, letterSpacing:"0.1em" }}>
+                {ko?"결투 상대 목록":ja?"対戦相手リスト":"Opponents"}
+              </span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              {rankLoading && <span style={{ fontSize:9, color:C.stoneFaint }}>로딩...</span>}
+              <button onClick={fetchRankings} style={{ background:"none", border:"none", cursor:"pointer", color:C.stoneFaint, padding:2, lineHeight:0 }}>
+                <ChevronRight size={14} color={C.stoneFaint}/>
+              </button>
+            </div>
+          </div>
+
+          {/* 내 랭킹 고정 */}
+          {myRankEntry && (
+            <div style={{ padding:"9px 14px", background:`linear-gradient(90deg,${C.gold}10,transparent)`, borderBottom:`1px solid ${C.borderFaint}`, display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:28, textAlign:"center" }}>
+                <span style={{ fontFamily:"monospace", fontSize:13, fontWeight:900, color:C.gold }}>#{myRankEntry.rank}</span>
+              </div>
+              <TierBadgeSvg idx={getTierIdx(myRankEntry.tierPoints)} size={22}/>
+              <span style={{ flex:1, fontSize:12, color:C.parchment, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                {myRankEntry.nickname}
+              </span>
+              <span style={{ fontSize:9, color:C.gold, background:`${C.gold}18`, border:`1px solid ${C.gold}44`, borderRadius:3, padding:"2px 6px", fontWeight:900, flexShrink:0 }}>
+                {ko?"나":"ME"}
+              </span>
+              <span style={{ fontFamily:"monospace", fontSize:12, color:C.gold, flexShrink:0 }}>{myRankEntry.tierPoints.toLocaleString()}</span>
+            </div>
+          )}
+
+          {/* 랭킹 리스트 */}
+          <div>
+            {rankPage5.map((entry, ri) => {
+              const isMe      = entry.userId === user?.id;
+              const eti       = getTierIdx(entry.tierPoints);
+              const rankColor = entry.rank===1?"#ffd700":entry.rank===2?"#c0c0c0":entry.rank===3?"#cd7f32":C.stoneFaint;
+              return (
+                <div key={entry.userId} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom:`1px solid ${C.borderFaint}`, background: isMe ? `${C.gold}08` : ri%2===0 ? "transparent" : "rgba(255,255,255,0.015)", transition:"background 0.15s" }}>
+                  {/* 순위 */}
+                  <div style={{ width:28, textAlign:"center", flexShrink:0 }}>
+                    {entry.rank <= 3 ? (
+                      <span style={{ fontFamily:"monospace", fontSize:14, fontWeight:900, color:rankColor, textShadow:`0 0 8px ${rankColor}` }}>{entry.rank}</span>
+                    ) : (
+                      <span style={{ fontFamily:"monospace", fontSize:12, color:C.stoneFaint }}>{entry.rank}</span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-
-            {/* 페이지네이션 */}
-            {rankTotalPages > 1 && (
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:"10px", borderTop:`1px solid ${C.borderFaint}` }}>
-                <button onClick={() => setRankPage(p => Math.max(0, p-1))} disabled={rankPage===0}
-                  style={{ background:"none", border:"none", cursor:rankPage===0?"not-allowed":"pointer", color: rankPage===0?C.borderFaint:C.stone }}>
-                  <ChevronLeft size={16}/>
-                </button>
-                <span style={{ fontSize:11, color:C.stone, fontFamily:"monospace" }}>{rankPage+1}/{rankTotalPages}</span>
-                <button onClick={() => setRankPage(p => Math.min(rankTotalPages-1, p+1))} disabled={rankPage>=rankTotalPages-1}
-                  style={{ background:"none", border:"none", cursor:rankPage>=rankTotalPages-1?"not-allowed":"pointer", color: rankPage>=rankTotalPages-1?C.borderFaint:C.stone }}>
-                  <ChevronRight size={16}/>
-                </button>
-              </div>
+                  {/* 티어 배지 */}
+                  <TierBadgeSvg idx={eti} size={22}/>
+                  {/* 이름 */}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ margin:0, fontSize:12, color: isMe ? C.gold : C.parchment, fontWeight: isMe ? 900 : 700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {entry.nickname}{isMe && <span style={{ fontSize:9, color:C.gold, marginLeft:4 }}>(나)</span>}
+                    </p>
+                    <p style={{ margin:"1px 0 0", fontFamily:"monospace", fontSize:10, color:TIERS[eti].color }}>{TIERS[eti][ko?"ko":ja?"ja":"en"]}</p>
+                  </div>
+                  {/* 포인트 */}
+                  <span style={{ fontFamily:"monospace", fontSize:11, color:C.stone, flexShrink:0 }}>{entry.tierPoints.toLocaleString()}</span>
+                  {/* 공격 버튼 */}
+                  {!isMe && (
+                    <button onClick={() => startAttackConfirm(entry)} disabled={tickets===0||myAtkSlots.length===0}
+                      style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.length>0 ? "linear-gradient(180deg,#c8a44a,#8b6020)" : "#1e1508", border:`2px solid ${tickets>0&&myAtkSlots.length>0?"#5a3d0e":"#2e1f06"}`, color: tickets>0&&myAtkSlots.length>0 ? "#1c1101" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 12px", borderRadius:4, cursor:tickets===0||myAtkSlots.length===0?"not-allowed":"pointer", flexShrink:0, transition:"all 0.15s", boxShadow: tickets>0&&myAtkSlots.length>0 ? "0 3px 0 #3a2508" : "none" }}>
+                      <Swords size={10} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {attackableEntries.length === 0 && (
+              <p style={{ textAlign:"center", padding:"20px", fontSize:12, color:C.stoneFaint }}>
+                {ko?"아직 결투 상대가 없습니다":ja?"対戦相手がいません":"No opponents yet"}
+              </p>
             )}
           </div>
-        )}
+
+          {/* 페이지네이션 */}
+          {rankTotalPages > 1 && (
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12, padding:"10px", borderTop:`1px solid ${C.borderFaint}`, background:"rgba(0,0,0,0.2)" }}>
+              <button onClick={() => setRankPage(p => Math.max(0, p-1))} disabled={rankPage===0}
+                style={{ background: rankPage===0?"transparent":"rgba(200,164,74,0.12)", border:`1px solid ${rankPage===0?C.borderFaint:C.border}`, borderRadius:5, width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center", cursor:rankPage===0?"not-allowed":"pointer", color: rankPage===0?C.borderFaint:C.gold, transition:"all 0.15s" }}>
+                <ChevronLeft size={15}/>
+              </button>
+              <div style={{ display:"flex", gap:4 }}>
+                {Array.from({length:Math.min(rankTotalPages,5)},(_,i)=>{
+                  const pg = rankTotalPages<=5 ? i : Math.max(0,Math.min(rankPage-2,rankTotalPages-5))+i;
+                  return (
+                    <button key={pg} onClick={()=>setRankPage(pg)}
+                      style={{ width:24, height:24, borderRadius:4, border:"none", background: pg===rankPage?C.gold:"transparent", color: pg===rankPage?"#1c1101":C.stoneFaint, fontFamily:"monospace", fontSize:11, fontWeight:900, cursor:"pointer" }}>
+                      {pg+1}
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={() => setRankPage(p => Math.min(rankTotalPages-1, p+1))} disabled={rankPage>=rankTotalPages-1}
+                style={{ background: rankPage>=rankTotalPages-1?"transparent":"rgba(200,164,74,0.12)", border:`1px solid ${rankPage>=rankTotalPages-1?C.borderFaint:C.border}`, borderRadius:5, width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center", cursor:rankPage>=rankTotalPages-1?"not-allowed":"pointer", color: rankPage>=rankTotalPages-1?C.borderFaint:C.gold, transition:"all 0.15s" }}>
+                <ChevronRight size={15}/>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

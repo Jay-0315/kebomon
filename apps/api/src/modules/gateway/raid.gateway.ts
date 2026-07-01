@@ -66,7 +66,7 @@ function rarityDamage(charId: number): number {
 
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
   1: { name: "점프 미니게임",  points: 30, goal: 50, cry: "내 장애물을 피할 수 있겠나?!" },
-  5: { name: "슈팅 미니게임",  points: 60, goal: 50, cry: "내 군단을 뚫을 수 있겠나?!" },
+  5: { name: "슈팅 미니게임",  points: 60, goal: 200, cry: "내 군단을 뚫을 수 있겠나?!" },
 };
 
 const BOSS_POOL = [

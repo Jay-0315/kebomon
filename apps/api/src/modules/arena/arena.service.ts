@@ -515,8 +515,8 @@ export class ArenaService {
         hp: s.hp, maxHp: s.hp, atk: s.atk, spd: s.spd,
         cr: 0, alive: true,
         rarity: s.rarity, archetype: s.archetype, charType: s.charType,
-        skillCd:    skills.skill.cooldown,     // 첫 턴은 쿨다운 상태로 시작
-        ultimateCd: skills.ultimate.cooldown,
+        skillCd:    0,
+        ultimateCd: 0,
         dots: [],
       };
     };
@@ -549,6 +549,70 @@ export class ArenaService {
         atk: u.atk, spd: u.spd, rarity: u.rarity,
         archetype: u.archetype, charType: u.charType,
       })),
+    };
+  }
+
+  // ─── NPC 전투 ─────────────────────────────────────────────────────────────────
+  async attackNpc(
+    attackerId: string,
+    npcSlots:    number[],
+    npcEnhLvs:   number[],
+    pointsOnWin: number,
+    pointsOnLoss: number,
+  ) {
+    const atkRow = await this.prisma.arenaDeck.findUnique({
+      where: { userId_deckType: { userId: attackerId, deckType: "attack" } },
+    });
+    let atkSlots = (atkRow?.slots as number[]) ?? [];
+    if (atkSlots.length === 0) {
+      const first = await this.prisma.userCharacter.findFirst({
+        where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" },
+      });
+      if (first) atkSlots = [first.characterId];
+    }
+    if (atkSlots.length === 0) throw new Error("공격 덱이 비어있습니다");
+
+    const atkEnhLvs = await Promise.all(atkSlots.map(id => this.getEnhLevel(attackerId, id)));
+
+    const makeUnit = (charId: number, i: number, team: "attacker" | "defender", enhLevel: number): CombatUnit => {
+      const s      = getCharStat(charId, enhLevel);
+      const skills = ARCHETYPE_SKILLS[s.archetype] ?? ARCHETYPE_SKILLS.all;
+      return {
+        slot: i, team, charId,
+        hp: s.hp, maxHp: s.hp, atk: s.atk, spd: s.spd,
+        cr: 0, alive: true,
+        rarity: s.rarity, archetype: s.archetype, charType: s.charType,
+        skillCd:    0,
+        ultimateCd: 0,
+        dots: [],
+      };
+    };
+
+    const attackerUnits = atkSlots.map((id, i) => makeUnit(id, i, "attacker", atkEnhLvs[i]));
+    const defenderUnits = npcSlots.map((id, i) => makeUnit(id, i, "defender", npcEnhLvs[i] ?? 0));
+
+    const { won, log } = simulateBattle(attackerUnits, defenderUnits);
+
+    const pointsDelta = won ? pointsOnWin : pointsOnLoss;
+    const ex   = await this.prisma.battleStats.findUnique({ where: { userId: attackerId } });
+    const prev = ex ?? { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
+    const newWinStreak = won ? prev.winStreak + 1 : 0;
+    const newPoints    = Math.max(0, prev.tierPoints + pointsDelta);
+    const data = {
+      tierPoints: newPoints,
+      wins:       won ? prev.wins + 1 : prev.wins,
+      losses:     won ? prev.losses   : prev.losses + 1,
+      winStreak:  newWinStreak,
+      bestStreak: Math.max(prev.bestStreak, newWinStreak),
+    };
+    await this.prisma.battleStats.upsert({ where: { userId: attackerId }, create: { userId: attackerId, ...data }, update: data });
+
+    return {
+      won, pointsDelta, tierPoints: newPoints,
+      wins: data.wins, losses: data.losses, winStreak: data.winStreak,
+      log,
+      attackerChars: attackerUnits.map(u => ({ slot: u.slot, charId: u.charId, maxHp: u.maxHp, atk: u.atk, spd: u.spd, rarity: u.rarity, archetype: u.archetype, charType: u.charType })),
+      defenderChars: defenderUnits.map(u => ({ slot: u.slot, charId: u.charId, maxHp: u.maxHp, atk: u.atk, spd: u.spd, rarity: u.rarity, archetype: u.archetype, charType: u.charType })),
     };
   }
 
