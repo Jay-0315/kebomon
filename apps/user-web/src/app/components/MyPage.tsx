@@ -316,7 +316,7 @@ export default function MyPage() {
           <p className="text-xs text-muted-foreground">
             {getRarityLabel(displayChar.rarity, lang)} ·{" "}
             {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length}{" "}
-            {t("kebomon.collection_count")} · {rewardSummary.missionPoints}P
+            {t("kebomon.collection_count")} · {rewardSummary.missionPoints}KP
           </p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
@@ -460,7 +460,7 @@ export default function MyPage() {
                 {t("mypage.current_points")}
               </p>
               <p className="text-lg font-bold text-primary">
-                {rewardSummary.missionPoints}P
+                {rewardSummary.missionPoints}KP
               </p>
             </div>
             <div className="bg-muted rounded p-3 text-center">

@@ -602,7 +602,7 @@ export default function ExpeditionPage() {
           </p>
         </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center" }}>
-          <RewardBadge label={ko?"탐험 포인트":ja?"探険P":"Exp Points"} count={r.points} color={C.gold}/>
+          <RewardBadge label={ko?"케보포인트":ja?"KP":"KP"} count={r.points} color={C.gold}/>
           <RewardBadge label={ko?"강화석":ja?"強化石":"Enhance Stones"} count={r.stones} color="#60a5fa"/>
           <RewardBadge label={ko?"일반 알":ja?"通常卵":"Normal Egg"} count={r.normalEgg} color="#94a3b8"/>
           <RewardBadge label={ko?"고급 알":ja?"上級卵":"Big Egg"} count={r.bigEgg} color="#4ade80"/>
@@ -968,7 +968,7 @@ export default function ExpeditionPage() {
                     const dur = DURATIONS[durationIdx];
                     const r = calcReward(selectedRegion, Math.max(party.length, selectedRegion.minParty), dur.multiplier, selectedRegion.difficulty);
                     return <>
-                      <RewardBadge label={ko?"탐험 포인트":ja?"探険P":"Exp Points"} count={r.points} color={C.gold}/>
+                      <RewardBadge label={ko?"케보포인트":ja?"KP":"KP"} count={r.points} color={C.gold}/>
                       <RewardBadge label={ko?"강화석":ja?"強化石":"Enhance Stones"} count={r.stones} color="#60a5fa"/>
                       <RewardBadge label={ko?"일반 알":ja?"通常卵":"Normal Egg"} count={r.normalEgg} color="#94a3b8"/>
                       <RewardBadge label={ko?"고급 알":ja?"上級卵":"Big Egg"} count={r.bigEgg} color="#4ade80"/>

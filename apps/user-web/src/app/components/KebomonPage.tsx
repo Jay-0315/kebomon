@@ -974,7 +974,7 @@ export default function KebomonPage() {
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
               {ownedCharacterIds.length}/{CHARACTERS.length}{" "}
-              {t("kebomon.collection_count")} · {missionPoints}P
+              {t("kebomon.collection_count")} · {missionPoints}KP
             </p>
           </div>
         </div>
@@ -1162,42 +1162,53 @@ export default function KebomonPage() {
                             {enhancementStones}
                             <Sparkles className="w-4 h-4 text-primary" />
                           </p>
-                          <div className="mt-3 flex items-center justify-center gap-2">
-                            <div className="flex items-center gap-2 bg-card rounded-md px-2 py-1">
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs text-muted-foreground text-center">
+                              {t("shop.stone_price")}
+                            </p>
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="flex items-center gap-2 bg-card rounded-md px-2 py-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setBuyQty(Math.max(1, buyQty - 1))
+                                  }
+                                  disabled={buying}
+                                  className="px-2 text-sm"
+                                >
+                                  -
+                                </button>
+                                <span className="text-sm font-medium">
+                                  {buyQty}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setBuyQty(buyQty + 1)}
+                                  disabled={buying}
+                                  className="px-2 text-sm"
+                                >
+                                  +
+                                </button>
+                              </div>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setBuyQty(Math.max(1, buyQty - 1))
-                                }
-                                disabled={buying}
-                                className="px-2 text-sm"
+                                onClick={() => void handleBuy()}
+                                disabled={buying || missionPoints < 600 * buyQty}
+                                className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                                  !buying && missionPoints >= 600 * buyQty
+                                    ? "bg-primary text-white hover:bg-primary/90"
+                                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                                }`}
                               >
-                                -
-                              </button>
-                              <span className="text-sm font-medium">
-                                {buyQty}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setBuyQty(buyQty + 1)}
-                                disabled={buying}
-                                className="px-2 text-sm"
-                              >
-                                +
+                                {buying ? t("shop.buying") : t("shop.buy")}
                               </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => void handleBuy()}
-                              disabled={buying}
-                              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-                                !buying
-                                  ? "bg-primary text-white hover:bg-primary/90"
-                                  : "bg-secondary text-muted-foreground"
-                              }`}
-                            >
-                              {buying ? t("shop.buying") : t("shop.buy")}
-                            </button>
+                            <p className="text-xs text-center">
+                              {t("shop.total_cost")}{" "}
+                              <span className={`font-bold ${missionPoints >= 600 * buyQty ? "text-amber-400" : "text-red-400"}`}>
+                                {(600 * buyQty).toLocaleString()}P
+                              </span>
+                            </p>
                           </div>
                           {buyFeedback && (
                             <p
@@ -1686,7 +1697,7 @@ export function GachaTab({
           <p className="text-xs text-muted-foreground">
             {t("kebomon.gacha_points_label")}
           </p>
-          <p className="text-xl font-bold text-primary">{missionPoints}P</p>
+          <p className="text-xl font-bold text-primary">{missionPoints}KP</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">

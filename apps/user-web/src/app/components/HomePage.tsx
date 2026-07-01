@@ -146,7 +146,7 @@ export default function HomePage() {
           )}
           <p className="text-sm text-muted-foreground">
             {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} {t("kebomon.collection_count")} ·{" "}
-            {rewardSummary.missionPoints}P
+            {rewardSummary.missionPoints}KP
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
