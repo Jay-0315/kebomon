@@ -235,6 +235,41 @@ const NPC_OPPONENTS: NpcOpponent[] = [
   },
 ];
 
+// ─── NPC 쿨타임 ──────────────────────────────────────────────────────────────
+const NPC_CD_MS  = 8 * 60 * 60 * 1000;
+const NPC_CD_KEY = "col_npc_cd";
+
+function useNpcCooldowns() {
+  const [cds, setCds] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem(NPC_CD_KEY) ?? "{}"); }
+    catch { return {}; }
+  });
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const getRemainingMs = (npcId: string): number | null => {
+    const exp = cds[npcId];
+    if (exp == null) return null;
+    const rem = exp - Date.now();
+    return rem > 0 ? rem : null;
+  };
+
+  const isOnCooldown = (npcId: string) => getRemainingMs(npcId) !== null;
+
+  const applyCooldown = (npcId: string) => {
+    const exp  = Date.now() + NPC_CD_MS;
+    const next = { ...cds, [npcId]: exp };
+    setCds(next);
+    localStorage.setItem(NPC_CD_KEY, JSON.stringify(next));
+  };
+
+  return { isOnCooldown, getRemainingMs, applyCooldown };
+}
+
 // ─── 입장권 ───────────────────────────────────────────────────────────────────
 const MAX_TICKETS = 5;
 const REGEN_MS    = 2 * 60 * 60 * 1000;
@@ -911,16 +946,18 @@ const ARCHETYPE_ULT_COLOR: Record<string, { main: string; sub: string; label: st
 
 // ─── 궁극기 연출 오버레이 ─────────────────────────────────────────────────────
 function UltimateAnim({
-  skillName, archetype, actorTeam, onEnd,
+  skillName, archetype, actorTeam, charId, onEnd,
 }: {
   skillName: string;
   archetype: string;
   actorTeam: "attacker" | "defender";
+  charId?: number;
   onEnd: () => void;
 }) {
   const pal  = ARCHETYPE_ULT_COLOR[archetype] ?? ARCHETYPE_ULT_COLOR.all;
   const col  = pal.main;
   const dark = pal.sub;
+  const actor = charId != null ? charById(charId) : null;
 
   useEffect(() => {
     const t = setTimeout(onEnd, 1600);
@@ -1005,6 +1042,22 @@ function UltimateAnim({
 
       {/* 텍스트 중앙 */}
       <div style={{ position:"relative", zIndex:1, textAlign:"center", padding:"0 24px" }}>
+        {/* 캐릭터 스프라이트 */}
+        {actor && (
+          <div style={{
+            display:"flex", justifyContent:"center", marginBottom:12,
+            animation:"ult-sub 0.4s ease-out 0.1s both", opacity:0,
+          }}>
+            <div style={{
+              padding:10, borderRadius:"50%",
+              background:`radial-gradient(circle, ${col}33 0%, transparent 70%)`,
+              boxShadow:`0 0 32px ${col}66`,
+              animation:"col-idle-bob 2s ease-in-out infinite",
+            }}>
+              <PixelSprite type={actor.type as CharacterType} rarity={actor.rarity as CharacterRarity} size={72}/>
+            </div>
+          </div>
+        )}
         {/* 팀 + 직업 라벨 */}
         <p style={{
           fontFamily:"'Courier New',monospace",
@@ -1092,7 +1145,7 @@ function BattleReplay({
   const [hitSlots, setHitSlots]     = useState<Set<string>>(new Set());
   const [floatNums, setFloatNums]   = useState<FloatNum[]>([]);
   const [skillBanner, setSkillBanner] = useState<{ name: string; type: string } | null>(null);
-  const [ultimateAnim, setUltimateAnim] = useState<{ skillName: string; archetype: string; actorTeam: "attacker"|"defender" } | null>(null);
+  const [ultimateAnim, setUltimateAnim] = useState<{ skillName: string; archetype: string; actorTeam: "attacker"|"defender"; charId?: number } | null>(null);
   const intervalRef                 = useRef<ReturnType<typeof setInterval>|null>(null);
   const pausedRef                   = useRef(false);
 
@@ -1152,7 +1205,7 @@ function BattleReplay({
           // 궁극기 → 연출 오버레이 시작, 배틀 일시정지
           const actorInfo = (ev.actorTeam === "attacker" ? attackerChars : defenderChars)
             .find(c => c.slot === ev.actorSlot);
-          setUltimateAnim({ skillName: ev.skillName, archetype: actorInfo?.archetype ?? "all", actorTeam: ev.actorTeam });
+          setUltimateAnim({ skillName: ev.skillName, archetype: actorInfo?.archetype ?? "all", actorTeam: ev.actorTeam, charId: actorInfo?.charId });
           pausedRef.current = true;
           // 플래시 타이밍(650ms)에 맞춰 데미지 숫자 표시
           setTimeout(() => applyHitFx(ev, true), 650);
@@ -1222,6 +1275,7 @@ function BattleReplay({
           skillName={ultimateAnim.skillName}
           archetype={ultimateAnim.archetype}
           actorTeam={ultimateAnim.actorTeam}
+          charId={ultimateAnim.charId}
           onEnd={handleUltimateEnd}
         />
       )}
@@ -1314,6 +1368,7 @@ export default function ColosseumPage() {
   const [rankLoading, setRankLoading] = useState(false);
 
   const { tickets, msToNext, fmtMs, consume } = useTickets();
+  const { isOnCooldown, getRemainingMs, applyCooldown } = useNpcCooldowns();
 
   const ownedIds = rewardSummary.ownedCharacterIds ?? [];
 
@@ -1393,6 +1448,7 @@ export default function ColosseumPage() {
       setBattleResult(res);
       setTierPts(res.tierPoints);
       setStats({ wins:res.wins, losses:res.losses, winStreak:res.winStreak });
+      if (res.won && npcTarget) applyCooldown(npcTarget.id);
     } catch {
       setPhase("lobby");
     }
@@ -1449,10 +1505,10 @@ export default function ColosseumPage() {
         </div>
         <div style={{ display:"flex", gap:10, width:"100%", maxWidth:320 }}>
           <PixelBtn onClick={() => setPhase("lobby")} color="gray">
-            {ko?"돌아가기":ja?"戻る":"Back"}
+            {ko?"로비로":ja?"ロビーへ":"Lobby"}
           </PixelBtn>
-          <PixelBtn onClick={() => { setBattleResult(null); setPhase("lobby"); }}>
-            {ko?"재도전":ja?"再挑戦":"Retry"}
+          <PixelBtn onClick={() => { setBattleResult(null); setEditingDeckType("attack"); setPhase("deck-edit"); }}>
+            {ko?"덱 수정":ja?"デッキ編集":"Edit Deck"}
           </PixelBtn>
         </div>
       </div>
@@ -1767,10 +1823,16 @@ export default function ColosseumPage() {
               </p>
               <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
                 {NPC_OPPONENTS.map(npc => {
-                  const t   = TIERS[npc.tierIdx];
-                  const can = tickets > 0 && myAtkSlots.length > 0;
+                  const t      = TIERS[npc.tierIdx];
+                  const onCd   = isOnCooldown(npc.id);
+                  const remMs  = getRemainingMs(npc.id);
+                  const can    = tickets > 0 && myAtkSlots.length > 0 && !onCd;
+                  const fmtCd  = (ms: number) => {
+                    const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+                    return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+                  };
                   return (
-                    <div key={npc.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 10px", background:`linear-gradient(90deg,${t.glow}10,transparent)`, border:`1px solid ${t.color}33`, borderRadius:7, transition:"border-color 0.15s" }}>
+                    <div key={npc.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 10px", background:`linear-gradient(90deg,${t.glow}10,transparent)`, border:`1px solid ${onCd ? "#4b5563" : t.color+"33"}`, borderRadius:7, transition:"border-color 0.15s", opacity: onCd ? 0.65 : 1 }}>
                       {/* 티어 배지 */}
                       <div style={{ flexShrink:0 }}>
                         <TierBadgeSvg idx={npc.tierIdx} size={28}/>
@@ -1790,7 +1852,7 @@ export default function ColosseumPage() {
                       {/* 이름 + 설명 + 난이도 */}
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                          <span style={{ fontSize:12, fontWeight:900, color:t.color }}>{ko?npc.nameKo:ja?npc.nameJa:npc.nameEn}</span>
+                          <span style={{ fontSize:12, fontWeight:900, color: onCd ? C.stoneFaint : t.color }}>{ko?npc.nameKo:ja?npc.nameJa:npc.nameEn}</span>
                           <span style={{ display:"flex", gap:1 }}>
                             {Array.from({length:5}, (_,i) => (
                               <svg key={i} width="9" height="9" viewBox="0 0 10 10">
@@ -1804,10 +1866,17 @@ export default function ColosseumPage() {
                       {/* 보상 + 도전 버튼 */}
                       <div style={{ flexShrink:0, textAlign:"right" }}>
                         <p style={{ margin:"0 0 4px", fontSize:10, fontWeight:900, color:"#4ade80", fontFamily:"monospace" }}>+{npc.winPts}P</p>
-                        <button onClick={() => startNpcAttackConfirm(npc)} disabled={!can}
-                          style={{ display:"flex", alignItems:"center", gap:3, background: can ? `linear-gradient(180deg,${t.color},${t.glow})` : "#1e1508", border:`1px solid ${can?t.color:C.borderFaint}`, color: can ? "#0c0903" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 11px", borderRadius:4, cursor:can?"pointer":"not-allowed", boxShadow: can ? `0 3px 0 ${t.glow}88` : "none", transition:"all 0.15s" }}>
-                          <Swords size={9} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
-                        </button>
+                        {onCd && remMs ? (
+                          <div style={{ display:"flex", alignItems:"center", gap:4, background:"#0a0805", border:`1px solid ${C.borderFaint}`, borderRadius:4, padding:"4px 8px" }}>
+                            <span style={{ fontSize:9, color:C.stoneFaint }}>{ko?"재도전":ja?"再挑戦":"CD"}</span>
+                            <span style={{ fontFamily:"monospace", fontSize:10, fontWeight:900, color:"#f87171" }}>{fmtCd(remMs)}</span>
+                          </div>
+                        ) : (
+                          <button onClick={() => startNpcAttackConfirm(npc)} disabled={!can}
+                            style={{ display:"flex", alignItems:"center", gap:3, background: can ? `linear-gradient(180deg,${t.color},${t.glow})` : "#1e1508", border:`1px solid ${can?t.color:C.borderFaint}`, color: can ? "#0c0903" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 11px", borderRadius:4, cursor:can?"pointer":"not-allowed", boxShadow: can ? `0 3px 0 ${t.glow}88` : "none", transition:"all 0.15s" }}>
+                            <Swords size={9} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
