@@ -1591,40 +1591,40 @@ export default function ColosseumPage() {
         </div>
 
         {/* 티어 + 스탯 통합 카드 (배너 하단에 붙음) */}
-        <div style={{ margin:"0 12px", padding:"14px 16px", background:`linear-gradient(135deg,${tier.glow}22 0%,rgba(0,0,0,0.55) 100%)`, border:`1px solid ${tier.color}55`, borderRadius:"8px 8px 0 0", backdropFilter:"blur(8px)", position:"relative", zIndex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ margin:"0 12px", padding:"10px 14px", background:`linear-gradient(135deg,${tier.glow}22 0%,rgba(0,0,0,0.55) 100%)`, border:`1px solid ${tier.color}55`, borderRadius:"8px 8px 0 0", backdropFilter:"blur(8px)", position:"relative", zIndex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {/* 티어 배지 */}
             <div style={{ flexShrink:0, animation:"col-tier-pulse 3s ease-in-out infinite", color:tier.color }}>
-              <TierBadgeSvg idx={tierIdx} size={56}/>
+              <TierBadgeSvg idx={tierIdx} size={36}/>
             </div>
             {/* 티어 정보 */}
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                <span style={{ fontFamily:FONT, fontSize:20, fontWeight:900, color:tier.color, textShadow:`0 0 12px ${tier.glow}` }}>{tierLabel}</span>
-                <span style={{ fontFamily:"monospace", fontSize:12, color:C.stone }}>{tierPts.toLocaleString()} pts</span>
+              <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                <span style={{ fontFamily:FONT, fontSize:15, fontWeight:900, color:tier.color, textShadow:`0 0 12px ${tier.glow}` }}>{tierLabel}</span>
+                <span style={{ fontFamily:"monospace", fontSize:11, color:C.stone }}>{tierPts.toLocaleString()} pts</span>
               </div>
               {/* 진행 바 */}
-              <div style={{ height:10, background:"rgba(0,0,0,0.6)", border:`1px solid ${tier.color}44`, borderRadius:4, overflow:"hidden", marginTop:6, boxShadow:`0 0 8px ${tier.glow}33` }}>
+              <div style={{ height:7, background:"rgba(0,0,0,0.6)", border:`1px solid ${tier.color}44`, borderRadius:4, overflow:"hidden", marginTop:4, boxShadow:`0 0 8px ${tier.glow}33` }}>
                 <div style={{ height:"100%", width:`${tierProgress*100}%`, background:`linear-gradient(90deg,${tier.glow},${tier.color})`, boxShadow:`0 0 16px ${tier.color}aa`, borderRadius:4, transition:"width 0.6s cubic-bezier(0.25,0.8,0.25,1)", position:"relative" }}>
                   <div style={{ position:"absolute", inset:"0 auto 0 0", width:"100%", background:"linear-gradient(180deg,rgba(255,255,255,0.3) 0%,transparent 60%)", borderRadius:4 }}/>
                 </div>
               </div>
-              <p style={{ margin:"4px 0 0", fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>
+              <p style={{ margin:"3px 0 0", fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>
                 {tierPts.toLocaleString()} / {(TIERS[tierIdx+1]?.min ?? tier.min+1000).toLocaleString()} pts
               </p>
             </div>
           </div>
 
           {/* 승/패/연승 가로 통계 */}
-          <div style={{ display:"flex", marginTop:12, paddingTop:10, borderTop:`1px solid ${tier.color}33`, gap:0 }}>
+          <div style={{ display:"flex", marginTop:8, paddingTop:8, borderTop:`1px solid ${tier.color}33`, gap:0 }}>
             {[
               { lk:"승", lj:"勝", le:"WIN",    val:stats.wins,      col:"#4ade80", bg:"rgba(74,222,128,0.08)" },
               { lk:"패", lj:"敗", le:"LOSE",   val:stats.losses,    col:"#f87171", bg:"rgba(248,113,113,0.08)" },
               { lk:"연승", lj:"連勝", le:"STREAK", val:stats.winStreak, col:C.gold,   bg:`rgba(200,164,74,0.08)` },
             ].map((s,i) => (
-              <div key={i} style={{ flex:1, textAlign:"center", padding:"6px 0", background:s.bg, borderRadius:4, margin:"0 3px" }}>
-                <p style={{ margin:0, fontFamily:"monospace", fontSize:22, fontWeight:900, color:s.col, lineHeight:1, textShadow:`0 0 10px ${s.col}88` }}>{s.val}</p>
-                <p style={{ margin:"3px 0 0", fontFamily:FONT, fontSize:9, color:C.stoneFaint, letterSpacing:"0.08em" }}>{ko?s.lk:ja?s.lj:s.le}</p>
+              <div key={i} style={{ flex:1, textAlign:"center", padding:"4px 0", background:s.bg, borderRadius:4, margin:"0 3px" }}>
+                <p style={{ margin:0, fontFamily:"monospace", fontSize:16, fontWeight:900, color:s.col, lineHeight:1, textShadow:`0 0 10px ${s.col}88` }}>{s.val}</p>
+                <p style={{ margin:"2px 0 0", fontFamily:FONT, fontSize:9, color:C.stoneFaint, letterSpacing:"0.08em" }}>{ko?s.lk:ja?s.lj:s.le}</p>
               </div>
             ))}
           </div>
