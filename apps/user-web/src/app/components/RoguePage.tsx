@@ -7037,7 +7037,7 @@ export default function RoguePage() {
                                 padding: "2px 6px",
                               }}
                             >
-                              {m.pts.toLocaleString()}P
+                              {m.pts.toLocaleString()}KP
                             </span>
                           )}
                           {m.st > 0 && (
@@ -7110,10 +7110,10 @@ export default function RoguePage() {
                       }}
                     >
                       {ko
-                        ? `※ 150회 이후 매 50회마다 ${rep.pts.toLocaleString()}P + 강화석×${rep.st} + 황금알×1`
+                        ? `※ 150회 이후 매 50회마다 ${rep.pts.toLocaleString()}KP + 강화석×${rep.st} + 황금알×1`
                         : ja
-                          ? `※ 150回以降、50回ごとに${rep.pts.toLocaleString()}P+強化石×${rep.st}+黄金卵×1`
-                          : `※ After 150: every 50 clears → ${rep.pts.toLocaleString()}P + Stone×${rep.st} + Gold Egg×1`}
+                          ? `※ 150回以降、50回ごとに${rep.pts.toLocaleString()}KP+強化石×${rep.st}+黄金卵×1`
+                          : `※ After 150: every 50 clears → ${rep.pts.toLocaleString()}KP + Stone×${rep.st} + Gold Egg×1`}
                     </p>
                   </div>
 
@@ -7202,7 +7202,7 @@ export default function RoguePage() {
                                 padding: "2px 6px",
                               }}
                             >
-                              {m.pts.toLocaleString()}P
+                              {m.pts.toLocaleString()}KP
                             </span>
                           )}
                           {m.st > 0 && (

@@ -201,7 +201,7 @@ export default function ShopPage() {
             {t("shop.my_points")}
           </p>
           <p className="text-xl font-bold text-primary">
-            {missionPoints.toLocaleString()} P
+            {missionPoints.toLocaleString()} KP
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 text-center">
@@ -263,7 +263,7 @@ export default function ShopPage() {
             <span className="text-xs text-muted-foreground ml-auto shrink-0">
               {t("shop.total_cost")}{" "}
               <span className="text-amber-400 font-bold">
-                {(600 * buyQty).toLocaleString()}P
+                {(600 * buyQty).toLocaleString()}KP
               </span>
             </span>
           </div>

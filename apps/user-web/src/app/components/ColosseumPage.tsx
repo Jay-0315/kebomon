@@ -765,7 +765,7 @@ function SeasonRewardModal({ onClose, ko, ja, myPts }: { onClose:()=>void; ko:bo
                   <p style={{ margin:0,fontSize:10,color:"#8b6f3a" }}>{r.minPts.toLocaleString()} pts {ko?"이상":ja?"以上":"& above"}</p>
                 </div>
                 <div style={{ textAlign:"right",flexShrink:0 }}>
-                  <p style={{ margin:0,fontSize:12,fontWeight:900,color:"#4ade80" }}>+{r.bonusPoints.toLocaleString()}P</p>
+                  <p style={{ margin:0,fontSize:12,fontWeight:900,color:"#4ade80" }}>+{r.bonusPoints.toLocaleString()}KP</p>
                   <p style={{ margin:0,fontSize:10,color:"#8b6f3a" }}>{ko?`테두리 ${borCnt}종`:ja?`枠${borCnt}種`:`${borCnt} border${borCnt>1?"s":""}`}</p>
                 </div>
               </div>

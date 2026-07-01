@@ -1206,7 +1206,7 @@ export default function KebomonPage() {
                             <p className="text-xs text-center">
                               {t("shop.total_cost")}{" "}
                               <span className={`font-bold ${missionPoints >= 600 * buyQty ? "text-amber-400" : "text-red-400"}`}>
-                                {(600 * buyQty).toLocaleString()}P
+                                {(600 * buyQty).toLocaleString()}KP
                               </span>
                             </p>
                           </div>
