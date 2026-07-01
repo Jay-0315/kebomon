@@ -32,13 +32,13 @@ const REGION_NAME: Record<string, { ko: string; ja: string }> = {
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 const TIERS: Array<{ min: number; color: string; glow: string; tKey: TranslationKey }> = [
-  { min:0,    color:"#cd7f32", glow:"#8B4513", tKey: "battle.tier.bronze" },
-  { min:1000, color:"#c0c0c0", glow:"#708090", tKey: "battle.tier.silver" },
-  { min:2000, color:"#ffd700", glow:"#b8860b", tKey: "battle.tier.gold" },
-  { min:3000, color:"#40e0d0", glow:"#008b8b", tKey: "battle.tier.platinum" },
-  { min:4000, color:"#b9f2ff", glow:"#4169e1", tKey: "battle.tier.diamond" },
-  { min:5000, color:"#da70d6", glow:"#800080", tKey: "battle.tier.master" },
-  { min:6000, color:"#ff4500", glow:"#8b0000", tKey: "battle.tier.challenger" },
+  { min:0,     color:"#cd7f32", glow:"#8B4513", tKey: "battle.tier.bronze" },
+  { min:3000,  color:"#c0c0c0", glow:"#708090", tKey: "battle.tier.silver" },
+  { min:6000,  color:"#ffd700", glow:"#b8860b", tKey: "battle.tier.gold" },
+  { min:9000,  color:"#40e0d0", glow:"#008b8b", tKey: "battle.tier.platinum" },
+  { min:12000, color:"#b9f2ff", glow:"#4169e1", tKey: "battle.tier.diamond" },
+  { min:15000, color:"#da70d6", glow:"#800080", tKey: "battle.tier.master" },
+  { min:18000, color:"#ff4500", glow:"#8b0000", tKey: "battle.tier.challenger" },
 ];
 
 const RARITY_COLOR: Record<string, string> = {
@@ -195,7 +195,7 @@ export default function StatusPanel() {
 
   const tierIdx = getTierIdx(battleStats.tierPoints);
   const tier = TIERS[tierIdx];
-  const tierNext = TIERS[tierIdx + 1]?.min ?? tier.min + 1000;
+  const tierNext = TIERS[tierIdx + 1]?.min ?? tier.min + 3000;
   const tierProg = Math.min(1, (battleStats.tierPoints - tier.min) / (tierNext - tier.min));
   const hasPlayed = battleStats.wins + battleStats.losses > 0;
 

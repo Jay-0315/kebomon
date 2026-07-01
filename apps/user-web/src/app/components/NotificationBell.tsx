@@ -160,9 +160,28 @@ export default function NotificationBell({
     }
   };
 
+  const TYPE_TITLE_KEY: Partial<Record<Notif["type"], TranslationKey>> = {
+    achievement: "notification.achievement_title",
+    title:       "notification.season_title",
+    attendance:  "notification.attendance_reminder",
+  };
+  const TYPE_BODY_KEY: Partial<Record<Notif["type"], TranslationKey>> = {
+    achievement: "notification.achievement_body",
+    title:       "notification.season_body",
+    attendance:  "notification.attendance_reminder_body",
+  };
+
   const getNotifText = (n: Notif) => ({
-    title: n.titleKey ? t(n.titleKey as TranslationKey) : n.title,
-    body: n.bodyKey ? t(n.bodyKey as TranslationKey) : n.body,
+    title: n.titleKey
+      ? t(n.titleKey as TranslationKey)
+      : TYPE_TITLE_KEY[n.type]
+        ? t(TYPE_TITLE_KEY[n.type]!)
+        : n.title,
+    body: n.bodyKey
+      ? t(n.bodyKey as TranslationKey)
+      : TYPE_BODY_KEY[n.type]
+        ? t(TYPE_BODY_KEY[n.type]!)
+        : n.body,
   });
 
   const onClickItem = (n: Notif) => {

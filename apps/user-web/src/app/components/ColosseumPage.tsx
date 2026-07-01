@@ -601,6 +601,8 @@ function SpeedBar({
   crs: Array<{ team: "attacker" | "defender"; slot: number; cr: number; alive: boolean }>;
   activeActor: { team: "attacker" | "defender"; slot: number } | null;
 }) {
+  const { lang } = useLang();
+  const ko = lang === "ko"; const ja = lang === "ja";
   const sorted = [...crs].sort((a, b) => b.cr - a.cr);
   return (
     <div style={{
@@ -609,7 +611,7 @@ function SpeedBar({
       borderRadius:6, overflowY:"auto",
     }}>
       <p style={{ fontFamily:FONT, fontSize:9, color:C.stoneFaint, textAlign:"center", margin:"0 0 4px", letterSpacing:"0.1em" }}>
-        속도 순서
+        {ko ? "속도 순서" : ja ? "速度順" : "SPEED"}
       </p>
       {sorted.map(u => {
         const chars = u.team === "attacker" ? attackerChars : defenderChars;
@@ -619,6 +621,9 @@ function SpeedBar({
         const isAtk  = u.team === "attacker";
         const isAct  = activeActor?.team === u.team && activeActor?.slot === u.slot;
         const accent = isAtk ? "#60a5fa" : "#f87171";
+        const teamLabel = isAtk
+          ? (ko ? "아군" : ja ? "味方" : "ATK")
+          : (ko ? "적군" : ja ? "敵" : "DEF");
         return (
           <div key={`${u.team}-${u.slot}`} style={{
             display:"flex", flexDirection:"column", gap:2, padding:"4px 4px",
@@ -632,7 +637,7 @@ function SpeedBar({
                 <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={20}/>
               </div>
               <span style={{ fontFamily:"monospace", fontSize:9, color: accent, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {isAtk ? "아군" : "적군"}{u.slot+1}
+                {teamLabel}{u.slot+1}
               </span>
               <span style={{ fontFamily:"monospace", fontSize:8, color:C.stoneFaint }}>{u.cr}%</span>
             </div>
@@ -940,6 +945,7 @@ function DeckEditor({
           const inDeck  = slots.includes(char.id);
           const isFull  = slots.length >= 4;
           const th      = RARITY_THEME[char.rarity as CharacterRarity];
+          const enh     = charEnhancements[char.id] ?? 0;
           return (
             <button key={char.id}
               onClick={() => inDeck ? setSlots(p => p.filter(x => x !== char.id)) : addChar(char.id)}
@@ -947,7 +953,14 @@ function DeckEditor({
               onMouseEnter={e => setTooltipInfo({ charId: char.id, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
               onMouseLeave={() => setTooltipInfo(null)}
               style={{ background: inDeck ? `${th?.color}22` : "#0a0805", border:`2px solid ${inDeck ? th?.color : th?.border}`, borderRadius:6, padding:"8px 4px", cursor:(!inDeck && isFull)?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, opacity:(!inDeck && isFull)?0.4:1, position:"relative" }}>
-              <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={40}/>
+              <div style={{ position:"relative" }}>
+                <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={40}/>
+                {enh > 0 && (
+                  <div style={{ position:"absolute", bottom:-2, right:-4, background:"linear-gradient(135deg,#c8a44a,#8b6020)", border:"1px solid #1c1101", borderRadius:3, padding:"0px 4px", fontSize:8, fontWeight:900, color:"#1c1101", fontFamily:"monospace", lineHeight:"14px" }}>
+                    +{enh}
+                  </div>
+                )}
+              </div>
               <span style={{ fontSize:9, color:th?.color, fontWeight:700, textAlign:"center", lineHeight:1.2, wordBreak:"break-all" }}>
                 {getCharName(char, "ko")}
               </span>
@@ -1001,6 +1014,8 @@ function UltimateAnim({
   charId?: number;
   onEnd: () => void;
 }) {
+  const { lang } = useLang();
+  const ko = lang === "ko"; const ja = lang === "ja";
   const pal  = ARCHETYPE_ULT_COLOR[archetype] ?? ARCHETYPE_ULT_COLOR.all;
   const col  = pal.main;
   const dark = pal.sub;
@@ -1116,7 +1131,10 @@ function UltimateAnim({
           animation:"ult-sub 0.4s ease-out 0.18s both",
           opacity:0,
         }}>
-          {actorTeam === "attacker" ? "[ 공격팀 ]" : "[ 방어팀 ]"}&nbsp;&nbsp;{pal.label}
+          {actorTeam === "attacker"
+            ? (ko ? "[ 공격팀 ]" : ja ? "[ 攻撃チーム ]" : "[ ATTACK ]")
+            : (ko ? "[ 방어팀 ]" : ja ? "[ 防御チーム ]" : "[ DEFENSE ]")
+          }&nbsp;&nbsp;{pal.label}
         </p>
 
         {/* 궁극기 레이블 */}
@@ -1127,7 +1145,7 @@ function UltimateAnim({
           animation:"ult-sub 0.35s ease-out 0.25s both",
           opacity:0,
         }}>
-          ── 궁극기 ──
+          {ko ? "── 궁극기 ──" : ja ? "── 奥義 ──" : "── ULTIMATE ──"}
         </p>
 
         {/* 스킬 이름 */}
@@ -1172,8 +1190,10 @@ function UltimateAnim({
 const SKILL_COLOR: Record<string, string> = {
   basic: "#e2e8f0", skill: "#60a5fa", ultimate: "#ffd700", dot: "#c084fc",
 };
-const SKILL_LABEL: Record<string, string> = {
-  basic: "평타", skill: "스킬", ultimate: "궁극기", dot: "저주",
+const SKILL_LABEL: Record<string, Record<string, string>> = {
+  ko: { basic: "평타",    skill: "스킬",  ultimate: "궁극기",  dot: "저주" },
+  ja: { basic: "通常攻撃", skill: "スキル", ultimate: "奥義",    dot: "呪い" },
+  en: { basic: "Basic",   skill: "Skill", ultimate: "Ultimate", dot: "Curse" },
 };
 
 // ─── 배틀 재생 화면 ───────────────────────────────────────────────────────────
@@ -1183,6 +1203,9 @@ function BattleReplay({
   result: BattleResult;
   onDone: () => void;
 }) {
+  const { lang } = useLang();
+  const ko = lang === "ko"; const ja = lang === "ja";
+  const skillLang = SKILL_LABEL[lang] ?? SKILL_LABEL.ko;
   const { log, attackerChars, defenderChars } = result;
 
   type FloatNum = { id: number; val: number; team: "attacker"|"defender"; slot: number; color: string; prefix: string };
@@ -1337,7 +1360,7 @@ function BattleReplay({
         </div>
         <span style={{ fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>{Math.max(0,step+1)}/{log.length}</span>
         <button onClick={skip} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(30,21,8,0.8)", border:`1px solid ${C.borderFaint}`, color:C.stone, fontFamily:FONT, fontSize:10, padding:"3px 10px", borderRadius:4, cursor:"pointer" }}>
-          <SkipForward size={11}/>{" 스킵"}
+          <SkipForward size={11}/>{" "}{ko ? "스킵" : ja ? "スキップ" : "Skip"}
         </button>
       </div>
 
@@ -1359,7 +1382,7 @@ function BattleReplay({
             {/* 우측 글로우 라인 */}
             <div style={{ position:"absolute", right:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg, transparent, ${SKILL_COLOR[skillBanner.type]}, transparent)` }}/>
             <span style={{ fontSize:8, fontWeight:900, color:SKILL_COLOR[skillBanner.type], letterSpacing:"0.25em", background:`${SKILL_COLOR[skillBanner.type]}22`, border:`1px solid ${SKILL_COLOR[skillBanner.type]}55`, padding:"2px 7px", borderRadius:3 }}>
-              {SKILL_LABEL[skillBanner.type]}
+              {skillLang[skillBanner.type]}
             </span>
             <span style={{ fontSize:15, fontWeight:900, color:"#fff", textShadow:`0 0 16px ${SKILL_COLOR[skillBanner.type]}, 0 0 32px ${SKILL_COLOR[skillBanner.type]}88`, letterSpacing:"0.06em", flex:1, textAlign:"center" }}>
               {skillBanner.name}
@@ -1395,7 +1418,7 @@ function BattleReplay({
             {/* 헤더 */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, position:"relative", zIndex:1 }}>
               <div style={{ flex:1, height:1, background:"linear-gradient(90deg,transparent,#3b82f655)" }}/>
-              <span style={{ fontSize:9, color:"#60a5fa", fontWeight:900, letterSpacing:"0.3em" }}>공격</span>
+              <span style={{ fontSize:9, color:"#60a5fa", fontWeight:900, letterSpacing:"0.3em" }}>{ko ? "공격" : ja ? "攻撃" : "ATK"}</span>
               <div style={{ flex:1, height:1, background:"linear-gradient(90deg,#3b82f655,transparent)" }}/>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center", position:"relative", zIndex:1 }}>
@@ -1444,7 +1467,7 @@ function BattleReplay({
             {/* 헤더 */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, position:"relative", zIndex:1 }}>
               <div style={{ flex:1, height:1, background:"linear-gradient(90deg,transparent,#ef444455)" }}/>
-              <span style={{ fontSize:9, color:"#f87171", fontWeight:900, letterSpacing:"0.3em" }}>방어</span>
+              <span style={{ fontSize:9, color:"#f87171", fontWeight:900, letterSpacing:"0.3em" }}>{ko ? "방어" : ja ? "防御" : "DEF"}</span>
               <div style={{ flex:1, height:1, background:"linear-gradient(90deg,#ef444455,transparent)" }}/>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center", position:"relative", zIndex:1 }}>

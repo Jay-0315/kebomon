@@ -2507,6 +2507,52 @@ const RARITY_HP_TABLE: Record<CharacterRarity, number> = {
   mythic: 100,
 };
 
+// Arena stat tables (mirrors ColosseumPage / server logic)
+const ARENA_RARITY_BASE_FE: Record<CharacterRarity, { hp: number; atk: number; spd: number }> = {
+  common:    { hp: 80,  atk: 10, spd: 80  },
+  uncommon:  { hp: 90,  atk: 12, spd: 85  },
+  rare:      { hp: 100, atk: 15, spd: 90  },
+  epic:      { hp: 115, atk: 19, spd: 95  },
+  legendary: { hp: 130, atk: 24, spd: 100 },
+  mythic:    { hp: 150, atk: 30, spd: 110 },
+};
+const ARENA_TYPE_ARCHETYPE_FE: Record<string, string> = {
+  wolf:"warrior", tiger:"warrior", lion:"warrior", bear:"warrior",
+  cat:"rogue",    rabbit:"rogue",  deer:"rogue",   eagle:"rogue",
+  ghost:"mage",   owl:"mage",      dragon:"mage",  angel:"mage",  phoenix:"mage",
+  turtle:"tank",  elephant:"tank", whale:"tank",   crocodile:"tank", boar:"tank",
+  plant:"nature", fish:"nature",   unicorn:"nature", horse:"nature",
+  robot:"meka",   slime:"meka",    beetle:"meka",
+  fox:"cursed",   monkey:"cursed", raven:"cursed", snake:"cursed", demon:"cursed",
+};
+const ARENA_ARCH_MULT_FE: Record<string, { hp: number; atk: number; spd: number }> = {
+  warrior:{ hp:0.90, atk:1.30, spd:1.00 }, tank:{ hp:1.50, atk:0.60, spd:0.75 },
+  mage:   { hp:0.80, atk:1.50, spd:1.00 }, rogue:{ hp:0.85, atk:1.10, spd:1.40 },
+  nature: { hp:1.30, atk:0.75, spd:0.85 }, meka:{ hp:1.10, atk:1.00, spd:1.10 },
+  cursed: { hp:0.80, atk:1.40, spd:1.10 }, all:{ hp:1.00, atk:1.00, spd:1.00 },
+};
+const ARENA_ENH_PER_LV_FE: Record<string, { hp: number; atk: number; spd: number }> = {
+  warrior:{ hp:3, atk:5, spd:2 }, tank:{ hp:6, atk:2, spd:1 },
+  mage:   { hp:2, atk:6, spd:1 }, rogue:{ hp:2, atk:3, spd:5 },
+  nature: { hp:5, atk:2, spd:2 }, meka:{ hp:3, atk:3, spd:3 },
+  cursed: { hp:2, atk:4, spd:4 }, all:{ hp:3, atk:3, spd:3 },
+};
+function calcArenaStatFE(charType: string, rarity: string, enhLevel = 0) {
+  const arch = ARENA_TYPE_ARCHETYPE_FE[charType] ?? "all";
+  const base = ARENA_RARITY_BASE_FE[rarity as CharacterRarity] ?? ARENA_RARITY_BASE_FE.common;
+  const mult = ARENA_ARCH_MULT_FE[arch] ?? ARENA_ARCH_MULT_FE.all;
+  const enh  = ARENA_ENH_PER_LV_FE[arch] ?? ARENA_ENH_PER_LV_FE.all;
+  return {
+    arch,
+    hp:  Math.round(base.hp  * mult.hp  * (1 + enhLevel * enh.hp  / 100)),
+    atk: Math.round(base.atk * mult.atk * (1 + enhLevel * enh.atk / 100)),
+    spd: Math.round(base.spd * mult.spd * (1 + enhLevel * enh.spd / 100)),
+    baseHp:  Math.round(base.hp  * mult.hp),
+    baseAtk: Math.round(base.atk * mult.atk),
+    baseSpd: Math.round(base.spd * mult.spd),
+  };
+}
+
 // Real colosseum dice (mirrors battle.gateway.ts RARITY_DICE)
 const RARITY_DICE_FE: Record<CharacterRarity, { faces: number; count: number }> = {
   common:    { faces: 6,  count: 1 },
@@ -2633,7 +2679,7 @@ export function KeboStatusPanel({
   const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
   const dice = RARITY_DICE_FE[char.rarity];
   const raidPower = RAID_POWER_FE[char.rarity];
-  const rogueHp = RARITY_HP_TABLE[char.rarity];
+  const rogueHp   = RARITY_HP_TABLE[char.rarity];
 
   const minRoll    = medEnhanceMinRoll(enhance);
   const bonusFaces = medEnhanceBonusDice(enhance);
@@ -2641,6 +2687,9 @@ export function KeboStatusPanel({
   const diceMin = minRoll * dice.count + (bonusFaces > 0 ? minRoll : 0);
   const diceMax = dice.faces * dice.count + bonusFaces;
   const diceNotation = `${dice.count > 1 ? dice.count : ""}d${dice.faces}${bonusFaces > 0 ? `+d${bonusFaces}` : ""}`;
+
+  const arena     = calcArenaStatFE(char.type, char.rarity, enhance);
+  const baseStats = calcArenaStatFE(char.type, char.rarity, 0);
 
   const rtLabel = ja
     ? rt === "energy" ? "エナジー型" : rt === "attack" ? "アタック型" : "ディフェンス型"
@@ -2705,13 +2754,47 @@ export function KeboStatusPanel({
         <div style={panelBase}>
           <PixelCorners size={6} color={`${M.gold}55`} />
           <MedLabel>{lbColosseum}</MedLabel>
+
+          {/* HP */}
           <MedStat
-            label={ko ? "HP" : "HP"}
-            value="150"
+            label="HP"
+            value={String(arena.hp)}
+            sub={enhance > 0 ? `(base ${baseStats.hp})` : undefined}
             large
           />
           <PixelCells pct={1} color={M.red} brightColor={M.redBright} segments={15} />
-          <div style={{ height:7 }} />
+
+          {/* ATK / SPD */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, marginTop:6, marginBottom:4 }}>
+            <div style={{ background:`${M.redBright}18`, border:`1px solid ${M.redBright}55`, padding:"4px 8px" }}>
+              <div style={{ fontSize:8, color:M.goldPale, letterSpacing:"0.15em", marginBottom:2 }}>
+                {ko ? "공격력" : ja ? "攻撃力" : "ATK"}
+              </div>
+              <div style={{ fontSize:14, fontWeight:900, color:M.redBright, fontFamily:"monospace" }}>
+                {arena.atk}
+                {enhance > 0 && (
+                  <span style={{ fontSize:9, color:`${M.redBright}99`, marginLeft:3 }}>
+                    (base {baseStats.atk})
+                  </span>
+                )}
+              </div>
+            </div>
+            <div style={{ background:`#44aaff18`, border:`1px solid #44aaff55`, padding:"4px 8px" }}>
+              <div style={{ fontSize:8, color:M.goldPale, letterSpacing:"0.15em", marginBottom:2 }}>
+                {ko ? "속도" : ja ? "速度" : "SPD"}
+              </div>
+              <div style={{ fontSize:14, fontWeight:900, color:"#66ccff", fontFamily:"monospace" }}>
+                {arena.spd}
+                {enhance > 0 && (
+                  <span style={{ fontSize:9, color:"#66ccff99", marginLeft:3 }}>
+                    (base {baseStats.spd})
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ height:4 }} />
           <MedStat
             label={ko ? "공격 주사위" : ja ? "攻撃ダイス" : "ATTACK DICE"}
             value={diceNotation}
