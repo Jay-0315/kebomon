@@ -1015,22 +1015,32 @@ function DeckEditor({
 }
 
 // ─── 직업별 궁극기 연출 색상 ──────────────────────────────────────────────────
-const ARCHETYPE_ULT_COLOR: Record<string, { main: string; sub: string; label: string }> = {
-  warrior: { main:"#f87171", sub:"#7f1d1d",  label:"전사의 분노" },
-  tank:    { main:"#60a5fa", sub:"#1e3a8a",  label:"철벽 의지" },
-  mage:    { main:"#c084fc", sub:"#4c1d95",  label:"마력 폭발" },
-  rogue:   { main:"#4ade80", sub:"#14532d",  label:"그림자 강습" },
-  nature:  { main:"#86efac", sub:"#14532d",  label:"대자연의 숨결" },
-  meka:    { main:"#94a3b8", sub:"#0f172a",  label:"기계 포격" },
-  cursed:  { main:"#f472b6", sub:"#500724",  label:"저주의 발현" },
-  all:     { main:"#ffd700", sub:"#713f12",  label:"필살 개방" },
+const ARCHETYPE_ULT_COLOR: Record<string, { main: string; sub: string; labelKo: string; labelJa: string; labelEn: string }> = {
+  warrior: { main:"#f87171", sub:"#7f1d1d",  labelKo:"전사의 분노",    labelJa:"戦士の怒り",     labelEn:"Warrior's Rage" },
+  tank:    { main:"#60a5fa", sub:"#1e3a8a",  labelKo:"철벽 의지",      labelJa:"鉄壁の意志",     labelEn:"Iron Will" },
+  mage:    { main:"#c084fc", sub:"#4c1d95",  labelKo:"마력 폭발",      labelJa:"魔力爆発",       labelEn:"Mana Burst" },
+  rogue:   { main:"#4ade80", sub:"#14532d",  labelKo:"그림자 강습",    labelJa:"影の急襲",       labelEn:"Shadow Strike" },
+  nature:  { main:"#86efac", sub:"#14532d",  labelKo:"대자연의 숨결",  labelJa:"大自然の息吹",   labelEn:"Nature's Breath" },
+  meka:    { main:"#94a3b8", sub:"#0f172a",  labelKo:"기계 포격",      labelJa:"機械砲撃",       labelEn:"Mech Barrage" },
+  cursed:  { main:"#f472b6", sub:"#500724",  labelKo:"저주의 발현",    labelJa:"呪いの発現",     labelEn:"Curse Manifest" },
+  all:     { main:"#ffd700", sub:"#713f12",  labelKo:"필살 개방",      labelJa:"必殺開放",       labelEn:"Final Release" },
+};
+
+const ARCHETYPE_ULT_NAME: Record<string, { ko: string; ja: string; en: string }> = {
+  warrior: { ko:"폭풍검",      ja:"嵐の剣",             en:"Storm Blade" },
+  tank:    { ko:"철벽 방어",   ja:"鉄壁防御",           en:"Iron Defense" },
+  mage:    { ko:"메테오",      ja:"メテオ",             en:"Meteor" },
+  rogue:   { ko:"암살",        ja:"暗殺",               en:"Assassination" },
+  nature:  { ko:"대자연의 힘", ja:"大自然の力",          en:"Power of Nature" },
+  meka:    { ko:"에너지 캐논", ja:"エネルギーキャノン",  en:"Energy Cannon" },
+  cursed:  { ko:"재앙 선포",   ja:"災厄宣布",           en:"Calamity Decree" },
+  all:     { ko:"전력 공격",   ja:"全力攻撃",           en:"All-Out Attack" },
 };
 
 // ─── 궁극기 연출 오버레이 ─────────────────────────────────────────────────────
 function UltimateAnim({
-  skillName, archetype, actorTeam, charId, onEnd,
+  archetype, actorTeam, charId, onEnd,
 }: {
-  skillName: string;
   archetype: string;
   actorTeam: "attacker" | "defender";
   charId?: number;
@@ -1156,7 +1166,7 @@ function UltimateAnim({
           {actorTeam === "attacker"
             ? (ko ? "[ 공격팀 ]" : ja ? "[ 攻撃チーム ]" : "[ ATTACK ]")
             : (ko ? "[ 방어팀 ]" : ja ? "[ 防御チーム ]" : "[ DEFENSE ]")
-          }&nbsp;&nbsp;{pal.label}
+          }&nbsp;&nbsp;{ko ? pal.labelKo : ja ? pal.labelJa : pal.labelEn}
         </p>
 
         {/* 궁극기 레이블 */}
@@ -1181,7 +1191,7 @@ function UltimateAnim({
           opacity:0,
           lineHeight:1.1,
         }}>
-          {skillName}
+          {(ARCHETYPE_ULT_NAME[archetype] ?? ARCHETYPE_ULT_NAME.all)[ko ? "ko" : ja ? "ja" : "en"]}
         </p>
 
         {/* 하단 글로우 라인 */}
@@ -1364,7 +1374,6 @@ function BattleReplay({
       <style>{CSS}</style>
       {ultimateAnim && (
         <UltimateAnim
-          skillName={ultimateAnim.skillName}
           archetype={ultimateAnim.archetype}
           actorTeam={ultimateAnim.actorTeam}
           charId={ultimateAnim.charId}
