@@ -170,6 +170,8 @@ interface NpcOpponent {
   winPts:      number;
   lossPts:     number;
   descKo:      string;
+  descJa:      string;
+  descEn:      string;
 }
 
 const NPC_OPPONENTS: NpcOpponent[] = [
@@ -178,60 +180,80 @@ const NPC_OPPONENTS: NpcOpponent[] = [
     tierIdx:0, fakePts:400,
     slots:[4,7,8,9], enhLvs:[0,0,0,0], stars:1, winPts:50, lossPts:0,
     descKo:"기초 훈련 중인 새내기. 쉽게 이길 수 있다.",
+    descJa:"基礎訓練中の新入り。簡単に勝てる。",
+    descEn:"A rookie still in basic training. An easy win.",
   },
   {
     id:"npc_2", nameKo:"견습 수비대",        nameJa:"見習い守備隊",     nameEn:"Rookie Guard",
     tierIdx:0, fakePts:1000,
     slots:[5,6,11,12], enhLvs:[0,0,0,0], stars:1, winPts:60, lossPts:0,
     descKo:"균형 잡힌 입문자 편성. 무난한 상대.",
+    descJa:"バランスの取れた入門者編成。手堅い相手。",
+    descEn:"Balanced beginner lineup. A reliable but easy opponent.",
   },
   {
     id:"npc_3", nameKo:"실버 검사",          nameJa:"シルバー剣士",     nameEn:"Silver Swordsman",
     tierIdx:1, fakePts:3200,
     slots:[20,14,22,84], enhLvs:[0,0,0,0], stars:2, winPts:90, lossPts:0,
     descKo:"언커먼 캐릭터로 구성된 전투 베테랑.",
+    descJa:"アンコモンキャラで構成された戦闘ベテラン。",
+    descEn:"A battle veteran built with uncommon characters.",
   },
   {
     id:"npc_4", nameKo:"저주의 술사",        nameJa:"呪いの術師",       nameEn:"Cursed Warlock",
     tierIdx:1, fakePts:4500,
     slots:[16,91,90,21], enhLvs:[1,1,0,0], stars:2, winPts:100, lossPts:0,
     descKo:"저주와 회피가 특기. 방심하면 위험하다.",
+    descJa:"呪いと回避が得意。油断すると危険。",
+    descEn:"Specializes in curses and evasion. Don't let your guard down.",
   },
   {
     id:"npc_5", nameKo:"골드 전사단",        nameJa:"ゴールド戦士団",   nameEn:"Gold Warriors",
     tierIdx:2, fakePts:7500,
     slots:[26,35,33,36], enhLvs:[2,2,1,1], stars:3, winPts:150, lossPts:0,
     descKo:"레어 등급 4인 균형 편성. 전략이 필요하다.",
+    descJa:"レアランク4人の均衡編成。戦略が必要。",
+    descEn:"Balanced lineup of four rare units. Strategy required.",
   },
   {
     id:"npc_6", nameKo:"에픽 마법군단",      nameJa:"エピック魔法軍団", nameEn:"Epic Spellcasters",
     tierIdx:3, fakePts:9800,
     slots:[40,39,99,131], enhLvs:[2,2,3,2], stars:3, winPts:180, lossPts:0,
     descKo:"에픽 마법사와 도적의 연합. 화력이 강력하다.",
+    descJa:"エピック魔法使いと盗賊の連合。火力が強力。",
+    descEn:"Coalition of epic mages and rogues. Massive firepower.",
   },
   {
     id:"npc_7", nameKo:"레전더리 수호자",    nameJa:"レジェンダリー守護者",nameEn:"Legendary Guards",
     tierIdx:4, fakePts:13000,
     slots:[57,53,52,135], enhLvs:[3,3,3,4], stars:4, winPts:250, lossPts:-20,
     descKo:"레전더리 등급의 엘리트 부대. 쉽지 않은 상대.",
+    descJa:"レジェンダリーランクのエリート部隊。侮れない相手。",
+    descEn:"Elite legendary-rank squad. No easy fight.",
   },
   {
     id:"npc_8", nameKo:"황금 전설 부대",     nameJa:"黄金伝説部隊",    nameEn:"Golden Legends",
     tierIdx:4, fakePts:14500,
     slots:[137,154,191,216], enhLvs:[4,4,3,4], stars:4, winPts:280, lossPts:-30,
     descKo:"피닉스·드래곤·고래·말의 드림팀.",
+    descJa:"フェニックス・ドラゴン・クジラ・馬のドリームチーム。",
+    descEn:"Dream team of phoenix, dragon, whale, and horse.",
   },
   {
     id:"npc_9", nameKo:"신화 챔피언",        nameJa:"ミシックチャンピオン",nameEn:"Mythic Champion",
     tierIdx:5, fakePts:16500,
     slots:[64,72,83,150], enhLvs:[5,5,5,5], stars:5, winPts:350, lossPts:-50,
     descKo:"신화 등급 최강자들의 집합. 승리하면 큰 보상.",
+    descJa:"神話ランクの最強者たちの集合。勝利すれば大きな報酬。",
+    descEn:"Assembly of mythic-rank elites. Big rewards for a win.",
   },
   {
     id:"npc_10", nameKo:"무패의 챌린저",     nameJa:"無敗のチャレンジャー",nameEn:"Undefeated Challenger",
     tierIdx:6, fakePts:21000,
     slots:[158,204,208,235], enhLvs:[6,6,6,6], stars:5, winPts:500, lossPts:-100,
     descKo:"전설의 챌린저. 이기면 명예를, 지면 굴욕을.",
+    descJa:"伝説のチャレンジャー。勝てば栄光、負ければ屈辱。",
+    descEn:"The legendary challenger. Glory for a win, humiliation for a loss.",
   },
 ];
 
@@ -1570,7 +1592,7 @@ export default function ColosseumPage() {
 
   // ── 공격 확인 (NPC) ──
   const startNpcAttackConfirm = (npc: NpcOpponent) => {
-    setTargetUser({ userId: npc.id, nickname: npc.nameKo, tierPoints: npc.fakePts });
+    setTargetUser({ userId: npc.id, nickname: ko ? npc.nameKo : ja ? npc.nameJa : npc.nameEn, tierPoints: npc.fakePts });
     setTargetDefSlots(npc.slots);
     setNpcTarget(npc);
     setPhase("attack-confirm");
@@ -1680,8 +1702,8 @@ export default function ColosseumPage() {
           {npcTarget && (
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.35)", borderRadius:7 }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#60a5fa" strokeWidth="1.5"/><rect x="5" y="4" width="4" height="1.5" rx="0.5" fill="#60a5fa"/><rect x="5" y="6.5" width="4" height="1.5" rx="0.5" fill="#60a5fa"/><rect x="5" y="9" width="4" height="1.5" rx="0.5" fill="#60a5fa"/></svg>
-              <span style={{ fontSize:11, color:"#60a5fa", fontWeight:900 }}>AI 수련 전투</span>
-              <span style={{ marginLeft:"auto", fontSize:10, color:"#4ade80", fontWeight:900 }}>승리 시 +{npcTarget.winPts}P{npcTarget.lossPts < 0 ? ` / 패배 시 ${npcTarget.lossPts}P` : " / 패배 무손실"}</span>
+              <span style={{ fontSize:11, color:"#60a5fa", fontWeight:900 }}>{ko?"AI 수련 전투":ja?"AI練習戦闘":"AI Practice Battle"}</span>
+              <span style={{ marginLeft:"auto", fontSize:10, color:"#4ade80", fontWeight:900 }}>{ko?`승리 시 +${npcTarget.winPts}P`:ja?`勝利時 +${npcTarget.winPts}P`:`Win +${npcTarget.winPts}P`}{npcTarget.lossPts < 0 ? (ko?` / 패배 시 ${npcTarget.lossPts}P`:ja?` / 敗北時 ${npcTarget.lossPts}P`:` / Loss ${npcTarget.lossPts}P`) : (ko?" / 패배 무손실":ja?" / 敗北ペナルティなし":" / No loss penalty")}</span>
             </div>
           )}
 
@@ -2010,7 +2032,7 @@ export default function ColosseumPage() {
                             ))}
                           </span>
                         </div>
-                        <p style={{ margin:0, fontSize:9, color:C.stoneFaint, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{npc.descKo}</p>
+                        <p style={{ margin:0, fontSize:9, color:C.stoneFaint, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ko ? npc.descKo : ja ? npc.descJa : npc.descEn}</p>
                       </div>
                       {/* 보상 + 도전 버튼 */}
                       <div style={{ flexShrink:0, textAlign:"right" }}>
