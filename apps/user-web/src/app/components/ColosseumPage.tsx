@@ -1591,7 +1591,8 @@ export default function ColosseumPage() {
         </div>
 
         {/* 티어 + 스탯 통합 카드 (배너 하단에 붙음) */}
-        <div style={{ margin:"0 12px", padding:"10px 14px", background:`linear-gradient(135deg,${tier.glow}22 0%,rgba(0,0,0,0.55) 100%)`, border:`1px solid ${tier.color}55`, borderRadius:"8px 8px 0 0", backdropFilter:"blur(8px)", position:"relative", zIndex:1 }}>
+        <div style={{ maxWidth:860, margin:"0 auto", padding:"0 12px", position:"relative", zIndex:1 }}>
+        <div style={{ padding:"10px 14px", background:`linear-gradient(135deg,${tier.glow}22 0%,rgba(0,0,0,0.55) 100%)`, border:`1px solid ${tier.color}55`, borderRadius:"8px 8px 0 0", backdropFilter:"blur(8px)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {/* 티어 배지 */}
             <div style={{ flexShrink:0, animation:"col-tier-pulse 3s ease-in-out infinite", color:tier.color }}>
@@ -1631,7 +1632,8 @@ export default function ColosseumPage() {
         </div>
 
         {/* 배너 하단 border 연결 */}
-        <div style={{ height:3, margin:"0 12px", background:`linear-gradient(90deg,transparent,${tier.color}88,${tier.color},${tier.color}88,transparent)` }}/>
+        <div style={{ height:3, background:`linear-gradient(90deg,transparent,${tier.color}88,${tier.color},${tier.color}88,transparent)` }}/>
+        </div>
       </div>
 
       {showSeason && <SeasonRewardModal onClose={() => setShowSeason(false)} ko={ko} ja={ja} myPts={tierPts}/>}
