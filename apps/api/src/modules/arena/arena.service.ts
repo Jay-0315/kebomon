@@ -622,7 +622,7 @@ export class ArenaService {
 
     let pointsDelta: number;
     if (won) {
-      pointsDelta = isDefender ? 20 : 100 + (prev.winStreak >= 1 ? 20 : 0);
+      pointsDelta = isDefender ? 20 : 600 + (prev.winStreak >= 1 ? 20 : 0);
     } else {
       pointsDelta = -50;
     }

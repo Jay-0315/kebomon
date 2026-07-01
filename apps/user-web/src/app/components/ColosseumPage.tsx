@@ -420,6 +420,15 @@ const CSS = `
 @keyframes ult-particle{0%{opacity:1;transform:translate(0,0) scale(1.2)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)}}
 @keyframes ult-line-grow{0%{width:0;opacity:0}60%{opacity:1}100%{opacity:0}}
 @keyframes ult-vignette{0%{opacity:0}30%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes col-ptf{0%,100%{opacity:0.35;transform:scaleX(0.9)}50%{opacity:0.75;transform:scaleX(1.1)}}
+@keyframes col-vs-beat{0%,100%{transform:scale(1) rotate(-90deg);filter:drop-shadow(0 0 6px #c8a44a)}45%{transform:scale(1.22) rotate(-90deg);filter:drop-shadow(0 0 24px #c8a44a)}}
+@keyframes col-scan{0%{transform:translateY(-100%)}100%{transform:translateY(600%)}}
+@keyframes col-spark{0%{opacity:0;transform:translate(0,0) scale(1.4)}80%{opacity:0.9}100%{opacity:0;transform:translate(var(--sx),var(--sy)) scale(0)}}
+@keyframes col-energy{0%,100%{opacity:0.15}50%{opacity:0.5}}
+@keyframes col-divider-pulse{0%,100%{opacity:0.3;height:60%}50%{opacity:0.9;height:80%}}
+@keyframes col-skill-in{0%{opacity:0;transform:translateX(-24px) skewX(-8deg)}100%{opacity:1;transform:translateX(0) skewX(-8deg)}}
+@keyframes col-skill-out{0%{opacity:1;transform:translateX(0) skewX(-8deg)}100%{opacity:0;transform:translateX(24px) skewX(-8deg)}}
+@keyframes col-corner-glow{0%,100%{opacity:0.4}50%{opacity:1}}
 `;
 
 // ─── 픽셀 불꽃 / 횃불 ──────────────────────────────────────────────────────────
@@ -645,19 +654,57 @@ function UnitCard({
 }) {
   const char   = charById(info.charId);
   const accent = isPlayer ? "#60a5fa" : "#f87171";
+  const th     = RARITY_THEME[info.rarity as CharacterRarity] ?? RARITY_THEME.common;
   return (
     <div style={{
-      display:"flex", flexDirection:"column", alignItems:"center", gap:4, width:64,
-      opacity: isDead ? 0.35 : 1,
+      display:"flex", flexDirection:"column", alignItems:"center", gap:3, width:68,
+      opacity: isDead ? 0.3 : 1,
       animation: isDead ? "col-dead 0.5s forwards" : isHit ? "col-hit 0.4s ease-out" : undefined,
-      filter: isActive ? `drop-shadow(0 0 10px ${accent})` : undefined,
       transition:"opacity 0.3s",
     }}>
-      <div style={{ animation: isActive ? "col-active-glow 1s ease-in-out infinite" : undefined }}>
-        <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={44}/>
+      {/* 캐릭터 카드 프레임 */}
+      <div style={{
+        position:"relative", width:60, height:60,
+        background: isActive ? `radial-gradient(circle at 50% 60%, ${accent}22 0%, transparent 70%)` : `radial-gradient(circle at 50% 60%, ${th.color}11 0%, transparent 70%)`,
+        border: `1px solid ${isActive ? accent : th.border}55`,
+        borderRadius:8,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        boxShadow: isActive ? `0 0 16px ${accent}55, inset 0 0 12px ${accent}22` : `0 0 6px ${th.glow}33`,
+        transition:"all 0.3s",
+        overflow:"visible",
+      }}>
+        {/* 활성 코너 데코 */}
+        {isActive && <>
+          <div style={{ position:"absolute", top:1, left:1, width:6, height:6, borderTop:`2px solid ${accent}`, borderLeft:`2px solid ${accent}`, borderRadius:"2px 0 0 0", animation:"col-corner-glow 1s ease-in-out infinite" }}/>
+          <div style={{ position:"absolute", top:1, right:1, width:6, height:6, borderTop:`2px solid ${accent}`, borderRight:`2px solid ${accent}`, borderRadius:"0 2px 0 0", animation:"col-corner-glow 1s ease-in-out infinite" }}/>
+          <div style={{ position:"absolute", bottom:1, left:1, width:6, height:6, borderBottom:`2px solid ${accent}`, borderLeft:`2px solid ${accent}`, borderRadius:"0 0 0 2px", animation:"col-corner-glow 1s ease-in-out infinite" }}/>
+          <div style={{ position:"absolute", bottom:1, right:1, width:6, height:6, borderBottom:`2px solid ${accent}`, borderRight:`2px solid ${accent}`, borderRadius:"0 0 2px 0", animation:"col-corner-glow 1s ease-in-out infinite" }}/>
+        </>}
+        <div style={{
+          animation: isDead ? undefined : isActive ? "col-active-glow 1s ease-in-out infinite" : "col-idle-bob 3s ease-in-out infinite",
+          filter: isActive ? `drop-shadow(0 0 8px ${accent})` : `drop-shadow(0 0 4px ${th.glow}88)`,
+        }}>
+          <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={46}/>
+        </div>
+        {/* 사망 X 오버레이 */}
+        {isDead && (
+          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.55)", borderRadius:8 }}>
+            <span style={{ fontFamily:"monospace", fontSize:20, fontWeight:900, color:"#f87171", textShadow:"0 0 12px #ef4444" }}>✕</span>
+          </div>
+        )}
       </div>
+
+      {/* 플랫폼 글로우 */}
+      <div style={{
+        width:48, height:6, borderRadius:"50%",
+        background:`radial-gradient(ellipse 100% 100% at 50% 50%, ${isActive ? accent : th.glow}66, transparent)`,
+        animation:"col-ptf 2s ease-in-out infinite",
+        marginTop:-4, marginBottom:1,
+        pointerEvents:"none",
+      }}/>
+
       <HpBar hp={hp} maxHp={info.maxHp} height={5}/>
-      <span style={{ fontFamily:"monospace", fontSize:9, color: isDead ? "#4b5563" : accent }}>
+      <span style={{ fontFamily:"monospace", fontSize:9, color: isDead ? "#4b5563" : accent, fontWeight:900 }}>
         {hp}/{info.maxHp}
       </span>
     </div>
@@ -1268,7 +1315,7 @@ function BattleReplay({
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:FONT, display:"flex", flexDirection:"column", padding:"12px 8px" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#050a10 0%,#080510 40%,#0a0505 70%,#050608 100%)", fontFamily:FONT, display:"flex", flexDirection:"column", padding:"10px 8px 16px" }}>
       <style>{CSS}</style>
       {ultimateAnim && (
         <UltimateAnim
@@ -1280,29 +1327,46 @@ function BattleReplay({
         />
       )}
       {/* 상단: 속도 + 스킵 */}
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"6px 10px", background:"rgba(0,0,0,0.5)", border:"1px solid #2e1f0633", borderRadius:8, backdropFilter:"blur(8px)" }}>
+        <span style={{ fontSize:9, color:C.stoneFaint, letterSpacing:"0.2em", marginRight:4 }}>SPD</span>
         {speedBtns.map(b => (
-          <button key={b.v} onClick={() => setSpeed(b.v)} style={{ background: speed===b.v ? "#c8a44a" : "#1e1508", border:`1px solid ${speed===b.v?"#c8a44a":C.borderFaint}`, color: speed===b.v?"#1c1101":C.stone, fontFamily:"monospace", fontSize:11, fontWeight:900, padding:"4px 10px", borderRadius:3, cursor:"pointer" }}>{b.label}</button>
+          <button key={b.v} onClick={() => setSpeed(b.v)} style={{ background: speed===b.v ? "linear-gradient(180deg,#c8a44a,#8b6020)" : "rgba(30,21,8,0.8)", border:`1px solid ${speed===b.v?"#c8a44a":"#2e1f06"}`, color: speed===b.v?"#1c1101":C.stone, fontFamily:"monospace", fontSize:11, fontWeight:900, padding:"3px 10px", borderRadius:4, cursor:"pointer", boxShadow: speed===b.v ? "0 0 8px #c8a44a44" : "none" }}>{b.label}</button>
         ))}
-        <button onClick={skip} style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:4, background:"#1e1508", border:`1px solid ${C.borderFaint}`, color:C.stone, fontFamily:FONT, fontSize:11, padding:"4px 10px", borderRadius:3, cursor:"pointer" }}>
-          <SkipForward size={12}/> {" 스킵"}
+        <div style={{ flex:1, height:3, background:"rgba(0,0,0,0.5)", borderRadius:2, overflow:"hidden", margin:"0 4px" }}>
+          <div style={{ height:"100%", width:`${Math.min(100,(step+1)/log.length*100)}%`, background:"linear-gradient(90deg,#3b82f6,#c8a44a,#ef4444)", borderRadius:2, transition:"width 0.3s" }}/>
+        </div>
+        <span style={{ fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>{Math.max(0,step+1)}/{log.length}</span>
+        <button onClick={skip} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(30,21,8,0.8)", border:`1px solid ${C.borderFaint}`, color:C.stone, fontFamily:FONT, fontSize:10, padding:"3px 10px", borderRadius:4, cursor:"pointer" }}>
+          <SkipForward size={11}/>{" 스킵"}
         </button>
-        <span style={{ fontSize:10, color:C.stoneFaint, fontFamily:"monospace" }}>{Math.max(0,step+1)}/{log.length}</span>
       </div>
 
       {/* 스킬 배너 */}
-      {skillBanner && (
-        <div style={{ textAlign:"center", marginBottom:6, minHeight:22 }}>
-          <span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(0,0,0,0.75)", border:`1px solid ${SKILL_COLOR[skillBanner.type]}88`, borderRadius:4, padding:"3px 12px" }}>
-            <span style={{ fontSize:9, fontWeight:900, color:SKILL_COLOR[skillBanner.type], letterSpacing:"0.1em" }}>
+      <div style={{ minHeight:32, marginBottom:4, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        {skillBanner && (
+          <div style={{
+            display:"inline-flex", alignItems:"center", gap:8,
+            background:`linear-gradient(90deg, transparent 0%, ${SKILL_COLOR[skillBanner.type]}22 20%, ${SKILL_COLOR[skillBanner.type]}18 80%, transparent 100%)`,
+            border:`1px solid ${SKILL_COLOR[skillBanner.type]}66`,
+            borderLeft:"none", borderRight:"none",
+            padding:"5px 28px",
+            position:"relative", overflow:"hidden",
+            animation:"col-skill-in 0.2s ease-out",
+            width:"100%",
+          }}>
+            {/* 좌측 글로우 라인 */}
+            <div style={{ position:"absolute", left:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg, transparent, ${SKILL_COLOR[skillBanner.type]}, transparent)` }}/>
+            {/* 우측 글로우 라인 */}
+            <div style={{ position:"absolute", right:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg, transparent, ${SKILL_COLOR[skillBanner.type]}, transparent)` }}/>
+            <span style={{ fontSize:8, fontWeight:900, color:SKILL_COLOR[skillBanner.type], letterSpacing:"0.25em", background:`${SKILL_COLOR[skillBanner.type]}22`, border:`1px solid ${SKILL_COLOR[skillBanner.type]}55`, padding:"2px 7px", borderRadius:3 }}>
               {SKILL_LABEL[skillBanner.type]}
             </span>
-            <span style={{ fontSize:13, fontWeight:900, color:SKILL_COLOR[skillBanner.type], textShadow:`0 0 10px ${SKILL_COLOR[skillBanner.type]}`, animation:"col-win-in 0.25s ease-out" }}>
+            <span style={{ fontSize:15, fontWeight:900, color:"#fff", textShadow:`0 0 16px ${SKILL_COLOR[skillBanner.type]}, 0 0 32px ${SKILL_COLOR[skillBanner.type]}88`, letterSpacing:"0.06em", flex:1, textAlign:"center" }}>
               {skillBanner.name}
             </span>
-          </span>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* 메인 배틀 영역 */}
       <div style={{ display:"flex", gap:8, flex:1 }}>
@@ -1310,22 +1374,84 @@ function BattleReplay({
         <SpeedBar attackerChars={attackerChars} defenderChars={defenderChars} crs={crs} activeActor={activeActor}/>
 
         {/* 배틀 필드 */}
-        <div style={{ flex:1, display:"flex", gap:8 }}>
+        <div style={{ flex:1, display:"flex", gap:6 }}>
           {/* 공격팀 */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, padding:"8px 6px", background:"linear-gradient(180deg,#061a30,#040f1c)", border:"1px solid #1e3a5f", borderRadius:6 }}>
-            <p style={{ margin:"0 0 4px", fontSize:9, color:"#60a5fa", fontWeight:900, letterSpacing:"0.2em", textAlign:"center" }}>공격</p>
-            {renderTeam(attackerChars, "attacker")}
+          <div style={{
+            flex:1, display:"flex", flexDirection:"column", gap:10, padding:"10px 8px",
+            background:"linear-gradient(160deg,#0a2540 0%,#061a30 40%,#040f1c 100%)",
+            border:"1px solid #1e3a5f",
+            borderRadius:8,
+            position:"relative", overflow:"hidden",
+            boxShadow:"inset 0 0 40px rgba(96,165,250,0.06), 0 0 20px rgba(96,165,250,0.08)",
+          }}>
+            {/* 스캔라인 오버레이 */}
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden", borderRadius:8 }}>
+              <div style={{ position:"absolute", left:0, right:0, height:2, background:"linear-gradient(90deg,transparent,rgba(96,165,250,0.18),transparent)", animation:"col-scan 3.5s linear infinite" }}/>
+              <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(96,165,250,0.025) 18px,rgba(96,165,250,0.025) 19px)", pointerEvents:"none" }}/>
+            </div>
+            {/* 코너 장식 */}
+            <div style={{ position:"absolute", top:4, left:4, width:10, height:10, borderTop:"2px solid #3b82f666", borderLeft:"2px solid #3b82f666", borderRadius:"2px 0 0 0" }}/>
+            <div style={{ position:"absolute", top:4, right:4, width:10, height:10, borderTop:"2px solid #3b82f666", borderRight:"2px solid #3b82f666", borderRadius:"0 2px 0 0" }}/>
+            {/* 헤더 */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, position:"relative", zIndex:1 }}>
+              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,transparent,#3b82f655)" }}/>
+              <span style={{ fontSize:9, color:"#60a5fa", fontWeight:900, letterSpacing:"0.3em" }}>공격</span>
+              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,#3b82f655,transparent)" }}/>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center", position:"relative", zIndex:1 }}>
+              {renderTeam(attackerChars, "attacker")}
+            </div>
+            {/* 바닥 글로우 */}
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"linear-gradient(0deg,rgba(96,165,250,0.1),transparent)", pointerEvents:"none" }}/>
           </div>
 
-          {/* VS */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", width:20 }}>
-            <span style={{ fontFamily:"monospace", fontSize:11, color:C.gold, fontWeight:900, writingMode:"vertical-rl", letterSpacing:"0.1em" }}>VS</span>
+          {/* VS 구분자 */}
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", width:28, gap:4 }}>
+            {/* 상단 에너지 라인 */}
+            <div style={{ flex:1, width:1, background:"linear-gradient(180deg,transparent,#c8a44a55,#c8a44a,#c8a44a55,transparent)", animation:"col-energy 2s ease-in-out infinite" }}/>
+            {/* VS 텍스트 */}
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+              <div style={{ width:20, height:20, borderRadius:"50%", background:"radial-gradient(circle,#c8a44a33,transparent)", border:"1px solid #c8a44a55", display:"flex", alignItems:"center", justifyContent:"center", animation:"col-vs-beat 1.8s ease-in-out infinite" }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" style={{ overflow:"visible" }}>
+                  <line x1="2" y1="12" x2="12" y2="2" stroke="#c8a44a" strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="2" y1="2" x2="12" y2="12" stroke="#c8a44a" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="7" cy="7" r="2" fill="#c8a44a" opacity="0.7"/>
+                </svg>
+              </div>
+              <span style={{ fontFamily:"monospace", fontSize:8, color:"#c8a44a88", fontWeight:900, letterSpacing:"0.05em", writingMode:"vertical-rl" }}>VS</span>
+            </div>
+            {/* 하단 에너지 라인 */}
+            <div style={{ flex:1, width:1, background:"linear-gradient(180deg,#c8a44a55,#c8a44a,#c8a44a55,transparent)", animation:"col-energy 2s ease-in-out 1s infinite" }}/>
           </div>
 
           {/* 방어팀 */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, padding:"8px 6px", background:"linear-gradient(180deg,#1f0606,#130404)", border:"1px solid #4f0e0e", borderRadius:6 }}>
-            <p style={{ margin:"0 0 4px", fontSize:9, color:"#f87171", fontWeight:900, letterSpacing:"0.2em", textAlign:"center" }}>방어</p>
-            {renderTeam(defenderChars, "defender")}
+          <div style={{
+            flex:1, display:"flex", flexDirection:"column", gap:10, padding:"10px 8px",
+            background:"linear-gradient(200deg,#250606 0%,#1a0404 40%,#100303 100%)",
+            border:"1px solid #5a1010",
+            borderRadius:8,
+            position:"relative", overflow:"hidden",
+            boxShadow:"inset 0 0 40px rgba(248,113,113,0.06), 0 0 20px rgba(248,113,113,0.08)",
+          }}>
+            {/* 스캔라인 오버레이 */}
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden", borderRadius:8 }}>
+              <div style={{ position:"absolute", left:0, right:0, height:2, background:"linear-gradient(90deg,transparent,rgba(248,113,113,0.18),transparent)", animation:"col-scan 4s linear infinite 1s" }}/>
+              <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(248,113,113,0.025) 18px,rgba(248,113,113,0.025) 19px)", pointerEvents:"none" }}/>
+            </div>
+            {/* 코너 장식 */}
+            <div style={{ position:"absolute", top:4, left:4, width:10, height:10, borderTop:"2px solid #ef444466", borderLeft:"2px solid #ef444466", borderRadius:"2px 0 0 0" }}/>
+            <div style={{ position:"absolute", top:4, right:4, width:10, height:10, borderTop:"2px solid #ef444466", borderRight:"2px solid #ef444466", borderRadius:"0 2px 0 0" }}/>
+            {/* 헤더 */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, position:"relative", zIndex:1 }}>
+              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,transparent,#ef444455)" }}/>
+              <span style={{ fontSize:9, color:"#f87171", fontWeight:900, letterSpacing:"0.3em" }}>방어</span>
+              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,#ef444455,transparent)" }}/>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center", position:"relative", zIndex:1 }}>
+              {renderTeam(defenderChars, "defender")}
+            </div>
+            {/* 바닥 글로우 */}
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"linear-gradient(0deg,rgba(248,113,113,0.1),transparent)", pointerEvents:"none" }}/>
           </div>
         </div>
       </div>
