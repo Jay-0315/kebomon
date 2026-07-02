@@ -440,6 +440,7 @@ const CSS = `
 @keyframes col-roll-in{0%{opacity:0;transform:scale(0.5) rotate(-12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes col-active-glow{0%,100%{filter:drop-shadow(0 0 6px #c8a44a)}50%{filter:drop-shadow(0 0 18px #c8a44a)}}
 @keyframes col-dead{to{filter:grayscale(1) brightness(0.3);opacity:0.4}}
+@keyframes slot-pulse{0%,100%{box-shadow:0 0 0 2px #c8a44a,0 0 14px #c8a44a55}50%{box-shadow:0 0 0 3px #ffd700,0 0 22px #ffd70088}}
 @keyframes cr-fill{from{width:0}}
 @keyframes col-hp-flash{0%{opacity:0.7}100%{opacity:0}}
 @keyframes col-stone-glow{0%,100%{opacity:0.55}50%{opacity:0.9}}
@@ -648,30 +649,40 @@ function HpBar({ hp, maxHp, height = 6 }: { hp: number; maxHp: number; height?: 
 
 // ─── 덱 슬롯 카드 ─────────────────────────────────────────────────────────────
 function DeckSlotCard({
-  charId, onRemove, small = false,
-}: { charId: number | null; onRemove?: () => void; small?: boolean }) {
+  charId, onRemove, small = false, onClick, isSelected = false,
+}: { charId: number | null; onRemove?: () => void; small?: boolean; onClick?: () => void; isSelected?: boolean }) {
   const size = small ? 36 : 52;
   if (!charId) return (
-    <div style={{
-      width: size+16, height: size+16, border:`2px dashed ${C.borderFaint}`, borderRadius:6,
-      display:"flex", alignItems:"center", justifyContent:"center", color:C.stoneFaint, flexShrink:0,
+    <div onClick={onClick} style={{
+      width: size+16, height: size+16, borderRadius:6, flexShrink:0,
+      border: isSelected ? "2px solid #c8a44a" : `2px dashed ${C.border}`,
+      background: isSelected ? "rgba(200,164,74,0.08)" : "transparent",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
+      cursor: onClick ? "pointer" : "default",
+      animation: isSelected ? "slot-pulse 1.2s ease-in-out infinite" : undefined,
+      transition:"border-color 0.15s, background 0.15s",
     }}>
-      <Plus size={16} color={C.stoneFaint}/>
+      <Plus size={isSelected ? 18 : 14} color={isSelected ? "#c8a44a" : C.border}/>
+      {isSelected && !small && <span style={{ fontSize:7, color:"#c8a44a", fontWeight:900, letterSpacing:"0.08em" }}>선택됨</span>}
     </div>
   );
   const char = charById(charId);
+  const th   = RARITY_THEME[char.rarity as CharacterRarity];
   return (
-    <div style={{
+    <div onClick={onClick} style={{
       position:"relative", width:size+16, height:size+16, flexShrink:0,
-      border:`2px solid ${RARITY_THEME[char.rarity as CharacterRarity]?.border ?? C.border}`,
-      borderRadius:6, background:RARITY_THEME[char.rarity as CharacterRarity]?.bg ?? "#0a0805", overflow:"visible",
-      boxShadow:`0 0 12px ${RARITY_THEME[char.rarity as CharacterRarity]?.glow ?? C.border}44`,
+      border: isSelected ? "2px solid #ffd700" : `2px solid ${th?.border ?? C.border}`,
+      borderRadius:6, background: th?.bg ?? "#0a0805", overflow:"visible",
+      boxShadow: isSelected ? undefined : `0 0 12px ${th?.glow ?? C.border}44`,
+      animation: isSelected ? "slot-pulse 1.2s ease-in-out infinite" : undefined,
+      cursor: onClick ? "pointer" : "default",
+      transition:"border-color 0.15s",
     }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%" }}>
         <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={size}/>
       </div>
       {onRemove && (
-        <button onClick={onRemove} style={{
+        <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{
           position:"absolute", top:-6, right:-6, width:16, height:16, borderRadius:"50%",
           background:"#dc2626", border:"none", cursor:"pointer", display:"flex",
           alignItems:"center", justifyContent:"center", zIndex:2,
@@ -940,14 +951,40 @@ function DeckEditor({
   ko: boolean; ja: boolean;
   charEnhancements: Record<number, number>;
 }) {
-  const [slots, setSlots]       = useState<number[]>(currentSlots);
-  const [tooltipInfo, setTooltipInfo] = useState<{ charId: number; rect: DOMRect } | null>(null);
+  // 4칸 고정 배열: 0 = 비어있음
+  const [slots, setSlots] = useState<number[]>(() => {
+    const arr = [0, 0, 0, 0];
+    currentSlots.forEach((id, i) => { if (i < 4) arr[i] = id; });
+    return arr;
+  });
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [tooltipInfo, setTooltipInfo]   = useState<{ charId: number; rect: DOMRect } | null>(null);
 
-  const addChar = (id: number) => {
-    if (slots.includes(id) || slots.length >= 4) return;
-    setSlots(p => [...p, id]);
+  const selectSlot = (idx: number) => {
+    setSelectedSlot(p => p === idx ? null : idx);
   };
-  const removeSlot = (idx: number) => setSlots(p => p.filter((_,i) => i !== idx));
+
+  const placeChar = (id: number) => {
+    if (selectedSlot !== null) {
+      // 선택된 슬롯에 배치 (이미 덱 내 다른 곳에 있으면 그 자리를 비움)
+      setSlots(p => p.map((v, i) => i === selectedSlot ? id : v === id ? 0 : v));
+      setSelectedSlot(null);
+    } else {
+      // 선택된 슬롯 없으면 첫 번째 빈 슬롯에 배치
+      setSlots(p => {
+        const first = p.findIndex(v => v === 0);
+        if (first === -1) return p;
+        return p.map((v, i) => i === first ? id : v === id ? 0 : v);
+      });
+    }
+  };
+
+  const removeSlot = (idx: number) => {
+    setSlots(p => p.map((v, i) => i === idx ? 0 : v));
+    if (selectedSlot === idx) setSelectedSlot(null);
+  };
+
+  const filledCount = slots.filter(Boolean).length;
 
   const ownedChars = ownedIds
     .map(id => charById(id))
@@ -970,7 +1007,7 @@ function DeckEditor({
         </button>
         <h2 style={{ margin:0, color:C.gold, fontSize:18, fontWeight:900, letterSpacing:"0.1em" }}>{typeLabel} {ko?"편집":ja?"編集":"Edit"}</h2>
         <div style={{ marginLeft:"auto" }}>
-          <button onClick={() => onSave(slots)}
+          <button onClick={() => onSave(slots.filter(Boolean))}
             style={{ background:"linear-gradient(180deg,#c8a44a,#8b6020)", border:"2px solid #5a3d0e", color:"#1c1101", fontWeight:900, fontSize:13, padding:"8px 20px", borderRadius:4, cursor:"pointer", fontFamily:FONT }}>
             {ko?"저장":ja?"保存":"Save"}
           </button>
@@ -979,24 +1016,36 @@ function DeckEditor({
 
       {/* 현재 덱 슬롯 — 전열/후열 진형 */}
       <div style={{ background:"linear-gradient(135deg,#1e1508,#120e06)", border:`2px solid ${C.border}`, borderRadius:8, padding:"14px 12px", marginBottom:14 }}>
-        <p style={{ margin:"0 0 12px", fontSize:11, color:C.stone, letterSpacing:"0.12em" }}>
-          {ko?"진형 편성":ja?"陣形編成":"Formation"} ({slots.length}/4)
-        </p>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+          <span style={{ fontSize:11, color:C.stone, letterSpacing:"0.12em" }}>
+            {ko?"진형 편성":ja?"陣形編成":"Formation"} ({filledCount}/4)
+          </span>
+          {selectedSlot !== null && (
+            <span style={{ fontSize:10, color:"#c8a44a", fontWeight:900, animation:"slot-pulse 1.2s ease-in-out infinite" }}>
+              {ko?`슬롯 ${selectedSlot+1} 선택됨 — 캐릭터를 고르세요`:ja?`スロット${selectedSlot+1}選択中 — キャラを選んでください`:`Slot ${selectedSlot+1} selected — pick a character`}
+            </span>
+          )}
+        </div>
         {([
-          { label: ko?"전열":ja?"前列":"Front", hint: ko?"HP +20% · 방어 +10%":ja?"HP +20% · 防御 +10%":"HP +20% · DEF +10%", color:"#60a5fa", slots:[0,1] },
-          { label: ko?"후열":ja?"後列":"Back",  hint: ko?"공격 +15% · 치명 +8%":ja?"攻撃 +15% · 会心 +8%":"ATK +15% · CRIT +8%", color:"#f87171", slots:[2,3] },
-        ] as const).map(row => (
+          { label: ko?"전열":ja?"前列":"Front", hint: ko?"HP +20% · 방어 +10%":ja?"HP +20% · 防御 +10%":"HP +20% · DEF +10%", color:"#60a5fa", idxs:[0,1] as const },
+          { label: ko?"후열":ja?"後列":"Back",  hint: ko?"공격 +15% · 치명 +8%":ja?"攻撃 +15% · 会心 +8%":"ATK +15% · CRIT +8%", color:"#f87171", idxs:[2,3] as const },
+        ]).map(row => (
           <div key={row.label} style={{ marginBottom:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
               <div style={{ width:3, height:14, borderRadius:1, background:row.color }}/>
               <span style={{ fontSize:11, fontWeight:900, color:row.color, letterSpacing:"0.1em" }}>{row.label}</span>
-              <span style={{ fontSize:9, color:C.stoneFaint }}>{row.hint}</span>
+              <span style={{ fontSize:9, color:row.color, opacity:0.6, background:`${row.color}18`, borderRadius:3, padding:"1px 5px" }}>{row.hint}</span>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              {row.slots.map(i => (
-                <DeckSlotCard key={i} charId={slots[i] ?? null} onRemove={slots[i] ? () => removeSlot(i) : undefined}/>
+              {row.idxs.map(i => (
+                <DeckSlotCard
+                  key={i}
+                  charId={slots[i] || null}
+                  isSelected={selectedSlot === i}
+                  onClick={() => selectSlot(i)}
+                  onRemove={slots[i] ? () => removeSlot(i) : undefined}
+                />
               ))}
-              {/* 빈 슬롯은 DeckSlotCard null이 처리 */}
             </div>
           </div>
         ))}
@@ -1009,12 +1058,12 @@ function DeckEditor({
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))", gap:8 }}>
         {ownedChars.map(char => {
           const inDeck  = slots.includes(char.id);
-          const isFull  = slots.length >= 4;
+          const isFull  = filledCount >= 4 && selectedSlot === null;
           const th      = RARITY_THEME[char.rarity as CharacterRarity];
           const enh     = charEnhancements[char.id] ?? 0;
           return (
             <button key={char.id}
-              onClick={() => inDeck ? setSlots(p => p.filter(x => x !== char.id)) : addChar(char.id)}
+              onClick={() => inDeck ? removeSlot(slots.indexOf(char.id)) : placeChar(char.id)}
               disabled={!inDeck && isFull}
               onMouseEnter={e => setTooltipInfo({ charId: char.id, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
               onMouseLeave={() => setTooltipInfo(null)}
