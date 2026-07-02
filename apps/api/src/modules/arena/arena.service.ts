@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
-// ─── characterId → CharacterType ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// 캐릭터 ID → 타입 매핑
+// ═══════════════════════════════════════════════════════════════════════════════
 const CHAR_TYPE: Record<number, string> = {
   4:"ghost",5:"plant",6:"fish",7:"owl",8:"bear",9:"turtle",11:"wolf",12:"robot",
   13:"slime",14:"cat",16:"ghost",17:"plant",18:"fish",19:"owl",20:"bear",21:"turtle",
@@ -30,7 +32,6 @@ const CHAR_TYPE: Record<number, string> = {
   378:"demon",388:"angel",389:"angel",390:"angel",391:"angel",392:"angel",393:"angel",
 };
 
-// ─── CharacterType → arena archetype ─────────────────────────────────────────
 const TYPE_ARCHETYPE: Record<string, string> = {
   wolf:"warrior", tiger:"warrior", lion:"warrior", bear:"warrior",
   cat:"rogue",    rabbit:"rogue",  deer:"rogue",   eagle:"rogue",
@@ -41,7 +42,6 @@ const TYPE_ARCHETYPE: Record<string, string> = {
   fox:"cursed",   monkey:"cursed", raven:"cursed", snake:"cursed", demon:"cursed",
 };
 
-// ─── characterId → rarity ─────────────────────────────────────────────────────
 const CHAR_RARITY: Record<number, string> = {
   4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
   11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
@@ -79,38 +79,65 @@ const CHAR_RARITY: Record<number, string> = {
   393:"rare",
 };
 
-// ─── 레어리티 기본 스탯 ────────────────────────────────────────────────────────
-const RARITY_BASE: Record<string, { hp: number; atk: number; spd: number }> = {
-  common:    { hp: 80,  atk: 10, spd: 80  },
-  uncommon:  { hp: 90,  atk: 12, spd: 85  },
-  rare:      { hp: 100, atk: 15, spd: 90  },
-  epic:      { hp: 115, atk: 19, spd: 95  },
-  legendary: { hp: 130, atk: 24, spd: 100 },
-  mythic:    { hp: 150, atk: 30, spd: 110 },
+// ═══════════════════════════════════════════════════════════════════════════════
+// 속성 시스템
+// ═══════════════════════════════════════════════════════════════════════════════
+const ARCH_ELEMENT: Record<string, string> = {
+  warrior:"fire", tank:"earth", mage:"ice", rogue:"dark",
+  nature:"nature", meka:"lightning", cursed:"shadow", all:"light",
 };
 
-// ─── 직업별 스탯 배율 ─────────────────────────────────────────────────────────
-const ARCHETYPE_MULT: Record<string, { hp: number; atk: number; spd: number }> = {
-  warrior: { hp: 0.90, atk: 1.30, spd: 1.00 },
-  tank:    { hp: 1.50, atk: 0.60, spd: 0.75 },
-  mage:    { hp: 0.80, atk: 1.50, spd: 1.00 },
-  rogue:   { hp: 0.85, atk: 1.10, spd: 1.40 },
-  nature:  { hp: 1.30, atk: 0.75, spd: 0.85 },
-  meka:    { hp: 1.10, atk: 1.00, spd: 1.10 },
-  cursed:  { hp: 0.80, atk: 1.40, spd: 1.10 },
-  all:     { hp: 1.00, atk: 1.00, spd: 1.00 },
+// A가 B를 공격할 때 유리 (15% 추가 피해)
+const ELEMENT_ADVANTAGE: Record<string, string> = {
+  fire:"nature", nature:"ice", ice:"fire",
+  dark:"light",  light:"shadow", shadow:"dark",
+  lightning:"earth", earth:"lightning",
+};
+const ELEMENT_BONUS = 1.15;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 스탯 테이블 (완전판)
+// ═══════════════════════════════════════════════════════════════════════════════
+interface BaseStats {
+  hp: number; atk: number; def: number; spd: number;
+  critRate: number; critDmg: number;
+  effectiveness: number; effectResist: number;
+}
+
+const RARITY_BASE: Record<string, BaseStats> = {
+  common:    { hp:2800,  atk:820,  def:580,  spd:90,  critRate:0.15, critDmg:1.50, effectiveness:0.00, effectResist:0.00 },
+  uncommon:  { hp:3400,  atk:960,  def:680,  spd:95,  critRate:0.15, critDmg:1.50, effectiveness:0.00, effectResist:0.00 },
+  rare:      { hp:4100,  atk:1120, def:810,  spd:100, critRate:0.15, critDmg:1.50, effectiveness:0.00, effectResist:0.00 },
+  epic:      { hp:5000,  atk:1320, def:970,  spd:106, critRate:0.15, critDmg:1.50, effectiveness:0.00, effectResist:0.00 },
+  legendary: { hp:6100,  atk:1580, def:1160, spd:112, critRate:0.15, critDmg:1.50, effectiveness:0.00, effectResist:0.00 },
+  mythic:    { hp:7500,  atk:1950, def:1420, spd:120, critRate:0.15, critDmg:1.75, effectiveness:0.00, effectResist:0.00 },
 };
 
-// ─── 직업별 강화 레벨당 보너스 (%) ───────────────────────────────────────────
-const ENHANCE_PER_LEVEL: Record<string, { hp: number; atk: number; spd: number }> = {
-  warrior: { hp: 3, atk: 5, spd: 2 },
-  tank:    { hp: 6, atk: 2, spd: 1 },
-  mage:    { hp: 2, atk: 6, spd: 1 },
-  rogue:   { hp: 2, atk: 3, spd: 5 },
-  nature:  { hp: 5, atk: 2, spd: 2 },
-  meka:    { hp: 3, atk: 3, spd: 3 },
-  cursed:  { hp: 2, atk: 4, spd: 4 },
-  all:     { hp: 3, atk: 3, spd: 3 },
+interface ArchMult {
+  hp: number; atk: number; def: number; spd: number;
+  critRate: number; critDmg: number;
+  effectiveness: number; effectResist: number;
+}
+const ARCHETYPE_MULT: Record<string, ArchMult> = {
+  warrior: { hp:1.00, atk:1.30, def:0.90, spd:1.00, critRate:0.10, critDmg:0.25, effectiveness:0.00, effectResist:0.00 },
+  tank:    { hp:1.65, atk:0.60, def:1.60, spd:0.75, critRate:0.00, critDmg:0.00, effectiveness:0.00, effectResist:0.20 },
+  mage:    { hp:0.80, atk:1.55, def:0.70, spd:1.00, critRate:0.05, critDmg:0.35, effectiveness:0.25, effectResist:0.00 },
+  rogue:   { hp:0.85, atk:1.15, def:0.75, spd:1.40, critRate:0.25, critDmg:0.35, effectiveness:0.10, effectResist:0.00 },
+  nature:  { hp:1.30, atk:0.80, def:1.10, spd:0.90, critRate:0.00, critDmg:0.00, effectiveness:0.10, effectResist:0.10 },
+  meka:    { hp:1.10, atk:1.05, def:1.10, spd:1.10, critRate:0.05, critDmg:0.10, effectiveness:0.05, effectResist:0.05 },
+  cursed:  { hp:0.80, atk:1.45, def:0.75, spd:1.10, critRate:0.05, critDmg:0.20, effectiveness:0.30, effectResist:0.00 },
+  all:     { hp:1.00, atk:1.00, def:1.00, spd:1.00, critRate:0.00, critDmg:0.00, effectiveness:0.00, effectResist:0.00 },
+};
+
+const ENHANCE_PER_LEVEL: Record<string, { hp: number; atk: number; def: number; spd: number }> = {
+  warrior: { hp:3, atk:5, def:3, spd:2 },
+  tank:    { hp:6, atk:2, def:6, spd:1 },
+  mage:    { hp:2, atk:6, def:2, spd:1 },
+  rogue:   { hp:2, atk:3, def:2, spd:5 },
+  nature:  { hp:5, atk:2, def:4, spd:2 },
+  meka:    { hp:3, atk:3, def:3, spd:3 },
+  cursed:  { hp:2, atk:4, def:2, spd:4 },
+  all:     { hp:3, atk:3, def:3, spd:3 },
 };
 
 export function getCharStat(charId: number, enhLevel = 0) {
@@ -120,270 +147,693 @@ export function getCharStat(charId: number, enhLevel = 0) {
   const base     = RARITY_BASE[rarity] ?? RARITY_BASE.common;
   const mult     = ARCHETYPE_MULT[arch] ?? ARCHETYPE_MULT.all;
   const enh      = ENHANCE_PER_LEVEL[arch] ?? ENHANCE_PER_LEVEL.all;
+  const enhBonus = (stat: number, pct: number) => Math.round(stat * (1 + enhLevel * pct / 100));
   return {
-    hp:        Math.round(base.hp  * mult.hp  * (1 + enhLevel * enh.hp  / 100)),
-    atk:       Math.round(base.atk * mult.atk * (1 + enhLevel * enh.atk / 100)),
-    spd:       Math.round(base.spd * mult.spd * (1 + enhLevel * enh.spd / 100)),
-    rarity,
-    archetype: arch,
-    charType,
+    hp:            enhBonus(Math.round(base.hp  * mult.hp),  enh.hp),
+    atk:           enhBonus(Math.round(base.atk * mult.atk), enh.atk),
+    def:           enhBonus(Math.round(base.def * mult.def), enh.def),
+    spd:           enhBonus(Math.round(base.spd * mult.spd), enh.spd),
+    critRate:      Math.min(1.0, base.critRate + mult.critRate),
+    critDmg:       base.critDmg + mult.critDmg,
+    effectiveness: base.effectiveness + mult.effectiveness,
+    effectResist:  base.effectResist + mult.effectResist,
+    rarity, archetype: arch, charType,
+    element: ARCH_ELEMENT[arch] ?? "light",
   };
 }
 
-// ─── 스킬 시스템 ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// 버프 / 디버프 타입
+// ═══════════════════════════════════════════════════════════════════════════════
+type BuffType =
+  | "attack_up"    // ATK × 1.5
+  | "defense_up"   // DEF × 1.5
+  | "speed_up"     // SPD × 1.3
+  | "barrier"      // 피해 흡수 (value = 남은 HP)
+  | "immune"       // 디버프 면역
+  | "counter"      // 피격 시 반격
+  | "revive"       // 1회 부활 (30% HP)
+  | "recovery"     // 매 턴 HP 5% 회복
+  | "cr_boost";    // 다음 턴 CR +30
 
-type SkillEffect =
-  | { kind: "damage_single" }
-  | { kind: "damage_all" }
-  | { kind: "damage_random_multi"; hits: number }
-  | { kind: "damage_lowest_hp" }
-  | { kind: "damage_highest_hp" }
-  | { kind: "heal_lowest";      pct: number }
-  | { kind: "heal_all";         pct: number }
-  | { kind: "damage_single_dot"; dotPct: number; dotTurns: number }
-  | { kind: "damage_all_dot";   dotPct: number; dotTurns: number }
-  | { kind: "damage_all_heal_all"; healPct: number };
+type DebuffType =
+  | "defense_break" // DEF × 0.5
+  | "attack_down"   // ATK × 0.7
+  | "speed_down"    // SPD × 0.7
+  | "stun"          // 행동 불가
+  | "silence"       // S2/S3 사용 불가
+  | "sleep"         // 행동 불가, 피격 시 해제
+  | "provoke"       // 도발한 유닛만 공격 가능
+  | "restrict"      // S3 사용 불가
+  | "blind"         // 명중률 -50%
+  | "burn"          // 매 턴 (value) 피해
+  | "poison"        // 매 턴 maxHp × 5% 피해
+  | "bleed"         // 매 턴 currentHp × 8% 피해
+  | "bomb"          // N턴 후 maxHp × 60% 폭발 (value = 남은 턴)
+  | "unhealable";   // 회복 불가
 
-interface SkillDef {
-  name:     string;
-  type:     "basic" | "skill" | "ultimate";
-  cooldown: number;
-  mult:     number;   // 데미지 배율 (heal 전용 스킬은 0)
-  effect:   SkillEffect;
+interface StatusEffect {
+  type: BuffType | DebuffType;
+  duration: number;    // 남은 턴
+  value?: number;      // barrier: 남은 흡수량, burn: 턴당 피해, bomb: 남은 폭발 카운터
+  fromSlot?: number;   // 도발 발동 유닛 슬롯 (provoke용)
+  fromTeam?: string;
 }
 
-const ARCHETYPE_SKILLS: Record<string, { basic: SkillDef; skill: SkillDef; ultimate: SkillDef }> = {
+// ═══════════════════════════════════════════════════════════════════════════════
+// 스킬 정의
+// ═══════════════════════════════════════════════════════════════════════════════
+type SkillTarget = "single" | "all" | "random_multi" | "lowest_hp" | "highest_hp" | "self" | "ally_lowest" | "all_ally";
+
+interface BuffApply  { type: BuffType;  duration: number; value?: number }
+interface DebuffApply{ type: DebuffType; duration: number; value?: number }
+
+interface SkillDef {
+  name:       string;
+  type:       "s1" | "s2" | "s3";
+  cooldown:   number;   // 0 = 쿨타임 없음
+  mult:       number;   // 피해 배율 (회복 전용은 0)
+  hits:       number;   // 멀티히트
+  target:     SkillTarget;
+  ignoresDef: boolean;  // 방어 무시
+  healPct?:   number;   // target maxHp의 %를 회복
+  selfHealPct?: number; // 시전자 회복
+  buffs?:     BuffApply[];    // 시전자 또는 아군에게 버프
+  debuffs?:   DebuffApply[];  // 적에게 디버프
+  buffTarget?: "self" | "all_ally" | "ally_lowest";
+  crSelfBonus?: number;   // 시전자 CR +N
+  crEnemyPenalty?: number;// 적 CR -N (all enemies)
+}
+
+interface PassiveDef {
+  name:    string;
+  // 패시브는 유닛 생성 시 스탯으로 반영 (percent bonuses)
+  atkBonusPct?: number;
+  defBonusPct?: number;
+  spdBonusPct?: number;
+  critRateBonus?: number;
+  hpBelowPctTrigger?: number;  // HP가 N% 이하일 때 추가 ATK
+  hpBelowAtkBonus?: number;    // 위 조건 충족 시 ATK 보너스
+  counterChance?: number;       // 피격 시 반격 확률
+  dotDurationBonus?: number;    // 본인이 건 DoT 지속 +1
+}
+
+interface HeroDef {
+  s1: SkillDef;
+  s2: SkillDef;
+  s3: SkillDef;
+  passive: PassiveDef;
+}
+
+const HERO_SKILLS: Record<string, HeroDef> = {
   warrior: {
-    basic:    { name:"강타",        type:"basic",    cooldown:0, mult:1.0,  effect:{ kind:"damage_single" } },
-    skill:    { name:"연격",        type:"skill",    cooldown:3, mult:1.8,  effect:{ kind:"damage_single" } },
-    ultimate: { name:"폭풍검",      type:"ultimate", cooldown:5, mult:0.90, effect:{ kind:"damage_all" } },
+    s1: {
+      name:"강타", type:"s1", cooldown:0, mult:1.05, hits:1, target:"single", ignoresDef:false,
+    },
+    s2: {
+      name:"연격", type:"s2", cooldown:3, mult:0.80, hits:2, target:"single", ignoresDef:false,
+      crSelfBonus:15,
+    },
+    s3: {
+      name:"폭풍검", type:"s3", cooldown:5, mult:0.85, hits:1, target:"all", ignoresDef:false,
+      buffs:[{ type:"attack_up", duration:2 }], buffTarget:"self",
+      crSelfBonus:20,
+    },
+    passive: { name:"전투 의지", hpBelowPctTrigger:0.50, hpBelowAtkBonus:0.20 },
   },
   tank: {
-    basic:    { name:"방패 치기",   type:"basic",    cooldown:0, mult:0.7,  effect:{ kind:"damage_single" } },
-    skill:    { name:"방어 태세",   type:"skill",    cooldown:3, mult:0,    effect:{ kind:"heal_lowest",       pct:0.20 } },
-    ultimate: { name:"철벽 방어",   type:"ultimate", cooldown:5, mult:0,    effect:{ kind:"heal_all",          pct:0.15 } },
+    s1: {
+      name:"방패 치기", type:"s1", cooldown:0, mult:0.70, hits:1, target:"single", ignoresDef:false,
+      debuffs:[{ type:"provoke", duration:1 }],
+    },
+    s2: {
+      name:"방어 태세", type:"s2", cooldown:3, mult:0, hits:0, target:"self", ignoresDef:false,
+      buffs:[{ type:"defense_up", duration:2 }, { type:"barrier", duration:2, value:0 }],
+      buffTarget:"self", selfHealPct:0.15,
+    },
+    s3: {
+      name:"철벽 방어", type:"s3", cooldown:5, mult:0, hits:0, target:"all_ally", ignoresDef:false,
+      buffs:[{ type:"defense_up", duration:2 }, { type:"barrier", duration:2, value:0 }],
+      buffTarget:"all_ally",
+    },
+    passive: { name:"요새", defBonusPct:0.20, effectResistBonus:0.15 } as PassiveDef & { effectResistBonus?: number },
   },
   mage: {
-    basic:    { name:"마법탄",      type:"basic",    cooldown:0, mult:1.0,  effect:{ kind:"damage_single" } },
-    skill:    { name:"파이어볼",    type:"skill",    cooldown:3, mult:0.75, effect:{ kind:"damage_all" } },
-    ultimate: { name:"메테오",      type:"ultimate", cooldown:5, mult:1.30, effect:{ kind:"damage_all" } },
+    s1: {
+      name:"마법탄", type:"s1", cooldown:0, mult:1.10, hits:1, target:"single", ignoresDef:true,
+    },
+    s2: {
+      name:"파이어볼", type:"s2", cooldown:3, mult:0.75, hits:1, target:"all", ignoresDef:false,
+      debuffs:[{ type:"burn", duration:2, value:0 }],
+    },
+    s3: {
+      name:"메테오", type:"s3", cooldown:5, mult:1.25, hits:1, target:"all", ignoresDef:false,
+      debuffs:[{ type:"defense_break", duration:2 }],
+    },
+    passive: { name:"마력 집중", atkBonusPct:0.15 },
   },
   rogue: {
-    basic:    { name:"단검 찌르기", type:"basic",    cooldown:0, mult:1.0,  effect:{ kind:"damage_single" } },
-    skill:    { name:"연속 베기",   type:"skill",    cooldown:3, mult:0.75, effect:{ kind:"damage_random_multi", hits:2 } },
-    ultimate: { name:"암살",        type:"ultimate", cooldown:5, mult:2.8,  effect:{ kind:"damage_lowest_hp" } },
+    s1: {
+      name:"단검 찌르기", type:"s1", cooldown:0, mult:1.00, hits:1, target:"single", ignoresDef:false,
+    },
+    s2: {
+      name:"연속 베기", type:"s2", cooldown:3, mult:0.65, hits:3, target:"random_multi", ignoresDef:false,
+    },
+    s3: {
+      name:"암살", type:"s3", cooldown:5, mult:2.60, hits:1, target:"lowest_hp", ignoresDef:true,
+    },
+    passive: { name:"그림자 걸음", spdBonusPct:0.15, critRateBonus:0.10 },
   },
   nature: {
-    basic:    { name:"넝쿨 채찍",   type:"basic",    cooldown:0, mult:0.85, effect:{ kind:"damage_single" } },
-    skill:    { name:"치유의 손길", type:"skill",    cooldown:3, mult:0,    effect:{ kind:"heal_lowest",       pct:0.28 } },
-    ultimate: { name:"대자연의 힘", type:"ultimate", cooldown:5, mult:0.65, effect:{ kind:"damage_all_heal_all", healPct:0.15 } },
+    s1: {
+      name:"넝쿨 채찍", type:"s1", cooldown:0, mult:0.85, hits:1, target:"single", ignoresDef:false,
+      debuffs:[{ type:"bleed", duration:2 }],
+    },
+    s2: {
+      name:"치유의 손길", type:"s2", cooldown:3, mult:0, hits:0, target:"ally_lowest", ignoresDef:false,
+      healPct:0.30, buffs:[{ type:"recovery", duration:2 }], buffTarget:"ally_lowest",
+    },
+    s3: {
+      name:"대자연의 힘", type:"s3", cooldown:5, mult:0, hits:0, target:"all_ally", ignoresDef:false,
+      healPct:0.20, buffs:[{ type:"speed_up", duration:2 }, { type:"recovery", duration:2 }],
+      buffTarget:"all_ally",
+    },
+    passive: { name:"생명의 기운", hpBelowPctTrigger:1.0, hpBelowAtkBonus:0 },  // handled separately
   },
   meka: {
-    basic:    { name:"레이저",      type:"basic",    cooldown:0, mult:1.0,  effect:{ kind:"damage_single" } },
-    skill:    { name:"미사일",      type:"skill",    cooldown:3, mult:0.60, effect:{ kind:"damage_random_multi", hits:3 } },
-    ultimate: { name:"에너지 캐논", type:"ultimate", cooldown:5, mult:2.4,  effect:{ kind:"damage_highest_hp" } },
+    s1: {
+      name:"레이저", type:"s1", cooldown:0, mult:1.00, hits:1, target:"single", ignoresDef:false,
+      debuffs:[{ type:"defense_break", duration:1 }],
+    },
+    s2: {
+      name:"미사일", type:"s2", cooldown:3, mult:0.60, hits:3, target:"random_multi", ignoresDef:false,
+      debuffs:[{ type:"blind", duration:2 }],
+    },
+    s3: {
+      name:"에너지 캐논", type:"s3", cooldown:5, mult:2.20, hits:1, target:"highest_hp", ignoresDef:false,
+      debuffs:[{ type:"stun", duration:1 }],
+      crEnemyPenalty:20,
+    },
+    passive: { name:"과부하", hpBelowPctTrigger:0.30, hpBelowAtkBonus:0.30 },
   },
   cursed: {
-    basic:    { name:"저주 공격",   type:"basic",    cooldown:0, mult:1.0,  effect:{ kind:"damage_single" } },
-    skill:    { name:"저주의 낙인", type:"skill",    cooldown:3, mult:0.9,  effect:{ kind:"damage_single_dot", dotPct:0.05, dotTurns:3 } },
-    ultimate: { name:"재앙 선포",   type:"ultimate", cooldown:5, mult:0.75, effect:{ kind:"damage_all_dot",    dotPct:0.04, dotTurns:3 } },
+    s1: {
+      name:"저주 공격", type:"s1", cooldown:0, mult:1.00, hits:1, target:"single", ignoresDef:false,
+      debuffs:[{ type:"poison", duration:3 }],
+    },
+    s2: {
+      name:"저주의 낙인", type:"s2", cooldown:3, mult:0.90, hits:1, target:"single", ignoresDef:false,
+      debuffs:[{ type:"attack_down", duration:2 }, { type:"speed_down", duration:2 }],
+    },
+    s3: {
+      name:"재앙 선포", type:"s3", cooldown:5, mult:0.70, hits:1, target:"all", ignoresDef:false,
+      debuffs:[{ type:"poison", duration:3 }, { type:"defense_break", duration:2 }],
+    },
+    passive: { name:"저주의 연쇄", dotDurationBonus:1 },
   },
   all: {
-    basic:    { name:"공격",        type:"basic",    cooldown:0, mult:1.0,  effect:{ kind:"damage_single" } },
-    skill:    { name:"강화 공격",   type:"skill",    cooldown:3, mult:1.6,  effect:{ kind:"damage_single" } },
-    ultimate: { name:"전력 공격",   type:"ultimate", cooldown:5, mult:0.85, effect:{ kind:"damage_all" } },
+    s1: {
+      name:"공격", type:"s1", cooldown:0, mult:1.00, hits:1, target:"single", ignoresDef:false,
+    },
+    s2: {
+      name:"강화 공격", type:"s2", cooldown:3, mult:1.55, hits:1, target:"single", ignoresDef:false,
+      buffs:[{ type:"attack_up", duration:1 }], buffTarget:"self",
+    },
+    s3: {
+      name:"전력 공격", type:"s3", cooldown:5, mult:0.80, hits:1, target:"all", ignoresDef:false,
+    },
+    passive: { name:"적응", counterChance:0.20 },
   },
 };
 
-// ─── 배틀 인터페이스 ──────────────────────────────────────────────────────────
-
-interface Dot {
-  dmgPerTurn: number;
-  turnsLeft:  number;
-}
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// 인터페이스
+// ═══════════════════════════════════════════════════════════════════════════════
 interface CombatUnit {
-  slot:       number;
-  team:       "attacker" | "defender";
-  charId:     number;
-  hp:         number;
-  maxHp:      number;
-  atk:        number;
-  spd:        number;
-  cr:         number;
-  alive:      boolean;
-  rarity:     string;
-  archetype:  string;
-  charType:   string;
-  skillCd:    number;   // 남은 쿨다운 (0 = 사용 가능)
-  ultimateCd: number;
-  dots:       Dot[];
+  slot:          number;
+  team:          "attacker" | "defender";
+  charId:        number;
+  // base stats (before buffs)
+  baseAtk:       number;
+  baseDef:       number;
+  baseSpd:       number;
+  baseCritRate:  number;
+  baseCritDmg:   number;
+  effectiveness: number;
+  effectResist:  number;
+  // current HP
+  hp:            number;
+  maxHp:         number;
+  cr:            number;
+  alive:         boolean;
+  rarity:        string;
+  archetype:     string;
+  charType:      string;
+  element:       string;
+  // cooldowns
+  s1Cd:          number;
+  s2Cd:          number;
+  s3Cd:          number;
+  // status
+  buffs:         StatusEffect[];
+  debuffs:       StatusEffect[];
+  // passive data
+  passive:       PassiveDef;
+  reviveUsed:    boolean;
+  counterApplied:boolean;
 }
 
 export interface HitDetail {
-  targetTeam: "attacker" | "defender";
-  targetSlot: number;
-  damage:     number;
-  healed:     number;
-  hpAfter:    number;
-  alive:      boolean;
+  targetTeam:    "attacker" | "defender";
+  targetSlot:    number;
+  damage:        number;
+  healed:        number;
+  hpAfter:       number;
+  alive:         boolean;
+  isCrit?:       boolean;
+  barrierDmg?:   number;
+  affinity?:     "advantage" | "neutral";
+}
+
+interface CrSnapshot {
+  team:    "attacker" | "defender";
+  slot:    number;
+  cr:      number;
+  alive:   boolean;
+  buffs:   Array<{ type: string; duration: number }>;
+  debuffs: Array<{ type: string; duration: number }>;
+}
+
+interface StatusChangeEntry {
+  team:     "attacker" | "defender";
+  slot:     number;
+  type:     string;
+  duration: number;
+  value?:   number;
+  action:   "apply" | "expire";
 }
 
 export interface BattleEvent {
-  actorTeam:     "attacker" | "defender";
-  actorSlot:     number;           // -1 이면 DoT 이벤트
-  targetTeam:    "attacker" | "defender";
-  targetSlot:    number;
-  damage:        number;           // 주 타겟 데미지 (또는 DoT 데미지)
-  healed:        number;           // 주 타겟 회복량
-  targetHpAfter: number;
-  targetMaxHp:   number;
-  targetAlive:   boolean;
-  skillType:     "basic" | "skill" | "ultimate" | "dot";
-  skillName:     string;
-  hits:          HitDetail[];      // 멀티타겟/멀티히트 세부 정보
-  crs:           Array<{ team: "attacker" | "defender"; slot: number; cr: number; alive: boolean }>;
+  actorTeam:      "attacker" | "defender";
+  actorSlot:      number;
+  targetTeam:     "attacker" | "defender";
+  targetSlot:     number;
+  damage:         number;
+  healed:         number;
+  targetHpAfter:  number;
+  targetMaxHp:    number;
+  targetAlive:    boolean;
+  skillType:      "s1" | "s2" | "s3" | "passive" | "dot";
+  skillName:      string;
+  hits:           HitDetail[];
+  crs:            CrSnapshot[];
+  statusChanges?: StatusChangeEntry[];
 }
 
-// ─── 효과 적용 ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// 버프 효과 계산
+// ═══════════════════════════════════════════════════════════════════════════════
+function getEffAtk(u: CombatUnit): number {
+  let atk = u.baseAtk;
+  if (u.buffs.some(b  => b.type === "attack_up"))  atk = Math.round(atk * 1.50);
+  if (u.debuffs.some(d => d.type === "attack_down"))atk = Math.round(atk * 0.70);
+  // 패시브: HP 조건부 ATK 증가
+  if (u.passive.hpBelowPctTrigger && u.passive.hpBelowAtkBonus) {
+    if (u.hp / u.maxHp <= u.passive.hpBelowPctTrigger) {
+      atk = Math.round(atk * (1 + u.passive.hpBelowAtkBonus));
+    }
+  }
+  return atk;
+}
 
-function applyEffect(actor: CombatUnit, skill: SkillDef, all: CombatUnit[]): HitDetail[] {
+function getEffDef(u: CombatUnit): number {
+  let def = u.baseDef;
+  if (u.buffs.some(b  => b.type === "defense_up"))   def = Math.round(def * 1.50);
+  if (u.debuffs.some(d => d.type === "defense_break"))def = Math.round(def * 0.50);
+  return def;
+}
+
+function getEffSpd(u: CombatUnit): number {
+  let spd = u.baseSpd;
+  if (u.buffs.some(b  => b.type === "speed_up"))  spd = Math.round(spd * 1.30);
+  if (u.debuffs.some(d => d.type === "speed_down"))spd = Math.round(spd * 0.70);
+  return spd;
+}
+
+function canBeDebuffed(target: CombatUnit, eff: number, resist: number): boolean {
+  if (target.buffs.some(b => b.type === "immune")) return false;
+  const chance = Math.max(0, Math.min(1, 0.85 + eff - resist));
+  return Math.random() < chance;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 피해 계산
+// ═══════════════════════════════════════════════════════════════════════════════
+function calcDamage(
+  actor: CombatUnit,
+  target: CombatUnit,
+  mult: number,
+  ignoresDef: boolean,
+): { dmg: number; isCrit: boolean; affinity: "advantage" | "neutral"; barrierDmg: number } {
+  // 눈멀기 — 빗나감 판정
+  if (target.debuffs.some(d => d.type === "blind") && Math.random() < 0.50) {
+    return { dmg: 0, isCrit: false, affinity: "neutral", barrierDmg: 0 };
+  }
+
+  const atk  = getEffAtk(actor);
+  const def  = ignoresDef ? 0 : getEffDef(target);
+  const defMult = 1000 / (1000 + def);
+
+  // 치명타
+  const critRate = Math.min(1.0, actor.baseCritRate);
+  const isCrit   = Math.random() < critRate;
+  const critMult = isCrit ? actor.baseCritDmg : 1.0;
+
+  // 속성 상성
+  const affinity: "advantage" | "neutral" =
+    ELEMENT_ADVANTAGE[actor.element] === target.element ? "advantage" : "neutral";
+  const elemMult = affinity === "advantage" ? ELEMENT_BONUS : 1.0;
+
+  // 랜덤 오차 ±5%
+  const random = 0.95 + Math.random() * 0.10;
+
+  let dmg = Math.round(atk * mult * defMult * critMult * elemMult * random);
+
+  // 배리어 흡수
+  let barrierDmg = 0;
+  const barrier = target.buffs.find(b => b.type === "barrier" && (b.value ?? 0) > 0);
+  if (barrier && barrier.value) {
+    barrierDmg = Math.min(barrier.value, dmg);
+    barrier.value -= barrierDmg;
+    dmg -= barrierDmg;
+    if (barrier.value <= 0) barrier.duration = 0; // 배리어 제거 처리
+  }
+
+  target.hp = Math.max(0, target.hp - dmg);
+
+  // 부활 체크
+  if (target.hp === 0 && !target.reviveUsed && target.buffs.some(b => b.type === "revive")) {
+    target.hp = Math.round(target.maxHp * 0.30);
+    target.reviveUsed = true;
+    target.buffs = target.buffs.filter(b => b.type !== "revive");
+  }
+
+  if (target.hp === 0) target.alive = false;
+
+  return { dmg, isCrit, affinity, barrierDmg };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 스킬 효과 적용
+// ═══════════════════════════════════════════════════════════════════════════════
+function applySkill(
+  actor:   CombatUnit,
+  skill:   SkillDef,
+  all:     CombatUnit[],
+  statusChanges: StatusChangeEntry[],
+): HitDetail[] {
   const enemies = () => all.filter(u => u.team !== actor.team && u.alive);
-  const allies  = () => all.filter(u => u.team === actor.team && u.alive);
+  const allies  = () => all.filter(u => u.team === actor.team  && u.alive);
   const hits: HitDetail[] = [];
 
-  const dealDmg = (target: CombatUnit) => {
-    const dmg = Math.round(actor.atk * skill.mult * (0.9 + Math.random() * 0.2));
-    target.hp = Math.max(0, target.hp - dmg);
-    if (target.hp === 0) target.alive = false;
-    hits.push({ targetTeam: target.team, targetSlot: target.slot, damage: dmg, healed: 0, hpAfter: target.hp, alive: target.alive });
-    return dmg;
-  };
+  // ── 피해 스킬 처리 ────────────────────────────────────────────────────────
+  if (skill.mult > 0) {
+    let targets: CombatUnit[] = [];
 
-  const doHeal = (target: CombatUnit, pct: number) => {
-    const heal = Math.round(target.maxHp * pct);
-    target.hp = Math.min(target.maxHp, target.hp + heal);
-    hits.push({ targetTeam: target.team, targetSlot: target.slot, damage: 0, healed: heal, hpAfter: target.hp, alive: target.alive });
-  };
-
-  const addDot = (target: CombatUnit, dotPct: number, dotTurns: number) => {
-    target.dots.push({ dmgPerTurn: Math.round(target.maxHp * dotPct), turnsLeft: dotTurns });
-  };
-
-  const ef = skill.effect;
-
-  if (ef.kind === "damage_single") {
-    const t = enemies().sort((a, b) => a.slot - b.slot)[0];
-    if (t) dealDmg(t);
-  } else if (ef.kind === "damage_all") {
-    for (const t of enemies()) dealDmg(t);
-  } else if (ef.kind === "damage_random_multi") {
-    for (let h = 0; h < ef.hits; h++) {
-      const alive = enemies();
-      if (!alive.length) break;
-      dealDmg(alive[Math.floor(Math.random() * alive.length)]);
+    switch (skill.target) {
+      case "single":
+        targets = [enemies().sort((a, b) => a.slot - b.slot)[0]].filter(Boolean);
+        break;
+      case "all":
+        targets = enemies();
+        break;
+      case "lowest_hp":
+        targets = [enemies().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]].filter(Boolean);
+        break;
+      case "highest_hp":
+        targets = [enemies().sort((a, b) => (b.hp / b.maxHp) - (a.hp / a.maxHp))[0]].filter(Boolean);
+        break;
+      case "random_multi": {
+        for (let h = 0; h < skill.hits; h++) {
+          const alive = enemies();
+          if (!alive.length) break;
+          targets.push(alive[Math.floor(Math.random() * alive.length)]);
+        }
+        break;
+      }
     }
-  } else if (ef.kind === "damage_lowest_hp") {
-    const t = enemies().sort((a, b) => a.hp - b.hp)[0];
-    if (t) dealDmg(t);
-  } else if (ef.kind === "damage_highest_hp") {
-    const t = enemies().sort((a, b) => b.hp - a.hp)[0];
-    if (t) dealDmg(t);
-  } else if (ef.kind === "heal_lowest") {
-    const t = allies().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-    if (t) doHeal(t, ef.pct);
-  } else if (ef.kind === "heal_all") {
-    for (const t of allies()) doHeal(t, ef.pct);
-  } else if (ef.kind === "damage_single_dot") {
-    const t = enemies().sort((a, b) => a.slot - b.slot)[0];
-    if (t) { dealDmg(t); if (t.alive) addDot(t, ef.dotPct, ef.dotTurns); }
-  } else if (ef.kind === "damage_all_dot") {
-    for (const t of enemies()) { dealDmg(t); if (t.alive) addDot(t, ef.dotPct, ef.dotTurns); }
-  } else if (ef.kind === "damage_all_heal_all") {
-    for (const t of enemies()) dealDmg(t);
-    for (const t of allies())  doHeal(t, ef.healPct);
+
+    for (const t of targets) {
+      if (!t.alive) continue;
+      const { dmg, isCrit, affinity, barrierDmg } = calcDamage(actor, t, skill.mult, skill.ignoresDef);
+      hits.push({ targetTeam: t.team, targetSlot: t.slot, damage: dmg, healed: 0, hpAfter: t.hp, alive: t.alive, isCrit, affinity, barrierDmg });
+    }
+  }
+
+  // ── 회복 스킬 처리 ────────────────────────────────────────────────────────
+  if (skill.healPct) {
+    let healTargets: CombatUnit[] = [];
+    if (skill.target === "ally_lowest") {
+      const t = allies().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+      if (t) healTargets = [t];
+    } else if (skill.target === "all_ally" || skill.target === "all") {
+      healTargets = allies();
+    } else if (skill.target === "self") {
+      healTargets = [actor];
+    }
+    for (const t of healTargets) {
+      if (t.debuffs.some(d => d.type === "unhealable")) continue;
+      const heal = Math.round(t.maxHp * skill.healPct);
+      t.hp = Math.min(t.maxHp, t.hp + heal);
+      hits.push({ targetTeam: t.team, targetSlot: t.slot, damage: 0, healed: heal, hpAfter: t.hp, alive: t.alive });
+    }
+  }
+
+  // ── 자기 회복 ─────────────────────────────────────────────────────────────
+  if (skill.selfHealPct && !actor.debuffs.some(d => d.type === "unhealable")) {
+    const heal = Math.round(actor.maxHp * skill.selfHealPct);
+    actor.hp = Math.min(actor.maxHp, actor.hp + heal);
+    const existing = hits.find(h => h.targetTeam === actor.team && h.targetSlot === actor.slot);
+    if (existing) { existing.healed += heal; existing.hpAfter = actor.hp; }
+    else hits.push({ targetTeam: actor.team, targetSlot: actor.slot, damage: 0, healed: heal, hpAfter: actor.hp, alive: actor.alive });
+  }
+
+  // ── 버프 적용 ────────────────────────────────────────────────────────────
+  if (skill.buffs?.length) {
+    let buffTargets: CombatUnit[] = [];
+    switch (skill.buffTarget ?? "self") {
+      case "self":        buffTargets = [actor]; break;
+      case "all_ally":    buffTargets = allies(); break;
+      case "ally_lowest": {
+        const t = allies().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+        if (t) buffTargets = [t];
+        break;
+      }
+    }
+    for (const t of buffTargets) {
+      for (const ba of skill.buffs) {
+        // 배리어: value = maxHp × 20%
+        const val = ba.type === "barrier" ? Math.round(t.maxHp * 0.20) : ba.value;
+        const existing = t.buffs.find(b => b.type === ba.type);
+        if (existing) { existing.duration = Math.max(existing.duration, ba.duration); }
+        else { t.buffs.push({ type: ba.type, duration: ba.duration, value: val }); }
+        statusChanges.push({ team: t.team, slot: t.slot, type: ba.type, duration: ba.duration, value: val, action: "apply" });
+      }
+    }
+  }
+
+  // ── 디버프 적용 ──────────────────────────────────────────────────────────
+  if (skill.debuffs?.length) {
+    const debuffTargets = skill.target === "all" ? enemies() : hits.filter(h => h.damage > 0 || h.targetTeam !== actor.team).map(h => all.find(u => u.team === h.targetTeam && u.slot === h.targetSlot)).filter((u): u is CombatUnit => !!u && u.alive);
+    const uniqueTargets = [...new Map(debuffTargets.map(u => [`${u.team}-${u.slot}`, u])).values()];
+
+    for (const t of uniqueTargets) {
+      if (!t.alive) continue;
+      for (const da of skill.debuffs) {
+        if (!canBeDebuffed(t, actor.effectiveness, t.effectResist)) continue;
+        let val = da.value;
+        if (da.type === "burn") val = Math.round(getEffAtk(actor) * 0.12);
+        // 패시브: 저주 지속 +1
+        const dur = da.duration + (actor.passive.dotDurationBonus ?? 0);
+        const existing = t.debuffs.find(d => d.type === da.type);
+        if (existing) { existing.duration = Math.max(existing.duration, dur); }
+        else { t.debuffs.push({ type: da.type, duration: dur, value: val, fromSlot: actor.slot, fromTeam: actor.team }); }
+        statusChanges.push({ team: t.team, slot: t.slot, type: da.type, duration: dur, value: val, action: "apply" });
+      }
+    }
   }
 
   return hits;
 }
 
-// ─── 배틀 시뮬레이션 ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// CR 스냅샷
+// ═══════════════════════════════════════════════════════════════════════════════
+function crSnapshot(all: CombatUnit[]): CrSnapshot[] {
+  return all.map(u => ({
+    team: u.team, slot: u.slot, cr: Math.round(u.cr), alive: u.alive,
+    buffs:   u.buffs.map(b  => ({ type: b.type,  duration: b.duration })),
+    debuffs: u.debuffs.map(d => ({ type: d.type, duration: d.duration })),
+  }));
+}
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI 로직
+// ═══════════════════════════════════════════════════════════════════════════════
+function aiChooseSkill(actor: CombatUnit): SkillDef {
+  const hero = HERO_SKILLS[actor.archetype] ?? HERO_SKILLS.all;
+
+  // 침묵: S2/S3 사용 불가
+  const silenced  = actor.debuffs.some(d => d.type === "silence");
+  const restricted = actor.debuffs.some(d => d.type === "restrict");
+
+  if (!silenced && !restricted && actor.s3Cd === 0) return hero.s3;
+  if (!silenced && actor.s2Cd === 0) return hero.s2;
+  return hero.s1;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 배틀 시뮬레이션
+// ═══════════════════════════════════════════════════════════════════════════════
 function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: CombatUnit[]) {
   const all = [...attackerUnits, ...defenderUnits];
   const log: BattleEvent[] = [];
-  let safety = 800;
+  let safety = 1200;
 
   while (safety-- > 0) {
     const living = all.filter(u => u.alive);
-    if (!living.filter(u => u.team === "attacker").length) break;
-    if (!living.filter(u => u.team === "defender").length) break;
+    if (!living.some(u => u.team === "attacker")) break;
+    if (!living.some(u => u.team === "defender")) break;
 
-    // 다음 행동까지 최소 틱 계산
-    const minTick = Math.min(...living.map(u => (100 - u.cr) / u.spd));
-    for (const u of living) u.cr = Math.min(100, u.cr + minTick * u.spd);
+    const minTick = Math.min(...living.map(u => (100 - u.cr) / Math.max(1, getEffSpd(u))));
+    for (const u of living) u.cr = Math.min(100, u.cr + minTick * getEffSpd(u));
 
-    const ready = living
-      .filter(u => u.cr >= 100)
-      .sort((a, b) => b.cr - a.cr || b.spd - a.spd);
+    const ready = living.filter(u => u.cr >= 100)
+      .sort((a, b) => b.cr - a.cr || getEffSpd(b) - getEffSpd(a));
 
     for (const actor of ready) {
       if (!actor.alive) continue;
 
-      // ── DoT 처리 (본인 턴 시작 시) ────────────────────────────────────────
-      for (const dot of actor.dots.filter(d => d.turnsLeft > 0)) {
-        const dmg = dot.dmgPerTurn;
-        actor.hp = Math.max(0, actor.hp - dmg);
-        if (actor.hp === 0) actor.alive = false;
-        dot.turnsLeft--;
+      const statusChanges: StatusChangeEntry[] = [];
 
-        log.push({
-          actorTeam:     actor.team,
-          actorSlot:     -1,   // DoT = 액터 없음
-          targetTeam:    actor.team,
-          targetSlot:    actor.slot,
-          damage:        dmg,
-          healed:        0,
-          targetHpAfter: actor.hp,
-          targetMaxHp:   actor.maxHp,
-          targetAlive:   actor.alive,
-          skillType:     "dot",
-          skillName:     "저주 데미지",
-          hits: [{ targetTeam: actor.team, targetSlot: actor.slot, damage: dmg, healed: 0, hpAfter: actor.hp, alive: actor.alive }],
-          crs: all.map(u => ({ team: u.team, slot: u.slot, cr: Math.round(u.cr), alive: u.alive })),
-        });
+      // ── 잠듦 → 행동 불가 ─────────────────────────────────────────────────
+      const sleeping = actor.debuffs.some(d => d.type === "sleep");
+      const stunned  = actor.debuffs.some(d => d.type === "stun");
+
+      // ── 스탯 / 상태 틱 처리 ──────────────────────────────────────────────
+      // DoT 처리 (턴 시작 전)
+      for (const dot of [...actor.debuffs]) {
+        if (!actor.alive) break;
+        let dotDmg = 0;
+        if (dot.type === "poison") {
+          dotDmg = Math.round(actor.maxHp * 0.05);
+        } else if (dot.type === "burn") {
+          dotDmg = dot.value ?? 0;
+        } else if (dot.type === "bleed") {
+          dotDmg = Math.round(actor.hp * 0.08);
+        }
+        if (dotDmg > 0) {
+          actor.hp = Math.max(0, actor.hp - dotDmg);
+          if (actor.hp === 0 && !actor.reviveUsed && actor.buffs.some(b => b.type === "revive")) {
+            actor.hp = Math.round(actor.maxHp * 0.30);
+            actor.reviveUsed = true;
+            actor.buffs = actor.buffs.filter(b => b.type !== "revive");
+          }
+          if (actor.hp === 0) actor.alive = false;
+          log.push({
+            actorTeam: actor.team, actorSlot: -1,
+            targetTeam: actor.team, targetSlot: actor.slot,
+            damage: dotDmg, healed: 0,
+            targetHpAfter: actor.hp, targetMaxHp: actor.maxHp, targetAlive: actor.alive,
+            skillType: "dot", skillName: dot.type === "poison" ? "독" : dot.type === "burn" ? "화상" : "출혈",
+            hits: [{ targetTeam: actor.team, targetSlot: actor.slot, damage: dotDmg, healed: 0, hpAfter: actor.hp, alive: actor.alive }],
+            crs: crSnapshot(all),
+          });
+        }
       }
-      actor.dots = actor.dots.filter(d => d.turnsLeft > 0);
+
+      // 회복 버프
+      if (actor.alive && actor.buffs.some(b => b.type === "recovery")) {
+        const heal = Math.round(actor.maxHp * 0.05);
+        if (!actor.debuffs.some(d => d.type === "unhealable")) {
+          actor.hp = Math.min(actor.maxHp, actor.hp + heal);
+          log.push({
+            actorTeam: actor.team, actorSlot: actor.slot,
+            targetTeam: actor.team, targetSlot: actor.slot,
+            damage: 0, healed: heal,
+            targetHpAfter: actor.hp, targetMaxHp: actor.maxHp, targetAlive: actor.alive,
+            skillType: "passive", skillName: "지속 회복",
+            hits: [{ targetTeam: actor.team, targetSlot: actor.slot, damage: 0, healed: heal, hpAfter: actor.hp, alive: actor.alive }],
+            crs: crSnapshot(all),
+          });
+        }
+      }
+
+      // nature 패시브: 매 턴 HP 5% 회복 (생명의 기운)
+      if (actor.alive && actor.archetype === "nature" && !actor.debuffs.some(d => d.type === "unhealable")) {
+        const heal = Math.round(actor.maxHp * 0.04);
+        actor.hp = Math.min(actor.maxHp, actor.hp + heal);
+      }
 
       if (!actor.alive) { actor.cr = 0; continue; }
 
-      // ── 쿨다운 감소 ────────────────────────────────────────────────────────
-      if (actor.skillCd    > 0) actor.skillCd--;
-      if (actor.ultimateCd > 0) actor.ultimateCd--;
-
-      // ── 스킬 선택: 궁극기 → 전투스킬 → 평타 ──────────────────────────────
-      const skills = ARCHETYPE_SKILLS[actor.archetype] ?? ARCHETYPE_SKILLS.all;
-      let chosen: SkillDef;
-      if (actor.ultimateCd === 0) {
-        chosen = skills.ultimate;
-        actor.ultimateCd = skills.ultimate.cooldown;
-      } else if (actor.skillCd === 0) {
-        chosen = skills.skill;
-        actor.skillCd = skills.skill.cooldown;
-      } else {
-        chosen = skills.basic;
+      // ── 행동 불가 ────────────────────────────────────────────────────────
+      if (sleeping || stunned) {
+        actor.cr = 0;
+        // 수면: 1턴 후 자동 해제
+        actor.debuffs = actor.debuffs
+          .map(d => ({ ...d, duration: d.duration - 1 }))
+          .filter(d => d.duration > 0);
+        actor.buffs = actor.buffs
+          .map(b => ({ ...b, duration: b.type === "barrier" ? b.duration : b.duration - 1 }))
+          .filter(b => b.duration > 0);
+        continue;
       }
 
-      // ── 효과 적용 ──────────────────────────────────────────────────────────
-      const hits = applyEffect(actor, chosen, all);
+      // ── 쿨타임 감소 ─────────────────────────────────────────────────────
+      if (actor.s2Cd > 0) actor.s2Cd--;
+      if (actor.s3Cd > 0) actor.s3Cd--;
+
+      // ── 스킬 선택 ────────────────────────────────────────────────────────
+      const chosen = aiChooseSkill(actor);
+      if (chosen.type === "s2") actor.s2Cd = chosen.cooldown;
+      if (chosen.type === "s3") actor.s3Cd = chosen.cooldown;
+
+      // ── 효과 적용 ────────────────────────────────────────────────────────
+      const hits = applySkill(actor, chosen, all, statusChanges);
       actor.cr = 0;
 
-      if (!hits.length) continue;  // 대상 없음 (모두 사망)
+      // CR 보너스/패널티
+      if (chosen.crSelfBonus) actor.cr = Math.min(100, actor.cr + chosen.crSelfBonus);
+      if (chosen.crEnemyPenalty) {
+        for (const u of all.filter(u => u.team !== actor.team && u.alive)) {
+          u.cr = Math.max(0, u.cr - chosen.crEnemyPenalty);
+        }
+      }
 
-      const primary    = hits[0];
+      // ── 상태 지속시간 감소 (행동 이후) ───────────────────────────────────
+      actor.debuffs = actor.debuffs.map(d => {
+        if (["burn","poison","bleed"].includes(d.type)) {
+          const newDur = d.duration - 1;
+          if (newDur <= 0) statusChanges.push({ team: actor.team, slot: actor.slot, type: d.type, duration: 0, action: "expire" });
+          return { ...d, duration: newDur };
+        }
+        return { ...d, duration: d.duration - 1 };
+      }).filter(d => d.duration > 0);
+
+      actor.buffs = actor.buffs.map(b => {
+        if (b.type === "barrier" && (b.value ?? 0) <= 0) return { ...b, duration: 0 };
+        const newDur = b.duration - 1;
+        if (newDur <= 0) statusChanges.push({ team: actor.team, slot: actor.slot, type: b.type, duration: 0, action: "expire" });
+        return { ...b, duration: newDur };
+      }).filter(b => b.duration > 0);
+
+      if (!hits.length) continue;
+
+      const primary     = hits[0];
       const primaryUnit = all.find(u => u.team === primary.targetTeam && u.slot === primary.targetSlot);
-      const totalDmg   = hits.reduce((s, h) => s + h.damage, 0);
-      const totalHeal  = hits.reduce((s, h) => s + h.healed, 0);
+      const totalDmg    = hits.reduce((s, h) => s + h.damage, 0);
+      const totalHeal   = hits.reduce((s, h) => s + h.healed, 0);
 
       log.push({
         actorTeam:     actor.team,
@@ -398,8 +848,39 @@ function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: CombatUnit[]
         skillType:     chosen.type,
         skillName:     chosen.name,
         hits,
-        crs: all.map(u => ({ team: u.team, slot: u.slot, cr: Math.round(u.cr), alive: u.alive })),
+        crs: crSnapshot(all),
+        statusChanges: statusChanges.length ? statusChanges : undefined,
       });
+
+      // ── 반격: counter 버프 피격 시 발동 (상대방 카운터) ─────────────────
+      for (const h of hits.filter(hh => hh.damage > 0)) {
+        const hitUnit = all.find(u => u.team === h.targetTeam && u.slot === h.targetSlot);
+        if (!hitUnit || !hitUnit.alive) continue;
+
+        // 수면 해제
+        if (hitUnit.debuffs.some(d => d.type === "sleep")) {
+          hitUnit.debuffs = hitUnit.debuffs.filter(d => d.type !== "sleep");
+        }
+
+        // 반격 버프
+        if (hitUnit.buffs.some(b => b.type === "counter") || (hitUnit.passive.counterChance && Math.random() < hitUnit.passive.counterChance)) {
+          const counterSkill = (HERO_SKILLS[hitUnit.archetype] ?? HERO_SKILLS.all).s1;
+          const counterHits  = applySkill(hitUnit, counterSkill, all, []);
+          if (counterHits.length) {
+            const cp = counterHits[0];
+            const cu = all.find(u => u.team === cp.targetTeam && u.slot === cp.targetSlot);
+            log.push({
+              actorTeam: hitUnit.team, actorSlot: hitUnit.slot,
+              targetTeam: cp.targetTeam, targetSlot: cp.targetSlot,
+              damage: counterHits.reduce((s, hh) => s + hh.damage, 0),
+              healed: 0,
+              targetHpAfter: cp.hpAfter, targetMaxHp: cu?.maxHp ?? cp.hpAfter, targetAlive: cp.alive,
+              skillType: "s1", skillName: `반격: ${counterSkill.name}`,
+              hits: counterHits, crs: crSnapshot(all),
+            });
+          }
+        }
+      }
     }
   }
 
@@ -407,7 +888,41 @@ function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: CombatUnit[]
   return { won, log };
 }
 
-// ─── 서비스 ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// 유닛 생성
+// ═══════════════════════════════════════════════════════════════════════════════
+function makeUnit(charId: number, slot: number, team: "attacker" | "defender", enhLevel: number): CombatUnit {
+  const s       = getCharStat(charId, enhLevel);
+  const hero    = HERO_SKILLS[s.archetype] ?? HERO_SKILLS.all;
+  const passive = hero.passive;
+
+  // 패시브 스탯 보너스 적용
+  const atkBonus = passive.atkBonusPct ?? 0;
+  const defBonus = (passive as { defBonusPct?: number }).defBonusPct ?? 0;
+  const spdBonus = passive.spdBonusPct ?? 0;
+
+  return {
+    slot, team, charId,
+    baseAtk:       Math.round(s.atk * (1 + atkBonus)),
+    baseDef:       Math.round(s.def * (1 + defBonus)),
+    baseSpd:       Math.round(s.spd * (1 + spdBonus)),
+    baseCritRate:  s.critRate + (passive.critRateBonus ?? 0),
+    baseCritDmg:   s.critDmg,
+    effectiveness: s.effectiveness,
+    effectResist:  s.effectResist + ((passive as { effectResistBonus?: number }).effectResistBonus ?? 0),
+    hp: s.hp, maxHp: s.hp,
+    cr: 0, alive: true,
+    rarity: s.rarity, archetype: s.archetype, charType: s.charType, element: s.element,
+    s1Cd: 0, s2Cd: 0, s3Cd: 0,
+    buffs: [], debuffs: [],
+    passive,
+    reviveUsed: false, counterApplied: false,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 서비스
+// ═══════════════════════════════════════════════════════════════════════════════
 @Injectable()
 export class ArenaService {
   constructor(private readonly prisma: PrismaService) {}
@@ -452,11 +967,10 @@ export class ArenaService {
   }
 
   async saveDeck(userId: string, deckType: "attack" | "defense", slots: number[]) {
-    const clamped = slots.slice(0, 4);
     await this.prisma.arenaDeck.upsert({
       where:  { userId_deckType: { userId, deckType } },
-      create: { userId, deckType, slots: clamped },
-      update: { slots: clamped },
+      create: { userId, deckType, slots: slots.slice(0, 4) },
+      update: { slots: slots.slice(0, 4) },
     });
     return { ok: true };
   }
@@ -478,6 +992,16 @@ export class ArenaService {
     return { slots, defenderName };
   }
 
+  private charInfoFromUnit(u: CombatUnit) {
+    return {
+      slot: u.slot, charId: u.charId, maxHp: u.maxHp,
+      atk: u.baseAtk, def: u.baseDef, spd: u.baseSpd,
+      critRate: u.baseCritRate, critDmg: u.baseCritDmg,
+      element: u.element, rarity: u.rarity,
+      archetype: u.archetype, charType: u.charType,
+    };
+  }
+
   async attack(attackerId: string, defenderId: string) {
     if (attackerId === defenderId) throw new Error("자기 자신을 공격할 수 없습니다");
 
@@ -489,16 +1013,11 @@ export class ArenaService {
 
     let atkSlots = (atkRow?.slots as number[]) ?? [];
     let defSlots = (defRow?.slots as number[]) ?? [];
-
     if (atkSlots.length === 0) {
-      const first = await this.prisma.userCharacter.findFirst({
-        where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" },
-      });
+      const first = await this.prisma.userCharacter.findFirst({ where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" } });
       if (first) atkSlots = [first.characterId];
     }
-    if (defSlots.length === 0 && defReward?.equippedCharacterId) {
-      defSlots = [defReward.equippedCharacterId];
-    }
+    if (defSlots.length === 0 && defReward?.equippedCharacterId) defSlots = [defReward.equippedCharacterId];
     if (atkSlots.length === 0) throw new Error("공격 덱이 비어있습니다");
     if (defSlots.length === 0) throw new Error("상대방의 방어 덱이 비어있습니다");
 
@@ -507,29 +1026,21 @@ export class ArenaService {
       Promise.all(defSlots.map(id => this.getEnhLevel(defenderId, id))),
     ]);
 
-    const makeUnit = (charId: number, i: number, team: "attacker" | "defender", enhLevel: number): CombatUnit => {
-      const s      = getCharStat(charId, enhLevel);
-      const skills = ARCHETYPE_SKILLS[s.archetype] ?? ARCHETYPE_SKILLS.all;
-      return {
-        slot: i, team, charId,
-        hp: s.hp, maxHp: s.hp, atk: s.atk, spd: s.spd,
-        cr: 0, alive: true,
-        rarity: s.rarity, archetype: s.archetype, charType: s.charType,
-        skillCd:    0,
-        ultimateCd: 0,
-        dots: [],
-      };
-    };
-
     const attackerUnits = atkSlots.map((id, i) => makeUnit(id, i, "attacker", atkEnhLvs[i]));
     const defenderUnits = defSlots.map((id, i) => makeUnit(id, i, "defender", defEnhLvs[i]));
-
-    const { won, log } = simulateBattle(attackerUnits, defenderUnits);
+    const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
 
     const [atkResult] = await Promise.all([
       this.updateArenaStats(attackerId, won, false),
       this.updateArenaStats(defenderId, !won, true),
     ]);
+
+    // 공격 로그 기록 (복수 시스템용)
+    try {
+      await (this.prisma as any).arenaAttackLog?.create({
+        data: { attackerId, defenderId, attackerWon: won, pointsDelta: atkResult.pointsDelta },
+      });
+    } catch { /* 테이블 미존재 시 무시 */ }
 
     return {
       won,
@@ -539,59 +1050,24 @@ export class ArenaService {
       losses:        atkResult.losses,
       winStreak:     atkResult.winStreak,
       log,
-      attackerChars: attackerUnits.map(u => ({
-        slot: u.slot, charId: u.charId, maxHp: u.maxHp,
-        atk: u.atk, spd: u.spd, rarity: u.rarity,
-        archetype: u.archetype, charType: u.charType,
-      })),
-      defenderChars: defenderUnits.map(u => ({
-        slot: u.slot, charId: u.charId, maxHp: u.maxHp,
-        atk: u.atk, spd: u.spd, rarity: u.rarity,
-        archetype: u.archetype, charType: u.charType,
-      })),
+      attackerChars: attackerUnits.map(u => this.charInfoFromUnit(u)),
+      defenderChars: defenderUnits.map(u => this.charInfoFromUnit(u)),
     };
   }
 
-  // ─── NPC 전투 ─────────────────────────────────────────────────────────────────
-  async attackNpc(
-    attackerId: string,
-    npcSlots:    number[],
-    npcEnhLvs:   number[],
-    pointsOnWin: number,
-    pointsOnLoss: number,
-  ) {
-    const atkRow = await this.prisma.arenaDeck.findUnique({
-      where: { userId_deckType: { userId: attackerId, deckType: "attack" } },
-    });
+  async attackNpc(attackerId: string, npcSlots: number[], npcEnhLvs: number[], pointsOnWin: number, pointsOnLoss: number) {
+    const atkRow = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: attackerId, deckType: "attack" } } });
     let atkSlots = (atkRow?.slots as number[]) ?? [];
     if (atkSlots.length === 0) {
-      const first = await this.prisma.userCharacter.findFirst({
-        where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" },
-      });
+      const first = await this.prisma.userCharacter.findFirst({ where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" } });
       if (first) atkSlots = [first.characterId];
     }
     if (atkSlots.length === 0) throw new Error("공격 덱이 비어있습니다");
 
     const atkEnhLvs = await Promise.all(atkSlots.map(id => this.getEnhLevel(attackerId, id)));
-
-    const makeUnit = (charId: number, i: number, team: "attacker" | "defender", enhLevel: number): CombatUnit => {
-      const s      = getCharStat(charId, enhLevel);
-      const skills = ARCHETYPE_SKILLS[s.archetype] ?? ARCHETYPE_SKILLS.all;
-      return {
-        slot: i, team, charId,
-        hp: s.hp, maxHp: s.hp, atk: s.atk, spd: s.spd,
-        cr: 0, alive: true,
-        rarity: s.rarity, archetype: s.archetype, charType: s.charType,
-        skillCd:    0,
-        ultimateCd: 0,
-        dots: [],
-      };
-    };
-
     const attackerUnits = atkSlots.map((id, i) => makeUnit(id, i, "attacker", atkEnhLvs[i]));
     const defenderUnits = npcSlots.map((id, i) => makeUnit(id, i, "defender", npcEnhLvs[i] ?? 0));
-
-    const { won, log } = simulateBattle(attackerUnits, defenderUnits);
+    const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
 
     const pointsDelta = won ? pointsOnWin : pointsOnLoss;
     const ex   = await this.prisma.battleStats.findUnique({ where: { userId: attackerId } });
@@ -611,23 +1087,48 @@ export class ArenaService {
       won, pointsDelta, tierPoints: newPoints,
       wins: data.wins, losses: data.losses, winStreak: data.winStreak,
       log,
-      attackerChars: attackerUnits.map(u => ({ slot: u.slot, charId: u.charId, maxHp: u.maxHp, atk: u.atk, spd: u.spd, rarity: u.rarity, archetype: u.archetype, charType: u.charType })),
-      defenderChars: defenderUnits.map(u => ({ slot: u.slot, charId: u.charId, maxHp: u.maxHp, atk: u.atk, spd: u.spd, rarity: u.rarity, archetype: u.archetype, charType: u.charType })),
+      attackerChars: attackerUnits.map(u => this.charInfoFromUnit(u)),
+      defenderChars: defenderUnits.map(u => this.charInfoFromUnit(u)),
     };
+  }
+
+  async getRevengeTargets(userId: string) {
+    try {
+      const logs = await (this.prisma as any).arenaAttackLog?.findMany({
+        where: { defenderId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: { attackerId: true, attackerWon: true, createdAt: true },
+      }) ?? [];
+      const unique = new Map<string, { userId: string; attackerWon: boolean; at: Date }>();
+      for (const l of logs) {
+        if (!unique.has(l.attackerId)) unique.set(l.attackerId, { userId: l.attackerId, attackerWon: l.attackerWon, at: l.createdAt });
+      }
+      const targets = await Promise.all([...unique.values()].slice(0, 10).map(async entry => {
+        const u = await this.prisma.user.findUnique({ where: { id: entry.userId }, select: { id: true, name: true } });
+        const stats = await this.prisma.battleStats.findUnique({ where: { userId: entry.userId } });
+        const deck  = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: entry.userId, deckType: "defense" } } });
+        return {
+          userId: entry.userId, name: u?.name ?? "알 수 없음",
+          tierPoints: stats?.tierPoints ?? 0,
+          defenseSlots: (deck?.slots as number[]) ?? [],
+          theyWon: entry.attackerWon, at: entry.at,
+        };
+      }));
+      return targets;
+    } catch { return []; }
   }
 
   private async updateArenaStats(userId: string, won: boolean, isDefender: boolean) {
     const ex   = await this.prisma.battleStats.findUnique({ where: { userId } });
     const prev = ex ?? { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
-
     let pointsDelta: number;
     if (won) {
       pointsDelta = isDefender ? 20 : 600 + (prev.winStreak >= 1 ? 20 : 0);
     } else {
-      pointsDelta = -50;
+      pointsDelta = isDefender ? -20 : -50;
     }
-
-    const newWinStreak = won ? (isDefender ? prev.winStreak : prev.winStreak + 1) : 0;
+    const newWinStreak = won && !isDefender ? prev.winStreak + 1 : won ? prev.winStreak : 0;
     const newPoints    = Math.max(0, prev.tierPoints + pointsDelta);
     const data = {
       tierPoints: newPoints,
@@ -636,13 +1137,7 @@ export class ArenaService {
       winStreak:  newWinStreak,
       bestStreak: Math.max(prev.bestStreak, newWinStreak),
     };
-
-    await this.prisma.battleStats.upsert({
-      where:  { userId },
-      create: { userId, ...data },
-      update: data,
-    });
-
+    await this.prisma.battleStats.upsert({ where: { userId }, create: { userId, ...data }, update: data });
     return { ...data, pointsDelta };
   }
 }

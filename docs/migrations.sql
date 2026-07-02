@@ -86,3 +86,20 @@ CREATE TABLE IF NOT EXISTS arena_decks (
   PRIMARY KEY (user_id, deck_type),
   CONSTRAINT fk_arena_decks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+-- ============================================================
+-- Migration: Add arena_attack_logs table (복수 시스템)
+-- Applied: 2026-07-02
+-- ============================================================
+CREATE TABLE IF NOT EXISTS arena_attack_logs (
+  id            BIGINT       NOT NULL AUTO_INCREMENT,
+  attacker_id   VARCHAR(36)  NOT NULL,
+  defender_id   VARCHAR(36)  NOT NULL,
+  attacker_won  TINYINT(1)   NOT NULL DEFAULT 0,
+  points_delta  INT          NOT NULL DEFAULT 0,
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  INDEX idx_aal_defender  (defender_id, created_at DESC),
+  INDEX idx_aal_attacker  (attacker_id, created_at DESC),
+  CONSTRAINT fk_aal_attacker FOREIGN KEY (attacker_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_aal_defender FOREIGN KEY (defender_id) REFERENCES users(id) ON DELETE CASCADE
+);

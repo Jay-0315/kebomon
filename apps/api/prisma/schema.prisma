@@ -43,6 +43,8 @@ model User {
   pushSubscriptions     PushSubscription[]
   battleStats           BattleStats?
   arenaDecks            ArenaDeck[]
+  attacksGiven          ArenaAttackLog[] @relation("Attacker")
+  attacksReceived       ArenaAttackLog[] @relation("Defender")
   @@map("users")
 }
 
@@ -188,6 +190,22 @@ model ArenaDeck {
 
   @@id([userId, deckType])
   @@map("arena_decks")
+}
+
+/** 아레나 공격 로그 (복수 시스템) */
+model ArenaAttackLog {
+  id           BigInt   @id @default(autoincrement())
+  attackerId   String   @map("attacker_id")
+  defenderId   String   @map("defender_id")
+  attackerWon  Boolean  @map("attacker_won")
+  pointsDelta  Int      @default(0) @map("points_delta")
+  createdAt    DateTime @default(now()) @map("created_at")
+  attacker     User     @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
+  defender     User     @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
+
+  @@index([defenderId, createdAt(sort: Desc)])
+  @@index([attackerId, createdAt(sort: Desc)])
+  @@map("arena_attack_logs")
 }
 
 model AppSetting {

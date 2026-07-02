@@ -50,4 +50,10 @@ export class ArenaController {
       body.pointsOnWin, body.pointsOnLoss,
     );
   }
+
+  /** 복수 대상 목록 (나를 공격한 유저) */
+  @Get("revenge/:userId")
+  getRevengeTargets(@Param("userId") userId: string) {
+    return this.arena.getRevengeTargets(userId);
+  }
 }

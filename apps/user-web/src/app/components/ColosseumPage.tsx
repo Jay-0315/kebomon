@@ -372,9 +372,15 @@ interface RankingEntry {
   rank: number; userId: string; nickname: string;
   tierPoints: number; wins: number; winStreak: number; characterId: number | null;
 }
+interface RevengeTarget {
+  userId: string; name: string; tierPoints: number;
+  defenseSlots: number[]; theyWon: boolean; at: string;
+}
 interface CharInfo {
-  slot: number; charId: number; maxHp: number; atk: number; spd: number;
-  rarity: string; archetype: string; charType: string;
+  slot: number; charId: number; maxHp: number;
+  atk: number; def: number; spd: number;
+  critRate: number; critDmg: number;
+  element: string; rarity: string; archetype: string; charType: string;
 }
 interface HitDetail {
   targetTeam: "attacker" | "defender";
@@ -383,6 +389,18 @@ interface HitDetail {
   healed:     number;
   hpAfter:    number;
   alive:      boolean;
+  isCrit?:    boolean;
+  affinity?:  "advantage" | "neutral";
+  barrierDmg?:number;
+}
+interface StatusChangeEntry {
+  team: "attacker" | "defender"; slot: number; type: string;
+  duration: number; value?: number; action: "apply" | "expire";
+}
+interface CrSnapshot {
+  team: "attacker" | "defender"; slot: number; cr: number; alive: boolean;
+  buffs:   Array<{ type: string; duration: number }>;
+  debuffs: Array<{ type: string; duration: number }>;
 }
 interface BattleEvent {
   actorTeam:     "attacker" | "defender";
@@ -394,10 +412,11 @@ interface BattleEvent {
   targetHpAfter: number;
   targetMaxHp:   number;
   targetAlive:   boolean;
-  skillType:     "basic" | "skill" | "ultimate" | "dot";
+  skillType:     "s1" | "s2" | "s3" | "passive" | "dot";
   skillName:     string;
   hits:          HitDetail[];
-  crs: Array<{ team: "attacker" | "defender"; slot: number; cr: number; alive: boolean }>;
+  crs:           CrSnapshot[];
+  statusChanges?: StatusChangeEntry[];
 }
 interface BattleResult {
   won: boolean; pointsDelta: number; tierPoints: number;
@@ -451,7 +470,42 @@ const CSS = `
 @keyframes col-skill-in{0%{opacity:0;transform:translateX(-24px) skewX(-8deg)}100%{opacity:1;transform:translateX(0) skewX(-8deg)}}
 @keyframes col-skill-out{0%{opacity:1;transform:translateX(0) skewX(-8deg)}100%{opacity:0;transform:translateX(24px) skewX(-8deg)}}
 @keyframes col-corner-glow{0%,100%{opacity:0.4}50%{opacity:1}}
+@keyframes ult-meteor{0%{opacity:0;transform:translate(var(--mx),0) rotate(25deg) scale(0.3)}15%{opacity:1}90%{opacity:0.85}100%{opacity:0;transform:translate(var(--mx),430px) rotate(25deg) scale(1.4)}}
+@keyframes ult-impact{0%{transform:scale(0);opacity:1}100%{transform:scale(4);opacity:0}}
+@keyframes ult-shield{0%{transform:scale(0.12) rotate(-10deg);opacity:0}55%{transform:scale(1.06) rotate(2deg);opacity:1}80%{transform:scale(0.98) rotate(0deg);opacity:1}100%{transform:scale(1) rotate(0deg);opacity:0.85}}
+@keyframes ult-shield-ring{0%{transform:scale(0.2);opacity:0.9}100%{transform:scale(2.8);opacity:0}}
+@keyframes ult-leaf{0%{transform:translate(var(--lx),90px) rotate(0deg) scale(0.5);opacity:0}25%{opacity:1}100%{transform:translate(var(--lx),-220px) rotate(var(--lrot)) scale(1.1);opacity:0}}
+@keyframes ult-heal-pulse{0%{transform:scale(0.2);opacity:0.9}100%{transform:scale(3.5);opacity:0}}
+@keyframes ult-laser-beam{0%{clip-path:inset(0 100% 0 0);opacity:0.9}30%{opacity:1}80%{opacity:1;clip-path:inset(0 0% 0 0)}100%{opacity:0;clip-path:inset(0 0% 0 0)}}
+@keyframes ult-curse-drop{0%{transform:translateY(-260px) rotate(var(--crot));opacity:0}25%{opacity:1}100%{transform:translateY(290px) rotate(var(--crot));opacity:0}}
+@keyframes ult-dagger-fly{0%{transform:translate(var(--dagx),var(--dagy)) rotate(var(--dagr)) scale(1.4);opacity:0}35%{opacity:1}90%{opacity:0.8}100%{transform:translate(0,0) rotate(45deg) scale(0.3);opacity:0}}
+@keyframes ult-dark-in{0%{opacity:0}30%{opacity:0.88}80%{opacity:0.88}100%{opacity:0}}
+@keyframes ult-multi-slash{0%{opacity:0;transform:translateX(-130%) rotate(var(--srot)) skewX(-12deg)}45%{opacity:1}100%{opacity:0;transform:translateX(80%) rotate(var(--srot)) skewX(-12deg)}}
+@keyframes ult-buff-text{0%{opacity:0;transform:translateY(18px) scale(0.8)}50%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-38px) scale(0.9)}}
+@keyframes s2-slash{0%{opacity:0;transform:translateX(-110%) skewX(-14deg) scaleY(0.7)}40%{opacity:1}100%{opacity:0;transform:translateX(90%) skewX(-14deg) scaleY(0.7)}}
+@keyframes s2-ring{0%{transform:scale(0.3);opacity:0.8}100%{transform:scale(2.2);opacity:0}}
+@keyframes affinity-ring{0%{transform:scale(0.2);opacity:1}100%{transform:scale(3);opacity:0}}
+@keyframes status-float{0%{opacity:0;transform:translateY(6px) scale(0.85)}20%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-28px) scale(0.9)}}
+@keyframes log-in{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes elem-pulse{0%,100%{opacity:0.55}50%{opacity:1}}
+@media(max-width:480px){.col-deck-wrap{flex-direction:column}}
 `;
+
+// ─── 원소 / 아키타입 색상 ─────────────────────────────────────────────────────
+const ELEMENT_COLOR: Record<string, string> = {
+  fire:"#f97316", ice:"#93c5fd", earth:"#a16207", nature:"#4ade80",
+  dark:"#a78bfa", light:"#fef08a", lightning:"#facc15", shadow:"#c084fc",
+};
+const ARCHETYPE_LABEL: Record<string, { ko:string; ja:string; en:string; icon:string }> = {
+  warrior: { ko:"전사",  ja:"戦士",   en:"Warrior", icon:"⚔" },
+  tank:    { ko:"수호자",ja:"守護者", en:"Tank",    icon:"🛡" },
+  mage:    { ko:"마법사",ja:"魔法士", en:"Mage",    icon:"✦" },
+  rogue:   { ko:"도적",  ja:"盗賊",   en:"Rogue",   icon:"🗡" },
+  nature:  { ko:"자연사",ja:"自然士", en:"Nature",  icon:"🌿" },
+  meka:    { ko:"메카",  ja:"メカ",   en:"Meka",    icon:"⚙" },
+  cursed:  { ko:"저주사",ja:"呪術士", en:"Cursed",  icon:"☠" },
+  all:     { ko:"만능",  ja:"万能",   en:"All",     icon:"★" },
+};
 
 // ─── 픽셀 불꽃 / 횃불 ──────────────────────────────────────────────────────────
 function PixelFlame({ delay = 0 }: { delay?: number }) {
@@ -675,32 +729,43 @@ function SpeedBar({
 
 // ─── 유닛 카드 (배틀 필드) ────────────────────────────────────────────────────
 function UnitCard({
-  info, hp, isActive, isHit, isDead, isPlayer,
+  info, hp, isActive, isHit, isDead, isPlayer, buffs, debuffs,
 }: {
   info: CharInfo; hp: number; isActive: boolean; isHit: boolean; isDead: boolean; isPlayer: boolean;
+  buffs?: Array<{ type: string; duration: number }>;
+  debuffs?: Array<{ type: string; duration: number }>;
 }) {
   const char   = charById(info.charId);
   const accent = isPlayer ? "#60a5fa" : "#f87171";
   const th     = RARITY_THEME[info.rarity as CharacterRarity] ?? RARITY_THEME.common;
+  const activeBufMeta   = (buffs   ?? []).map(b => BUFF_META[b.type]).filter(Boolean);
+  const activeDebufMeta = (debuffs ?? []).map(d => DEBUFF_META[d.type]).filter(Boolean);
+  const elemCol = ELEMENT_COLOR[info.element] ?? th.border;
   return (
     <div style={{
-      display:"flex", flexDirection:"column", alignItems:"center", gap:3, width:68,
+      display:"flex", flexDirection:"column", alignItems:"center", gap:2, width:72,
       opacity: isDead ? 0.3 : 1,
       animation: isDead ? "col-dead 0.5s forwards" : isHit ? "col-hit 0.4s ease-out" : undefined,
       transition:"opacity 0.3s",
     }}>
+      {/* 버프 아이콘 행 */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:2, justifyContent:"center", minHeight:14, maxWidth:72 }}>
+        {activeBufMeta.slice(0, 4).map((m, i) => (
+          <span key={i} style={{ fontSize:8, fontWeight:900, color:m.color, background:m.bg, borderRadius:3, padding:"1px 3px", lineHeight:1.4 }}>{m.label}</span>
+        ))}
+      </div>
+
       {/* 캐릭터 카드 프레임 */}
       <div style={{
         position:"relative", width:60, height:60,
-        background: isActive ? `radial-gradient(circle at 50% 60%, ${accent}22 0%, transparent 70%)` : `radial-gradient(circle at 50% 60%, ${th.color}11 0%, transparent 70%)`,
-        border: `1px solid ${isActive ? accent : th.border}55`,
+        background: isActive ? `radial-gradient(circle at 50% 60%, ${accent}22 0%, transparent 70%)` : `radial-gradient(circle at 50% 60%, ${elemCol}18 0%, transparent 70%)`,
+        border: `2px solid ${isActive ? accent : elemCol}66`,
         borderRadius:8,
         display:"flex", alignItems:"center", justifyContent:"center",
-        boxShadow: isActive ? `0 0 16px ${accent}55, inset 0 0 12px ${accent}22` : `0 0 6px ${th.glow}33`,
+        boxShadow: isActive ? `0 0 16px ${accent}55, inset 0 0 12px ${accent}22` : `0 0 8px ${elemCol}44, inset 0 0 6px ${elemCol}11`,
         transition:"all 0.3s",
         overflow:"visible",
       }}>
-        {/* 활성 코너 데코 */}
         {isActive && <>
           <div style={{ position:"absolute", top:1, left:1, width:6, height:6, borderTop:`2px solid ${accent}`, borderLeft:`2px solid ${accent}`, borderRadius:"2px 0 0 0", animation:"col-corner-glow 1s ease-in-out infinite" }}/>
           <div style={{ position:"absolute", top:1, right:1, width:6, height:6, borderTop:`2px solid ${accent}`, borderRight:`2px solid ${accent}`, borderRadius:"0 2px 0 0", animation:"col-corner-glow 1s ease-in-out infinite" }}/>
@@ -709,22 +774,25 @@ function UnitCard({
         </>}
         <div style={{
           animation: isDead ? undefined : isActive ? "col-active-glow 1s ease-in-out infinite" : "col-idle-bob 3s ease-in-out infinite",
-          filter: isActive ? `drop-shadow(0 0 8px ${accent})` : `drop-shadow(0 0 4px ${th.glow}88)`,
+          filter: isActive ? `drop-shadow(0 0 8px ${accent})` : `drop-shadow(0 0 4px ${elemCol}88)`,
         }}>
           <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={46}/>
         </div>
-        {/* 사망 X 오버레이 */}
         {isDead && (
           <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.55)", borderRadius:8 }}>
             <span style={{ fontFamily:"monospace", fontSize:20, fontWeight:900, color:"#f87171", textShadow:"0 0 12px #ef4444" }}>✕</span>
           </div>
+        )}
+        {/* 원소 뱃지 (우하단) */}
+        {!isDead && (
+          <div style={{ position:"absolute", bottom:-4, right:-4, width:14, height:14, borderRadius:"50%", background:elemCol, border:"2px solid #050a10", display:"flex", alignItems:"center", justifyContent:"center", animation:"elem-pulse 2s ease-in-out infinite" }}/>
         )}
       </div>
 
       {/* 플랫폼 글로우 */}
       <div style={{
         width:48, height:6, borderRadius:"50%",
-        background:`radial-gradient(ellipse 100% 100% at 50% 50%, ${isActive ? accent : th.glow}66, transparent)`,
+        background:`radial-gradient(ellipse 100% 100% at 50% 50%, ${isActive ? accent : elemCol}66, transparent)`,
         animation:"col-ptf 2s ease-in-out infinite",
         marginTop:-4, marginBottom:1,
         pointerEvents:"none",
@@ -734,6 +802,13 @@ function UnitCard({
       <span style={{ fontFamily:"monospace", fontSize:9, color: isDead ? "#4b5563" : accent, fontWeight:900 }}>
         {hp}/{info.maxHp}
       </span>
+
+      {/* 디버프 아이콘 행 */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:2, justifyContent:"center", minHeight:14, maxWidth:72 }}>
+        {activeDebufMeta.slice(0, 4).map((m, i) => (
+          <span key={i} style={{ fontSize:8, fontWeight:900, color:m.color, background:m.bg, borderRadius:3, padding:"1px 3px", lineHeight:1.4 }}>{m.label}</span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1058,24 +1133,274 @@ function UltimateAnim({
     return () => clearTimeout(t);
   }, [onEnd]);
 
-  // 파티클 좌표 (정적 생성)
+  const meteors = Array.from({ length: 7 }, (_, i) => ({
+    mx: `${-142 + i * 47}px`, delay: `${(i * 0.08).toFixed(2)}s`, size: 16 + (i % 3) * 9,
+  }));
+  const multiSlashes = Array.from({ length: 8 }, (_, i) => ({
+    top: `${13 + i * 10}%`,
+    rot: `${(i % 2 === 0 ? -1 : 1) * (2 + (i % 3) * 4)}deg`,
+    delay: `${(i * 0.045).toFixed(3)}s`,
+    h: 2 + (i % 3),
+  }));
+  const leaves = Array.from({ length: 12 }, (_, i) => ({
+    lx: `${-138 + i * 25}px`,
+    lrot: `${(i % 2 === 0 ? 1 : -1) * (120 + (i % 4) * 60)}deg`,
+    delay: `${(i * 0.06).toFixed(2)}s`,
+    sym: (["✿","✦","✶","❋"] as string[])[i % 4],
+    size: 12 + (i % 4) * 5,
+  }));
+  const curseDrops = Array.from({ length: 8 }, (_, i) => ({
+    sym: (["✦","✖","✧","✦","✖","◆","✦","✶"] as string[])[i],
+    lx: -154 + i * 44,
+    crot: `${(i % 2 === 0 ? -1 : 1) * (8 + (i % 4) * 12)}deg`,
+    delay: `${(i * 0.07).toFixed(2)}s`,
+    size: 14 + (i % 3) * 8,
+  }));
+  const daggers = [
+    { dagx:"-190px", dagy:"-190px", dagr:"-45deg",  delay:"0s"    },
+    { dagx: "190px", dagy:"-190px", dagr:"135deg",  delay:"0.07s" },
+    { dagx:"-190px", dagy: "190px", dagr:"-135deg", delay:"0.14s" },
+    { dagx: "190px", dagy: "190px", dagr: "45deg",  delay:"0.21s" },
+  ];
   const particles = Array.from({ length: 16 }, (_, i) => {
     const angle = (i / 16) * Math.PI * 2;
     const dist  = 70 + (i % 3) * 35;
-    return {
-      dx: Math.round(Math.cos(angle) * dist),
-      dy: Math.round(Math.sin(angle) * dist),
-      delay: `${(i * 0.03).toFixed(2)}s`,
-      size: 4 + (i % 4) * 2,
-    };
+    return { dx:Math.round(Math.cos(angle)*dist), dy:Math.round(Math.sin(angle)*dist), delay:`${(i*0.03).toFixed(2)}s`, size:4+(i%4)*2 };
   });
-
   const slashLines = [
-    { top:"28%", delay:"0s",   h:3 },
-    { top:"47%", delay:"0.05s",h:2 },
-    { top:"52%", delay:"0.08s",h:2 },
-    { top:"72%", delay:"0.04s",h:3 },
+    { top:"28%", delay:"0s",    h:3 },
+    { top:"47%", delay:"0.05s", h:2 },
+    { top:"52%", delay:"0.08s", h:2 },
+    { top:"72%", delay:"0.04s", h:3 },
   ];
+
+  const renderEffects = (): React.ReactNode => {
+    if (archetype === "mage") return (
+      <>
+        {meteors.map((m, i) => (
+          <div key={i} style={{
+            position:"absolute", top:-70, left:"50%",
+            width:m.size, height:Math.round(m.size*1.5),
+            background:`radial-gradient(ellipse at top,#fff 0%,${col} 40%,${dark}cc 100%)`,
+            borderRadius:"50% 50% 60% 60%",
+            boxShadow:`0 0 ${m.size}px ${col}`,
+            opacity:0, animation:`ult-meteor 0.88s ease-in ${m.delay} forwards`,
+            "--mx":m.mx,
+          } as React.CSSProperties}/>
+        ))}
+        {[0.65, 0.78, 0.92].map((delay, i) => (
+          <div key={`mgi${i}`} style={{
+            position:"absolute",
+            width:80+i*60, height:80+i*60,
+            border:`${3-i}px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-impact 0.5s ease-out ${delay}s forwards`,
+            boxShadow:`0 0 20px ${col}88`,
+          }}/>
+        ))}
+        <div style={{
+          position:"absolute", top:"44%", left:"5%", right:"5%", height:5,
+          background:`linear-gradient(90deg,transparent,${col}66,${col},${col}66,transparent)`,
+          boxShadow:`0 0 25px ${col}`, opacity:0,
+          animation:`ult-flash 0.8s ease-out 0.72s forwards`,
+        }}/>
+      </>
+    );
+
+    if (archetype === "warrior") return (
+      <>
+        {multiSlashes.map((s, i) => (
+          <div key={i} style={{
+            position:"absolute", top:s.top, left:"-10%",
+            width:"120%", height:s.h,
+            background:`linear-gradient(90deg,transparent 0%,${col}66 15%,${col} 50%,${col}66 85%,transparent 100%)`,
+            opacity:0, animation:`ult-multi-slash 0.52s ease-out ${s.delay} forwards`,
+            boxShadow:`0 0 10px ${col}88`, "--srot":s.rot,
+          } as React.CSSProperties}/>
+        ))}
+        {[0, 120, 260].map((ms, i) => (
+          <div key={i} style={{
+            position:"absolute", width:100+i*50, height:100+i*50,
+            border:`${3-i}px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-ring 0.85s ease-out ${ms}ms forwards`,
+            boxShadow:`0 0 20px ${col}55`,
+          }}/>
+        ))}
+      </>
+    );
+
+    if (archetype === "tank") return (
+      <>
+        <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.45)", opacity:0,
+          animation:`ult-dark-in 1.6s ease-in-out forwards` }}/>
+        <div style={{
+          position:"absolute", width:200, height:200,
+          background:`linear-gradient(135deg,${col}44 0%,${dark}bb 60%,${col}22 100%)`,
+          clipPath:"polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)",
+          border:`3px solid ${col}`, boxShadow:`0 0 50px ${col},0 0 100px ${col}44`,
+          opacity:0, animation:`ult-shield 1.1s cubic-bezier(0.175,0.885,0.32,1.275) 0.1s forwards`,
+        }}/>
+        {[0, 220, 440].map((ms, i) => (
+          <div key={i} style={{
+            position:"absolute", width:160+i*20, height:160+i*20,
+            border:`${3-i}px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-shield-ring 0.9s ease-out ${ms}ms forwards`,
+            boxShadow:`0 0 24px ${col}88`,
+          }}/>
+        ))}
+        <div style={{
+          position:"absolute", bottom:"22%",
+          fontFamily:FONT, fontWeight:900, fontSize:20, letterSpacing:"0.22em",
+          color:col, textShadow:`0 0 20px ${col},0 0 40px ${col}88`,
+          opacity:0, animation:`ult-buff-text 1.1s ease-out 0.48s forwards`,
+        }}>
+          {ko?"철벽 방어!":ja?"鉄壁の防御！":"IRON GUARD!"}
+        </div>
+      </>
+    );
+
+    if (archetype === "nature") return (
+      <>
+        <div style={{
+          position:"absolute", bottom:0, left:0, right:0, height:"45%",
+          background:`linear-gradient(0deg,${dark}99 0%,transparent 100%)`,
+          opacity:0, animation:`ult-dark-in 1.6s ease-in-out forwards`,
+        }}/>
+        {leaves.map((l, i) => (
+          <div key={i} style={{
+            position:"absolute", bottom:0, left:"50%",
+            fontSize:l.size, color:col,
+            textShadow:`0 0 10px ${col},0 0 20px ${col}88`,
+            opacity:0, animation:`ult-leaf 1.1s ease-out ${l.delay} forwards`,
+            "--lx":l.lx, "--lrot":l.lrot, userSelect:"none",
+          } as React.CSSProperties}>{l.sym}</div>
+        ))}
+        {[0, 260, 520].map((ms, i) => (
+          <div key={i} style={{
+            position:"absolute", width:120+i*50, height:120+i*50,
+            border:`${3-i}px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-heal-pulse 0.9s ease-out ${ms}ms forwards`,
+            boxShadow:`0 0 24px ${col}88`,
+          }}/>
+        ))}
+        <div style={{
+          position:"absolute", bottom:"22%",
+          fontFamily:FONT, fontWeight:900, fontSize:20, letterSpacing:"0.2em",
+          color:col, textShadow:`0 0 20px ${col},0 0 40px ${col}88`,
+          opacity:0, animation:`ult-buff-text 1.1s ease-out 0.52s forwards`,
+        }}>
+          {ko?"전체 HP 회복!":ja?"全体HP回復！":"FULL HEAL!"}
+        </div>
+      </>
+    );
+
+    if (archetype === "meka") return (
+      <>
+        {[0, 130].map((ms, i) => (
+          <div key={i} style={{
+            position:"absolute", width:70+i*40, height:70+i*40,
+            border:`${3-i}px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-ring 0.55s ease-out ${ms}ms forwards`,
+            boxShadow:`0 0 20px ${col}`,
+          }}/>
+        ))}
+        <div style={{
+          position:"absolute", top:"48%", left:"-5%", width:"110%", height:6,
+          background:`linear-gradient(90deg,transparent,${col}88,#fff,${col}88,transparent)`,
+          boxShadow:`0 0 28px ${col},0 0 50px ${col}66`,
+          opacity:0.9, animation:`ult-laser-beam 1.0s ease-out 0.22s forwards`,
+        }}/>
+        {[-28, 28].map((offset, i) => (
+          <div key={i} style={{
+            position:"absolute", top:`calc(48% + ${offset}px)`, left:"-5%",
+            width:"110%", height:2,
+            background:`linear-gradient(90deg,transparent,${col}44,${col}77,${col}44,transparent)`,
+            opacity:0.9, animation:`ult-laser-beam 0.8s ease-out ${0.32+i*0.1}s forwards`,
+          }}/>
+        ))}
+      </>
+    );
+
+    if (archetype === "cursed") return (
+      <>
+        <div style={{
+          position:"absolute", inset:0,
+          background:`radial-gradient(ellipse at center,${dark}99 0%,rgba(0,0,0,0.7) 100%)`,
+          opacity:0, animation:`ult-dark-in 1.6s ease-in-out forwards`,
+        }}/>
+        {curseDrops.map((c, i) => (
+          <div key={i} style={{
+            position:"absolute", top:0, left:`calc(50% + ${c.lx}px)`,
+            fontSize:c.size, color:col,
+            textShadow:`0 0 12px ${col},0 0 24px ${col}88`,
+            opacity:0, animation:`ult-curse-drop 1.0s ease-in ${c.delay} forwards`,
+            "--crot":c.crot, userSelect:"none",
+          } as React.CSSProperties}>{c.sym}</div>
+        ))}
+        {[0, 250].map((ms, i) => (
+          <div key={i} style={{
+            position:"absolute", width:130+i*40, height:130+i*40,
+            border:`2px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-ring 1.0s ease-out ${ms}ms forwards`,
+            boxShadow:`0 0 28px ${col}88`,
+          }}/>
+        ))}
+      </>
+    );
+
+    if (archetype === "rogue") return (
+      <>
+        <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.78)", opacity:0,
+          animation:`ult-dark-in 1.6s ease-in-out forwards` }}/>
+        {daggers.map((d, i) => (
+          <div key={i} style={{
+            position:"absolute", width:40, height:5,
+            background:`linear-gradient(90deg,transparent,${col}66,${col},#fff)`,
+            borderRadius:3, boxShadow:`0 0 12px ${col}`, opacity:0,
+            animation:`ult-dagger-fly 0.92s ease-in ${d.delay} forwards`,
+            "--dagx":d.dagx, "--dagy":d.dagy, "--dagr":d.dagr,
+          } as React.CSSProperties}/>
+        ))}
+        <div style={{
+          position:"absolute", width:24, height:24, background:col,
+          borderRadius:"50%", boxShadow:`0 0 40px ${col},0 0 80px ${col}88`,
+          opacity:0, animation:`ult-flash 0.4s ease-out 0.52s forwards`,
+        }}/>
+      </>
+    );
+
+    // "all" archetype — generic
+    return (
+      <>
+        {[0, 180, 380].map((ms, i) => (
+          <div key={i} style={{
+            position:"absolute", width:160, height:160,
+            border:`${i===0?3:2}px solid ${col}`, borderRadius:"50%", opacity:0,
+            animation:`ult-ring 1.0s ease-out ${ms}ms forwards`,
+            boxShadow:`0 0 20px ${col}66`,
+          }}/>
+        ))}
+        {slashLines.map((s, i) => (
+          <div key={i} style={{
+            position:"absolute", top:s.top, left:"-5%",
+            width:"110%", height:s.h,
+            background:`linear-gradient(90deg,transparent 0%,${col}99 30%,${col} 50%,${col}99 70%,transparent 100%)`,
+            transform:"skewX(-18deg)", opacity:0,
+            animation:`ult-slash 0.55s ease-out ${s.delay} forwards`,
+            boxShadow:`0 0 14px ${col}88`,
+          }}/>
+        ))}
+        {particles.map((p, i) => (
+          <div key={i} style={{
+            position:"absolute", width:p.size, height:p.size,
+            borderRadius:"50%", background:col,
+            boxShadow:`0 0 ${p.size*2}px ${col}`, opacity:0,
+            animation:`ult-particle 0.75s ease-out ${p.delay} forwards`,
+            "--dx":`${p.dx}px`, "--dy":`${p.dy}px`,
+          } as React.CSSProperties}/>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div style={{
@@ -1086,57 +1411,16 @@ function UltimateAnim({
       {/* 배경 그라데이션 페이드인/아웃 */}
       <div style={{
         position:"absolute", inset:0,
-        background:`radial-gradient(ellipse 80% 60% at 50% 50%, ${dark}ee 0%, rgba(0,0,0,0.97) 70%)`,
+        background:`radial-gradient(ellipse 80% 60% at 50% 50%,${dark}ee 0%,rgba(0,0,0,0.97) 70%)`,
         animation:"ult-vignette 1.6s ease-in-out forwards",
         opacity:0,
       }}/>
 
-      {/* 확장 링 (3겹) */}
-      {[0, 180, 380].map((ms, i) => (
-        <div key={i} style={{
-          position:"absolute",
-          width:160, height:160,
-          border:`${i===0?3:2}px solid ${col}`,
-          borderRadius:"50%",
-          opacity:0,
-          animation:`ult-ring 1.0s ease-out ${ms}ms forwards`,
-          boxShadow:`0 0 20px ${col}66`,
-        }}/>
-      ))}
-
-      {/* 대각선 광선들 */}
-      {slashLines.map((s, i) => (
-        <div key={i} style={{
-          position:"absolute",
-          top: s.top, left:"-5%",
-          width:"110%", height:s.h,
-          background:`linear-gradient(90deg, transparent 0%, ${col}99 30%, ${col} 50%, ${col}99 70%, transparent 100%)`,
-          transform:"skewX(-18deg)",
-          opacity:0,
-          animation:`ult-slash 0.55s ease-out ${s.delay} forwards`,
-          boxShadow:`0 0 14px ${col}88`,
-        }}/>
-      ))}
-
-      {/* 파티클 */}
-      {particles.map((p, i) => (
-        <div key={i} style={{
-          position:"absolute",
-          width:p.size, height:p.size,
-          borderRadius:"50%",
-          background:col,
-          boxShadow:`0 0 ${p.size * 2}px ${col}`,
-          opacity:0,
-          animation:`ult-particle 0.75s ease-out ${p.delay} forwards`,
-          // @ts-ignore
-          "--dx":`${p.dx}px`,
-          "--dy":`${p.dy}px`,
-        } as React.CSSProperties}/>
-      ))}
+      {/* 직업별 이펙트 */}
+      {renderEffects()}
 
       {/* 텍스트 중앙 */}
       <div style={{ position:"relative", zIndex:1, textAlign:"center", padding:"0 24px" }}>
-        {/* 캐릭터 스프라이트 */}
         {actor && (
           <div style={{
             display:"flex", justifyContent:"center", marginBottom:12,
@@ -1144,7 +1428,7 @@ function UltimateAnim({
           }}>
             <div style={{
               padding:10, borderRadius:"50%",
-              background:`radial-gradient(circle, ${col}33 0%, transparent 70%)`,
+              background:`radial-gradient(circle,${col}33 0%,transparent 70%)`,
               boxShadow:`0 0 32px ${col}66`,
               animation:"col-idle-bob 2s ease-in-out infinite",
             }}>
@@ -1152,67 +1436,46 @@ function UltimateAnim({
             </div>
           </div>
         )}
-        {/* 팀 + 직업 라벨 */}
         <p style={{
           fontFamily:"'Courier New',monospace",
-          fontSize:10, fontWeight:900,
-          letterSpacing:"0.55em",
-          color:`${col}cc`,
-          margin:"0 0 10px",
-          textTransform:"uppercase",
-          animation:"ult-sub 0.4s ease-out 0.18s both",
-          opacity:0,
+          fontSize:10, fontWeight:900, letterSpacing:"0.55em",
+          color:`${col}cc`, margin:"0 0 10px", textTransform:"uppercase",
+          animation:"ult-sub 0.4s ease-out 0.18s both", opacity:0,
         }}>
-          {actorTeam === "attacker"
-            ? (ko ? "[ 공격팀 ]" : ja ? "[ 攻撃チーム ]" : "[ ATTACK ]")
-            : (ko ? "[ 방어팀 ]" : ja ? "[ 防御チーム ]" : "[ DEFENSE ]")
-          }&nbsp;&nbsp;{ko ? pal.labelKo : ja ? pal.labelJa : pal.labelEn}
+          {actorTeam==="attacker"
+            ? (ko?"[ 공격팀 ]":ja?"[ 攻撃チーム ]":"[ ATTACK ]")
+            : (ko?"[ 방어팀 ]":ja?"[ 防御チーム ]":"[ DEFENSE ]")
+          }&nbsp;&nbsp;{ko?pal.labelKo:ja?pal.labelJa:pal.labelEn}
         </p>
-
-        {/* 궁극기 레이블 */}
         <p style={{
           fontFamily:FONT, fontSize:11, fontWeight:900,
-          letterSpacing:"0.35em", color:col,
-          margin:"0 0 6px",
-          animation:"ult-sub 0.35s ease-out 0.25s both",
-          opacity:0,
+          letterSpacing:"0.35em", color:col, margin:"0 0 6px",
+          animation:"ult-sub 0.35s ease-out 0.25s both", opacity:0,
         }}>
-          {ko ? "── 궁극기 ──" : ja ? "── 奥義 ──" : "── ULTIMATE ──"}
+          {ko?"── 궁극기 ──":ja?"── 奥義 ──":"── ULTIMATE ──"}
         </p>
-
-        {/* 스킬 이름 */}
         <p style={{
-          fontFamily:FONT, fontSize:46, fontWeight:900,
-          color:"#fff",
-          margin:"0 0 6px",
-          letterSpacing:"0.04em",
-          textShadow:`0 0 18px ${col}, 0 0 40px ${col}, 0 0 80px ${col}66, 2px 2px 0 ${dark}`,
+          fontFamily:FONT, fontSize:46, fontWeight:900, color:"#fff",
+          margin:"0 0 6px", letterSpacing:"0.04em",
+          textShadow:`0 0 18px ${col},0 0 40px ${col},0 0 80px ${col}66,2px 2px 0 ${dark}`,
           animation:"ult-title 0.55s cubic-bezier(0.175,0.885,0.32,1.275) 0.3s both",
-          opacity:0,
-          lineHeight:1.1,
+          opacity:0, lineHeight:1.1,
         }}>
-          {(ARCHETYPE_ULT_NAME[archetype] ?? ARCHETYPE_ULT_NAME.all)[ko ? "ko" : ja ? "ja" : "en"]}
+          {(ARCHETYPE_ULT_NAME[archetype]??ARCHETYPE_ULT_NAME.all)[ko?"ko":ja?"ja":"en"]}
         </p>
-
-        {/* 하단 글로우 라인 */}
         <div style={{
           height:3, borderRadius:2,
-          background:`linear-gradient(90deg, transparent, ${col}, transparent)`,
-          boxShadow:`0 0 14px ${col}`,
-          margin:"10px auto 0",
-          opacity:0,
-          animation:`ult-line-grow 0.6s ease-out 0.55s both`,
-          maxWidth:280,
+          background:`linear-gradient(90deg,transparent,${col},transparent)`,
+          boxShadow:`0 0 14px ${col}`, margin:"10px auto 0", opacity:0,
+          animation:`ult-line-grow 0.6s ease-out 0.55s both`, maxWidth:280,
         }}/>
       </div>
 
       {/* 임팩트 플래시 */}
       <div style={{
         position:"absolute", inset:0,
-        background:`radial-gradient(ellipse at center, ${col}88 0%, transparent 70%)`,
-        opacity:0,
-        animation:`ult-flash 0.45s ease-out 0.65s forwards`,
-        zIndex:2,
+        background:`radial-gradient(ellipse at center,${col}88 0%,transparent 70%)`,
+        opacity:0, animation:`ult-flash 0.45s ease-out 0.65s forwards`, zIndex:2,
       }}/>
     </div>
   );
@@ -1220,12 +1483,41 @@ function UltimateAnim({
 
 // ─── 스킬 타입 색상 ───────────────────────────────────────────────────────────
 const SKILL_COLOR: Record<string, string> = {
-  basic: "#e2e8f0", skill: "#60a5fa", ultimate: "#ffd700", dot: "#c084fc",
+  s1: "#e2e8f0", s2: "#60a5fa", s3: "#ffd700", passive: "#a78bfa", dot: "#c084fc",
 };
 const SKILL_LABEL: Record<string, Record<string, string>> = {
-  ko: { basic: "평타",    skill: "스킬",  ultimate: "궁극기",  dot: "저주" },
-  ja: { basic: "通常攻撃", skill: "スキル", ultimate: "奥義",    dot: "呪い" },
-  en: { basic: "Basic",   skill: "Skill", ultimate: "Ultimate", dot: "Curse" },
+  ko: { s1: "기본기", s2: "스킬",  s3: "궁극기", passive: "패시브", dot: "지속피해" },
+  ja: { s1: "通常攻撃", s2: "スキル", s3: "奥義",  passive: "パッシブ", dot: "持続ダメージ" },
+  en: { s1: "Basic",  s2: "Skill", s3: "Ultimate", passive: "Passive", dot: "DoT" },
+};
+
+// ─── 버프/디버프 표시 정의 ─────────────────────────────────────────────────────
+const BUFF_META: Record<string, { label: string; color: string; bg: string }> = {
+  attack_up:   { label:"ATK↑", color:"#fbbf24", bg:"#78350f" },
+  defense_up:  { label:"DEF↑", color:"#60a5fa", bg:"#1e3a5f" },
+  speed_up:    { label:"SPD↑", color:"#a78bfa", bg:"#2e1065" },
+  barrier:     { label:"배리어", color:"#93c5fd", bg:"#1e3a5f" },
+  immune:      { label:"면역",  color:"#e2e8f0", bg:"#374151" },
+  counter:     { label:"반격",  color:"#f97316", bg:"#7c2d12" },
+  revive:      { label:"부활",  color:"#fbbf24", bg:"#713f12" },
+  recovery:    { label:"재생",  color:"#4ade80", bg:"#14532d" },
+  cr_boost:    { label:"CR↑",  color:"#c084fc", bg:"#4a1d96" },
+};
+const DEBUFF_META: Record<string, { label: string; color: string; bg: string }> = {
+  defense_break: { label:"방파",  color:"#f87171", bg:"#7f1d1d" },
+  attack_down:   { label:"ATK↓", color:"#fca5a5", bg:"#7f1d1d" },
+  speed_down:    { label:"SPD↓", color:"#fb923c", bg:"#7c2d12" },
+  stun:          { label:"기절",  color:"#fbbf24", bg:"#713f12" },
+  silence:       { label:"침묵",  color:"#94a3b8", bg:"#1e293b" },
+  sleep:         { label:"수면",  color:"#818cf8", bg:"#1e1b4b" },
+  provoke:       { label:"도발",  color:"#f87171", bg:"#7f1d1d" },
+  restrict:      { label:"봉인",  color:"#fb923c", bg:"#7c2d12" },
+  blind:         { label:"실명",  color:"#9ca3af", bg:"#1f2937" },
+  burn:          { label:"화상",  color:"#fb923c", bg:"#7c2d12" },
+  poison:        { label:"독",    color:"#86efac", bg:"#14532d" },
+  bleed:         { label:"출혈",  color:"#f87171", bg:"#7f1d1d" },
+  bomb:          { label:"폭탄",  color:"#fbbf24", bg:"#713f12" },
+  unhealable:    { label:"회불",  color:"#f87171", bg:"#7f1d1d" },
 };
 
 // ─── 배틀 재생 화면 ───────────────────────────────────────────────────────────
@@ -1240,16 +1532,23 @@ function BattleReplay({
   const skillLang = SKILL_LABEL[lang] ?? SKILL_LABEL.ko;
   const { log, attackerChars, defenderChars } = result;
 
-  type FloatNum = { id: number; val: number; team: "attacker"|"defender"; slot: number; color: string; prefix: string };
+  type FloatNum  = { id: number; val: number; team: "attacker"|"defender"; slot: number; color: string; prefix: string };
+  type StatusFlt = { id: number; text: string; color: string; team: "attacker"|"defender"; slot: number };
+  type LogEntry  = { id: number; text: string; color: string; icon: string };
 
-  const [step, setStep]             = useState(-1);
-  const [speed, setSpeed]           = useState(700);
-  const [hitSlots, setHitSlots]     = useState<Set<string>>(new Set());
-  const [floatNums, setFloatNums]   = useState<FloatNum[]>([]);
-  const [skillBanner, setSkillBanner] = useState<{ name: string; type: string } | null>(null);
-  const [ultimateAnim, setUltimateAnim] = useState<{ skillName: string; archetype: string; actorTeam: "attacker"|"defender"; charId?: number } | null>(null);
-  const intervalRef                 = useRef<ReturnType<typeof setInterval>|null>(null);
-  const pausedRef                   = useRef(false);
+  const [step, setStep]                   = useState(-1);
+  const [speed, setSpeed]                 = useState(700);
+  const [hitSlots, setHitSlots]           = useState<Set<string>>(new Set());
+  const [floatNums, setFloatNums]         = useState<FloatNum[]>([]);
+  const [statusFloats, setStatusFloats]   = useState<StatusFlt[]>([]);
+  const [affinityRings, setAffinityRings] = useState<Array<{ id:number; team:"attacker"|"defender"; slot:number }>>([]);
+  const [skillBanner, setSkillBanner]     = useState<{ name: string; type: string } | null>(null);
+  const [s2Anim, setS2Anim]               = useState<{ archetype:string; actorTeam:"attacker"|"defender" } | null>(null);
+  const [ultimateAnim, setUltimateAnim]   = useState<{ skillName: string; archetype: string; actorTeam: "attacker"|"defender"; charId?: number } | null>(null);
+  const [eventLog, setEventLog]           = useState<LogEntry[]>([]);
+  const [showLog, setShowLog]             = useState(false);
+  const intervalRef                       = useRef<ReturnType<typeof setInterval>|null>(null);
+  const pausedRef                         = useRef(false);
 
   // 현재 HP — hits 배열의 모든 타겟 처리
   const hpState = useCallback((upTo: number) => {
@@ -1273,20 +1572,79 @@ function BattleReplay({
       : [{ targetTeam: ev.targetTeam, targetSlot: ev.targetSlot, damage: ev.damage, healed: ev.healed ?? 0, hpAfter: ev.targetHpAfter, alive: ev.targetAlive }];
     const hitSet = new Set<string>();
     const newFloats: FloatNum[] = [];
+    const newStatusFlt: StatusFlt[] = [];
+    const newRings: Array<{ id:number; team:"attacker"|"defender"; slot:number }> = [];
+
     for (const h of allHits) {
       if (h.damage > 0) {
         hitSet.add(`${h.targetTeam}-${h.targetSlot}`);
         const col = isUlt ? "#ffd700" : ev.skillType === "dot" ? "#c084fc" : h.targetTeam === "attacker" ? "#f87171" : "#60a5fa";
-        newFloats.push({ id: Date.now() + Math.random(), val: h.damage, team: h.targetTeam, slot: h.targetSlot, color: col, prefix: "-" });
+        if (h.isCrit) {
+          newFloats.push({ id: Date.now() + Math.random(), val: 0, team: h.targetTeam, slot: h.targetSlot, color:"#ffd700", prefix:"CRIT!" });
+        }
+        if (h.affinity === "advantage") {
+          newRings.push({ id: Date.now() + Math.random(), team: h.targetTeam, slot: h.targetSlot });
+        }
+        const prefix = h.affinity === "advantage" ? "◆-" : "-";
+        newFloats.push({ id: Date.now() + Math.random() + 0.1, val: h.damage, team: h.targetTeam, slot: h.targetSlot, color: h.isCrit ? "#ffd700" : col, prefix });
+        if (h.barrierDmg && h.barrierDmg > 0) {
+          newFloats.push({ id: Date.now() + Math.random() + 0.2, val: h.barrierDmg, team: h.targetTeam, slot: h.targetSlot, color:"#60a5fa", prefix:"🛡-" });
+        }
       }
       if (h.healed > 0) {
         newFloats.push({ id: Date.now() + Math.random(), val: h.healed, team: h.targetTeam, slot: h.targetSlot, color: "#4ade80", prefix: "+" });
       }
     }
+
+    // 버프/디버프 없는 스킬 아이콘
+    if (!isUlt && ev.skillType !== "s1" && ev.actorSlot >= 0) {
+      const hasEffect = allHits.some(h => h.damage > 0 || h.healed > 0);
+      if (!hasEffect) {
+        const isHealSkill = ev.skillName.includes("치유") || ev.skillName.includes("자연") || ev.skillName.includes("회복") || ev.skillName.includes("힘");
+        newFloats.push({ id: Date.now() + Math.random(), val: 0, team: ev.actorTeam, slot: ev.actorSlot, color: isHealSkill ? "#4ade80" : "#60a5fa", prefix: isHealSkill ? "💚" : "🛡" });
+      }
+    }
+
+    // 상태 효과 변화 플로팅 (Phase 4)
+    if (ev.statusChanges?.length) {
+      for (const sc of ev.statusChanges) {
+        if (sc.action === "apply") {
+          const isBuff = !!BUFF_META[sc.type];
+          const meta   = isBuff ? BUFF_META[sc.type] : DEBUFF_META[sc.type];
+          if (meta) {
+            newStatusFlt.push({ id: Date.now() + Math.random(), text: `${meta.label} ${sc.duration}턴`, color: meta.color, team: sc.team, slot: sc.slot });
+          }
+        }
+      }
+    }
+
+    // 이벤트 로그 항목 (Phase 4)
+    const actorLabel = ev.actorTeam === "attacker" ? "Atk" : "Def";
+    const totalDmg   = allHits.reduce((s, h) => s + h.damage, 0);
+    const totalHeal  = allHits.reduce((s, h) => s + h.healed, 0);
+    const hasCrit    = allHits.some(h => h.isCrit);
+    const logText    = totalDmg > 0
+      ? `[${actorLabel}] ${ev.skillName}${hasCrit ? " CRIT" : ""} → ${totalDmg.toLocaleString()} 피해`
+      : totalHeal > 0
+      ? `[${actorLabel}] ${ev.skillName} → ${totalHeal.toLocaleString()} 회복`
+      : `[${actorLabel}] ${ev.skillName}`;
+    const logCol  = ev.skillType === "s3" ? "#ffd700" : ev.skillType === "dot" ? "#c084fc" : totalHeal > 0 ? "#4ade80" : "#e2e8f0";
+    const logIcon = ev.skillType === "s3" ? "✦" : ev.skillType === "s2" ? "◆" : ev.skillType === "dot" ? "☠" : "·";
+    setEventLog(p => [...p.slice(-29), { id: Date.now() + Math.random(), text: logText, color: logCol, icon: logIcon }]);
+
     setHitSlots(hitSet);
     setTimeout(() => setHitSlots(new Set()), 380);
-    setFloatNums(p => [...p.slice(-10), ...newFloats]);
+    setFloatNums(p => [...p.slice(-12), ...newFloats]);
     newFloats.forEach(n => setTimeout(() => setFloatNums(p => p.filter(d => d.id !== n.id)), 900));
+
+    if (newStatusFlt.length) {
+      setStatusFloats(p => [...p.slice(-8), ...newStatusFlt]);
+      newStatusFlt.forEach(n => setTimeout(() => setStatusFloats(p => p.filter(d => d.id !== n.id)), 1400));
+    }
+    if (newRings.length) {
+      setAffinityRings(p => [...p, ...newRings]);
+      newRings.forEach(r => setTimeout(() => setAffinityRings(p => p.filter(d => d.id !== r.id)), 600));
+    }
   }, []);
 
   // 자동 재생
@@ -1300,22 +1658,27 @@ function BattleReplay({
           setTimeout(onDone, 800);
           return prev;
         }
-        const ev  = log[prev + 1];
-        const isUlt = ev.skillType === "ultimate" && ev.actorSlot >= 0;
+        const ev     = log[prev + 1];
+        const isUlt  = ev.skillType === "s3" && ev.actorSlot >= 0;
+        const isSkill= ev.skillType === "s2" && ev.actorSlot >= 0;
 
         if (isUlt) {
-          // 궁극기 → 연출 오버레이 시작, 배틀 일시정지
           const actorInfo = (ev.actorTeam === "attacker" ? attackerChars : defenderChars)
             .find(c => c.slot === ev.actorSlot);
           setUltimateAnim({ skillName: ev.skillName, archetype: actorInfo?.archetype ?? "all", actorTeam: ev.actorTeam, charId: actorInfo?.charId });
           pausedRef.current = true;
-          // 플래시 타이밍(650ms)에 맞춰 데미지 숫자 표시
           setTimeout(() => applyHitFx(ev, true), 650);
         } else {
-          // 일반 스킬/평타
-          if (ev.actorSlot >= 0 && ev.skillType !== "basic") {
+          if (ev.actorSlot >= 0 && ev.skillType !== "s1") {
             setSkillBanner({ name: ev.skillName, type: ev.skillType });
             setTimeout(() => setSkillBanner(null), Math.max(500, speed - 100));
+          }
+          // S2 미니 애니메이션 (Phase 5)
+          if (isSkill) {
+            const actorInfo = (ev.actorTeam === "attacker" ? attackerChars : defenderChars)
+              .find(c => c.slot === ev.actorSlot);
+            setS2Anim({ archetype: actorInfo?.archetype ?? "all", actorTeam: ev.actorTeam });
+            setTimeout(() => setS2Anim(null), 500);
           }
           applyHitFx(ev, false);
         }
@@ -1333,8 +1696,11 @@ function BattleReplay({
 
   const currentStep = Math.max(0, step);
   const hp          = hpState(currentStep);
-  const crs         = step >= 0 && step < log.length ? log[step].crs
-    : [...attackerChars, ...defenderChars].map(c => ({ team: (attackerChars.includes(c) ? "attacker" : "defender") as "attacker"|"defender", slot: c.slot, cr: 0, alive: true }));
+  const crs = step >= 0 && step < log.length ? log[step].crs
+    : [...attackerChars, ...defenderChars].map(c => ({
+        team: (attackerChars.includes(c) ? "attacker" : "defender") as "attacker"|"defender",
+        slot: c.slot, cr: 0, alive: true, buffs: [], debuffs: [],
+      }));
   const activeActor = step >= 0 && step < log.length && log[step].actorSlot >= 0
     ? { team: log[step].actorTeam, slot: log[step].actorSlot } : null;
 
@@ -1356,13 +1722,29 @@ function BattleReplay({
       const isDead = hp[key] === 0;
       const isHit  = hitSlots.has(hitKey);
       const isAct  = activeActor?.team === teamKey && activeActor.slot === info.slot;
+      const snap   = crs.find(c => c.team === teamKey && c.slot === info.slot);
       return (
         <div key={info.slot} style={{ position:"relative" }}>
-          <UnitCard info={info} hp={hp[key] ?? info.maxHp} isActive={isAct} isHit={isHit} isDead={isDead} isPlayer={isAtk}/>
+          <UnitCard
+            info={info} hp={hp[key] ?? info.maxHp}
+            isActive={isAct} isHit={isHit} isDead={isDead} isPlayer={isAtk}
+            buffs={snap?.buffs} debuffs={snap?.debuffs}
+          />
+          {/* 데미지·힐 플로팅 */}
           {floatNums.filter(d => d.team === teamKey && d.slot === info.slot).map(d => (
             <div key={d.id} style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", fontFamily:"monospace", fontWeight:900, fontSize:15, color:d.color, pointerEvents:"none", animation:"col-dmg-up 0.9s ease-out forwards", textShadow:`0 0 8px ${d.color}`, whiteSpace:"nowrap" }}>
-              {d.prefix}{d.val}
+              {d.val > 0 ? `${d.prefix}${d.val}` : d.prefix}
             </div>
+          ))}
+          {/* 상태효과 플로팅 (Phase 4) */}
+          {statusFloats.filter(d => d.team === teamKey && d.slot === info.slot).map(d => (
+            <div key={d.id} style={{ position:"absolute", top:10, left:"50%", transform:"translateX(-50%)", fontFamily:FONT, fontWeight:900, fontSize:9, color:d.color, pointerEvents:"none", animation:"status-float 1.4s ease-out forwards", background:"rgba(0,0,0,0.65)", borderRadius:3, padding:"2px 5px", border:`1px solid ${d.color}55`, whiteSpace:"nowrap", zIndex:10 }}>
+              {d.text}
+            </div>
+          ))}
+          {/* 속성 상성 링 (Phase 5) */}
+          {affinityRings.filter(r => r.team === teamKey && r.slot === info.slot).map(r => (
+            <div key={r.id} style={{ position:"absolute", top:"50%", left:"50%", width:60, height:60, marginTop:-30, marginLeft:-30, borderRadius:"50%", border:"2px solid #ffd700", pointerEvents:"none", animation:"affinity-ring 0.6s ease-out forwards" }}/>
           ))}
         </div>
       );
@@ -1380,7 +1762,29 @@ function BattleReplay({
           onEnd={handleUltimateEnd}
         />
       )}
-      {/* 상단: 속도 + 스킵 */}
+
+      {/* S2 미니 애니메이션 (Phase 5) */}
+      {s2Anim && (
+        <div style={{ position:"fixed", inset:0, zIndex:40, pointerEvents:"none", overflow:"hidden" }}>
+          {[0, 1].map(i => {
+            const sc = SKILL_COLOR.s2;
+            const rot = i === 0 ? -12 : 8;
+            return (
+              <div key={i} style={{
+                position:"absolute", top:"50%", left:0, right:0, height:3,
+                marginTop: i === 0 ? -18 : 14,
+                background:`linear-gradient(90deg,transparent 0%,${sc}cc 30%,${sc} 50%,${sc}cc 70%,transparent 100%)`,
+                transform:`rotate(${rot}deg)`,
+                animation:"s2-slash 0.5s ease-out forwards",
+                boxShadow:`0 0 12px ${sc}`,
+              }}/>
+            );
+          })}
+          <div style={{ position:"absolute", top:"50%", left:"50%", width:120, height:120, marginTop:-60, marginLeft:-60, borderRadius:"50%", border:`2px solid ${SKILL_COLOR.s2}88`, animation:"s2-ring 0.5s ease-out forwards" }}/>
+        </div>
+      )}
+
+      {/* 상단: 속도 + 스킵 + 로그 토글 */}
       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"6px 10px", background:"rgba(0,0,0,0.5)", border:"1px solid #2e1f0633", borderRadius:8, backdropFilter:"blur(8px)" }}>
         <span style={{ fontSize:9, color:C.stoneFaint, letterSpacing:"0.2em", marginRight:4 }}>SPD</span>
         {speedBtns.map(b => (
@@ -1390,6 +1794,9 @@ function BattleReplay({
           <div style={{ height:"100%", width:`${Math.min(100,(step+1)/log.length*100)}%`, background:"linear-gradient(90deg,#3b82f6,#c8a44a,#ef4444)", borderRadius:2, transition:"width 0.3s" }}/>
         </div>
         <span style={{ fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>{Math.max(0,step+1)}/{log.length}</span>
+        <button onClick={() => setShowLog(p => !p)} style={{ display:"flex", alignItems:"center", gap:3, background: showLog ? "rgba(96,165,250,0.15)" : "rgba(30,21,8,0.8)", border:`1px solid ${showLog?"#60a5fa66":C.borderFaint}`, color: showLog ? "#60a5fa" : C.stone, fontFamily:FONT, fontSize:10, padding:"3px 8px", borderRadius:4, cursor:"pointer" }}>
+          LOG
+        </button>
         <button onClick={skip} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(30,21,8,0.8)", border:`1px solid ${C.borderFaint}`, color:C.stone, fontFamily:FONT, fontSize:10, padding:"3px 10px", borderRadius:4, cursor:"pointer" }}>
           <SkipForward size={11}/>{" "}{ko ? "스킵" : ja ? "スキップ" : "Skip"}
         </button>
@@ -1509,6 +1916,20 @@ function BattleReplay({
           </div>
         </div>
       </div>
+
+      {/* 이벤트 로그 패널 (Phase 4) */}
+      {showLog && (
+        <div style={{ marginTop:8, background:"rgba(0,0,0,0.65)", border:"1px solid #1e3a5f55", borderRadius:8, padding:"6px 8px", backdropFilter:"blur(6px)", maxHeight:140, overflowY:"auto" }}>
+          <div style={{ display:"flex", flexDirection:"column-reverse", gap:2 }}>
+            {[...eventLog].reverse().slice(0, 15).map(e => (
+              <div key={e.id} style={{ display:"flex", alignItems:"baseline", gap:5, animation:"log-in 0.2s ease-out" }}>
+                <span style={{ fontSize:9, color:e.color, flexShrink:0, fontWeight:900 }}>{e.icon}</span>
+                <span style={{ fontSize:9, fontFamily:"monospace", color:e.color, lineHeight:1.4 }}>{e.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1546,6 +1967,11 @@ export default function ColosseumPage() {
   const [rankings, setRankings]       = useState<RankingEntry[]>([]);
   const [rankPage, setRankPage]       = useState(0);
   const [rankLoading, setRankLoading] = useState(false);
+  const [tierFilter, setTierFilter]   = useState<number | null>(null); // null = 전체
+
+  // 복수 목록
+  const [revengeTargets, setRevengeTargets] = useState<RevengeTarget[]>([]);
+  const [revengeOpen, setRevengeOpen]       = useState(false);
 
   const { tickets, msToNext, fmtMs, consume } = useTickets();
   const { isOnCooldown, getRemainingMs, applyCooldown } = useNpcCooldowns();
@@ -1575,7 +2001,15 @@ export default function ColosseumPage() {
     setRankLoading(false);
   }, []);
 
-  useEffect(() => { fetchMyData(); fetchRankings(); }, [fetchMyData, fetchRankings]);
+  const fetchRevengeTargets = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await api.get<RevengeTarget[]>(`/arena/revenge/${encodeURIComponent(user.id)}`);
+      setRevengeTargets(res);
+    } catch { /* silent */ }
+  }, [user?.id]);
+
+  useEffect(() => { fetchMyData(); fetchRankings(); fetchRevengeTargets(); }, [fetchMyData, fetchRankings, fetchRevengeTargets]);
 
   // ── 덱 저장 ──
   const saveDeck = async (deckType: "attack"|"defense", slots: number[]) => {
@@ -1751,7 +2185,32 @@ export default function ColosseumPage() {
             </div>
             <p style={{ margin:"0 0 10px", fontSize:10, color:C.stoneFaint }}>{targetUser.tierPoints.toLocaleString()} pts</p>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {targetDefSlots.map((id,i) => <DeckSlotCard key={i} charId={id} small/>)}
+              {targetDefSlots.map((id,i) => {
+                const ch = charById(id);
+                const arch = (() => {
+                  const TYPE_ARCH: Record<string,string> = {
+                    wolf:"warrior",tiger:"warrior",lion:"warrior",bear:"warrior",
+                    cat:"rogue",rabbit:"rogue",deer:"rogue",eagle:"rogue",
+                    ghost:"mage",owl:"mage",dragon:"mage",angel:"mage",phoenix:"mage",
+                    turtle:"tank",elephant:"tank",whale:"tank",crocodile:"tank",boar:"tank",
+                    plant:"nature",fish:"nature",unicorn:"nature",horse:"nature",
+                    robot:"meka",slime:"meka",beetle:"meka",
+                    fox:"cursed",monkey:"cursed",raven:"cursed",snake:"cursed",demon:"cursed",
+                  };
+                  return TYPE_ARCH[ch.type] ?? "all";
+                })();
+                const elem = { warrior:"fire",tank:"earth",mage:"ice",rogue:"dark",nature:"nature",meka:"lightning",cursed:"shadow",all:"light" }[arch] ?? "light";
+                const al = ARCHETYPE_LABEL[arch];
+                const ec = ELEMENT_COLOR[elem] ?? "#888";
+                return (
+                  <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+                    <DeckSlotCard charId={id} small/>
+                    <span style={{ fontSize:8, fontWeight:900, color:ec, background:`${ec}22`, border:`1px solid ${ec}55`, borderRadius:3, padding:"1px 5px", lineHeight:1.3 }}>
+                      {al?.icon ?? "★"} {ko ? al?.ko : ja ? al?.ja : al?.en}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1777,12 +2236,16 @@ export default function ColosseumPage() {
   const tierNext     = TIERS[tierIdx + 1]?.min ?? tier.min + 1000;
   const tierProgress = Math.min(1, (tierPts - tier.min) / (tierNext - tier.min));
   const RANK_PAGE_SZ = 5;
-  const rankTotalPages = Math.ceil(rankings.length / RANK_PAGE_SZ);
-  const rankPage5 = rankings.slice(rankPage * RANK_PAGE_SZ, (rankPage + 1) * RANK_PAGE_SZ);
-  const myRankEntry = rankings.find(e => e.userId === user?.id);
+  // ── 티어 필터 적용 ──
+  const filteredRankings = tierFilter === null
+    ? rankings
+    : rankings.filter(e => getTierIdx(e.tierPoints) === tierFilter);
+  const rankTotalPages = Math.ceil(filteredRankings.length / RANK_PAGE_SZ);
+  const rankPage5      = filteredRankings.slice(rankPage * RANK_PAGE_SZ, (rankPage + 1) * RANK_PAGE_SZ);
+  const myRankEntry    = rankings.find(e => e.userId === user?.id);
 
   // ── 공격 가능한 유효한 타겟 (나 제외) ──
-  const attackableEntries = rankings.filter(e => e.userId !== user?.id);
+  const attackableEntries = filteredRankings.filter(e => e.userId !== user?.id);
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, padding:"0 0 60px", fontFamily:FONT }}>
@@ -1885,7 +2348,7 @@ export default function ColosseumPage() {
           </div>
 
           {/* 공격/방어 덱 나란히 */}
-          <div style={{ display:"flex", gap:0 }}>
+          <div className="col-deck-wrap" style={{ display:"flex", gap:0 }}>
             {[
               { type:"attack" as const,  label:ko?"공격 덱":ja?"攻撃":"ATK", slots:myAtkSlots,  accent:"#60a5fa", bgGrad:"linear-gradient(135deg,#061a30 0%,#040f1c 100%)", bdr:"#1e3a5f", icon:"⚔" },
               { type:"defense" as const, label:ko?"방어 덱":ja?"防御":"DEF", slots:myDefSlots, accent:"#f87171", bgGrad:"linear-gradient(135deg,#200707 0%,#130404 100%)", bdr:"#4f0e0e", icon:"🛡" },
@@ -2066,21 +2529,104 @@ export default function ColosseumPage() {
           )}
         </div>
 
+        {/* ══ 복수 목록 ═══════════════════════════════════════════════════ */}
+        {revengeTargets.length > 0 && (
+          <div style={{ background:"linear-gradient(135deg,#180a0a 0%,#0e0606 100%)", border:"1px solid #6b1414", borderRadius:10, overflow:"hidden" }}>
+            <button
+              onClick={() => setRevengeOpen(p => !p)}
+              style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 14px", background:"rgba(248,113,113,0.07)", borderBottom: revengeOpen ? "1px solid #3a0e0e" : "none", border:"none", cursor:"pointer", fontFamily:FONT }}
+            >
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <Swords size={13} color="#f87171" strokeWidth={2.5}/>
+                <span style={{ fontSize:12, fontWeight:900, color:"#f87171", letterSpacing:"0.1em" }}>
+                  {ko?"복수 목록":ja?"リベンジ":"Revenge"}
+                </span>
+                <span style={{ fontSize:9, fontWeight:900, color:"#f87171", background:"rgba(248,113,113,0.15)", border:"1px solid rgba(248,113,113,0.35)", borderRadius:10, padding:"1px 7px" }}>
+                  {revengeTargets.length}
+                </span>
+              </div>
+              <ChevronRight size={14} color="#f87171" style={{ transform: revengeOpen ? "rotate(90deg)" : "rotate(0deg)", transition:"transform 0.2s" }}/>
+            </button>
+
+            {revengeOpen && (
+              <div style={{ display:"flex", flexDirection:"column" }}>
+                {revengeTargets.map((rt, i) => {
+                  const eti = getTierIdx(rt.tierPoints);
+                  const ago = (() => {
+                    const diff = Date.now() - new Date(rt.at).getTime();
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    return h > 0 ? (ko?`${h}시간 전`:ja?`${h}時間前`:`${h}h ago`) : (ko?`${m}분 전`:ja?`${m}分前`:`${m}m ago`);
+                  })();
+                  return (
+                    <div key={rt.userId + i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom: i < revengeTargets.length - 1 ? "1px solid #2a0e0e" : "none", background: i%2===0?"transparent":"rgba(255,255,255,0.012)" }}>
+                      <TierBadgeSvg idx={eti} size={22}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ margin:0, fontSize:12, color:"#e2e8f0", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rt.name}</p>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                          <span style={{ fontSize:9, fontFamily:"monospace", color:TIERS[eti].color }}>{rt.tierPoints.toLocaleString()} pts</span>
+                          <span style={{ fontSize:9, color: rt.theyWon ? "#f87171" : "#4ade80", background: rt.theyWon ? "rgba(248,113,113,0.12)" : "rgba(74,222,128,0.12)", border: `1px solid ${rt.theyWon?"rgba(248,113,113,0.3)":"rgba(74,222,128,0.3)"}`, borderRadius:3, padding:"1px 5px" }}>
+                            {rt.theyWon ? (ko?"나를 격파":ja?"撃破された":"They won") : (ko?"패배함":ja?"敗北":"They lost")}
+                          </span>
+                          <span style={{ fontSize:9, color:"#4b5563", marginLeft:"auto" }}>{ago}</span>
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+                        {rt.defenseSlots.slice(0, 3).map((id, si) => {
+                          const ch = charById(id);
+                          const th = RARITY_THEME[ch.rarity as CharacterRarity];
+                          return (
+                            <div key={si} style={{ width:28, height:28, border:`1px solid ${th?.border ?? "#374151"}`, borderRadius:4, background:th?.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                              <PixelSprite type={ch.type as CharacterType} rarity={ch.rarity as CharacterRarity} size={20}/>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => startAttackConfirm({ userId: rt.userId, nickname: rt.name, tierPoints: rt.tierPoints, rank: 0, wins: 0, winStreak: 0, characterId: null })}
+                        disabled={tickets === 0 || myAtkSlots.length === 0}
+                        style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.length>0 ? "linear-gradient(180deg,#ef4444,#991b1b)" : "#1e0a0a", border:`2px solid ${tickets>0&&myAtkSlots.length>0?"#7f1d1d":"#2e0a0a"}`, color: tickets>0&&myAtkSlots.length>0 ? "#fff" : "#6b7280", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 10px", borderRadius:4, cursor: tickets===0||myAtkSlots.length===0?"not-allowed":"pointer", flexShrink:0, boxShadow: tickets>0&&myAtkSlots.length>0 ? "0 3px 0 #450a0a" : "none" }}
+                      >
+                        <Swords size={10} strokeWidth={2.5}/>{ko?"복수":ja?"復讐":"Revenge"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══ 랭킹 (항상 표시) ═════════════════════════════════════════════ */}
         <div id="col-ranking" style={{ background:"linear-gradient(135deg,#16110a 0%,#0e0b06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
           {/* 랭킹 헤더 */}
-          <div style={{ padding:"11px 14px", background:"rgba(200,164,74,0.06)", borderBottom:`1px solid ${C.borderFaint}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-              <Crown size={13} color={C.gold}/>
-              <span style={{ fontFamily:FONT, fontSize:12, fontWeight:900, color:C.gold, letterSpacing:"0.1em" }}>
-                {ko?"결투 상대 목록":ja?"対戦相手リスト":"Opponents"}
-              </span>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              {rankLoading && <span style={{ fontSize:9, color:C.stoneFaint }}>로딩...</span>}
-              <button onClick={fetchRankings} style={{ background:"none", border:"none", cursor:"pointer", color:C.stoneFaint, padding:2, lineHeight:0 }}>
+          <div style={{ padding:"11px 14px", background:"rgba(200,164,74,0.06)", borderBottom:`1px solid ${C.borderFaint}` }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                <Crown size={13} color={C.gold}/>
+                <span style={{ fontFamily:FONT, fontSize:12, fontWeight:900, color:C.gold, letterSpacing:"0.1em" }}>
+                  {ko?"결투 상대 목록":ja?"対戦相手リスト":"Opponents"}
+                </span>
+                {rankLoading && <span style={{ fontSize:9, color:C.stoneFaint }}>로딩...</span>}
+              </div>
+              <button onClick={() => { fetchRankings(); setRankPage(0); }} style={{ background:"none", border:"none", cursor:"pointer", padding:2, lineHeight:0 }}>
                 <ChevronRight size={14} color={C.stoneFaint}/>
               </button>
+            </div>
+            {/* 티어 필터 칩 */}
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+              <button
+                onClick={() => { setTierFilter(null); setRankPage(0); }}
+                style={{ fontSize:9, fontWeight:900, fontFamily:FONT, padding:"2px 9px", borderRadius:10, border:`1px solid ${tierFilter===null?C.gold:C.borderFaint}`, background: tierFilter===null ? `${C.gold}22` : "transparent", color: tierFilter===null ? C.gold : C.stoneFaint, cursor:"pointer" }}>
+                {ko?"전체":ja?"全体":"All"}
+              </button>
+              {TIERS.map((t, ti) => (
+                <button key={ti}
+                  onClick={() => { setTierFilter(ti); setRankPage(0); }}
+                  style={{ fontSize:9, fontWeight:900, fontFamily:FONT, padding:"2px 9px", borderRadius:10, border:`1px solid ${tierFilter===ti?t.color:C.borderFaint}`, background: tierFilter===ti ? `${t.color}22` : "transparent", color: tierFilter===ti ? t.color : C.stoneFaint, cursor:"pointer" }}>
+                  {ko?t.ko:ja?t.ja:t.en}
+                </button>
+              ))}
             </div>
           </div>
 
