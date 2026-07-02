@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Swords, ChevronLeft, ChevronRight, Crown, Gift,
+  Swords, Sword, Shield, Bot, Leaf, Cog, Skull, Star,
+  ChevronLeft, ChevronRight, Crown, Gift,
   X, Plus, SkipForward, Ticket,
 } from "lucide-react";
 import { getStoredUser } from "../lib/auth";
@@ -432,6 +433,8 @@ const CSS = `
 @keyframes col-idle-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes col-dmg-up{0%{opacity:1;transform:translateY(0) scale(1.4)}100%{opacity:0;transform:translateY(-52px) scale(0.9)}}
 @keyframes col-hit{0%{transform:translateX(0) scale(1.06);filter:brightness(40) saturate(0)}20%{transform:translateX(-8px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}100%{transform:translateX(0);filter:brightness(1)}}
+@keyframes col-attack{0%{transform:translate(0,0) scale(1)}20%{transform:translate(0,-6px) scale(1.08)}50%{transform:translate(14px,-2px) scale(1.13)}70%{transform:translate(-4px,2px) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
+@keyframes col-attack-rev{0%{transform:translate(0,0) scale(1)}20%{transform:translate(0,-6px) scale(1.08)}50%{transform:translate(-14px,-2px) scale(1.13)}70%{transform:translate(4px,2px) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
 @keyframes col-win-in{0%{letter-spacing:0.6em;opacity:0}100%{letter-spacing:0.12em;opacity:1}}
 @keyframes col-log-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes col-roll-in{0%{opacity:0;transform:scale(0.5) rotate(-12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
@@ -496,16 +499,28 @@ const ELEMENT_COLOR: Record<string, string> = {
   fire:"#f97316", ice:"#93c5fd", earth:"#a16207", nature:"#4ade80",
   dark:"#a78bfa", light:"#fef08a", lightning:"#facc15", shadow:"#c084fc",
 };
-const ARCHETYPE_LABEL: Record<string, { ko:string; ja:string; en:string; icon:string }> = {
-  warrior: { ko:"전사",  ja:"戦士",   en:"Warrior", icon:"⚔" },
-  tank:    { ko:"수호자",ja:"守護者", en:"Tank",    icon:"🛡" },
-  mage:    { ko:"마법사",ja:"魔法士", en:"Mage",    icon:"✦" },
-  rogue:   { ko:"도적",  ja:"盗賊",   en:"Rogue",   icon:"🗡" },
-  nature:  { ko:"자연사",ja:"自然士", en:"Nature",  icon:"🌿" },
-  meka:    { ko:"메카",  ja:"メカ",   en:"Meka",    icon:"⚙" },
-  cursed:  { ko:"저주사",ja:"呪術士", en:"Cursed",  icon:"☠" },
-  all:     { ko:"만능",  ja:"万能",   en:"All",     icon:"★" },
+const ARCHETYPE_LABEL: Record<string, { ko:string; ja:string; en:string }> = {
+  warrior: { ko:"전사",  ja:"戦士",   en:"Warrior" },
+  tank:    { ko:"수호자",ja:"守護者", en:"Tank"    },
+  mage:    { ko:"마법사",ja:"魔法士", en:"Mage"    },
+  rogue:   { ko:"도적",  ja:"盗賊",   en:"Rogue"   },
+  nature:  { ko:"자연사",ja:"自然士", en:"Nature"  },
+  meka:    { ko:"메카",  ja:"メカ",   en:"Meka"    },
+  cursed:  { ko:"저주사",ja:"呪術士", en:"Cursed"  },
+  all:     { ko:"만능",  ja:"万能",   en:"All"     },
 };
+function ArchetypeIcon({ arch, size=10 }: { arch: string; size?: number }) {
+  const p = { size, strokeWidth: 2.5 } as const;
+  switch (arch) {
+    case "warrior": return <Swords {...p}/>;
+    case "tank":    return <Shield {...p}/>;
+    case "rogue":   return <Sword {...p}/>;
+    case "nature":  return <Leaf {...p}/>;
+    case "meka":    return <Cog {...p}/>;
+    case "cursed":  return <Skull {...p}/>;
+    default:        return <Star {...p}/>;
+  }
+}
 
 // ─── 픽셀 불꽃 / 횃불 ──────────────────────────────────────────────────────────
 function PixelFlame({ delay = 0 }: { delay?: number }) {
@@ -729,9 +744,9 @@ function SpeedBar({
 
 // ─── 유닛 카드 (배틀 필드) ────────────────────────────────────────────────────
 function UnitCard({
-  info, hp, isActive, isHit, isDead, isPlayer, buffs, debuffs,
+  info, hp, isActive, isHit, isDead, isPlayer, isAttacking, buffs, debuffs,
 }: {
-  info: CharInfo; hp: number; isActive: boolean; isHit: boolean; isDead: boolean; isPlayer: boolean;
+  info: CharInfo; hp: number; isActive: boolean; isHit: boolean; isDead: boolean; isPlayer: boolean; isAttacking?: boolean;
   buffs?: Array<{ type: string; duration: number }>;
   debuffs?: Array<{ type: string; duration: number }>;
 }) {
@@ -745,7 +760,7 @@ function UnitCard({
     <div style={{
       display:"flex", flexDirection:"column", alignItems:"center", gap:2, width:72,
       opacity: isDead ? 0.3 : 1,
-      animation: isDead ? "col-dead 0.5s forwards" : isHit ? "col-hit 0.4s ease-out" : undefined,
+      animation: isDead ? "col-dead 0.5s forwards" : isHit ? "col-hit 0.4s ease-out" : isAttacking ? (isPlayer ? "col-attack 0.42s ease-out" : "col-attack-rev 0.42s ease-out") : undefined,
       transition:"opacity 0.3s",
     }}>
       {/* 버프 아이콘 행 */}
@@ -1539,6 +1554,7 @@ function BattleReplay({
   const [step, setStep]                   = useState(-1);
   const [speed, setSpeed]                 = useState(700);
   const [hitSlots, setHitSlots]           = useState<Set<string>>(new Set());
+  const [attackSlots, setAttackSlots]     = useState<Set<string>>(new Set());
   const [floatNums, setFloatNums]         = useState<FloatNum[]>([]);
   const [statusFloats, setStatusFloats]   = useState<StatusFlt[]>([]);
   const [affinityRings, setAffinityRings] = useState<Array<{ id:number; team:"attacker"|"defender"; slot:number }>>([]);
@@ -1549,6 +1565,8 @@ function BattleReplay({
   const [showLog, setShowLog]             = useState(false);
   const intervalRef                       = useRef<ReturnType<typeof setInterval>|null>(null);
   const pausedRef                         = useRef(false);
+  const speedRef                          = useRef(speed);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
 
   // 현재 HP — hits 배열의 모든 타겟 처리
   const hpState = useCallback((upTo: number) => {
@@ -1588,7 +1606,7 @@ function BattleReplay({
         const prefix = h.affinity === "advantage" ? "◆-" : "-";
         newFloats.push({ id: Date.now() + Math.random() + 0.1, val: h.damage, team: h.targetTeam, slot: h.targetSlot, color: h.isCrit ? "#ffd700" : col, prefix });
         if (h.barrierDmg && h.barrierDmg > 0) {
-          newFloats.push({ id: Date.now() + Math.random() + 0.2, val: h.barrierDmg, team: h.targetTeam, slot: h.targetSlot, color:"#60a5fa", prefix:"🛡-" });
+          newFloats.push({ id: Date.now() + Math.random() + 0.2, val: h.barrierDmg, team: h.targetTeam, slot: h.targetSlot, color:"#60a5fa", prefix:"B-" });
         }
       }
       if (h.healed > 0) {
@@ -1601,7 +1619,7 @@ function BattleReplay({
       const hasEffect = allHits.some(h => h.damage > 0 || h.healed > 0);
       if (!hasEffect) {
         const isHealSkill = ev.skillName.includes("치유") || ev.skillName.includes("자연") || ev.skillName.includes("회복") || ev.skillName.includes("힘");
-        newFloats.push({ id: Date.now() + Math.random(), val: 0, team: ev.actorTeam, slot: ev.actorSlot, color: isHealSkill ? "#4ade80" : "#60a5fa", prefix: isHealSkill ? "💚" : "🛡" });
+        newFloats.push({ id: Date.now() + Math.random(), val: 0, team: ev.actorTeam, slot: ev.actorSlot, color: isHealSkill ? "#4ade80" : "#60a5fa", prefix: isHealSkill ? "♥" : "◼" });
       }
     }
 
@@ -1632,19 +1650,30 @@ function BattleReplay({
     const logIcon = ev.skillType === "s3" ? "✦" : ev.skillType === "s2" ? "◆" : ev.skillType === "dot" ? "☠" : "·";
     setEventLog(p => [...p.slice(-29), { id: Date.now() + Math.random(), text: logText, color: logCol, icon: logIcon }]);
 
-    setHitSlots(hitSet);
-    setTimeout(() => setHitSlots(new Set()), 380);
-    setFloatNums(p => [...p.slice(-12), ...newFloats]);
-    newFloats.forEach(n => setTimeout(() => setFloatNums(p => p.filter(d => d.id !== n.id)), 900));
+    // 타격모션: 공격자 스윙 즉시 시작
+    if (ev.actorSlot >= 0) {
+      const actorKey = `${ev.actorTeam}-${ev.actorSlot}`;
+      setAttackSlots(new Set([actorKey]));
+      setTimeout(() => setAttackSlots(new Set()), 450);
+    }
 
-    if (newStatusFlt.length) {
-      setStatusFloats(p => [...p.slice(-8), ...newStatusFlt]);
-      newStatusFlt.forEach(n => setTimeout(() => setStatusFloats(p => p.filter(d => d.id !== n.id)), 1400));
-    }
-    if (newRings.length) {
-      setAffinityRings(p => [...p, ...newRings]);
-      newRings.forEach(r => setTimeout(() => setAffinityRings(p => p.filter(d => d.id !== r.id)), 600));
-    }
+    // 피격모션: 스윙 후 딜레이
+    const hitDelay = Math.min(180, speedRef.current * 0.25);
+    setTimeout(() => {
+      setHitSlots(hitSet);
+      setTimeout(() => setHitSlots(new Set()), 380);
+      setFloatNums(p => [...p.slice(-12), ...newFloats]);
+      newFloats.forEach(n => setTimeout(() => setFloatNums(p => p.filter(d => d.id !== n.id)), 900));
+
+      if (newStatusFlt.length) {
+        setStatusFloats(p => [...p.slice(-8), ...newStatusFlt]);
+        newStatusFlt.forEach(n => setTimeout(() => setStatusFloats(p => p.filter(d => d.id !== n.id)), 1400));
+      }
+      if (newRings.length) {
+        setAffinityRings(p => [...p, ...newRings]);
+        newRings.forEach(r => setTimeout(() => setAffinityRings(p => p.filter(d => d.id !== r.id)), 600));
+      }
+    }, hitDelay);
   }, []);
 
   // 자동 재생
@@ -1708,6 +1737,8 @@ function BattleReplay({
     if (intervalRef.current) clearInterval(intervalRef.current);
     pausedRef.current = false;
     setUltimateAnim(null);
+    setAttackSlots(new Set());
+    setHitSlots(new Set());
     setStep(log.length - 1);
     setTimeout(onDone, 300);
   };
@@ -1717,17 +1748,19 @@ function BattleReplay({
   const renderTeam = (chars: CharInfo[], teamKey: "attacker"|"defender") => {
     const isAtk = teamKey === "attacker";
     return chars.map(info => {
-      const key    = `${isAtk ? "a" : "d"}${info.slot}`;
-      const hitKey = `${teamKey}-${info.slot}`;
-      const isDead = hp[key] === 0;
-      const isHit  = hitSlots.has(hitKey);
-      const isAct  = activeActor?.team === teamKey && activeActor.slot === info.slot;
-      const snap   = crs.find(c => c.team === teamKey && c.slot === info.slot);
+      const key         = `${isAtk ? "a" : "d"}${info.slot}`;
+      const hitKey      = `${teamKey}-${info.slot}`;
+      const isDead      = hp[key] === 0;
+      const isHit       = hitSlots.has(hitKey);
+      const isAtking    = attackSlots.has(hitKey);
+      const isAct       = activeActor?.team === teamKey && activeActor.slot === info.slot;
+      const snap        = crs.find(c => c.team === teamKey && c.slot === info.slot);
       return (
         <div key={info.slot} style={{ position:"relative" }}>
           <UnitCard
             info={info} hp={hp[key] ?? info.maxHp}
             isActive={isAct} isHit={isHit} isDead={isDead} isPlayer={isAtk}
+            isAttacking={isAtking}
             buffs={snap?.buffs} debuffs={snap?.debuffs}
           />
           {/* 데미지·힐 플로팅 */}
@@ -1943,6 +1976,7 @@ export default function ColosseumPage() {
 
   // 세션 상태
   const [phase, setPhase]             = useState<Phase>("lobby");
+  const [lobbyTab, setLobbyTab]       = useState<"battle"|"deck"|"ai">("battle");
   const [showSeason, setShowSeason]   = useState(false);
 
   // 내 스탯 / 덱
@@ -1961,7 +1995,7 @@ export default function ColosseumPage() {
 
   // 배틀 / 결과
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
-  const [npcSection, setNpcSection]     = useState(true); // NPC 섹션 펼침 여부
+
 
   // 랭킹
   const [rankings, setRankings]       = useState<RankingEntry[]>([]);
@@ -2205,9 +2239,10 @@ export default function ColosseumPage() {
                 return (
                   <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
                     <DeckSlotCard charId={id} small/>
-                    <span style={{ fontSize:8, fontWeight:900, color:ec, background:`${ec}22`, border:`1px solid ${ec}55`, borderRadius:3, padding:"1px 5px", lineHeight:1.3 }}>
-                      {al?.icon ?? "★"} {ko ? al?.ko : ja ? al?.ja : al?.en}
-                    </span>
+                    <div style={{ display:"flex", alignItems:"center", gap:2, color:ec, background:`${ec}22`, border:`1px solid ${ec}55`, borderRadius:3, padding:"1px 5px" }}>
+                      <ArchetypeIcon arch={arch} size={8}/>
+                      <span style={{ fontSize:8, fontWeight:900, lineHeight:1.3 }}>{ko ? al?.ko : ja ? al?.ja : al?.en}</span>
+                    </div>
                   </div>
                 );
               })}
@@ -2337,9 +2372,36 @@ export default function ColosseumPage() {
 
       {showSeason && <SeasonRewardModal onClose={() => setShowSeason(false)} ko={ko} ja={ja} myPts={tierPts}/>}
 
+      {/* ══ 탭 바 ══════════════════════════════════════════════════════════════ */}
+      <div style={{ maxWidth:860, margin:"0 auto", padding:"0 12px" }}>
+        <div style={{ display:"flex", borderBottom:`2px solid ${C.border}`, marginTop:2 }}>
+          {([
+            { key:"battle" as const, icon:<Swords size={13} strokeWidth={2.5}/>, labelKo:"대전", labelJa:"対戦", labelEn:"Battle" },
+            { key:"deck"   as const, icon:<Sword  size={13} strokeWidth={2.5}/>, labelKo:"덱",   labelJa:"デッキ", labelEn:"Deck" },
+            { key:"ai"     as const, icon:<Bot    size={13} strokeWidth={2.5}/>, labelKo:"수련", labelJa:"修練",   labelEn:"Train" },
+          ]).map(t => {
+            const active = lobbyTab === t.key;
+            return (
+              <button key={t.key} onClick={() => setLobbyTab(t.key)}
+                style={{
+                  flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                  padding:"10px 4px", background:"none", border:"none", borderBottom: active ? `3px solid ${C.gold}` : "3px solid transparent",
+                  fontFamily:FONT, fontSize:12, fontWeight:900, letterSpacing:"0.06em",
+                  color: active ? C.gold : C.stoneFaint,
+                  cursor:"pointer", transition:"color 0.15s, border-color 0.15s",
+                  marginBottom:-2,
+                }}>
+                {t.icon}{ko?t.labelKo:ja?t.labelJa:t.labelEn}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={{ maxWidth:860, margin:"0 auto", padding:"14px 12px", display:"flex", flexDirection:"column", gap:12 }}>
 
-        {/* ══ 덱 구성 섹션 ═══════════════════════════════════════════════════ */}
+        {/* ══ 탭: 덱 구성 ════════════════════════════════════════════════════ */}
+        {lobbyTab === "deck" && (
         <div style={{ background:"linear-gradient(135deg,#18120a 0%,#0e0b06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
           {/* 헤더 */}
           <div style={{ padding:"10px 14px", background:"rgba(200,164,74,0.06)", borderBottom:`1px solid ${C.borderFaint}`, display:"flex", alignItems:"center", gap:8 }}>
@@ -2350,8 +2412,8 @@ export default function ColosseumPage() {
           {/* 공격/방어 덱 나란히 */}
           <div className="col-deck-wrap" style={{ display:"flex", gap:0 }}>
             {[
-              { type:"attack" as const,  label:ko?"공격 덱":ja?"攻撃":"ATK", slots:myAtkSlots,  accent:"#60a5fa", bgGrad:"linear-gradient(135deg,#061a30 0%,#040f1c 100%)", bdr:"#1e3a5f", icon:"⚔" },
-              { type:"defense" as const, label:ko?"방어 덱":ja?"防御":"DEF", slots:myDefSlots, accent:"#f87171", bgGrad:"linear-gradient(135deg,#200707 0%,#130404 100%)", bdr:"#4f0e0e", icon:"🛡" },
+              { type:"attack" as const,  label:ko?"공격 덱":ja?"攻撃":"ATK", slots:myAtkSlots,  accent:"#60a5fa", bgGrad:"linear-gradient(135deg,#061a30 0%,#040f1c 100%)", bdr:"#1e3a5f" },
+              { type:"defense" as const, label:ko?"방어 덱":ja?"防御":"DEF", slots:myDefSlots, accent:"#f87171", bgGrad:"linear-gradient(135deg,#200707 0%,#130404 100%)", bdr:"#4f0e0e" },
             ].map((dk, di) => (
               <div key={dk.type} style={{ flex:1, padding:"12px 10px", background:dk.bgGrad, borderLeft: di===1 ? `1px solid ${C.borderFaint}` : undefined }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
@@ -2384,10 +2446,53 @@ export default function ColosseumPage() {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* ══ 입장권 + 전투 시작 CTA ══════════════════════════════════════════ */}
+          {/* 덱 탭 안내 — 대전 탭 바로가기 */}
+          <div style={{ padding:"12px 14px", borderTop:`1px solid ${C.borderFaint}`, background:"rgba(0,0,0,0.2)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span style={{ fontSize:10, color:C.stoneFaint }}>
+              {ko?"덱 편성 후 대전 탭에서 전투를 시작하세요":ja?"デッキ編成後、対戦タブで戦闘を開始してください":"Set your deck, then go to Battle tab to fight"}
+            </span>
+            <button onClick={() => setLobbyTab("battle")}
+              style={{ display:"flex", alignItems:"center", gap:4, background:`${C.gold}18`, border:`1px solid ${C.gold}44`, color:C.gold, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 10px", borderRadius:4, cursor:"pointer" }}>
+              <Swords size={10} strokeWidth={2.5}/>{ko?"대전 탭":ja?"対戦タブ":"Battle Tab"}
+            </button>
+          </div>
+        </div>
+        )}
+
+        {/* ══ 탭: 대전 — 입장권 + 전투 시작 CTA ════════════════════════════ */}
+        {lobbyTab === "battle" && (<>
         <div style={{ background:"linear-gradient(135deg,#1a1208 0%,#0e0b06 100%)", border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 14px 16px" }}>
+          {/* 덱 미리보기 (소형) */}
+          <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+            {[
+              { label:ko?"공격":ja?"攻撃":"ATK", slots:myAtkSlots, accent:"#60a5fa" },
+              { label:ko?"방어":ja?"防御":"DEF", slots:myDefSlots, accent:"#f87171" },
+            ].map(dk => (
+              <div key={dk.label} style={{ flex:1, padding:"8px 10px", background:"rgba(0,0,0,0.3)", border:`1px solid ${C.borderFaint}`, borderRadius:7 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                  <span style={{ fontSize:9, fontWeight:900, color:dk.accent }}>{dk.label}</span>
+                  <button onClick={() => setLobbyTab("deck")} style={{ fontSize:8, color:C.stoneFaint, background:"none", border:"none", cursor:"pointer", padding:0, textDecoration:"underline" }}>
+                    {ko?"편집":ja?"編集":"Edit"}
+                  </button>
+                </div>
+                <div style={{ display:"flex", gap:3 }}>
+                  {Array.from({length:4}, (_,i) => {
+                    const id = dk.slots[i];
+                    if (!id) return <div key={i} style={{ width:30, height:30, border:`1.5px dashed ${C.borderFaint}`, borderRadius:4, flexShrink:0 }}/>;
+                    const ch = charById(id);
+                    const th = RARITY_THEME[ch.rarity as CharacterRarity];
+                    return (
+                      <div key={i} style={{ width:30, height:30, border:`1.5px solid ${th?.border ?? C.borderFaint}`, borderRadius:4, background:th?.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <PixelSprite type={ch.type as CharacterType} rarity={ch.rarity as CharacterRarity} size={22}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* 입장권 */}
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
             <div style={{ display:"flex", alignItems:"center", gap:5, flex:1 }}>
@@ -2411,7 +2516,7 @@ export default function ColosseumPage() {
 
           {/* 전투 시작 버튼 */}
           <button
-            disabled={tickets === 0 || myAtkSlots.length === 0 || rankings.filter(e=>e.userId!==user?.id).length === 0}
+            disabled={tickets === 0 || myAtkSlots.length === 0}
             onClick={() => document.getElementById("col-ranking")?.scrollIntoView({ behavior:"smooth" })}
             className="col-btn-shine"
             style={{
@@ -2428,108 +2533,20 @@ export default function ColosseumPage() {
           >
             <Swords size={20} strokeWidth={2.5}/>{" "}
             {tickets===0 ? (ko?"입장권 소진":ja?"入場券なし":"No Tickets")
-             : myAtkSlots.length===0 ? (ko?"공격 덱 없음":ja?"デッキなし":"Set Attack Deck")
-             : (ko?"결투 상대 선택":ja?"対戦相手選択":"Select Opponent")}
+             : myAtkSlots.length===0 ? (ko?"공격 덱 편성 필요":ja?"デッキなし":"Set Attack Deck First")
+             : (ko?"결투 상대 선택 ↓":ja?"対戦相手選択 ↓":"Select Opponent ↓")}
           </button>
           {myAtkSlots.length===0 && tickets>0 && (
             <p style={{ margin:"8px 0 0", fontSize:10, color:"#f87171", textAlign:"center" }}>
-              {ko?"↑ 공격 덱을 먼저 편성해주세요":ja?"↑ 攻撃デッキを先に編成してください":"↑ Please set up your attack deck first"}
+              <button onClick={() => setLobbyTab("deck")} style={{ display:"inline-flex", alignItems:"center", gap:3, background:"none", border:"none", color:"#f87171", cursor:"pointer", fontSize:10, fontFamily:FONT, textDecoration:"underline" }}>
+                <Sword size={10} strokeWidth={2.5}/>{ko?"덱 탭":ja?"デッキ":"Deck tab"}
+              </button>
+              {ko?"에서 공격 덱을 편성해 주세요":ja?"で攻撃デッキを編成してください":" — set up your attack deck first"}
             </p>
           )}
         </div>
 
-        {/* ══ AI 수련 상대 ══════════════════════════════════════════════════ */}
-        <div style={{ background:"linear-gradient(135deg,#12100a 0%,#0c0a06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
-          {/* 헤더 (토글) */}
-          <button onClick={() => setNpcSection(p => !p)} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 14px", background:"rgba(96,165,250,0.06)", borderBottom: npcSection ? `1px solid ${C.borderFaint}` : "none", border:"none", cursor:"pointer", fontFamily:FONT }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="6" stroke="#60a5fa" strokeWidth="1.5"/>
-                <rect x="5" y="4" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
-                <rect x="5" y="6.5" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
-                <rect x="5" y="9" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
-              </svg>
-              <span style={{ fontSize:12, fontWeight:900, color:"#60a5fa", letterSpacing:"0.1em" }}>
-                {ko?"AI 수련 상대":ja?"AI練習相手":"AI Practice"}
-              </span>
-              <span style={{ fontSize:9, color:"#60a5fa88", background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.3)", borderRadius:10, padding:"1px 7px" }}>
-                {ko?"패배 페널티 없음":ja?"敗北ペナルティなし":"No loss penalty"}
-              </span>
-            </div>
-            <ChevronRight size={14} color="#60a5fa" style={{ transform: npcSection ? "rotate(90deg)" : "rotate(0deg)", transition:"transform 0.2s" }}/>
-          </button>
-
-          {npcSection && (
-            <div style={{ padding:"10px 10px 12px" }}>
-              <p style={{ margin:"0 0 10px", fontSize:10, color:C.stoneFaint, lineHeight:1.5, paddingLeft:4 }}>
-                {ko?"유저가 적을 때도 언제든 연습하세요. 승리 시 포인트를 획득합니다.":ja?"いつでも練習できます。勝利でポイント獲得！":"Practice anytime. Win points for victories!"}
-              </p>
-              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-                {NPC_OPPONENTS.map(npc => {
-                  const t      = TIERS[npc.tierIdx];
-                  const onCd   = isOnCooldown(npc.id);
-                  const remMs  = getRemainingMs(npc.id);
-                  const can    = tickets > 0 && myAtkSlots.length > 0 && !onCd;
-                  const fmtCd  = (ms: number) => {
-                    const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
-                    return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-                  };
-                  return (
-                    <div key={npc.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 10px", background:`linear-gradient(90deg,${t.glow}10,transparent)`, border:`1px solid ${onCd ? "#4b5563" : t.color+"33"}`, borderRadius:7, transition:"border-color 0.15s", opacity: onCd ? 0.65 : 1 }}>
-                      {/* 티어 배지 */}
-                      <div style={{ flexShrink:0 }}>
-                        <TierBadgeSvg idx={npc.tierIdx} size={28}/>
-                      </div>
-                      {/* 덱 미리보기 */}
-                      <div style={{ display:"flex", gap:3, flexShrink:0 }}>
-                        {npc.slots.map((id, si) => {
-                          const ch = charById(id);
-                          const th = RARITY_THEME[ch.rarity as CharacterRarity];
-                          return (
-                            <div key={si} style={{ width:30, height:30, border:`1.5px solid ${th?.border ?? C.borderFaint}`, borderRadius:4, background:th?.bg ?? "#0a0805", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 0 5px ${th?.glow ?? "#000"}33` }}>
-                              <PixelSprite type={ch.type as CharacterType} rarity={ch.rarity as CharacterRarity} size={22}/>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* 이름 + 설명 + 난이도 */}
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                          <span style={{ fontSize:12, fontWeight:900, color: onCd ? C.stoneFaint : t.color }}>{ko?npc.nameKo:ja?npc.nameJa:npc.nameEn}</span>
-                          <span style={{ display:"flex", gap:1 }}>
-                            {Array.from({length:5}, (_,i) => (
-                              <svg key={i} width="9" height="9" viewBox="0 0 10 10">
-                                <polygon points="5,1 6.2,3.8 9.5,4 7,6.2 7.8,9.5 5,7.8 2.2,9.5 3,6.2 0.5,4 3.8,3.8" fill={i < npc.stars ? "#fbbf24" : "#2e1f06"}/>
-                              </svg>
-                            ))}
-                          </span>
-                        </div>
-                        <p style={{ margin:0, fontSize:9, color:C.stoneFaint, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ko ? npc.descKo : ja ? npc.descJa : npc.descEn}</p>
-                      </div>
-                      {/* 보상 + 도전 버튼 */}
-                      <div style={{ flexShrink:0, textAlign:"right" }}>
-                        <p style={{ margin:"0 0 4px", fontSize:10, fontWeight:900, color:"#4ade80", fontFamily:"monospace" }}>+{npc.winPts}P</p>
-                        {onCd && remMs ? (
-                          <div style={{ display:"flex", alignItems:"center", gap:4, background:"#0a0805", border:`1px solid ${C.borderFaint}`, borderRadius:4, padding:"4px 8px" }}>
-                            <span style={{ fontSize:9, color:C.stoneFaint }}>{ko?"재도전":ja?"再挑戦":"CD"}</span>
-                            <span style={{ fontFamily:"monospace", fontSize:10, fontWeight:900, color:"#f87171" }}>{fmtCd(remMs)}</span>
-                          </div>
-                        ) : (
-                          <button onClick={() => startNpcAttackConfirm(npc)} disabled={!can}
-                            style={{ display:"flex", alignItems:"center", gap:3, background: can ? `linear-gradient(180deg,${t.color},${t.glow})` : "#1e1508", border:`1px solid ${can?t.color:C.borderFaint}`, color: can ? "#0c0903" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 11px", borderRadius:4, cursor:can?"pointer":"not-allowed", boxShadow: can ? `0 3px 0 ${t.glow}88` : "none", transition:"all 0.15s" }}>
-                            <Swords size={9} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ══ 복수 목록 ═══════════════════════════════════════════════════ */}
+        {/* ══ 복수 목록 (대전 탭 안) ═══════════════════════════════════════ */}
         {revengeTargets.length > 0 && (
           <div style={{ background:"linear-gradient(135deg,#180a0a 0%,#0e0606 100%)", border:"1px solid #6b1414", borderRadius:10, overflow:"hidden" }}>
             <button
@@ -2716,6 +2733,96 @@ export default function ColosseumPage() {
             </div>
           )}
         </div>
+        </>)}
+
+        {/* ══ 탭: AI 수련 ════════════════════════════════════════════════════ */}
+        {lobbyTab === "ai" && (
+        <div style={{ background:"linear-gradient(135deg,#12100a 0%,#0c0a06 100%)", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden" }}>
+          {/* 헤더 */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 14px", background:"rgba(96,165,250,0.06)", borderBottom:`1px solid ${C.borderFaint}` }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" stroke="#60a5fa" strokeWidth="1.5"/>
+              <rect x="5" y="4" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
+              <rect x="5" y="6.5" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
+              <rect x="5" y="9" width="4" height="1.5" rx="0.5" fill="#60a5fa"/>
+            </svg>
+            <span style={{ fontSize:12, fontWeight:900, color:"#60a5fa", letterSpacing:"0.1em" }}>
+              {ko?"AI 수련 상대":ja?"AI練習相手":"AI Practice"}
+            </span>
+            <span style={{ fontSize:9, color:"#60a5fa88", background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.3)", borderRadius:10, padding:"1px 7px" }}>
+              {ko?"패배 페널티 없음":ja?"敗北ペナルティなし":"No loss penalty"}
+            </span>
+          </div>
+
+          <div style={{ padding:"10px 10px 12px" }}>
+            <p style={{ margin:"0 0 10px", fontSize:10, color:C.stoneFaint, lineHeight:1.5, paddingLeft:4 }}>
+              {ko?"유저가 적을 때도 언제든 연습하세요. 승리 시 포인트를 획득합니다.":ja?"いつでも練習できます。勝利でポイント獲得！":"Practice anytime. Win points for victories!"}
+            </p>
+            <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+              {NPC_OPPONENTS.map(npc => {
+                const t      = TIERS[npc.tierIdx];
+                const onCd   = isOnCooldown(npc.id);
+                const remMs  = getRemainingMs(npc.id);
+                const can    = tickets > 0 && myAtkSlots.length > 0 && !onCd;
+                const fmtCd  = (ms: number) => {
+                  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+                  return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+                };
+                return (
+                  <div key={npc.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 10px", background:`linear-gradient(90deg,${t.glow}10,transparent)`, border:`1px solid ${onCd ? "#4b5563" : t.color+"33"}`, borderRadius:7, transition:"border-color 0.15s", opacity: onCd ? 0.65 : 1 }}>
+                    {/* 티어 배지 */}
+                    <div style={{ flexShrink:0 }}>
+                      <TierBadgeSvg idx={npc.tierIdx} size={28}/>
+                    </div>
+                    {/* 덱 미리보기 */}
+                    <div style={{ display:"flex", gap:3, flexShrink:0 }}>
+                      {npc.slots.map((id, si) => {
+                        const ch = charById(id);
+                        const th = RARITY_THEME[ch.rarity as CharacterRarity];
+                        return (
+                          <div key={si} style={{ width:30, height:30, border:`1.5px solid ${th?.border ?? C.borderFaint}`, borderRadius:4, background:th?.bg ?? "#0a0805", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 0 5px ${th?.glow ?? "#000"}33` }}>
+                            <PixelSprite type={ch.type as CharacterType} rarity={ch.rarity as CharacterRarity} size={22}/>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* 이름 + 설명 + 난이도 */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                        <span style={{ fontSize:12, fontWeight:900, color: onCd ? C.stoneFaint : t.color }}>{ko?npc.nameKo:ja?npc.nameJa:npc.nameEn}</span>
+                        <span style={{ display:"flex", gap:1 }}>
+                          {Array.from({length:5}, (_,i) => (
+                            <svg key={i} width="9" height="9" viewBox="0 0 10 10">
+                              <polygon points="5,1 6.2,3.8 9.5,4 7,6.2 7.8,9.5 5,7.8 2.2,9.5 3,6.2 0.5,4 3.8,3.8" fill={i < npc.stars ? "#fbbf24" : "#2e1f06"}/>
+                            </svg>
+                          ))}
+                        </span>
+                      </div>
+                      <p style={{ margin:0, fontSize:9, color:C.stoneFaint, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ko ? npc.descKo : ja ? npc.descJa : npc.descEn}</p>
+                    </div>
+                    {/* 보상 + 도전 버튼 */}
+                    <div style={{ flexShrink:0, textAlign:"right" }}>
+                      <p style={{ margin:"0 0 4px", fontSize:10, fontWeight:900, color:"#4ade80", fontFamily:"monospace" }}>+{npc.winPts}P</p>
+                      {onCd && remMs ? (
+                        <div style={{ display:"flex", alignItems:"center", gap:4, background:"#0a0805", border:`1px solid ${C.borderFaint}`, borderRadius:4, padding:"4px 8px" }}>
+                          <span style={{ fontSize:9, color:C.stoneFaint }}>{ko?"재도전":ja?"再挑戦":"CD"}</span>
+                          <span style={{ fontFamily:"monospace", fontSize:10, fontWeight:900, color:"#f87171" }}>{fmtCd(remMs)}</span>
+                        </div>
+                      ) : (
+                        <button onClick={() => startNpcAttackConfirm(npc)} disabled={!can}
+                          style={{ display:"flex", alignItems:"center", gap:3, background: can ? `linear-gradient(180deg,${t.color},${t.glow})` : "#1e1508", border:`1px solid ${can?t.color:C.borderFaint}`, color: can ? "#0c0903" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"4px 11px", borderRadius:4, cursor:can?"pointer":"not-allowed", boxShadow: can ? `0 3px 0 ${t.glow}88` : "none", transition:"all 0.15s" }}>
+                            <Swords size={9} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+        </div>
+        )}
+
       </div>
     </div>
   );
