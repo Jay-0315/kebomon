@@ -561,9 +561,17 @@ function applySkill(
     let targets: CombatUnit[] = [];
 
     switch (skill.target) {
-      case "single":
-        targets = [enemies().sort((a, b) => a.slot - b.slot)[0]].filter(Boolean);
+      case "single": {
+        // 전열(slot 0-1) 가중치 3 : 후열(slot 2-3) 가중치 1
+        const alive = enemies();
+        const pool = alive.map(u => ({ unit: u, w: u.slot <= 1 ? 3 : 1 }));
+        const total = pool.reduce((s, p) => s + p.w, 0);
+        let r = Math.random() * total;
+        let picked = pool[0]?.unit;
+        for (const p of pool) { r -= p.w; if (r <= 0) { picked = p.unit; break; } }
+        if (picked) targets = [picked];
         break;
+      }
       case "all":
         targets = enemies();
         break;
@@ -901,16 +909,23 @@ function makeUnit(charId: number, slot: number, team: "attacker" | "defender", e
   const defBonus = (passive as { defBonusPct?: number }).defBonusPct ?? 0;
   const spdBonus = passive.spdBonusPct ?? 0;
 
+  // 진형 보너스: 전열(slot 0-1) HP+20%·DEF+10% / 후열(slot 2-3) ATK+15%·CritRate+8%
+  const isFront = slot <= 1;
+  const rowHpMult   = isFront ? 1.20 : 1.00;
+  const rowDefMult  = isFront ? 1.10 : 1.00;
+  const rowAtkMult  = isFront ? 1.00 : 1.15;
+  const rowCritBonus = isFront ? 0.00 : 0.08;
+
   return {
     slot, team, charId,
-    baseAtk:       Math.round(s.atk * (1 + atkBonus)),
-    baseDef:       Math.round(s.def * (1 + defBonus)),
+    baseAtk:       Math.round(s.atk * (1 + atkBonus) * rowAtkMult),
+    baseDef:       Math.round(s.def * (1 + defBonus) * rowDefMult),
     baseSpd:       Math.round(s.spd * (1 + spdBonus)),
-    baseCritRate:  s.critRate + (passive.critRateBonus ?? 0),
+    baseCritRate:  s.critRate + (passive.critRateBonus ?? 0) + rowCritBonus,
     baseCritDmg:   s.critDmg,
     effectiveness: s.effectiveness,
     effectResist:  s.effectResist + ((passive as { effectResistBonus?: number }).effectResistBonus ?? 0),
-    hp: s.hp, maxHp: s.hp,
+    hp: Math.round(s.hp * rowHpMult), maxHp: Math.round(s.hp * rowHpMult),
     cr: 0, alive: true,
     rarity: s.rarity, archetype: s.archetype, charType: s.charType, element: s.element,
     s1Cd: 0, s2Cd: 0, s3Cd: 0,

@@ -227,7 +227,7 @@ const NPC_OPPONENTS: NpcOpponent[] = [
   {
     id:"npc_7", nameKo:"레전더리 수호자",    nameJa:"レジェンダリー守護者",nameEn:"Legendary Guards",
     tierIdx:4, fakePts:13000,
-    slots:[57,53,52,135], enhLvs:[3,3,3,4], stars:4, winPts:250, lossPts:-20,
+    slots:[57,53,52,135], enhLvs:[3,3,3,4], stars:4, winPts:250, lossPts:0,
     descKo:"레전더리 등급의 엘리트 부대. 쉽지 않은 상대.",
     descJa:"レジェンダリーランクのエリート部隊。侮れない相手。",
     descEn:"Elite legendary-rank squad. No easy fight.",
@@ -235,7 +235,7 @@ const NPC_OPPONENTS: NpcOpponent[] = [
   {
     id:"npc_8", nameKo:"황금 전설 부대",     nameJa:"黄金伝説部隊",    nameEn:"Golden Legends",
     tierIdx:4, fakePts:14500,
-    slots:[137,154,191,216], enhLvs:[4,4,3,4], stars:4, winPts:280, lossPts:-30,
+    slots:[137,154,191,216], enhLvs:[4,4,3,4], stars:4, winPts:280, lossPts:0,
     descKo:"피닉스·드래곤·고래·말의 드림팀.",
     descJa:"フェニックス・ドラゴン・クジラ・馬のドリームチーム。",
     descEn:"Dream team of phoenix, dragon, whale, and horse.",
@@ -243,7 +243,7 @@ const NPC_OPPONENTS: NpcOpponent[] = [
   {
     id:"npc_9", nameKo:"신화 챔피언",        nameJa:"ミシックチャンピオン",nameEn:"Mythic Champion",
     tierIdx:5, fakePts:16500,
-    slots:[64,72,83,150], enhLvs:[5,5,5,5], stars:5, winPts:350, lossPts:-50,
+    slots:[64,72,83,150], enhLvs:[5,5,5,5], stars:5, winPts:350, lossPts:0,
     descKo:"신화 등급 최강자들의 집합. 승리하면 큰 보상.",
     descJa:"神話ランクの最強者たちの集合。勝利すれば大きな報酬。",
     descEn:"Assembly of mythic-rank elites. Big rewards for a win.",
@@ -251,10 +251,10 @@ const NPC_OPPONENTS: NpcOpponent[] = [
   {
     id:"npc_10", nameKo:"무패의 챌린저",     nameJa:"無敗のチャレンジャー",nameEn:"Undefeated Challenger",
     tierIdx:6, fakePts:21000,
-    slots:[158,204,208,235], enhLvs:[6,6,6,6], stars:5, winPts:500, lossPts:-100,
-    descKo:"전설의 챌린저. 이기면 명예를, 지면 굴욕을.",
-    descJa:"伝説のチャレンジャー。勝てば栄光、負ければ屈辱。",
-    descEn:"The legendary challenger. Glory for a win, humiliation for a loss.",
+    slots:[158,204,208,235], enhLvs:[6,6,6,6], stars:5, winPts:500, lossPts:0,
+    descKo:"전설의 챌린저. 이길 수 있다면 큰 보상이 기다린다.",
+    descJa:"伝説のチャレンジャー。勝てれば大きな報酬が待っている。",
+    descEn:"The legendary challenger. Massive rewards await if you can win.",
   },
 ];
 
@@ -683,65 +683,6 @@ function DeckSlotCard({
   );
 }
 
-// ─── 속도바 (좌측 사이드바, 배틀 중) ─────────────────────────────────────────
-function SpeedBar({
-  attackerChars, defenderChars, crs, activeActor,
-}: {
-  attackerChars: CharInfo[];
-  defenderChars: CharInfo[];
-  crs: Array<{ team: "attacker" | "defender"; slot: number; cr: number; alive: boolean }>;
-  activeActor: { team: "attacker" | "defender"; slot: number } | null;
-}) {
-  const { lang } = useLang();
-  const ko = lang === "ko"; const ja = lang === "ja";
-  const sorted = [...crs].sort((a, b) => b.cr - a.cr);
-  return (
-    <div style={{
-      width: 100, flexShrink:0, display:"flex", flexDirection:"column", gap:4,
-      padding:"8px 6px", background:"#0a0805", border:`1px solid ${C.borderFaint}`,
-      borderRadius:6, overflowY:"auto",
-    }}>
-      <p style={{ fontFamily:FONT, fontSize:9, color:C.stoneFaint, textAlign:"center", margin:"0 0 4px", letterSpacing:"0.1em" }}>
-        {ko ? "속도 순서" : ja ? "速度順" : "SPEED"}
-      </p>
-      {sorted.map(u => {
-        const chars = u.team === "attacker" ? attackerChars : defenderChars;
-        const info  = chars.find(c => c.slot === u.slot);
-        if (!info) return null;
-        const char   = charById(info.charId);
-        const isAtk  = u.team === "attacker";
-        const isAct  = activeActor?.team === u.team && activeActor?.slot === u.slot;
-        const accent = isAtk ? "#60a5fa" : "#f87171";
-        const teamLabel = isAtk
-          ? (ko ? "아군" : ja ? "味方" : "ATK")
-          : (ko ? "적군" : ja ? "敵" : "DEF");
-        return (
-          <div key={`${u.team}-${u.slot}`} style={{
-            display:"flex", flexDirection:"column", gap:2, padding:"4px 4px",
-            borderRadius:4, border:`1px solid ${isAct ? accent : "transparent"}`,
-            background: isAct ? `${accent}18` : "transparent",
-            opacity: u.alive ? 1 : 0.3,
-            transition:"all 0.25s",
-          }}>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <div style={{ flexShrink:0, width:20, height:20 }}>
-                <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={20}/>
-              </div>
-              <span style={{ fontFamily:"monospace", fontSize:9, color: accent, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {teamLabel}{u.slot+1}
-              </span>
-              <span style={{ fontFamily:"monospace", fontSize:8, color:C.stoneFaint }}>{u.cr}%</span>
-            </div>
-            <div style={{ height:3, background:"#1a1208", borderRadius:1, overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${u.cr}%`, background: accent, transition:"width 0.3s", borderRadius:1 }}/>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── 유닛 카드 (배틀 필드) ────────────────────────────────────────────────────
 function UnitCard({
   info, hp, isActive, isHit, isDead, isPlayer, isAttacking, buffs, debuffs,
@@ -1036,16 +977,29 @@ function DeckEditor({
         </div>
       </div>
 
-      {/* 현재 덱 슬롯 */}
+      {/* 현재 덱 슬롯 — 전열/후열 진형 */}
       <div style={{ background:"linear-gradient(135deg,#1e1508,#120e06)", border:`2px solid ${C.border}`, borderRadius:8, padding:"14px 12px", marginBottom:14 }}>
-        <p style={{ margin:"0 0 10px", fontSize:11, color:C.stone, letterSpacing:"0.12em" }}>
-          {ko?"현재 덱":ja?"現在のデッキ":"Current Deck"} ({slots.length}/4)
+        <p style={{ margin:"0 0 12px", fontSize:11, color:C.stone, letterSpacing:"0.12em" }}>
+          {ko?"진형 편성":ja?"陣形編成":"Formation"} ({slots.length}/4)
         </p>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-          {Array.from({ length: 4 }, (_, i) => (
-            <DeckSlotCard key={i} charId={slots[i] ?? null} onRemove={slots[i] ? () => removeSlot(i) : undefined}/>
-          ))}
-        </div>
+        {([
+          { label: ko?"전열":ja?"前列":"Front", hint: ko?"HP +20% · 방어 +10%":ja?"HP +20% · 防御 +10%":"HP +20% · DEF +10%", color:"#60a5fa", slots:[0,1] },
+          { label: ko?"후열":ja?"後列":"Back",  hint: ko?"공격 +15% · 치명 +8%":ja?"攻撃 +15% · 会心 +8%":"ATK +15% · CRIT +8%", color:"#f87171", slots:[2,3] },
+        ] as const).map(row => (
+          <div key={row.label} style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+              <div style={{ width:3, height:14, borderRadius:1, background:row.color }}/>
+              <span style={{ fontSize:11, fontWeight:900, color:row.color, letterSpacing:"0.1em" }}>{row.label}</span>
+              <span style={{ fontSize:9, color:C.stoneFaint }}>{row.hint}</span>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              {row.slots.map(i => (
+                <DeckSlotCard key={i} charId={slots[i] ?? null} onRemove={slots[i] ? () => removeSlot(i) : undefined}/>
+              ))}
+              {/* 빈 슬롯은 DeckSlotCard null이 처리 */}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* 캐릭터 선택 그리드 */}
@@ -1745,224 +1699,282 @@ function BattleReplay({
 
   const speedBtns = [{ label:"×1", v:700 },{ label:"×2", v:350 },{ label:"×3", v:180 }];
 
-  const renderTeam = (chars: CharInfo[], teamKey: "attacker"|"defender") => {
-    const isAtk = teamKey === "attacker";
-    return chars.map(info => {
-      const key         = `${isAtk ? "a" : "d"}${info.slot}`;
-      const hitKey      = `${teamKey}-${info.slot}`;
-      const isDead      = hp[key] === 0;
-      const isHit       = hitSlots.has(hitKey);
-      const isAtking    = attackSlots.has(hitKey);
-      const isAct       = activeActor?.team === teamKey && activeActor.slot === info.slot;
-      const snap        = crs.find(c => c.team === teamKey && c.slot === info.slot);
-      return (
-        <div key={info.slot} style={{ position:"relative" }}>
-          <UnitCard
-            info={info} hp={hp[key] ?? info.maxHp}
-            isActive={isAct} isHit={isHit} isDead={isDead} isPlayer={isAtk}
-            isAttacking={isAtking}
-            buffs={snap?.buffs} debuffs={snap?.debuffs}
-          />
-          {/* 데미지·힐 플로팅 */}
-          {floatNums.filter(d => d.team === teamKey && d.slot === info.slot).map(d => (
-            <div key={d.id} style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", fontFamily:"monospace", fontWeight:900, fontSize:15, color:d.color, pointerEvents:"none", animation:"col-dmg-up 0.9s ease-out forwards", textShadow:`0 0 8px ${d.color}`, whiteSpace:"nowrap" }}>
-              {d.val > 0 ? `${d.prefix}${d.val}` : d.prefix}
-            </div>
-          ))}
-          {/* 상태효과 플로팅 (Phase 4) */}
-          {statusFloats.filter(d => d.team === teamKey && d.slot === info.slot).map(d => (
-            <div key={d.id} style={{ position:"absolute", top:10, left:"50%", transform:"translateX(-50%)", fontFamily:FONT, fontWeight:900, fontSize:9, color:d.color, pointerEvents:"none", animation:"status-float 1.4s ease-out forwards", background:"rgba(0,0,0,0.65)", borderRadius:3, padding:"2px 5px", border:`1px solid ${d.color}55`, whiteSpace:"nowrap", zIndex:10 }}>
-              {d.text}
-            </div>
-          ))}
-          {/* 속성 상성 링 (Phase 5) */}
-          {affinityRings.filter(r => r.team === teamKey && r.slot === info.slot).map(r => (
-            <div key={r.id} style={{ position:"absolute", top:"50%", left:"50%", width:60, height:60, marginTop:-30, marginLeft:-30, borderRadius:"50%", border:"2px solid #ffd700", pointerEvents:"none", animation:"affinity-ring 0.6s ease-out forwards" }}/>
-          ))}
-        </div>
-      );
-    });
+  // 아레나 캐릭터 배치 좌표 (slot 0-1=전열·중앙, slot 2-3=후열·바깥)
+  const ATK_POS: React.CSSProperties[] = [
+    { left:"30%", top:"14%" },  // slot 0 — 전열
+    { left:"28%", top:"55%" },  // slot 1 — 전열
+    { left:"7%",  top:"8%"  },  // slot 2 — 후열
+    { left:"7%",  top:"62%" },  // slot 3 — 후열
+  ];
+  const DEF_POS: React.CSSProperties[] = [
+    { right:"30%", top:"14%" }, // slot 0 — 전열
+    { right:"28%", top:"55%" }, // slot 1 — 전열
+    { right:"7%",  top:"8%"  }, // slot 2 — 후열
+    { right:"7%",  top:"62%" }, // slot 3 — 후열
+  ];
+
+  const renderUnit = (info: CharInfo, teamKey: "attacker"|"defender", posStyle: React.CSSProperties) => {
+    const isAtk   = teamKey === "attacker";
+    const key      = `${isAtk ? "a" : "d"}${info.slot}`;
+    const hitKey   = `${teamKey}-${info.slot}`;
+    const isDead   = hp[key] === 0;
+    const isHit    = hitSlots.has(hitKey);
+    const isAtking = attackSlots.has(hitKey);
+    const isAct    = activeActor?.team === teamKey && activeActor.slot === info.slot;
+    const snap     = crs.find(c => c.team === teamKey && c.slot === info.slot);
+    return (
+      <div key={`${teamKey}-${info.slot}`} style={{ position:"absolute", ...posStyle }}>
+        <UnitCard
+          info={info} hp={hp[key] ?? info.maxHp}
+          isActive={isAct} isHit={isHit} isDead={isDead} isPlayer={isAtk}
+          isAttacking={isAtking} buffs={snap?.buffs} debuffs={snap?.debuffs}
+        />
+        {floatNums.filter(d => d.team === teamKey && d.slot === info.slot).map(d => (
+          <div key={d.id} style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", fontFamily:"monospace", fontWeight:900, fontSize:15, color:d.color, pointerEvents:"none", animation:"col-dmg-up 0.9s ease-out forwards", textShadow:`0 0 8px ${d.color}`, whiteSpace:"nowrap" }}>
+            {d.val > 0 ? `${d.prefix}${d.val}` : d.prefix}
+          </div>
+        ))}
+        {statusFloats.filter(d => d.team === teamKey && d.slot === info.slot).map(d => (
+          <div key={d.id} style={{ position:"absolute", top:10, left:"50%", transform:"translateX(-50%)", fontFamily:FONT, fontWeight:900, fontSize:9, color:d.color, pointerEvents:"none", animation:"status-float 1.4s ease-out forwards", background:"rgba(0,0,0,0.65)", borderRadius:3, padding:"2px 5px", border:`1px solid ${d.color}55`, whiteSpace:"nowrap", zIndex:10 }}>
+            {d.text}
+          </div>
+        ))}
+        {affinityRings.filter(r => r.team === teamKey && r.slot === info.slot).map(r => (
+          <div key={r.id} style={{ position:"absolute", top:"50%", left:"50%", width:60, height:60, marginTop:-30, marginLeft:-30, borderRadius:"50%", border:"2px solid #ffd700", pointerEvents:"none", animation:"affinity-ring 0.6s ease-out forwards" }}/>
+        ))}
+      </div>
+    );
   };
 
-  return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#050a10 0%,#080510 40%,#0a0505 70%,#050608 100%)", fontFamily:FONT, display:"flex", flexDirection:"column", padding:"10px 8px 16px" }}>
-      <style>{CSS}</style>
-      {ultimateAnim && (
-        <UltimateAnim
-          archetype={ultimateAnim.archetype}
-          actorTeam={ultimateAnim.actorTeam}
-          charId={ultimateAnim.charId}
-          onEnd={handleUltimateEnd}
-        />
-      )}
+  // 하단 HUD용 활성 캐릭터 정보
+  const activeCharInfo = activeActor
+    ? (activeActor.team === "attacker" ? attackerChars : defenderChars).find(c => c.slot === activeActor.slot)
+    : null;
+  const activeHpKey  = activeActor ? `${activeActor.team === "attacker" ? "a" : "d"}${activeActor.slot}` : "";
+  const activeHpVal  = activeCharInfo ? (hp[activeHpKey] ?? activeCharInfo.maxHp) : 0;
+  const activeSnap   = activeActor ? crs.find(c => c.team === activeActor.team && c.slot === activeActor.slot) : null;
+  const activeAccent = activeActor?.team === "attacker" ? "#60a5fa" : "#f87171";
 
-      {/* S2 미니 애니메이션 (Phase 5) */}
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:100, display:"flex", flexDirection:"column", background:"linear-gradient(160deg,#050a10 0%,#080510 40%,#0a0505 70%,#050608 100%)", fontFamily:FONT }}>
+      <style>{CSS}</style>
+      {ultimateAnim && <UltimateAnim archetype={ultimateAnim.archetype} actorTeam={ultimateAnim.actorTeam} charId={ultimateAnim.charId} onEnd={handleUltimateEnd}/>}
       {s2Anim && (
         <div style={{ position:"fixed", inset:0, zIndex:40, pointerEvents:"none", overflow:"hidden" }}>
           {[0, 1].map(i => {
             const sc = SKILL_COLOR.s2;
-            const rot = i === 0 ? -12 : 8;
             return (
-              <div key={i} style={{
-                position:"absolute", top:"50%", left:0, right:0, height:3,
-                marginTop: i === 0 ? -18 : 14,
-                background:`linear-gradient(90deg,transparent 0%,${sc}cc 30%,${sc} 50%,${sc}cc 70%,transparent 100%)`,
-                transform:`rotate(${rot}deg)`,
-                animation:"s2-slash 0.5s ease-out forwards",
-                boxShadow:`0 0 12px ${sc}`,
-              }}/>
+              <div key={i} style={{ position:"absolute", top:"50%", left:0, right:0, height:3, marginTop:i===0?-18:14, background:`linear-gradient(90deg,transparent,${sc}cc 30%,${sc} 50%,${sc}cc 70%,transparent)`, transform:`rotate(${i===0?-12:8}deg)`, animation:"s2-slash 0.5s ease-out forwards", boxShadow:`0 0 12px ${sc}` }}/>
             );
           })}
           <div style={{ position:"absolute", top:"50%", left:"50%", width:120, height:120, marginTop:-60, marginLeft:-60, borderRadius:"50%", border:`2px solid ${SKILL_COLOR.s2}88`, animation:"s2-ring 0.5s ease-out forwards" }}/>
         </div>
       )}
 
-      {/* 상단: 속도 + 스킵 + 로그 토글 */}
-      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"6px 10px", background:"rgba(0,0,0,0.5)", border:"1px solid #2e1f0633", borderRadius:8, backdropFilter:"blur(8px)" }}>
-        <span style={{ fontSize:9, color:C.stoneFaint, letterSpacing:"0.2em", marginRight:4 }}>SPD</span>
-        {speedBtns.map(b => (
-          <button key={b.v} onClick={() => setSpeed(b.v)} style={{ background: speed===b.v ? "linear-gradient(180deg,#c8a44a,#8b6020)" : "rgba(30,21,8,0.8)", border:`1px solid ${speed===b.v?"#c8a44a":"#2e1f06"}`, color: speed===b.v?"#1c1101":C.stone, fontFamily:"monospace", fontSize:11, fontWeight:900, padding:"3px 10px", borderRadius:4, cursor:"pointer", boxShadow: speed===b.v ? "0 0 8px #c8a44a44" : "none" }}>{b.label}</button>
-        ))}
-        <div style={{ flex:1, height:3, background:"rgba(0,0,0,0.5)", borderRadius:2, overflow:"hidden", margin:"0 4px" }}>
-          <div style={{ height:"100%", width:`${Math.min(100,(step+1)/log.length*100)}%`, background:"linear-gradient(90deg,#3b82f6,#c8a44a,#ef4444)", borderRadius:2, transition:"width 0.3s" }}/>
-        </div>
-        <span style={{ fontSize:9, color:C.stoneFaint, fontFamily:"monospace" }}>{Math.max(0,step+1)}/{log.length}</span>
-        <button onClick={() => setShowLog(p => !p)} style={{ display:"flex", alignItems:"center", gap:3, background: showLog ? "rgba(96,165,250,0.15)" : "rgba(30,21,8,0.8)", border:`1px solid ${showLog?"#60a5fa66":C.borderFaint}`, color: showLog ? "#60a5fa" : C.stone, fontFamily:FONT, fontSize:10, padding:"3px 8px", borderRadius:4, cursor:"pointer" }}>
-          LOG
+      {/* ── 상단 HUD ─────────────────────────────────────────────────────── */}
+      <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", background:"rgba(0,0,0,0.78)", backdropFilter:"blur(12px)", borderBottom:"1px solid #ffffff08", flexShrink:0, zIndex:10 }}>
+        {/* 컨트롤 */}
+        <button onClick={skip} style={{ display:"flex", alignItems:"center", gap:3, background:"rgba(30,21,8,0.9)", border:`1px solid ${C.borderFaint}`, color:C.stone, fontFamily:FONT, fontSize:10, padding:"3px 8px", borderRadius:4, cursor:"pointer" }}>
+          <SkipForward size={11}/>{ko?"스킵":ja?"スキップ":"Skip"}
         </button>
-        <button onClick={skip} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(30,21,8,0.8)", border:`1px solid ${C.borderFaint}`, color:C.stone, fontFamily:FONT, fontSize:10, padding:"3px 10px", borderRadius:4, cursor:"pointer" }}>
-          <SkipForward size={11}/>{" "}{ko ? "스킵" : ja ? "スキップ" : "Skip"}
+        {speedBtns.map(b => (
+          <button key={b.v} onClick={() => setSpeed(b.v)} style={{ background:speed===b.v?"linear-gradient(180deg,#c8a44a,#8b6020)":"rgba(30,21,8,0.9)", border:`1px solid ${speed===b.v?"#c8a44a":"#2e1f06"}`, color:speed===b.v?"#1c1101":C.stone, fontFamily:"monospace", fontSize:11, fontWeight:900, padding:"3px 8px", borderRadius:4, cursor:"pointer", boxShadow:speed===b.v?"0 0 8px #c8a44a44":"none" }}>{b.label}</button>
+        ))}
+
+        {/* 중앙: 양팀 미니 HP */}
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+          {/* 공격팀 */}
+          <div style={{ display:"flex", gap:4, alignItems:"flex-end" }}>
+            {attackerChars.map(info => {
+              const k = `a${info.slot}`;
+              const curHp = hp[k] ?? info.maxHp;
+              const pct   = curHp / info.maxHp;
+              const char  = charById(info.charId);
+              const isAct = activeActor?.team === "attacker" && activeActor.slot === info.slot;
+              const hpCol = pct > 0.5 ? "#4ade80" : pct > 0.25 ? "#fbbf24" : "#ef4444";
+              return (
+                <div key={info.slot} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, opacity:curHp===0?0.22:1, transition:"opacity 0.3s" }}>
+                  <div style={{ border:`1.5px solid ${isAct?"#60a5fa":"#1e3a5f"}`, borderRadius:4, padding:1, background:"#061830", boxShadow:isAct?"0 0 10px #60a5fa99":"none", transition:"all 0.25s" }}>
+                    <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={22}/>
+                  </div>
+                  <div style={{ width:26, height:3, background:"#0a0f1a", borderRadius:1, overflow:"hidden" }}>
+                    <div style={{ width:`${pct*100}%`, height:"100%", background:hpCol, borderRadius:1, transition:"width 0.4s" }}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* VS */}
+          <span style={{ fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:900, color:C.gold, letterSpacing:"0.04em", textShadow:`0 0 10px ${C.gold}`, flexShrink:0 }}>VS</span>
+
+          {/* 방어팀 */}
+          <div style={{ display:"flex", gap:4, alignItems:"flex-end", flexDirection:"row-reverse" }}>
+            {defenderChars.map(info => {
+              const k = `d${info.slot}`;
+              const curHp = hp[k] ?? info.maxHp;
+              const pct   = curHp / info.maxHp;
+              const char  = charById(info.charId);
+              const isAct = activeActor?.team === "defender" && activeActor.slot === info.slot;
+              const hpCol = pct > 0.5 ? "#4ade80" : pct > 0.25 ? "#fbbf24" : "#ef4444";
+              return (
+                <div key={info.slot} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, opacity:curHp===0?0.22:1, transition:"opacity 0.3s" }}>
+                  <div style={{ border:`1.5px solid ${isAct?"#f87171":"#4f1010"}`, borderRadius:4, padding:1, background:"#180606", boxShadow:isAct?"0 0 10px #f8717199":"none", transition:"all 0.25s" }}>
+                    <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={22}/>
+                  </div>
+                  <div style={{ width:26, height:3, background:"#1a0808", borderRadius:1, overflow:"hidden" }}>
+                    <div style={{ width:`${pct*100}%`, height:"100%", background:hpCol, borderRadius:1, transition:"width 0.4s" }}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 로그 + 진행 */}
+        <span style={{ fontFamily:"monospace", fontSize:9, color:C.stoneFaint }}>{Math.max(0,step+1)}/{log.length}</span>
+        <button onClick={() => setShowLog(p=>!p)} style={{ background:showLog?"rgba(96,165,250,0.15)":"rgba(30,21,8,0.9)", border:`1px solid ${showLog?"#60a5fa66":C.borderFaint}`, color:showLog?"#60a5fa":C.stone, fontFamily:FONT, fontSize:10, padding:"3px 8px", borderRadius:4, cursor:"pointer" }}>
+          LOG
         </button>
       </div>
 
       {/* 스킬 배너 */}
-      <div style={{ minHeight:32, marginBottom:4, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        {skillBanner && (
-          <div style={{
-            display:"inline-flex", alignItems:"center", gap:8,
-            background:`linear-gradient(90deg, transparent 0%, ${SKILL_COLOR[skillBanner.type]}22 20%, ${SKILL_COLOR[skillBanner.type]}18 80%, transparent 100%)`,
-            border:`1px solid ${SKILL_COLOR[skillBanner.type]}66`,
-            borderLeft:"none", borderRight:"none",
-            padding:"5px 28px",
-            position:"relative", overflow:"hidden",
-            animation:"col-skill-in 0.2s ease-out",
-            width:"100%",
-          }}>
-            {/* 좌측 글로우 라인 */}
-            <div style={{ position:"absolute", left:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg, transparent, ${SKILL_COLOR[skillBanner.type]}, transparent)` }}/>
-            {/* 우측 글로우 라인 */}
-            <div style={{ position:"absolute", right:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg, transparent, ${SKILL_COLOR[skillBanner.type]}, transparent)` }}/>
-            <span style={{ fontSize:8, fontWeight:900, color:SKILL_COLOR[skillBanner.type], letterSpacing:"0.25em", background:`${SKILL_COLOR[skillBanner.type]}22`, border:`1px solid ${SKILL_COLOR[skillBanner.type]}55`, padding:"2px 7px", borderRadius:3 }}>
-              {skillLang[skillBanner.type]}
-            </span>
-            <span style={{ fontSize:15, fontWeight:900, color:"#fff", textShadow:`0 0 16px ${SKILL_COLOR[skillBanner.type]}, 0 0 32px ${SKILL_COLOR[skillBanner.type]}88`, letterSpacing:"0.06em", flex:1, textAlign:"center" }}>
-              {skillBanner.name}
-            </span>
+      {skillBanner && (
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, zIndex:10 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%", background:`linear-gradient(90deg,transparent,${SKILL_COLOR[skillBanner.type]}18,${SKILL_COLOR[skillBanner.type]}18,transparent)`, border:`1px solid ${SKILL_COLOR[skillBanner.type]}55`, borderLeft:"none", borderRight:"none", padding:"4px 28px", position:"relative", overflow:"hidden", animation:"col-skill-in 0.2s ease-out" }}>
+            <div style={{ position:"absolute", left:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg,transparent,${SKILL_COLOR[skillBanner.type]},transparent)` }}/>
+            <div style={{ position:"absolute", right:0, top:0, bottom:0, width:3, background:`linear-gradient(180deg,transparent,${SKILL_COLOR[skillBanner.type]},transparent)` }}/>
+            <span style={{ fontSize:8, fontWeight:900, color:SKILL_COLOR[skillBanner.type], letterSpacing:"0.25em", background:`${SKILL_COLOR[skillBanner.type]}22`, border:`1px solid ${SKILL_COLOR[skillBanner.type]}55`, padding:"1px 6px", borderRadius:3, flexShrink:0 }}>{skillLang[skillBanner.type]}</span>
+            <span style={{ fontSize:14, fontWeight:900, color:"#fff", textShadow:`0 0 14px ${SKILL_COLOR[skillBanner.type]}`, letterSpacing:"0.06em", flex:1, textAlign:"center" }}>{skillBanner.name}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── 아레나 ────────────────────────────────────────────────────────── */}
+      <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
+        {/* 분위기 그라데이션 */}
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 70% 50% at 50% 95%,rgba(200,164,74,0.07),transparent)", pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 45% 80% at 13% 50%,rgba(96,165,250,0.05),transparent)", pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 45% 80% at 87% 50%,rgba(248,113,113,0.05),transparent)", pointerEvents:"none" }}/>
+        {/* 중앙 구분선 */}
+        <div style={{ position:"absolute", top:"4%", bottom:"4%", left:"50%", width:1, background:"linear-gradient(180deg,transparent,#c8a44a22,#c8a44a44,#c8a44a22,transparent)", transform:"translateX(-50%)", pointerEvents:"none" }}/>
+        {/* 팀 레이블 */}
+        <div style={{ position:"absolute", top:6, left:0, width:"50%", textAlign:"center", pointerEvents:"none" }}>
+          <span style={{ fontSize:8, color:"#60a5fa44", fontWeight:900, letterSpacing:"0.3em" }}>{ko?"공격팀":ja?"攻撃":"ATTACK"}</span>
+        </div>
+        <div style={{ position:"absolute", top:6, right:0, width:"50%", textAlign:"center", pointerEvents:"none" }}>
+          <span style={{ fontSize:8, color:"#f8717144", fontWeight:900, letterSpacing:"0.3em" }}>{ko?"방어팀":ja?"防御":"DEFENSE"}</span>
+        </div>
+        {/* 전열/후열 구분선 (공격팀) */}
+        <div style={{ position:"absolute", top:"4%", bottom:"4%", left:"22%", width:1, background:"linear-gradient(180deg,transparent,#60a5fa18,#60a5fa28,#60a5fa18,transparent)", pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", top:"3%", left:"19%", pointerEvents:"none" }}>
+          <span style={{ fontSize:7, color:"#60a5fa33", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"전열":ja?"前列":"FRONT"}</span>
+        </div>
+        <div style={{ position:"absolute", top:"3%", left:"4%", pointerEvents:"none" }}>
+          <span style={{ fontSize:7, color:"#60a5fa22", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"후열":ja?"後列":"BACK"}</span>
+        </div>
+        {/* 전열/후열 구분선 (방어팀) */}
+        <div style={{ position:"absolute", top:"4%", bottom:"4%", right:"22%", width:1, background:"linear-gradient(180deg,transparent,#f8717118,#f8717128,#f8717118,transparent)", pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", top:"3%", right:"19%", pointerEvents:"none" }}>
+          <span style={{ fontSize:7, color:"#f8717133", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"전열":ja?"前列":"FRONT"}</span>
+        </div>
+        <div style={{ position:"absolute", top:"3%", right:"4%", pointerEvents:"none" }}>
+          <span style={{ fontSize:7, color:"#f8717122", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"후열":ja?"後列":"BACK"}</span>
+        </div>
+
+        {/* 캐릭터 */}
+        {attackerChars.map((info, i) => renderUnit(info, "attacker", ATK_POS[info.slot] ?? ATK_POS[i % 4]))}
+        {defenderChars.map((info, i) => renderUnit(info, "defender", DEF_POS[info.slot] ?? DEF_POS[i % 4]))}
+
+        {/* 이벤트 로그 오버레이 */}
+        {showLog && (
+          <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"rgba(0,0,0,0.82)", borderTop:"1px solid #1e3a5f44", padding:"5px 8px", backdropFilter:"blur(6px)", maxHeight:110, overflowY:"auto", zIndex:20 }}>
+            <div style={{ display:"flex", flexDirection:"column-reverse", gap:2 }}>
+              {[...eventLog].reverse().slice(0, 12).map(e => (
+                <div key={e.id} style={{ display:"flex", alignItems:"baseline", gap:5, animation:"log-in 0.2s ease-out" }}>
+                  <span style={{ fontSize:9, color:e.color, flexShrink:0, fontWeight:900 }}>{e.icon}</span>
+                  <span style={{ fontSize:9, fontFamily:"monospace", color:e.color, lineHeight:1.4 }}>{e.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* 메인 배틀 영역 */}
-      <div style={{ display:"flex", gap:8, flex:1 }}>
-        {/* 속도 바 (좌측) */}
-        <SpeedBar attackerChars={attackerChars} defenderChars={defenderChars} crs={crs} activeActor={activeActor}/>
+      {/* ── 하단 HUD ─────────────────────────────────────────────────────── */}
+      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background:"rgba(0,0,0,0.82)", backdropFilter:"blur(12px)", borderTop:"1px solid #ffffff08", flexShrink:0, minHeight:74 }}>
+        {/* 활성 캐릭터 패널 */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0 }}>
+          {activeCharInfo ? (() => {
+            const char    = charById(activeCharInfo.charId);
+            const elemCol = ELEMENT_COLOR[activeCharInfo.element] ?? "#888";
+            const th      = RARITY_THEME[activeCharInfo.rarity as CharacterRarity];
+            const pct     = activeCharInfo.maxHp > 0 ? activeHpVal / activeCharInfo.maxHp : 0;
+            const hpCol   = pct > 0.5 ? "#4ade80" : pct > 0.25 ? "#fbbf24" : "#ef4444";
+            const actBuf  = (activeSnap?.buffs  ?? []).map(b => BUFF_META[b.type]).filter(Boolean);
+            const actDeb  = (activeSnap?.debuffs ?? []).map(d => DEBUFF_META[d.type]).filter(Boolean);
+            return (
+              <>
+                <div style={{ flexShrink:0, border:`2px solid ${activeAccent}99`, borderRadius:8, padding:2, background:`${activeAccent}0d`, boxShadow:`0 0 18px ${activeAccent}44`, animation:"col-active-glow 1.5s ease-in-out infinite" }}>
+                  <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={50}/>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:3 }}>
+                    <span style={{ fontFamily:FONT, fontSize:12, fontWeight:900, color:activeAccent, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{char.type}</span>
+                    <div style={{ width:8, height:8, borderRadius:"50%", background:elemCol, flexShrink:0, boxShadow:`0 0 6px ${elemCol}` }}/>
+                    <span style={{ fontSize:8, color:`${th?.color ?? activeAccent}99`, background:`${th?.color ?? activeAccent}11`, border:`1px solid ${th?.color ?? activeAccent}33`, borderRadius:3, padding:"1px 4px", fontWeight:900, flexShrink:0 }}>{activeCharInfo.rarity}</span>
+                  </div>
+                  <div style={{ height:5, background:"rgba(0,0,0,0.6)", borderRadius:3, overflow:"hidden", border:`1px solid ${activeAccent}33`, marginBottom:3 }}>
+                    <div style={{ height:"100%", width:`${pct*100}%`, background:hpCol, borderRadius:3, transition:"width 0.4s" }}/>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <span style={{ fontFamily:"monospace", fontSize:9, color:`${hpCol}cc` }}>{activeHpVal}/{activeCharInfo.maxHp}</span>
+                    <div style={{ display:"flex", gap:2, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                      {actBuf.slice(0,3).map((m,i) => <span key={i} style={{ fontSize:7, fontWeight:900, color:m.color, background:m.bg, borderRadius:2, padding:"1px 3px" }}>{m.label}</span>)}
+                      {actDeb.slice(0,3).map((m,i) => <span key={i} style={{ fontSize:7, fontWeight:900, color:m.color, background:m.bg, borderRadius:2, padding:"1px 3px" }}>{m.label}</span>)}
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })() : (
+            <span style={{ fontSize:10, color:C.stoneFaint }}>{ko?"대기 중...":ja?"待機中...":"Waiting..."}</span>
+          )}
+        </div>
 
-        {/* 배틀 필드 */}
-        <div style={{ flex:1, display:"flex", gap:6 }}>
-          {/* 공격팀 */}
-          <div style={{
-            flex:1, display:"flex", flexDirection:"column", gap:10, padding:"10px 8px",
-            background:"linear-gradient(160deg,#0a2540 0%,#061a30 40%,#040f1c 100%)",
-            border:"1px solid #1e3a5f",
-            borderRadius:8,
-            position:"relative", overflow:"hidden",
-            boxShadow:"inset 0 0 40px rgba(96,165,250,0.06), 0 0 20px rgba(96,165,250,0.08)",
-          }}>
-            {/* 스캔라인 오버레이 */}
-            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden", borderRadius:8 }}>
-              <div style={{ position:"absolute", left:0, right:0, height:2, background:"linear-gradient(90deg,transparent,rgba(96,165,250,0.18),transparent)", animation:"col-scan 3.5s linear infinite" }}/>
-              <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(96,165,250,0.025) 18px,rgba(96,165,250,0.025) 19px)", pointerEvents:"none" }}/>
-            </div>
-            {/* 코너 장식 */}
-            <div style={{ position:"absolute", top:4, left:4, width:10, height:10, borderTop:"2px solid #3b82f666", borderLeft:"2px solid #3b82f666", borderRadius:"2px 0 0 0" }}/>
-            <div style={{ position:"absolute", top:4, right:4, width:10, height:10, borderTop:"2px solid #3b82f666", borderRight:"2px solid #3b82f666", borderRadius:"0 2px 0 0" }}/>
-            {/* 헤더 */}
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, position:"relative", zIndex:1 }}>
-              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,transparent,#3b82f655)" }}/>
-              <span style={{ fontSize:9, color:"#60a5fa", fontWeight:900, letterSpacing:"0.3em" }}>{ko ? "공격" : ja ? "攻撃" : "ATK"}</span>
-              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,#3b82f655,transparent)" }}/>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center", position:"relative", zIndex:1 }}>
-              {renderTeam(attackerChars, "attacker")}
-            </div>
-            {/* 바닥 글로우 */}
-            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"linear-gradient(0deg,rgba(96,165,250,0.1),transparent)", pointerEvents:"none" }}/>
+        {/* CR 순서 인디케이터 */}
+        <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+          <span style={{ fontSize:7, color:C.stoneFaint, letterSpacing:"0.2em", fontWeight:900 }}>TURN</span>
+          <div style={{ display:"flex", gap:4 }}>
+            {[...crs].sort((a,b) => b.cr - a.cr).slice(0, 6).map(u => {
+              const chars = u.team === "attacker" ? attackerChars : defenderChars;
+              const info  = chars.find(c => c.slot === u.slot);
+              if (!info) return null;
+              const char   = charById(info.charId);
+              const isAct  = activeActor?.team === u.team && activeActor.slot === u.slot;
+              const accent = u.team === "attacker" ? "#60a5fa" : "#f87171";
+              return (
+                <div key={`${u.team}-${u.slot}`} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1, opacity:u.alive?1:0.22, transition:"opacity 0.3s" }}>
+                  <div style={{ border:`1.5px solid ${isAct?accent:accent+"44"}`, borderRadius:"50%", padding:1, background:isAct?`${accent}22`:"transparent", boxShadow:isAct?`0 0 8px ${accent}88`:undefined, transition:"all 0.25s" }}>
+                    <PixelSprite type={char.type as CharacterType} rarity={char.rarity as CharacterRarity} size={20}/>
+                  </div>
+                  <div style={{ width:22, height:2, background:"rgba(0,0,0,0.5)", borderRadius:1, overflow:"hidden" }}>
+                    <div style={{ width:`${u.cr}%`, height:"100%", background:accent, borderRadius:1, transition:"width 0.3s" }}/>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* VS 구분자 */}
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", width:28, gap:4 }}>
-            {/* 상단 에너지 라인 */}
-            <div style={{ flex:1, width:1, background:"linear-gradient(180deg,transparent,#c8a44a55,#c8a44a,#c8a44a55,transparent)", animation:"col-energy 2s ease-in-out infinite" }}/>
-            {/* VS 텍스트 */}
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-              <div style={{ width:20, height:20, borderRadius:"50%", background:"radial-gradient(circle,#c8a44a33,transparent)", border:"1px solid #c8a44a55", display:"flex", alignItems:"center", justifyContent:"center", animation:"col-vs-beat 1.8s ease-in-out infinite" }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" style={{ overflow:"visible" }}>
-                  <line x1="2" y1="12" x2="12" y2="2" stroke="#c8a44a" strokeWidth="1.5" strokeLinecap="round"/>
-                  <line x1="2" y1="2" x2="12" y2="12" stroke="#c8a44a" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="7" cy="7" r="2" fill="#c8a44a" opacity="0.7"/>
-                </svg>
-              </div>
-              <span style={{ fontFamily:"monospace", fontSize:8, color:"#c8a44a88", fontWeight:900, letterSpacing:"0.05em", writingMode:"vertical-rl" }}>VS</span>
-            </div>
-            {/* 하단 에너지 라인 */}
-            <div style={{ flex:1, width:1, background:"linear-gradient(180deg,#c8a44a55,#c8a44a,#c8a44a55,transparent)", animation:"col-energy 2s ease-in-out 1s infinite" }}/>
+        {/* 진행도 */}
+        <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+          <div style={{ width:56, height:3, background:"rgba(0,0,0,0.5)", borderRadius:2, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:`${Math.min(100,(step+1)/log.length*100)}%`, background:"linear-gradient(90deg,#3b82f6,#c8a44a,#ef4444)", borderRadius:2, transition:"width 0.3s" }}/>
           </div>
-
-          {/* 방어팀 */}
-          <div style={{
-            flex:1, display:"flex", flexDirection:"column", gap:10, padding:"10px 8px",
-            background:"linear-gradient(200deg,#250606 0%,#1a0404 40%,#100303 100%)",
-            border:"1px solid #5a1010",
-            borderRadius:8,
-            position:"relative", overflow:"hidden",
-            boxShadow:"inset 0 0 40px rgba(248,113,113,0.06), 0 0 20px rgba(248,113,113,0.08)",
-          }}>
-            {/* 스캔라인 오버레이 */}
-            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden", borderRadius:8 }}>
-              <div style={{ position:"absolute", left:0, right:0, height:2, background:"linear-gradient(90deg,transparent,rgba(248,113,113,0.18),transparent)", animation:"col-scan 4s linear infinite 1s" }}/>
-              <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(248,113,113,0.025) 18px,rgba(248,113,113,0.025) 19px)", pointerEvents:"none" }}/>
-            </div>
-            {/* 코너 장식 */}
-            <div style={{ position:"absolute", top:4, left:4, width:10, height:10, borderTop:"2px solid #ef444466", borderLeft:"2px solid #ef444466", borderRadius:"2px 0 0 0" }}/>
-            <div style={{ position:"absolute", top:4, right:4, width:10, height:10, borderTop:"2px solid #ef444466", borderRight:"2px solid #ef444466", borderRadius:"0 2px 0 0" }}/>
-            {/* 헤더 */}
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, position:"relative", zIndex:1 }}>
-              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,transparent,#ef444455)" }}/>
-              <span style={{ fontSize:9, color:"#f87171", fontWeight:900, letterSpacing:"0.3em" }}>{ko ? "방어" : ja ? "防御" : "DEF"}</span>
-              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,#ef444455,transparent)" }}/>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center", position:"relative", zIndex:1 }}>
-              {renderTeam(defenderChars, "defender")}
-            </div>
-            {/* 바닥 글로우 */}
-            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"linear-gradient(0deg,rgba(248,113,113,0.1),transparent)", pointerEvents:"none" }}/>
-          </div>
+          <span style={{ fontFamily:"monospace", fontSize:8, color:C.stoneFaint }}>{Math.max(0,step+1)}/{log.length}</span>
         </div>
       </div>
-
-      {/* 이벤트 로그 패널 (Phase 4) */}
-      {showLog && (
-        <div style={{ marginTop:8, background:"rgba(0,0,0,0.65)", border:"1px solid #1e3a5f55", borderRadius:8, padding:"6px 8px", backdropFilter:"blur(6px)", maxHeight:140, overflowY:"auto" }}>
-          <div style={{ display:"flex", flexDirection:"column-reverse", gap:2 }}>
-            {[...eventLog].reverse().slice(0, 15).map(e => (
-              <div key={e.id} style={{ display:"flex", alignItems:"baseline", gap:5, animation:"log-in 0.2s ease-out" }}>
-                <span style={{ fontSize:9, color:e.color, flexShrink:0, fontWeight:900 }}>{e.icon}</span>
-                <span style={{ fontSize:9, fontFamily:"monospace", color:e.color, lineHeight:1.4 }}>{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2144,12 +2156,25 @@ export default function ColosseumPage() {
           </p>
         </div>
         <div style={{ background:"linear-gradient(135deg,#1e1508,#120e06)", border:`2px solid ${C.border}`, borderRadius:8, padding:"16px 28px", textAlign:"center" }}>
-          <p style={{ fontFamily:"monospace", fontSize:32, fontWeight:900, color: battleResult.pointsDelta >= 0 ? "#4ade80" : "#f87171", margin:"0 0 4px" }}>
-            {battleResult.pointsDelta >= 0 ? "+" : ""}{battleResult.pointsDelta} pts
-          </p>
-          <p style={{ fontSize:12, color:C.stone, margin:0 }}>
-            {ko?"현재":"Total"}: {battleResult.tierPoints.toLocaleString()} pts
-          </p>
+          {npcTarget && !won ? (
+            <>
+              <p style={{ fontFamily:"monospace", fontSize:20, fontWeight:900, color:"#60a5fa", margin:"0 0 4px" }}>
+                {ko?"패배 무손실":ja?"敗北ペナルティなし":"No Penalty"}
+              </p>
+              <p style={{ fontSize:11, color:C.stoneFaint, margin:0 }}>
+                {ko?"AI 수련 전투 — 점수 변동 없음":ja?"AI練習戦闘 — スコア変動なし":"AI practice — score unchanged"}
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{ fontFamily:"monospace", fontSize:32, fontWeight:900, color: battleResult.pointsDelta >= 0 ? "#4ade80" : "#f87171", margin:"0 0 4px" }}>
+                {battleResult.pointsDelta >= 0 ? "+" : ""}{battleResult.pointsDelta} pts
+              </p>
+              <p style={{ fontSize:12, color:C.stone, margin:0 }}>
+                {ko?"현재":"Total"}: {battleResult.tierPoints.toLocaleString()} pts
+              </p>
+            </>
+          )}
         </div>
         <div style={{ display:"flex", gap:10, width:"100%", maxWidth:320 }}>
           <PixelBtn onClick={() => setPhase("lobby")} color="gray">
@@ -2180,7 +2205,7 @@ export default function ColosseumPage() {
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.35)", borderRadius:7 }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#60a5fa" strokeWidth="1.5"/><rect x="5" y="4" width="4" height="1.5" rx="0.5" fill="#60a5fa"/><rect x="5" y="6.5" width="4" height="1.5" rx="0.5" fill="#60a5fa"/><rect x="5" y="9" width="4" height="1.5" rx="0.5" fill="#60a5fa"/></svg>
               <span style={{ fontSize:11, color:"#60a5fa", fontWeight:900 }}>{ko?"AI 수련 전투":ja?"AI練習戦闘":"AI Practice Battle"}</span>
-              <span style={{ marginLeft:"auto", fontSize:10, color:"#4ade80", fontWeight:900 }}>{ko?`승리 시 +${npcTarget.winPts}P`:ja?`勝利時 +${npcTarget.winPts}P`:`Win +${npcTarget.winPts}P`}{npcTarget.lossPts < 0 ? (ko?` / 패배 시 ${npcTarget.lossPts}P`:ja?` / 敗北時 ${npcTarget.lossPts}P`:` / Loss ${npcTarget.lossPts}P`) : (ko?" / 패배 무손실":ja?" / 敗北ペナルティなし":" / No loss penalty")}</span>
+              <span style={{ marginLeft:"auto", fontSize:10, color:"#4ade80", fontWeight:900 }}>{ko?`승리 시 +${npcTarget.winPts}P`:ja?`勝利時 +${npcTarget.winPts}P`:`Win +${npcTarget.winPts}P`}{ko?" / 패배 무손실":ja?" / 敗北ペナルティなし":" / No loss penalty"}</span>
             </div>
           )}
 
@@ -2189,11 +2214,24 @@ export default function ColosseumPage() {
             <p style={{ margin:"0 0 10px", fontSize:11, color:"#60a5fa", fontWeight:900, letterSpacing:"0.12em" }}>
               {ko?"내 공격 덱":ja?"自分の攻撃デッキ":"My Attack Deck"}
             </p>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {myAtkSlots.length === 0
-                ? <p style={{ color:C.stoneFaint, fontSize:12 }}>{ko?"덱 없음 — 자동으로 첫 번째 캐릭터 사용":"덱 없음"}</p>
-                : myAtkSlots.map((id,i) => <DeckSlotCard key={i} charId={id} small/>)}
-            </div>
+            {myAtkSlots.length === 0
+              ? <p style={{ color:C.stoneFaint, fontSize:12, margin:0 }}>{ko?"덱 없음 — 자동으로 첫 번째 캐릭터 사용":"덱 없음"}</p>
+              : ([
+                  { label:ko?"전열":ja?"前列":"Front", hint:ko?"HP+20% · DEF+10%":ja?"HP+20% · 防御+10%":"HP+20% · DEF+10%", color:"#60a5fa", idxs:[0,1] as const },
+                  { label:ko?"후열":ja?"後列":"Back",  hint:ko?"ATK+15% · 치명+8%":ja?"ATK+15% · 会心+8%":"ATK+15% · CRIT+8%", color:"#f87171", idxs:[2,3] as const },
+                ]).map(row => (
+                  <div key={row.label} style={{ marginBottom:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5 }}>
+                      <div style={{ width:2, height:12, borderRadius:1, background:row.color }}/>
+                      <span style={{ fontSize:9, fontWeight:900, color:row.color }}>{row.label}</span>
+                      <span style={{ fontSize:8, color:C.stoneFaint }}>{row.hint}</span>
+                    </div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      {row.idxs.map(i => <DeckSlotCard key={i} charId={myAtkSlots[i] ?? null} small/>)}
+                    </div>
+                  </div>
+                ))
+            }
           </div>
 
           {/* vs */}
@@ -2218,35 +2256,47 @@ export default function ColosseumPage() {
               )}
             </div>
             <p style={{ margin:"0 0 10px", fontSize:10, color:C.stoneFaint }}>{targetUser.tierPoints.toLocaleString()} pts</p>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {targetDefSlots.map((id,i) => {
-                const ch = charById(id);
-                const arch = (() => {
-                  const TYPE_ARCH: Record<string,string> = {
-                    wolf:"warrior",tiger:"warrior",lion:"warrior",bear:"warrior",
-                    cat:"rogue",rabbit:"rogue",deer:"rogue",eagle:"rogue",
-                    ghost:"mage",owl:"mage",dragon:"mage",angel:"mage",phoenix:"mage",
-                    turtle:"tank",elephant:"tank",whale:"tank",crocodile:"tank",boar:"tank",
-                    plant:"nature",fish:"nature",unicorn:"nature",horse:"nature",
-                    robot:"meka",slime:"meka",beetle:"meka",
-                    fox:"cursed",monkey:"cursed",raven:"cursed",snake:"cursed",demon:"cursed",
-                  };
-                  return TYPE_ARCH[ch.type] ?? "all";
-                })();
-                const elem = { warrior:"fire",tank:"earth",mage:"ice",rogue:"dark",nature:"nature",meka:"lightning",cursed:"shadow",all:"light" }[arch] ?? "light";
-                const al = ARCHETYPE_LABEL[arch];
-                const ec = ELEMENT_COLOR[elem] ?? "#888";
-                return (
-                  <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-                    <DeckSlotCard charId={id} small/>
-                    <div style={{ display:"flex", alignItems:"center", gap:2, color:ec, background:`${ec}22`, border:`1px solid ${ec}55`, borderRadius:3, padding:"1px 5px" }}>
-                      <ArchetypeIcon arch={arch} size={8}/>
-                      <span style={{ fontSize:8, fontWeight:900, lineHeight:1.3 }}>{ko ? al?.ko : ja ? al?.ja : al?.en}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {([
+              { label:ko?"전열":ja?"前列":"Front", hint:ko?"HP+20% · DEF+10%":ja?"HP+20% · 防御+10%":"HP+20% · DEF+10%", color:"#60a5fa", idxs:[0,1] as const },
+              { label:ko?"후열":ja?"後列":"Back",  hint:ko?"ATK+15% · 치명+8%":ja?"ATK+15% · 会心+8%":"ATK+15% · CRIT+8%", color:"#f87171", idxs:[2,3] as const },
+            ]).map(row => (
+              <div key={row.label} style={{ marginBottom:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5 }}>
+                  <div style={{ width:2, height:12, borderRadius:1, background:row.color }}/>
+                  <span style={{ fontSize:9, fontWeight:900, color:row.color }}>{row.label}</span>
+                  <span style={{ fontSize:8, color:C.stoneFaint }}>{row.hint}</span>
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  {row.idxs.map(i => {
+                    const id = targetDefSlots[i];
+                    if (!id) return <DeckSlotCard key={i} charId={null} small/>;
+                    const ch = charById(id);
+                    const TYPE_ARCH: Record<string,string> = {
+                      wolf:"warrior",tiger:"warrior",lion:"warrior",bear:"warrior",
+                      cat:"rogue",rabbit:"rogue",deer:"rogue",eagle:"rogue",
+                      ghost:"mage",owl:"mage",dragon:"mage",angel:"mage",phoenix:"mage",
+                      turtle:"tank",elephant:"tank",whale:"tank",crocodile:"tank",boar:"tank",
+                      plant:"nature",fish:"nature",unicorn:"nature",horse:"nature",
+                      robot:"meka",slime:"meka",beetle:"meka",
+                      fox:"cursed",monkey:"cursed",raven:"cursed",snake:"cursed",demon:"cursed",
+                    };
+                    const arch = TYPE_ARCH[ch.type] ?? "all";
+                    const elem = { warrior:"fire",tank:"earth",mage:"ice",rogue:"dark",nature:"nature",meka:"lightning",cursed:"shadow",all:"light" }[arch] ?? "light";
+                    const al = ARCHETYPE_LABEL[arch];
+                    const ec = ELEMENT_COLOR[elem] ?? "#888";
+                    return (
+                      <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+                        <DeckSlotCard charId={id} small/>
+                        <div style={{ display:"flex", alignItems:"center", gap:2, color:ec, background:`${ec}22`, border:`1px solid ${ec}55`, borderRadius:3, padding:"1px 5px" }}>
+                          <ArchetypeIcon arch={arch} size={8}/>
+                          <span style={{ fontSize:8, fontWeight:900, lineHeight:1.3 }}>{ko ? al?.ko : ja ? al?.ja : al?.en}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* 티켓 */}
