@@ -766,7 +766,7 @@ function UnitCard({
       }}/>
 
       <HpBar hp={hp} maxHp={info.maxHp} height={5}/>
-      <span style={{ fontFamily:"monospace", fontSize:9, color: isDead ? "#4b5563" : accent, fontWeight:900 }}>
+      <span style={{ fontFamily:"monospace", fontSize:9, color: isDead ? "#6b7280" : accent, fontWeight:900, textShadow:"0 0 6px rgba(0,0,0,1), 0 1px 4px rgba(0,0,0,1)" }}>
         {hp}/{info.maxHp}
       </span>
 
@@ -2094,7 +2094,7 @@ function BattleReplay({
         </div>
 
         {/* 로그 + 진행 */}
-        <span style={{ fontFamily:"monospace", fontSize:9, color:C.stoneFaint }}>{Math.max(0,step+1)}/{log.length}</span>
+        <span style={{ fontFamily:"monospace", fontSize:9, color:C.stone }}>{Math.max(0,step+1)}/{log.length}</span>
         <button onClick={() => setShowLog(p=>!p)} style={{ background:showLog?"rgba(96,165,250,0.15)":"rgba(30,21,8,0.9)", border:`1px solid ${showLog?"#60a5fa66":C.borderFaint}`, color:showLog?"#60a5fa":C.stone, fontFamily:FONT, fontSize:10, padding:"3px 8px", borderRadius:4, cursor:"pointer" }}>
           LOG
         </button>
@@ -2123,26 +2123,26 @@ function BattleReplay({
         <div style={{ position:"absolute", top:"4%", bottom:"4%", left:"50%", width:1, background:"linear-gradient(180deg,transparent,#c8a44a22,#c8a44a44,#c8a44a22,transparent)", transform:"translateX(-50%)", pointerEvents:"none" }}/>
         {/* 팀 레이블 */}
         <div style={{ position:"absolute", top:6, left:0, width:"50%", textAlign:"center", pointerEvents:"none" }}>
-          <span style={{ fontSize:8, color:"#60a5fa44", fontWeight:900, letterSpacing:"0.3em" }}>{ko?"공격팀":ja?"攻撃":"ATTACK"}</span>
+          <span style={{ fontSize:8, color:"#60a5facc", fontWeight:900, letterSpacing:"0.3em", textShadow:"0 0 8px rgba(0,0,0,0.95), 0 1px 3px rgba(0,0,0,1)" }}>{ko?"공격팀":ja?"攻撃":"ATTACK"}</span>
         </div>
         <div style={{ position:"absolute", top:6, right:0, width:"50%", textAlign:"center", pointerEvents:"none" }}>
-          <span style={{ fontSize:8, color:"#f8717144", fontWeight:900, letterSpacing:"0.3em" }}>{ko?"방어팀":ja?"防御":"DEFENSE"}</span>
+          <span style={{ fontSize:8, color:"#f87171cc", fontWeight:900, letterSpacing:"0.3em", textShadow:"0 0 8px rgba(0,0,0,0.95), 0 1px 3px rgba(0,0,0,1)" }}>{ko?"방어팀":ja?"防御":"DEFENSE"}</span>
         </div>
         {/* 전열/후열 구분선 (공격팀) */}
-        <div style={{ position:"absolute", top:"4%", bottom:"4%", left:"22%", width:1, background:"linear-gradient(180deg,transparent,#60a5fa18,#60a5fa28,#60a5fa18,transparent)", pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", top:"4%", bottom:"4%", left:"22%", width:1, background:"linear-gradient(180deg,transparent,#60a5fa30,#60a5fa50,#60a5fa30,transparent)", pointerEvents:"none" }}/>
         <div style={{ position:"absolute", top:"3%", left:"19%", pointerEvents:"none" }}>
-          <span style={{ fontSize:7, color:"#60a5fa33", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"전열":ja?"前列":"FRONT"}</span>
+          <span style={{ fontSize:7, color:"#60a5fa99", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl", textShadow:"0 0 6px rgba(0,0,0,1)" }}>{ko?"전열":ja?"前列":"FRONT"}</span>
         </div>
         <div style={{ position:"absolute", top:"3%", left:"4%", pointerEvents:"none" }}>
-          <span style={{ fontSize:7, color:"#60a5fa22", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"후열":ja?"後列":"BACK"}</span>
+          <span style={{ fontSize:7, color:"#60a5fa77", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl", textShadow:"0 0 6px rgba(0,0,0,1)" }}>{ko?"후열":ja?"後列":"BACK"}</span>
         </div>
         {/* 전열/후열 구분선 (방어팀) */}
-        <div style={{ position:"absolute", top:"4%", bottom:"4%", right:"22%", width:1, background:"linear-gradient(180deg,transparent,#f8717118,#f8717128,#f8717118,transparent)", pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", top:"4%", bottom:"4%", right:"22%", width:1, background:"linear-gradient(180deg,transparent,#f8717130,#f8717150,#f8717130,transparent)", pointerEvents:"none" }}/>
         <div style={{ position:"absolute", top:"3%", right:"19%", pointerEvents:"none" }}>
-          <span style={{ fontSize:7, color:"#f8717133", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"전열":ja?"前列":"FRONT"}</span>
+          <span style={{ fontSize:7, color:"#f8717199", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl", textShadow:"0 0 6px rgba(0,0,0,1)" }}>{ko?"전열":ja?"前列":"FRONT"}</span>
         </div>
         <div style={{ position:"absolute", top:"3%", right:"4%", pointerEvents:"none" }}>
-          <span style={{ fontSize:7, color:"#f8717122", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl" }}>{ko?"후열":ja?"後列":"BACK"}</span>
+          <span style={{ fontSize:7, color:"#f8717177", fontWeight:900, letterSpacing:"0.15em", writingMode:"vertical-rl", textShadow:"0 0 6px rgba(0,0,0,1)" }}>{ko?"후열":ja?"後列":"BACK"}</span>
         </div>
 
         {/* 캐릭터 */}
@@ -2201,13 +2201,13 @@ function BattleReplay({
               </>
             );
           })() : (
-            <span style={{ fontSize:10, color:C.stoneFaint }}>{ko?"대기 중...":ja?"待機中...":"Waiting..."}</span>
+            <span style={{ fontSize:10, color:C.stone }}>{ko?"대기 중...":ja?"待機中...":"Waiting..."}</span>
           )}
         </div>
 
         {/* CR 순서 인디케이터 */}
         <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-          <span style={{ fontSize:7, color:C.stoneFaint, letterSpacing:"0.2em", fontWeight:900 }}>TURN</span>
+          <span style={{ fontSize:7, color:C.stone, letterSpacing:"0.2em", fontWeight:900 }}>TURN</span>
           <div style={{ display:"flex", gap:4 }}>
             {[...crs].sort((a,b) => b.cr - a.cr).slice(0, 6).map(u => {
               const chars = u.team === "attacker" ? attackerChars : defenderChars;
@@ -2235,7 +2235,7 @@ function BattleReplay({
           <div style={{ width:56, height:3, background:"rgba(0,0,0,0.5)", borderRadius:2, overflow:"hidden" }}>
             <div style={{ height:"100%", width:`${Math.min(100,(step+1)/log.length*100)}%`, background:"linear-gradient(90deg,#3b82f6,#c8a44a,#ef4444)", borderRadius:2, transition:"width 0.3s" }}/>
           </div>
-          <span style={{ fontFamily:"monospace", fontSize:8, color:C.stoneFaint }}>{Math.max(0,step+1)}/{log.length}</span>
+          <span style={{ fontFamily:"monospace", fontSize:8, color:C.stone }}>{Math.max(0,step+1)}/{log.length}</span>
         </div>
       </div>
     </div>

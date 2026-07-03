@@ -156,6 +156,7 @@ function JumpGame({
   onDiedRef.current = onDied;
   const clearedRef = useRef(cleared);
   clearedRef.current = cleared;
+  const stunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stunned, setStunned] = useState(false);
   const [lives, setLives] = useState(5);
   const [deadUntil, setDeadUntil] = useState(0);
@@ -321,7 +322,8 @@ function JumpGame({
             } else {
               st.stunUntil = now + 650;
               setStunned(true);
-              window.setTimeout(() => setStunned(false), 650);
+              if (stunTimerRef.current) clearTimeout(stunTimerRef.current);
+              stunTimerRef.current = window.setTimeout(() => setStunned(false), 650);
             }
           }
           if (!o.counted && !o.hit && o.x + o.ow < HITX) {
@@ -575,6 +577,7 @@ function JumpGame({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      if (stunTimerRef.current) clearTimeout(stunTimerRef.current);
     };
   }, []);
 
@@ -775,8 +778,8 @@ function ShootingGame({
     let raf = 0, last = performance.now();
 
     // eType별 기본 HP (신규 패턴에서 재사용)
-    const hpForType = (t: number): number =>
-      ({ 0: 2, 1: 1, 2: 1, 3: 3, 4: 4, 5: 1, 6: 2, 7: 4, 8: 2, 9: 2, 10: 2, 11: 2 })[t] ?? 1;
+    const hpForType = (eType: number): number =>
+      ({ 0: 2, 1: 1, 2: 1, 3: 3, 4: 4, 5: 1, 6: 2, 7: 4, 8: 2, 9: 2, 10: 2, 11: 2 })[eType] ?? 1;
 
     const PATTERN_COUNT = 12;
 
@@ -1566,10 +1569,9 @@ function ShootingGame({
       }
 
       // 플레이어 발광
-      const rn = Date.now();
       if (!dead) {
-        const inv2 = rn < g.current.invUntil;
-        const blink = inv2 && Math.floor(rn/80)%2===0;
+        const inv2 = realNow < g.current.invUntil;
+        const blink = inv2 && Math.floor(realNow/80)%2===0;
         if (!blink) {
           const pg = ctx.createRadialGradient(st.px,st.py,0,st.px,st.py,22);
           pg.addColorStop(0,inv2?"rgba(255,200,80,0.55)":"rgba(80,200,255,0.45)");
@@ -1810,7 +1812,9 @@ export default function RaidPage() {
   const [eliminated, setEliminated] = useState(false);
   const [showRewardGuide, setShowRewardGuide] = useState(false);
   const prevHp = useRef<number | null>(null);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const refreshRewardsRef = useRef(refreshRewardsWithCheck);
+  refreshRewardsRef.current = refreshRewardsWithCheck;
 
   // 보스 HP 감소 감지 → 피격 연출
   useEffect(() => {
@@ -1848,7 +1852,7 @@ export default function RaidPage() {
     const onSelf = (d: SelfInfo) => setSelf(d);
     const onFeedback = (d: { text: string }) => {
       setFeedback(d.text);
-      setTimeout(() => setFeedback(""), 1500);
+      timers.current.push(setTimeout(() => setFeedback(""), 1500));
     };
     const onCleared = (d: {
       reward: Reward;
@@ -1859,7 +1863,7 @@ export default function RaidPage() {
       setReward(d.reward);
       setMyRank(d.rank ?? null);
       setRankings(d.rankings ?? []);
-      refreshRewardsWithCheck().catch(() => undefined);
+      refreshRewardsRef.current().catch(() => undefined);
       if (d.raidType != null) {
         const raw = localStorage.getItem("kebo_raid_first_clears");
         const clears: Record<number, boolean> = raw ? JSON.parse(raw) : {};
@@ -1874,7 +1878,7 @@ export default function RaidPage() {
     };
     const onFull = () => {
       setFull(true);
-      setTimeout(() => setFull(false), 2500);
+      timers.current.push(setTimeout(() => setFull(false), 2500));
     };
     const onCooldown = (d: { raidType: number; until: number }) => {
       setLobby((p) => ({
@@ -1897,7 +1901,7 @@ export default function RaidPage() {
       dmg?: number;
     }) => {
       setBossLine(d.line);
-      setTimeout(() => setBossLine(""), 2200);
+      timers.current.push(setTimeout(() => setBossLine(""), 2200));
       if (d.hp !== undefined) {
         setState((prev) => (prev ? { ...prev, hp: d.hp! } : prev));
       }
@@ -1905,7 +1909,7 @@ export default function RaidPage() {
       const x = 30 + Math.random() * 40;
       const dmg = d.dmg ?? 1;
       setDamageNums((p) => [...p.slice(-4), { id, x, dmg }]);
-      setTimeout(() => setDamageNums((p) => p.filter((n) => n.id !== id)), 900);
+      timers.current.push(setTimeout(() => setDamageNums((p) => p.filter((n) => n.id !== id)), 900));
     };
     const onJumpLives = (d: {
       socketId: string;
@@ -1957,7 +1961,7 @@ export default function RaidPage() {
       s.off("raid:jump_lives", onJumpLives);
       s.off("raid:eliminated", onEliminated);
       s.off("raid:rankings", onRankings);
-      Object.values(timers.current).forEach(clearTimeout);
+      timers.current.forEach(clearTimeout);
     };
   }, []);
 
