@@ -1538,6 +1538,219 @@ const DEBUFF_META: Record<string, { label: string; color: string; bg: string }> 
   unhealable:    { label:"회불",  color:"#f87171", bg:"#7f1d1d" },
 };
 
+// ─── 콜로세움 픽셀아트 배경 ──────────────────────────────────────────────────
+const ArenaBg = React.memo(function ArenaBg() {
+  const crowd = (ox: number, oy: number, ow: number, oh: number) => {
+    const els: React.ReactNode[] = [];
+    const pw = 4, ph = 6, gx = 2, gy = 2;
+    const cols = Math.floor(ow / (pw + gx));
+    const rows = Math.floor(oh / (ph + gy));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const offX = r % 2 === 1 ? (pw + gx) / 2 : 0;
+        const x = ox + c * (pw + gx) + offX;
+        const y = oy + r * (ph + gy);
+        if (x + pw > ox + ow) continue;
+        const op = 0.18 + (r / Math.max(rows - 1, 1)) * 0.55;
+        const v = 20 + r * 4;
+        els.push(
+          <g key={`${r}-${c}`} opacity={op}>
+            <rect x={x + 1} y={y} width={pw - 2} height={2} fill={`rgb(${v},${Math.round(v*0.7)},${Math.round(v*0.4)})`}/>
+            <rect x={x} y={y + 2} width={pw} height={ph - 2} fill={`rgb(${v},${Math.round(v*0.65)},${Math.round(v*0.35)})`}/>
+          </g>
+        );
+      }
+    }
+    return els;
+  };
+
+  return (
+    <svg viewBox="0 0 320 480" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"
+      style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}>
+      <defs>
+        <pattern id="ap-fl" x="0" y="0" width="32" height="20" patternUnits="userSpaceOnUse">
+          <rect width="32" height="20" fill="#1e1508"/>
+          <rect x="1" y="1" width="30" height="18" fill="#2c1e0e"/>
+          <rect x="1" y="1" width="13" height="8" fill="#342412" opacity="0.8"/>
+          <rect x="16" y="11" width="14" height="7" fill="#281a0a" opacity="0.9"/>
+          <rect x="30" y="0" width="2" height="20" fill="#1e1508"/>
+          <rect x="0" y="18" width="32" height="2" fill="#1e1508"/>
+        </pattern>
+        <pattern id="ap-br" x="0" y="0" width="32" height="12" patternUnits="userSpaceOnUse">
+          <rect width="32" height="12" fill="#1c1008"/>
+          <rect x="1" y="1" width="29" height="5" fill="#3a2810"/>
+          <rect x="17" y="7" width="14" height="4" fill="#362410"/>
+          <rect x="0" y="7" width="15" height="4" fill="#362410"/>
+          <rect x="31" y="0" width="1" height="12" fill="#1c1008"/>
+          <rect x="0" y="11" width="32" height="1" fill="#1c1008"/>
+        </pattern>
+        <pattern id="ap-st" x="0" y="0" width="40" height="16" patternUnits="userSpaceOnUse">
+          <rect width="40" height="16" fill="#1a1208"/>
+          <rect x="1" y="1" width="37" height="7" fill="#2c1e0c"/>
+          <rect x="21" y="9" width="18" height="6" fill="#281a0a"/>
+          <rect x="0" y="9" width="19" height="6" fill="#261808"/>
+          <rect x="39" y="0" width="1" height="16" fill="#1a1208"/>
+          <rect x="0" y="15" width="40" height="1" fill="#1a1208"/>
+        </pattern>
+        <radialGradient id="ap-ag" cx="25%" cy="65%" r="55%">
+          <stop offset="0%" stopColor="#1e50b4" stopOpacity="0.13"/>
+          <stop offset="100%" stopColor="#1e50b4" stopOpacity="0"/>
+        </radialGradient>
+        <radialGradient id="ap-dg" cx="75%" cy="65%" r="55%">
+          <stop offset="0%" stopColor="#b41e1e" stopOpacity="0.13"/>
+          <stop offset="100%" stopColor="#b41e1e" stopOpacity="0"/>
+        </radialGradient>
+        <radialGradient id="ap-vig" cx="50%" cy="50%" r="75%">
+          <stop offset="0%" stopColor="transparent"/>
+          <stop offset="100%" stopColor="#000" stopOpacity="0.6"/>
+        </radialGradient>
+        <radialGradient id="ap-cg" cx="50%" cy="58%" r="50%">
+          <stop offset="0%" stopColor="#c8a44a" stopOpacity="0.05"/>
+          <stop offset="100%" stopColor="#c8a44a" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+
+      {/* ── 천장 / 하늘 (y 0–72) ── */}
+      <rect width="320" height="72" fill="#07050a"/>
+      <line x1="0"   y1="0" x2="160" y2="70" stroke="#16101a" strokeWidth="3"/>
+      <line x1="320" y1="0" x2="160" y2="70" stroke="#16101a" strokeWidth="3"/>
+      <line x1="107" y1="0" x2="160" y2="70" stroke="#120e16" strokeWidth="1.5"/>
+      <line x1="213" y1="0" x2="160" y2="70" stroke="#120e16" strokeWidth="1.5"/>
+      {([
+        [18,8,2,0],[42,5,1,1],[70,14,1,0],[95,7,2,1],[130,17,1,0],[162,4,2,1],[197,10,1,0],
+        [222,6,2,1],[256,13,1,0],[290,8,2,1],[312,19,1,0],[30,26,1,0],[68,21,2,1],[107,29,1,0],
+        [152,24,2,1],[192,18,1,0],[242,25,2,1],[277,21,1,0],[305,30,2,1],[55,38,1,0],
+        [122,34,2,1],[182,41,1,0],[263,37,2,1],[308,44,1,1],
+      ] as [number,number,number,number][]).map(([x,y,s,gold], i) => (
+        <rect key={i} x={x} y={y} width={s} height={s}
+          fill={gold ? "#c8a44a" : "#ffffff"} opacity={0.28 + (i % 4) * 0.14}/>
+      ))}
+      {/* 달 */}
+      <rect x="148" y="12" width="2" height="2"  fill="#fff6d8" opacity="0.5"/>
+      <rect x="146" y="14" width="8" height="8"  fill="#fff6d8" opacity="0.5"/>
+      <rect x="144" y="16" width="12" height="4" fill="#fff6d8" opacity="0.5"/>
+      <rect x="146" y="20" width="8" height="2"  fill="#fff6d8" opacity="0.5"/>
+      <rect x="148" y="22" width="4" height="2"  fill="#fff6d8" opacity="0.5"/>
+      <ellipse cx="152" cy="17" rx="20" ry="13" fill="#fffae0" opacity="0.03"/>
+
+      {/* ── 관람석 (y 72–160) ── */}
+      <rect x="0" y="72" width="320" height="88" fill="url(#ap-br)"/>
+      {/* 3개 아치 개구부 — 필라: 0–16, 102–118, 204–220, 306–320 */}
+      <rect x="16"  y="82" width="84" height="78" fill="#08060b"/>
+      <rect x="118" y="82" width="84" height="78" fill="#08060b"/>
+      <rect x="220" y="82" width="84" height="78" fill="#08060b"/>
+      {/* 아치 상단 픽셀 곡선 (좌우 계단) */}
+      {([16, 118, 220] as number[]).map(ax => [
+        <rect key={`a${ax}1`} x={ax}    y="82" width="84" height="2" fill="#201608"/>,
+        <rect key={`a${ax}2`} x={ax}    y="84" width="4"  height="5" fill="#201608"/>,
+        <rect key={`a${ax}3`} x={ax+80} y="84" width="4"  height="5" fill="#201608"/>,
+        <rect key={`a${ax}4`} x={ax+2}  y="89" width="2"  height="3" fill="#201608"/>,
+        <rect key={`a${ax}5`} x={ax+80} y="89" width="2"  height="3" fill="#201608"/>,
+      ])}
+      {/* 군중 실루엣 */}
+      {crowd(20,  93, 76, 63)}
+      {crowd(122, 93, 76, 63)}
+      {crowd(224, 93, 76, 63)}
+      {/* 필라 어두운 오버레이 */}
+      <rect x="0"   y="72" width="16" height="88" fill="rgba(0,0,0,0.48)"/>
+      <rect x="102" y="72" width="16" height="88" fill="rgba(0,0,0,0.48)"/>
+      <rect x="204" y="72" width="16" height="88" fill="rgba(0,0,0,0.48)"/>
+      <rect x="304" y="72" width="16" height="88" fill="rgba(0,0,0,0.48)"/>
+      {/* 필라 하이라이트 선 */}
+      <rect x="0"   y="72" width="1" height="88" fill="#6a4c1e" opacity="0.35"/>
+      <rect x="102" y="72" width="1" height="88" fill="#6a4c1e" opacity="0.35"/>
+      <rect x="204" y="72" width="1" height="88" fill="#6a4c1e" opacity="0.35"/>
+
+      {/* ── 아레나 장벽 (y 160–220) ── */}
+      <rect x="0" y="160" width="320" height="60" fill="url(#ap-st)"/>
+      <rect x="0" y="160" width="320" height="2" fill="#6a4c1e"/>
+      <rect x="0" y="162" width="320" height="1" fill="#8a6428"/>
+      <rect x="0" y="178" width="320" height="2" fill="#5a4018"/>
+      <rect x="0" y="180" width="320" height="1" fill="#7a5828"/>
+      <rect x="0" y="217" width="320" height="2" fill="#6a4c1e"/>
+      <rect x="0" y="219" width="320" height="1" fill="#3a2810"/>
+
+      {/* ── 아레나 바닥 (y 220–480) ── */}
+      <rect x="0" y="220" width="320" height="260" fill="url(#ap-fl)"/>
+      <rect x="0"   y="220" width="20"  height="260" fill="rgba(0,0,0,0.38)"/>
+      <rect x="300" y="220" width="20"  height="260" fill="rgba(0,0,0,0.38)"/>
+      <rect x="0"   y="220" width="160" height="260" fill="url(#ap-ag)"/>
+      <rect x="160" y="220" width="160" height="260" fill="url(#ap-dg)"/>
+      {/* 균열 */}
+      <line x1="58"  y1="248" x2="76"  y2="268" stroke="#140e06" strokeWidth="1" opacity="0.7"/>
+      <line x1="76"  y1="268" x2="70"  y2="278" stroke="#140e06" strokeWidth="1" opacity="0.5"/>
+      <line x1="250" y1="295" x2="266" y2="314" stroke="#140e06" strokeWidth="1" opacity="0.7"/>
+      <line x1="138" y1="375" x2="156" y2="398" stroke="#140e06" strokeWidth="1" opacity="0.6"/>
+      <line x1="94"  y1="338" x2="106" y2="348" stroke="#140e06" strokeWidth="1" opacity="0.45"/>
+      <line x1="208" y1="255" x2="220" y2="265" stroke="#140e06" strokeWidth="1" opacity="0.5"/>
+      <line x1="176" y1="420" x2="185" y2="435" stroke="#140e06" strokeWidth="1" opacity="0.4"/>
+
+      {/* ── 횃불 (왼쪽) ── */}
+      <rect x="7" y="195" width="6" height="10" fill="#5a4020"/>
+      <rect x="5" y="198" width="10" height="2" fill="#7a5828"/>
+      <rect x="8" y="189" width="4" height="8"  fill="#4a3418"/>
+      <rect x="8" y="181" width="4" height="8"  fill="#d44010">
+        <animate attributeName="height" values="8;6;9;7;8;6;8" dur="0.85s" repeatCount="indefinite"/>
+        <animate attributeName="y"      values="181;183;180;182;181;183;181" dur="0.85s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="9" y="176" width="2" height="5" fill="#f8b030">
+        <animate attributeName="height" values="5;4;6;5;4;5" dur="0.72s" repeatCount="indefinite"/>
+        <animate attributeName="y"      values="176;177;175;176;177;176" dur="0.72s" repeatCount="indefinite"/>
+        <animate attributeName="x"      values="9;10;9;8;9;10;9" dur="0.8s"  repeatCount="indefinite"/>
+      </rect>
+      <ellipse cx="10" cy="182" rx="15" ry="11" fill="#f86010" opacity="0.09">
+        <animate attributeName="opacity" values="0.09;0.06;0.13;0.08;0.10;0.09" dur="1.0s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="10" cy="182" rx="5" ry="4" fill="#f8b030" opacity="0.18">
+        <animate attributeName="opacity" values="0.18;0.12;0.22;0.15;0.18" dur="0.8s" repeatCount="indefinite"/>
+      </ellipse>
+
+      {/* ── 횃불 (오른쪽) ── */}
+      <rect x="307" y="195" width="6" height="10" fill="#5a4020"/>
+      <rect x="305" y="198" width="10" height="2" fill="#7a5828"/>
+      <rect x="308" y="189" width="4" height="8"  fill="#4a3418"/>
+      <rect x="308" y="181" width="4" height="8"  fill="#d44010">
+        <animate attributeName="height" values="7;9;8;6;8;9;7" dur="0.92s" repeatCount="indefinite"/>
+        <animate attributeName="y"      values="182;180;181;183;181;180;182" dur="0.92s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="309" y="176" width="2" height="5" fill="#f8b030">
+        <animate attributeName="height" values="4;6;5;4;5;6;4" dur="0.76s" repeatCount="indefinite"/>
+        <animate attributeName="y"      values="177;175;176;177;176;175;177" dur="0.76s" repeatCount="indefinite"/>
+        <animate attributeName="x"      values="309;310;309;308;309;310;309" dur="0.88s" repeatCount="indefinite"/>
+      </rect>
+      <ellipse cx="310" cy="182" rx="15" ry="11" fill="#f86010" opacity="0.09">
+        <animate attributeName="opacity" values="0.07;0.12;0.09;0.06;0.10;0.07" dur="1.1s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="310" cy="182" rx="5" ry="4" fill="#f8b030" opacity="0.18">
+        <animate attributeName="opacity" values="0.14;0.20;0.16;0.12;0.18;0.14" dur="0.9s" repeatCount="indefinite"/>
+      </ellipse>
+
+      {/* ── 횃불 (중앙 황금) ── */}
+      <rect x="157" y="174" width="6" height="10" fill="#5a4020"/>
+      <rect x="155" y="177" width="10" height="2" fill="#7a5828"/>
+      <rect x="158" y="168" width="4" height="8"  fill="#4a3418"/>
+      <rect x="158" y="160" width="4" height="8"  fill="#c87020">
+        <animate attributeName="height" values="8;6;9;7;8;6;8" dur="1.1s"  repeatCount="indefinite"/>
+        <animate attributeName="y"      values="160;162;159;161;160;162;160" dur="1.1s"  repeatCount="indefinite"/>
+      </rect>
+      <rect x="159" y="155" width="2" height="5" fill="#ffe050">
+        <animate attributeName="height" values="5;4;6;5;4;5" dur="0.9s"  repeatCount="indefinite"/>
+        <animate attributeName="y"      values="155;156;154;155;156;155" dur="0.9s"  repeatCount="indefinite"/>
+      </rect>
+      <ellipse cx="160" cy="162" rx="20" ry="13" fill="#c8a44a" opacity="0.11">
+        <animate attributeName="opacity" values="0.11;0.07;0.16;0.09;0.12;0.11" dur="1.3s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="160" cy="162" rx="6" ry="4" fill="#ffe050" opacity="0.22">
+        <animate attributeName="opacity" values="0.22;0.15;0.28;0.17;0.22" dur="1.0s" repeatCount="indefinite"/>
+      </ellipse>
+
+      {/* 전역 오버레이 */}
+      <rect width="320" height="480" fill="url(#ap-cg)"/>
+      <rect width="320" height="480" fill="url(#ap-vig)"/>
+    </svg>
+  );
+});
+
 // ─── 배틀 재생 화면 ───────────────────────────────────────────────────────────
 function BattleReplay({
   result, onDone,
@@ -1901,6 +2114,7 @@ function BattleReplay({
 
       {/* ── 아레나 ────────────────────────────────────────────────────────── */}
       <div style={{ flex:1, position:"relative", overflow:"hidden" }}>
+        <ArenaBg/>
         {/* 분위기 그라데이션 */}
         <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 70% 50% at 50% 95%,rgba(200,164,74,0.07),transparent)", pointerEvents:"none" }}/>
         <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 45% 80% at 13% 50%,rgba(96,165,250,0.05),transparent)", pointerEvents:"none" }}/>
