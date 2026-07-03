@@ -1028,21 +1028,25 @@ export class ArenaService {
 
     let atkSlots = (atkRow?.slots as number[]) ?? [];
     let defSlots = (defRow?.slots as number[]) ?? [];
-    if (atkSlots.length === 0) {
+    // 0은 빈 슬롯(진형 유지용) — 유효 ID만 필터, slot 인덱스 보존
+    const validAtkSlots = atkSlots.filter(id => id > 0);
+    const validDefSlots = defSlots.filter(id => id > 0);
+    if (validAtkSlots.length === 0) {
       const first = await this.prisma.userCharacter.findFirst({ where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" } });
       if (first) atkSlots = [first.characterId];
     }
-    if (defSlots.length === 0 && defReward?.equippedCharacterId) defSlots = [defReward.equippedCharacterId];
-    if (atkSlots.length === 0) throw new Error("공격 덱이 비어있습니다");
-    if (defSlots.length === 0) throw new Error("상대방의 방어 덱이 비어있습니다");
+    if (validDefSlots.length === 0 && defReward?.equippedCharacterId) defSlots = [defReward.equippedCharacterId];
+    if (!atkSlots.some(id => id > 0)) throw new Error("공격 덱이 비어있습니다");
+    if (!defSlots.some(id => id > 0)) throw new Error("상대방의 방어 덱이 비어있습니다");
 
     const [atkEnhLvs, defEnhLvs] = await Promise.all([
-      Promise.all(atkSlots.map(id => this.getEnhLevel(attackerId, id))),
-      Promise.all(defSlots.map(id => this.getEnhLevel(defenderId, id))),
+      Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0))),
+      Promise.all(defSlots.map(id => id > 0 ? this.getEnhLevel(defenderId, id) : Promise.resolve(0))),
     ]);
 
-    const attackerUnits = atkSlots.map((id, i) => makeUnit(id, i, "attacker", atkEnhLvs[i]));
-    const defenderUnits = defSlots.map((id, i) => makeUnit(id, i, "defender", defEnhLvs[i]));
+    // slot 인덱스(i)를 그대로 사용해 전열/후열 보너스 보존, 빈 슬롯(id=0) 제외
+    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
+    const defenderUnits = defSlots.map((id, i) => id > 0 ? makeUnit(id, i, "defender", defEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
     const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
 
     const [atkResult] = await Promise.all([
@@ -1073,14 +1077,14 @@ export class ArenaService {
   async attackNpc(attackerId: string, npcSlots: number[], npcEnhLvs: number[], pointsOnWin: number, pointsOnLoss: number) {
     const atkRow = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: attackerId, deckType: "attack" } } });
     let atkSlots = (atkRow?.slots as number[]) ?? [];
-    if (atkSlots.length === 0) {
+    if (!atkSlots.some(id => id > 0)) {
       const first = await this.prisma.userCharacter.findFirst({ where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" } });
       if (first) atkSlots = [first.characterId];
     }
-    if (atkSlots.length === 0) throw new Error("공격 덱이 비어있습니다");
+    if (!atkSlots.some(id => id > 0)) throw new Error("공격 덱이 비어있습니다");
 
-    const atkEnhLvs = await Promise.all(atkSlots.map(id => this.getEnhLevel(attackerId, id)));
-    const attackerUnits = atkSlots.map((id, i) => makeUnit(id, i, "attacker", atkEnhLvs[i]));
+    const atkEnhLvs = await Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0)));
+    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
     const defenderUnits = npcSlots.map((id, i) => makeUnit(id, i, "defender", npcEnhLvs[i] ?? 0));
     const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
 

@@ -1007,7 +1007,7 @@ function DeckEditor({
         </button>
         <h2 style={{ margin:0, color:C.gold, fontSize:18, fontWeight:900, letterSpacing:"0.1em" }}>{typeLabel} {ko?"편집":ja?"編集":"Edit"}</h2>
         <div style={{ marginLeft:"auto" }}>
-          <button onClick={() => onSave(slots.filter(Boolean))}
+          <button onClick={() => onSave(slots)}
             style={{ background:"linear-gradient(180deg,#c8a44a,#8b6020)", border:"2px solid #5a3d0e", color:"#1c1101", fontWeight:900, fontSize:13, padding:"8px 20px", borderRadius:4, cursor:"pointer", fontFamily:FONT }}>
             {ko?"저장":ja?"保存":"Save"}
           </button>
@@ -1030,11 +1030,10 @@ function DeckEditor({
           { label: ko?"전열":ja?"前列":"Front", hint: ko?"HP +20% · 방어 +10%":ja?"HP +20% · 防御 +10%":"HP +20% · DEF +10%", color:"#60a5fa", idxs:[0,1] as const },
           { label: ko?"후열":ja?"後列":"Back",  hint: ko?"공격 +15% · 치명 +8%":ja?"攻撃 +15% · 会心 +8%":"ATK +15% · CRIT +8%", color:"#f87171", idxs:[2,3] as const },
         ]).map(row => (
-          <div key={row.label} style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+          <div key={row.label} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
               <div style={{ width:3, height:14, borderRadius:1, background:row.color }}/>
               <span style={{ fontSize:11, fontWeight:900, color:row.color, letterSpacing:"0.1em" }}>{row.label}</span>
-              <span style={{ fontSize:9, color:row.color, opacity:0.6, background:`${row.color}18`, borderRadius:3, padding:"1px 5px" }}>{row.hint}</span>
             </div>
             <div style={{ display:"flex", gap:8 }}>
               {row.idxs.map(i => (
@@ -1047,6 +1046,7 @@ function DeckEditor({
                 />
               ))}
             </div>
+            <span style={{ marginLeft:"auto", fontSize:9, color:row.color, opacity:0.65, background:`${row.color}18`, borderRadius:3, padding:"2px 6px", whiteSpace:"nowrap" }}>{row.hint}</span>
           </div>
         ))}
       </div>
@@ -2263,21 +2263,21 @@ export default function ColosseumPage() {
             <p style={{ margin:"0 0 10px", fontSize:11, color:"#60a5fa", fontWeight:900, letterSpacing:"0.12em" }}>
               {ko?"내 공격 덱":ja?"自分の攻撃デッキ":"My Attack Deck"}
             </p>
-            {myAtkSlots.length === 0
+            {!myAtkSlots.some(Boolean)
               ? <p style={{ color:C.stoneFaint, fontSize:12, margin:0 }}>{ko?"덱 없음 — 자동으로 첫 번째 캐릭터 사용":"덱 없음"}</p>
               : ([
                   { label:ko?"전열":ja?"前列":"Front", hint:ko?"HP+20% · DEF+10%":ja?"HP+20% · 防御+10%":"HP+20% · DEF+10%", color:"#60a5fa", idxs:[0,1] as const },
                   { label:ko?"후열":ja?"後列":"Back",  hint:ko?"ATK+15% · 치명+8%":ja?"ATK+15% · 会心+8%":"ATK+15% · CRIT+8%", color:"#f87171", idxs:[2,3] as const },
                 ]).map(row => (
-                  <div key={row.label} style={{ marginBottom:8 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5 }}>
+                  <div key={row.label} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
                       <div style={{ width:2, height:12, borderRadius:1, background:row.color }}/>
                       <span style={{ fontSize:9, fontWeight:900, color:row.color }}>{row.label}</span>
-                      <span style={{ fontSize:8, color:C.stoneFaint }}>{row.hint}</span>
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
-                      {row.idxs.map(i => <DeckSlotCard key={i} charId={myAtkSlots[i] ?? null} small/>)}
+                      {row.idxs.map(i => <DeckSlotCard key={i} charId={myAtkSlots[i] || null} small/>)}
                     </div>
+                    <span style={{ marginLeft:"auto", fontSize:8, color:row.color, opacity:0.65, background:`${row.color}15`, borderRadius:3, padding:"2px 6px", whiteSpace:"nowrap" }}>{row.hint}</span>
                   </div>
                 ))
             }
@@ -2291,9 +2291,9 @@ export default function ColosseumPage() {
           </div>
 
           {/* 상대 방어 덱 */}
-          <div style={{ background: npcTarget ? "linear-gradient(135deg,#0f1a2e,#090f1c)" : "linear-gradient(135deg,#1f0606,#130404)", border: npcTarget ? "1px solid #1e3a5f88" : "1px solid #4f0e0e", borderRadius:8, padding:"14px 12px" }}>
+          <div style={{ background: npcTarget ? "linear-gradient(135deg,#1a0908,#0e0504)" : "linear-gradient(135deg,#1f0606,#130404)", border: npcTarget ? "1px solid #5a1e0e88" : "1px solid #4f0e0e", borderRadius:8, padding:"14px 12px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-              <p style={{ margin:0, fontSize:11, fontWeight:900, letterSpacing:"0.12em", color: npcTarget ? "#60a5fa" : "#f87171" }}>
+              <p style={{ margin:0, fontSize:11, fontWeight:900, letterSpacing:"0.12em", color: npcTarget ? "#f8936e" : "#f87171" }}>
                 {npcTarget ? (ko?"AI 방어 덱":ja?"AI防御デッキ":"AI Defense Deck") : `${targetUser.nickname} ${ko?"방어 덱":ja?"防御デッキ":"Defense Deck"}`}
               </p>
               {npcTarget && (
@@ -2309,11 +2309,10 @@ export default function ColosseumPage() {
               { label:ko?"전열":ja?"前列":"Front", hint:ko?"HP+20% · DEF+10%":ja?"HP+20% · 防御+10%":"HP+20% · DEF+10%", color:"#60a5fa", idxs:[0,1] as const },
               { label:ko?"후열":ja?"後列":"Back",  hint:ko?"ATK+15% · 치명+8%":ja?"ATK+15% · 会心+8%":"ATK+15% · CRIT+8%", color:"#f87171", idxs:[2,3] as const },
             ]).map(row => (
-              <div key={row.label} style={{ marginBottom:8 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5 }}>
+              <div key={row.label} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
                   <div style={{ width:2, height:12, borderRadius:1, background:row.color }}/>
                   <span style={{ fontSize:9, fontWeight:900, color:row.color }}>{row.label}</span>
-                  <span style={{ fontSize:8, color:C.stoneFaint }}>{row.hint}</span>
                 </div>
                 <div style={{ display:"flex", gap:8 }}>
                   {row.idxs.map(i => {
@@ -2344,6 +2343,7 @@ export default function ColosseumPage() {
                     );
                   })}
                 </div>
+                <span style={{ marginLeft:"auto", fontSize:8, color:row.color, opacity:0.65, background:`${row.color}15`, borderRadius:3, padding:"2px 6px", whiteSpace:"nowrap", alignSelf:"center" }}>{row.hint}</span>
               </div>
             ))}
           </div>
@@ -2355,7 +2355,7 @@ export default function ColosseumPage() {
               {Array.from({ length: tickets }, (_, i) => <Ticket key={i} size={14} color={C.gold} style={{ display:"inline", verticalAlign:"middle", marginRight:1 }}/>)}{tickets === 0 && (msToNext ? fmtMs(msToNext) : "")}
             </span>
           </div>
-          <PixelBtn onClick={startBattle} disabled={tickets === 0 || myAtkSlots.length === 0}>
+          <PixelBtn onClick={startBattle} disabled={tickets === 0 || !myAtkSlots.some(Boolean)}>
             <Swords size={18}/>{" "}{ko?"전투 시작":ja?"戦闘開始":"Start Battle"}
           </PixelBtn>
         </div>
@@ -2615,27 +2615,27 @@ export default function ColosseumPage() {
 
           {/* 전투 시작 버튼 */}
           <button
-            disabled={tickets === 0 || myAtkSlots.length === 0}
+            disabled={tickets === 0 || !myAtkSlots.some(Boolean)}
             onClick={() => document.getElementById("col-ranking")?.scrollIntoView({ behavior:"smooth" })}
             className="col-btn-shine"
             style={{
               width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10,
-              background: tickets===0||myAtkSlots.length===0 ? "linear-gradient(180deg,#374151,#1f2937)" : "linear-gradient(180deg,#d4a84b 0%,#c8a44a 40%,#8b6020 100%)",
-              border: tickets===0||myAtkSlots.length===0 ? "3px solid #1f2937" : "3px solid #5a3d0e",
-              boxShadow: tickets===0||myAtkSlots.length===0 ? "0 5px 0 #0f172a" : undefined,
-              color: tickets===0||myAtkSlots.length===0 ? "#6b7280" : "#1c1101",
+              background: tickets===0||!myAtkSlots.some(Boolean) ? "linear-gradient(180deg,#374151,#1f2937)" : "linear-gradient(180deg,#d4a84b 0%,#c8a44a 40%,#8b6020 100%)",
+              border: tickets===0||!myAtkSlots.some(Boolean) ? "3px solid #1f2937" : "3px solid #5a3d0e",
+              boxShadow: tickets===0||!myAtkSlots.some(Boolean) ? "0 5px 0 #0f172a" : undefined,
+              color: tickets===0||!myAtkSlots.some(Boolean) ? "#6b7280" : "#1c1101",
               fontFamily:FONT, fontWeight:900, fontSize:18, letterSpacing:"0.1em",
-              padding:"14px 0", borderRadius:6, cursor: tickets===0||myAtkSlots.length===0?"not-allowed":"pointer",
-              animation: tickets>0&&myAtkSlots.length>0 ? "col-battle-ready 2.4s ease-in-out infinite" : undefined,
+              padding:"14px 0", borderRadius:6, cursor: tickets===0||!myAtkSlots.some(Boolean)?"not-allowed":"pointer",
+              animation: tickets>0&&myAtkSlots.some(Boolean) ? "col-battle-ready 2.4s ease-in-out infinite" : undefined,
               transition:"opacity 0.2s",
             }}
           >
             <Swords size={20} strokeWidth={2.5}/>{" "}
             {tickets===0 ? (ko?"입장권 소진":ja?"入場券なし":"No Tickets")
-             : myAtkSlots.length===0 ? (ko?"공격 덱 편성 필요":ja?"デッキなし":"Set Attack Deck First")
+             : !myAtkSlots.some(Boolean) ? (ko?"공격 덱 편성 필요":ja?"デッキなし":"Set Attack Deck First")
              : (ko?"결투 상대 선택 ↓":ja?"対戦相手選択 ↓":"Select Opponent ↓")}
           </button>
-          {myAtkSlots.length===0 && tickets>0 && (
+          {!myAtkSlots.some(Boolean) && tickets>0 && (
             <p style={{ margin:"8px 0 0", fontSize:10, color:"#f87171", textAlign:"center" }}>
               <button onClick={() => setLobbyTab("deck")} style={{ display:"inline-flex", alignItems:"center", gap:3, background:"none", border:"none", color:"#f87171", cursor:"pointer", fontSize:10, fontFamily:FONT, textDecoration:"underline" }}>
                 <Sword size={10} strokeWidth={2.5}/>{ko?"덱 탭":ja?"デッキ":"Deck tab"}
@@ -2700,8 +2700,8 @@ export default function ColosseumPage() {
                       </div>
                       <button
                         onClick={() => startAttackConfirm({ userId: rt.userId, nickname: rt.name, tierPoints: rt.tierPoints, rank: 0, wins: 0, winStreak: 0, characterId: null })}
-                        disabled={tickets === 0 || myAtkSlots.length === 0}
-                        style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.length>0 ? "linear-gradient(180deg,#ef4444,#991b1b)" : "#1e0a0a", border:`2px solid ${tickets>0&&myAtkSlots.length>0?"#7f1d1d":"#2e0a0a"}`, color: tickets>0&&myAtkSlots.length>0 ? "#fff" : "#6b7280", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 10px", borderRadius:4, cursor: tickets===0||myAtkSlots.length===0?"not-allowed":"pointer", flexShrink:0, boxShadow: tickets>0&&myAtkSlots.length>0 ? "0 3px 0 #450a0a" : "none" }}
+                        disabled={tickets === 0 || !myAtkSlots.some(Boolean)}
+                        style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.some(Boolean) ? "linear-gradient(180deg,#ef4444,#991b1b)" : "#1e0a0a", border:`2px solid ${tickets>0&&myAtkSlots.some(Boolean)?"#7f1d1d":"#2e0a0a"}`, color: tickets>0&&myAtkSlots.some(Boolean) ? "#fff" : "#6b7280", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 10px", borderRadius:4, cursor: tickets===0||!myAtkSlots.some(Boolean)?"not-allowed":"pointer", flexShrink:0, boxShadow: tickets>0&&myAtkSlots.some(Boolean) ? "0 3px 0 #450a0a" : "none" }}
                       >
                         <Swords size={10} strokeWidth={2.5}/>{ko?"복수":ja?"復讐":"Revenge"}
                       </button>
@@ -2792,8 +2792,8 @@ export default function ColosseumPage() {
                   <span style={{ fontFamily:"monospace", fontSize:11, color:C.stone, flexShrink:0 }}>{entry.tierPoints.toLocaleString()}</span>
                   {/* 공격 버튼 */}
                   {!isMe && (
-                    <button onClick={() => startAttackConfirm(entry)} disabled={tickets===0||myAtkSlots.length===0}
-                      style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.length>0 ? "linear-gradient(180deg,#c8a44a,#8b6020)" : "#1e1508", border:`2px solid ${tickets>0&&myAtkSlots.length>0?"#5a3d0e":"#2e1f06"}`, color: tickets>0&&myAtkSlots.length>0 ? "#1c1101" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 12px", borderRadius:4, cursor:tickets===0||myAtkSlots.length===0?"not-allowed":"pointer", flexShrink:0, transition:"all 0.15s", boxShadow: tickets>0&&myAtkSlots.length>0 ? "0 3px 0 #3a2508" : "none" }}>
+                    <button onClick={() => startAttackConfirm(entry)} disabled={tickets===0||!myAtkSlots.some(Boolean)}
+                      style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.some(Boolean) ? "linear-gradient(180deg,#c8a44a,#8b6020)" : "#1e1508", border:`2px solid ${tickets>0&&myAtkSlots.some(Boolean)?"#5a3d0e":"#2e1f06"}`, color: tickets>0&&myAtkSlots.some(Boolean) ? "#1c1101" : C.stoneFaint, fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 12px", borderRadius:4, cursor:tickets===0||!myAtkSlots.some(Boolean)?"not-allowed":"pointer", flexShrink:0, transition:"all 0.15s", boxShadow: tickets>0&&myAtkSlots.some(Boolean) ? "0 3px 0 #3a2508" : "none" }}>
                       <Swords size={10} strokeWidth={2.5}/>{ko?"도전":ja?"挑戦":"Fight"}
                     </button>
                   )}
@@ -2862,7 +2862,7 @@ export default function ColosseumPage() {
                 const t      = TIERS[npc.tierIdx];
                 const onCd   = isOnCooldown(npc.id);
                 const remMs  = getRemainingMs(npc.id);
-                const can    = tickets > 0 && myAtkSlots.length > 0 && !onCd;
+                const can    = tickets > 0 && myAtkSlots.some(Boolean) && !onCd;
                 const fmtCd  = (ms: number) => {
                   const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
                   return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
