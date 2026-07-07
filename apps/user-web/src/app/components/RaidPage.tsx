@@ -1147,16 +1147,25 @@ function ShootingGame({
       ctx.restore();
     };
 
-    const resize = () => {
+    // 캔버스 버퍼 크기를 실제 렌더링 박스(wrapRef)와 동기화.
+    // window resize 이벤트만 감시하면 flex 레이아웃 리플로우(보스 알림/미션 텍스트 줄바뀜 등)로
+    // 박스 크기가 바뀌어도 버퍼가 갱신되지 않아 canvas가 CSS로 스케일되고, 플레이어 위치(DOM
+    // 오버레이, 버퍼 좌표 기준)가 화면 밖으로 밀려나는 문제가 있었음 — ResizeObserver로 교체.
+    const syncCanvasSize = () => {
       const w = wrapRef.current?.clientWidth ?? 400;
       const h = wrapRef.current?.clientHeight ?? 440;
-      canvas.width = Math.max(280, w);
-      canvas.height = Math.max(360, h);
-      g.current.px = canvas.width / 2;
-      g.current.py = canvas.height - 36;
+      const newW = Math.max(280, w);
+      const newH = Math.max(360, h);
+      if (canvas.width !== newW) canvas.width = newW;
+      if (canvas.height !== newH) canvas.height = newH;
     };
-    resize();
-    window.addEventListener("resize", resize);
+    syncCanvasSize();
+    g.current.px = canvas.width / 2;
+    g.current.py = canvas.height - 36;
+
+    const resizeObserver = new ResizeObserver(() => syncCanvasSize());
+    if (wrapRef.current) resizeObserver.observe(wrapRef.current);
+    window.addEventListener("resize", syncCanvasSize);
 
     spawnWave(1);
 
@@ -1600,7 +1609,8 @@ function ShootingGame({
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", syncCanvasSize);
       if (bossAlertTimeoutRef.current) window.clearTimeout(bossAlertTimeoutRef.current);
     };
   }, []);
