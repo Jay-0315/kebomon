@@ -1255,9 +1255,12 @@ export class RewardsService {
   }
 
   async getBattleStats(userId: string) {
-    const stats = await this.prisma.battleStats.findUnique({ where: { userId } });
+    const [stats, postCount] = await Promise.all([
+      this.prisma.battleStats.findUnique({ where: { userId } }),
+      this.prisma.communityPost.count({ where: { userId } }),
+    ]);
     if (!stats) {
-      return { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
+      return { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0, postCount };
     }
     return {
       tierPoints: stats.tierPoints,
@@ -1265,6 +1268,7 @@ export class RewardsService {
       losses: stats.losses,
       winStreak: stats.winStreak,
       bestStreak: stats.bestStreak,
+      postCount,
     };
   }
 
@@ -1403,6 +1407,54 @@ export class RewardsService {
     return { granted: grants.length };
   }
 
+  // 시즌 종료 티어 KP 보너스 — ColosseumPage.tsx의 SEASON_REWARDS와 값 동기화 필수
+  private readonly SEASON_KP_REWARDS: { tierKey: string; min: number; bonus: number }[] = [
+    { tierKey: "challenger", min: 18000, bonus: 6000 },
+    { tierKey: "master",     min: 15000, bonus: 4500 },
+    { tierKey: "diamond",    min: 12000, bonus: 3000 },
+    { tierKey: "platinum",   min: 9000,  bonus: 2100 },
+    { tierKey: "gold",       min: 6000,  bonus: 1500 },
+    { tierKey: "silver",     min: 3000,  bonus: 900 },
+  ];
+
+  async grantSeasonKpBonus(seasonId: number) {
+    const rows = await this.prisma.battleStats.findMany({
+      where: { tierPoints: { gte: 3000 } },
+      select: { userId: true, tierPoints: true },
+    });
+
+    const grants = rows
+      .map((r) => ({ userId: r.userId, tier: this.SEASON_KP_REWARDS.find((t) => r.tierPoints >= t.min) }))
+      .filter((g): g is { userId: string; tier: { tierKey: string; min: number; bonus: number } } => !!g.tier);
+
+    await this.prisma.$transaction(
+      grants.map(({ userId, tier }) =>
+        this.prisma.userReward.update({
+          where: { userId },
+          data: { missionPoints: { increment: tier.bonus } },
+        }),
+      ),
+    );
+
+    for (const { userId, tier } of grants) {
+      void this.notifications.create({
+        userId,
+        type: "achievement",
+        title: `시즌 ${seasonId} 티어 보상 획득!`,
+        body: `${tier.tierKey} 티어 달성으로 KP ${tier.bonus}가 지급되었습니다.`,
+        titleKey: "notification.season_kp_title",
+        bodyKey: "notification.season_kp_body",
+        titleJa: `シーズン${seasonId} ティア報酬獲得！`,
+        bodyJa: `${tier.tierKey}ティア達成でKP${tier.bonus}が支給されました。`,
+        titleEn: `Season ${seasonId} Tier Reward!`,
+        bodyEn: `${tier.bonus} KP granted for reaching ${tier.tierKey} tier.`,
+        link: "/mypage",
+      }).catch(() => undefined);
+    }
+
+    return { granted: grants.length };
+  }
+
   async resetSeasonStats() {
     await this.prisma.battleStats.updateMany({
       data: { tierPoints: 0, wins: 0, losses: 0, winStreak: 0 },
@@ -1418,6 +1470,7 @@ export class RewardsService {
     try {
       await this.grantSeasonRankTitles(seasonId);
       await this.grantSeasonTierBorders(seasonId);
+      await this.grantSeasonKpBonus(seasonId);
       await this.resetSeasonStats();
       this.logger.log(`시즌 ${seasonId} 종료 처리 완료`);
     } catch (err) {

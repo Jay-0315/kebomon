@@ -56,4 +56,16 @@ export class ArenaController {
   getRevengeTargets(@Param("userId") userId: string) {
     return this.arena.getRevengeTargets(userId);
   }
+
+  /** 전투 기록 목록 (내가 공격한 것 + 나를 공격한 것) */
+  @Get("history/:userId")
+  getBattleHistory(@Param("userId") userId: string) {
+    return this.arena.getBattleHistory(userId);
+  }
+
+  /** 특정 전투의 리플레이 데이터 */
+  @Get("replay/:id")
+  getBattleReplay(@Param("id") id: string, @Query("userId") userId: string) {
+    return this.arena.getBattleReplay(id, userId);
+  }
 }

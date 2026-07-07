@@ -431,6 +431,8 @@ const dict = {
     "notification.season_title": "시즌 랭킹 칭호 획득!",
     "notification.season_body":
       "시즌 최종 랭킹 칭호가 지급됐습니다. 칭호 목록에서 확인하세요.",
+    "notification.season_kp_title": "시즌 티어 보상 획득!",
+    "notification.season_kp_body": "시즌 종료 티어 보상으로 KP가 지급되었습니다.",
     "notification.time.just_now": "방금",
     "notification.time.min_suffix": "{n}분 전",
     "notification.time.hr_suffix": "{h}시간 전",
@@ -1144,6 +1146,8 @@ const dict = {
     "notification.season_title": "シーズンランキング称号獲得！",
     "notification.season_body":
       "シーズン最終ランキング称号が付与されました。称号一覧で確認してください。",
+    "notification.season_kp_title": "シーズンティア報酬獲得！",
+    "notification.season_kp_body": "シーズン終了ティア報酬としてKPが支給されました。",
     "notification.time.just_now": "たった今",
     "notification.time.min_suffix": "{n}分前",
     "notification.time.hr_suffix": "{h}時間前",
@@ -1857,6 +1861,8 @@ const dict = {
     "notification.season_title": "Season Ranking Title Earned!",
     "notification.season_body":
       "Season final ranking title awarded. Check your titles!",
+    "notification.season_kp_title": "Season Tier Reward Earned!",
+    "notification.season_kp_body": "KP granted as season-end tier reward.",
     "notification.time.just_now": "just now",
     "notification.time.min_suffix": "{n}m ago",
     "notification.time.hr_suffix": "{h}h ago",

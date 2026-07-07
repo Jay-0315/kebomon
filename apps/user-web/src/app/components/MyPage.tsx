@@ -60,17 +60,20 @@ export default function MyPage() {
         wins: number;
         winStreak: number;
         bestStreak: number;
+        postCount: number;
       }>(`/rewards/colosseum-stats?userId=${encodeURIComponent(profile.id)}`)
       .then((s) => {
         setTitleStats({
           raid_count: rewardSummary.raidCount,
           attendance: rewardSummary.attendanceDays,
           streak: rewardSummary.streakDays,
-          post_count: 0,
+          post_count: s.postCount,
           points: rewardSummary.totalPointsUsed,
           col_wins: s.wins,
           col_streak: s.bestStreak,
           col_points: s.tierPoints,
+          rogue_clears: rewardSummary.rogueClears,
+          expedition_count: rewardSummary.expeditionCount,
         });
       })
       .catch(() => {
@@ -79,6 +82,8 @@ export default function MyPage() {
           attendance: rewardSummary.attendanceDays,
           streak: rewardSummary.streakDays,
           points: rewardSummary.totalPointsUsed,
+          rogue_clears: rewardSummary.rogueClears,
+          expedition_count: rewardSummary.expeditionCount,
         });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps

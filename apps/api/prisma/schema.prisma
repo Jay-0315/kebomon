@@ -194,14 +194,18 @@ model ArenaDeck {
 
 /** 아레나 공격 로그 (복수 시스템) */
 model ArenaAttackLog {
-  id           BigInt   @id @default(autoincrement())
-  attackerId   String   @map("attacker_id")
-  defenderId   String   @map("defender_id")
-  attackerWon  Boolean  @map("attacker_won")
-  pointsDelta  Int      @default(0) @map("points_delta")
-  createdAt    DateTime @default(now()) @map("created_at")
-  attacker     User     @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
-  defender     User     @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
+  id             BigInt   @id @default(autoincrement())
+  attackerId     String   @map("attacker_id")
+  defenderId     String   @map("defender_id")
+  attackerWon    Boolean  @map("attacker_won")
+  pointsDelta    Int      @default(0) @map("points_delta")
+  defenderPointsDelta Int @default(0) @map("defender_points_delta")
+  log            Json?    @map("log")
+  attackerChars  Json?    @map("attacker_chars")
+  defenderChars  Json?    @map("defender_chars")
+  createdAt      DateTime @default(now()) @map("created_at")
+  attacker       User     @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
+  defender       User     @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
 
   @@index([defenderId, createdAt(sort: Desc)])
   @@index([attackerId, createdAt(sort: Desc)])

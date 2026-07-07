@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 캐릭터 ID → 타입 매핑
@@ -940,7 +942,10 @@ function makeUnit(charId: number, slot: number, team: "attacker" | "defender", e
 // ═══════════════════════════════════════════════════════════════════════════════
 @Injectable()
 export class ArenaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private async getEnhLevel(userId: string, charId: number): Promise<number> {
     try {
@@ -1048,18 +1053,43 @@ export class ArenaService {
     const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
     const defenderUnits = defSlots.map((id, i) => id > 0 ? makeUnit(id, i, "defender", defEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
     const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
+    const attackerChars = attackerUnits.map(u => this.charInfoFromUnit(u));
+    const defenderChars = defenderUnits.map(u => this.charInfoFromUnit(u));
 
-    const [atkResult] = await Promise.all([
+    const [atkResult, defResult] = await Promise.all([
       this.updateArenaStats(attackerId, won, false),
       this.updateArenaStats(defenderId, !won, true),
     ]);
 
-    // 공격 로그 기록 (복수 시스템용)
-    try {
-      await (this.prisma as any).arenaAttackLog?.create({
-        data: { attackerId, defenderId, attackerWon: won, pointsDelta: atkResult.pointsDelta },
-      });
-    } catch { /* 테이블 미존재 시 무시 */ }
+    // 공격 로그 기록 (복수 시스템 + 리플레이용)
+    const battleLog = await this.prisma.arenaAttackLog.create({
+      data: {
+        attackerId, defenderId, attackerWon: won,
+        pointsDelta: atkResult.pointsDelta, defenderPointsDelta: defResult.pointsDelta,
+        log: log as unknown as Prisma.InputJsonValue,
+        attackerChars: attackerChars as unknown as Prisma.InputJsonValue,
+        defenderChars: defenderChars as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    // 방어덱 피격 알림 — 승패 무관하게 방어자에게 통지
+    const attackerName = (await this.prisma.user.findUnique({
+      where: { id: attackerId }, select: { name: true },
+    }))?.name ?? "도전자";
+    const defenderPointsDelta = defResult.pointsDelta;
+    void this.notifications.create({
+      userId: defenderId,
+      type: "achievement",
+      title: won ? "방어덱이 뚫렸습니다!" : "방어덱이 공격을 막아냈습니다!",
+      body: won
+        ? `${attackerName}님의 공격에 방어덱이 패배했습니다. (${defenderPointsDelta}pts)`
+        : `${attackerName}님의 공격을 방어덱이 막아냈습니다. (+${defenderPointsDelta}pts)`,
+      titleEn: won ? "Your defense deck was breached!" : "Your defense deck held!",
+      bodyEn: won
+        ? `${attackerName} defeated your defense deck. (${defenderPointsDelta}pts)`
+        : `Your defense deck fended off ${attackerName}. (+${defenderPointsDelta}pts)`,
+      link: `/colosseum?battleId=${battleLog.id.toString()}`,
+    }).catch(() => undefined);
 
     return {
       won,
@@ -1069,8 +1099,9 @@ export class ArenaService {
       losses:        atkResult.losses,
       winStreak:     atkResult.winStreak,
       log,
-      attackerChars: attackerUnits.map(u => this.charInfoFromUnit(u)),
-      defenderChars: defenderUnits.map(u => this.charInfoFromUnit(u)),
+      attackerChars,
+      defenderChars,
+      battleId: battleLog.id.toString(),
     };
   }
 
@@ -1112,30 +1143,69 @@ export class ArenaService {
   }
 
   async getRevengeTargets(userId: string) {
-    try {
-      const logs = await (this.prisma as any).arenaAttackLog?.findMany({
-        where: { defenderId: userId },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        select: { attackerId: true, attackerWon: true, createdAt: true },
-      }) ?? [];
-      const unique = new Map<string, { userId: string; attackerWon: boolean; at: Date }>();
-      for (const l of logs) {
-        if (!unique.has(l.attackerId)) unique.set(l.attackerId, { userId: l.attackerId, attackerWon: l.attackerWon, at: l.createdAt });
-      }
-      const targets = await Promise.all([...unique.values()].slice(0, 10).map(async entry => {
-        const u = await this.prisma.user.findUnique({ where: { id: entry.userId }, select: { id: true, name: true } });
-        const stats = await this.prisma.battleStats.findUnique({ where: { userId: entry.userId } });
-        const deck  = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: entry.userId, deckType: "defense" } } });
-        return {
-          userId: entry.userId, name: u?.name ?? "알 수 없음",
-          tierPoints: stats?.tierPoints ?? 0,
-          defenseSlots: (deck?.slots as number[]) ?? [],
-          theyWon: entry.attackerWon, at: entry.at,
-        };
-      }));
-      return targets;
-    } catch { return []; }
+    const logs = await this.prisma.arenaAttackLog.findMany({
+      where: { defenderId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { attackerId: true, attackerWon: true, createdAt: true },
+    });
+    const unique = new Map<string, { userId: string; attackerWon: boolean; at: Date }>();
+    for (const l of logs) {
+      if (!unique.has(l.attackerId)) unique.set(l.attackerId, { userId: l.attackerId, attackerWon: l.attackerWon, at: l.createdAt });
+    }
+    const targets = await Promise.all([...unique.values()].slice(0, 10).map(async entry => {
+      const u = await this.prisma.user.findUnique({ where: { id: entry.userId }, select: { id: true, name: true } });
+      const stats = await this.prisma.battleStats.findUnique({ where: { userId: entry.userId } });
+      const deck  = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: entry.userId, deckType: "defense" } } });
+      return {
+        userId: entry.userId, name: u?.name ?? "알 수 없음",
+        tierPoints: stats?.tierPoints ?? 0,
+        defenseSlots: (deck?.slots as number[]) ?? [],
+        theyWon: entry.attackerWon, at: entry.at,
+      };
+    }));
+    return targets;
+  }
+
+  /** 전투 기록 목록 (내가 공격한 것 + 나를 공격한 것) */
+  async getBattleHistory(userId: string, limit = 20) {
+    const logs = await this.prisma.arenaAttackLog.findMany({
+      where: { OR: [{ attackerId: userId }, { defenderId: userId }] },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    const opponentIds = [...new Set(logs.map(l => (l.attackerId === userId ? l.defenderId : l.attackerId)))];
+    const opponents = await this.prisma.user.findMany({
+      where: { id: { in: opponentIds } }, select: { id: true, name: true },
+    });
+    const nameById = new Map(opponents.map(o => [o.id, o.name]));
+    return logs.map(l => {
+      const isAttacker = l.attackerId === userId;
+      return {
+        id: l.id.toString(),
+        opponentName: nameById.get(isAttacker ? l.defenderId : l.attackerId) ?? "알 수 없음",
+        isAttacker,
+        won: isAttacker ? l.attackerWon : !l.attackerWon,
+        pointsDelta: isAttacker ? l.pointsDelta : l.defenderPointsDelta,
+        createdAt: l.createdAt,
+      };
+    });
+  }
+
+  /** 특정 전투의 리플레이 데이터 (참가자만 조회 가능) */
+  async getBattleReplay(id: string, userId: string) {
+    const battle = await this.prisma.arenaAttackLog.findUnique({ where: { id: BigInt(id) } });
+    if (!battle) throw new Error("전투 기록을 찾을 수 없습니다");
+    if (battle.attackerId !== userId && battle.defenderId !== userId) {
+      throw new Error("이 전투를 조회할 권한이 없습니다");
+    }
+    return {
+      won: battle.attackerWon,
+      pointsDelta: battle.pointsDelta,
+      log: battle.log,
+      attackerChars: battle.attackerChars,
+      defenderChars: battle.defenderChars,
+    };
   }
 
   private async updateArenaStats(userId: string, won: boolean, isDefender: boolean) {

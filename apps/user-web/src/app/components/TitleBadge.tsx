@@ -178,6 +178,8 @@ export type TitleUserStats = {
   col_wins?: number;
   col_streak?: number;
   col_points?: number;
+  rogue_clears?: number;
+  expedition_count?: number;
 };
 
 const CONDITION_UNIT: Record<string, string> = {
@@ -189,6 +191,8 @@ const CONDITION_UNIT: Record<string, string> = {
   col_wins: "승",
   col_streak: "연승",
   col_points: "pts",
+  rogue_clears: "회",
+  expedition_count: "회",
 };
 
 export function TitleSelector({

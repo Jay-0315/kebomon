@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   Swords, Sword, Shield, Bot, Leaf, Cog, Skull, Star,
-  ChevronLeft, ChevronRight, Crown, Gift,
+  ChevronLeft, ChevronRight, Crown, Gift, History, PlayCircle,
   X, Plus, SkipForward, Ticket,
 } from "lucide-react";
 import { getStoredUser } from "../lib/auth";
@@ -376,6 +377,10 @@ interface RankingEntry {
 interface RevengeTarget {
   userId: string; name: string; tierPoints: number;
   defenseSlots: number[]; theyWon: boolean; at: string;
+}
+interface BattleHistoryEntry {
+  id: string; opponentName: string; isAttacker: boolean;
+  won: boolean; pointsDelta: number; createdAt: string;
 }
 interface CharInfo {
   slot: number; charId: number; maxHp: number;
@@ -2248,6 +2253,7 @@ export default function ColosseumPage() {
   const { lang }          = useLang();
   const ko = lang === "ko"; const ja = lang === "ja";
   const user              = getStoredUser();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // 세션 상태
   const [phase, setPhase]             = useState<Phase>("lobby");
@@ -2281,6 +2287,12 @@ export default function ColosseumPage() {
   // 복수 목록
   const [revengeTargets, setRevengeTargets] = useState<RevengeTarget[]>([]);
   const [revengeOpen, setRevengeOpen]       = useState(false);
+
+  // 전투 기록 / 리플레이
+  const [battleHistory, setBattleHistory]   = useState<BattleHistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen]       = useState(false);
+  const [replayResult, setReplayResult]     = useState<BattleResult | null>(null);
+  const [replayLoadingId, setReplayLoadingId] = useState<string | null>(null);
 
   const { tickets, msToNext, fmtMs, consume } = useTickets();
   const { isOnCooldown, getRemainingMs, applyCooldown } = useNpcCooldowns();
@@ -2318,7 +2330,37 @@ export default function ColosseumPage() {
     } catch { /* silent */ }
   }, [user?.id]);
 
-  useEffect(() => { fetchMyData(); fetchRankings(); fetchRevengeTargets(); }, [fetchMyData, fetchRankings, fetchRevengeTargets]);
+  const fetchBattleHistory = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await api.get<BattleHistoryEntry[]>(`/arena/history/${encodeURIComponent(user.id)}`);
+      setBattleHistory(res);
+    } catch { /* silent */ }
+  }, [user?.id]);
+
+  const openReplay = useCallback(async (battleId: string) => {
+    if (!user?.id) return;
+    setReplayLoadingId(battleId);
+    try {
+      const res = await api.get<BattleResult>(`/arena/replay/${encodeURIComponent(battleId)}?userId=${encodeURIComponent(user.id)}`);
+      setReplayResult(res);
+    } catch { /* silent */ }
+    setReplayLoadingId(null);
+  }, [user?.id]);
+
+  useEffect(() => { fetchMyData(); fetchRankings(); fetchRevengeTargets(); fetchBattleHistory(); }, [fetchMyData, fetchRankings, fetchRevengeTargets, fetchBattleHistory]);
+
+  // 알림 딥링크 — ?battleId=123 으로 진입 시 자동으로 해당 전투 리플레이 오픈
+  useEffect(() => {
+    const battleId = searchParams.get("battleId");
+    if (battleId) {
+      openReplay(battleId);
+      const next = new URLSearchParams(searchParams);
+      next.delete("battleId");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // ── 덱 저장 ──
   const saveDeck = async (deckType: "attack"|"defense", slots: number[]) => {
@@ -2378,6 +2420,16 @@ export default function ColosseumPage() {
   };
 
   // ── 페이즈별 렌더 ──────────────────────────────────────────────────────────
+
+  // 전투 기록 리플레이 (현재 phase와 무관하게 최우선 표시)
+  if (replayResult) {
+    return (
+      <BattleReplay
+        result={replayResult}
+        onDone={() => setReplayResult(null)}
+      />
+    );
+  }
 
   // 덱 편집
   if (phase === "deck-edit") {
@@ -2918,6 +2970,65 @@ export default function ColosseumPage() {
                         style={{ display:"flex", alignItems:"center", gap:4, background: tickets>0&&myAtkSlots.some(Boolean) ? "linear-gradient(180deg,#ef4444,#991b1b)" : "#1e0a0a", border:`2px solid ${tickets>0&&myAtkSlots.some(Boolean)?"#7f1d1d":"#2e0a0a"}`, color: tickets>0&&myAtkSlots.some(Boolean) ? "#fff" : "#6b7280", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 10px", borderRadius:4, cursor: tickets===0||!myAtkSlots.some(Boolean)?"not-allowed":"pointer", flexShrink:0, boxShadow: tickets>0&&myAtkSlots.some(Boolean) ? "0 3px 0 #450a0a" : "none" }}
                       >
                         <Swords size={10} strokeWidth={2.5}/>{ko?"복수":ja?"復讐":"Revenge"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ 전투 기록 (대전 탭 안) ═══════════════════════════════════════ */}
+        {battleHistory.length > 0 && (
+          <div style={{ background:"linear-gradient(135deg,#0a1420 0%,#060d16 100%)", border:"1px solid #14395a", borderRadius:10, overflow:"hidden" }}>
+            <button
+              onClick={() => setHistoryOpen(p => !p)}
+              style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 14px", background:"rgba(96,165,250,0.07)", borderBottom: historyOpen ? "1px solid #0e2a44" : "none", border:"none", cursor:"pointer", fontFamily:FONT }}
+            >
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <History size={13} color="#60a5fa" strokeWidth={2.5}/>
+                <span style={{ fontSize:12, fontWeight:900, color:"#60a5fa", letterSpacing:"0.1em" }}>
+                  {ko?"전투 기록":ja?"バトル履歴":"Battle History"}
+                </span>
+                <span style={{ fontSize:9, fontWeight:900, color:"#60a5fa", background:"rgba(96,165,250,0.15)", border:"1px solid rgba(96,165,250,0.35)", borderRadius:10, padding:"1px 7px" }}>
+                  {battleHistory.length}
+                </span>
+              </div>
+              <ChevronRight size={14} color="#60a5fa" style={{ transform: historyOpen ? "rotate(90deg)" : "rotate(0deg)", transition:"transform 0.2s" }}/>
+            </button>
+
+            {historyOpen && (
+              <div style={{ display:"flex", flexDirection:"column" }}>
+                {battleHistory.map((bh, i) => {
+                  const ago = (() => {
+                    const diff = Date.now() - new Date(bh.createdAt).getTime();
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    return h > 0 ? (ko?`${h}시간 전`:ja?`${h}時間前`:`${h}h ago`) : (ko?`${m}분 전`:ja?`${m}分前`:`${m}m ago`);
+                  })();
+                  return (
+                    <div key={bh.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom: i < battleHistory.length - 1 ? "1px solid #0e2233" : "none", background: i%2===0?"transparent":"rgba(255,255,255,0.012)" }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ margin:0, fontSize:12, color:"#e2e8f0", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {bh.isAttacker ? (ko?`vs ${bh.opponentName}`:ja?`vs ${bh.opponentName}`:`vs ${bh.opponentName}`) : (ko?`${bh.opponentName}의 공격`:ja?`${bh.opponentName}の攻撃`:`Attacked by ${bh.opponentName}`)}
+                        </p>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                          <span style={{ fontSize:9, color: bh.won ? "#4ade80" : "#f87171", background: bh.won ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)", border: `1px solid ${bh.won?"rgba(74,222,128,0.3)":"rgba(248,113,113,0.3)"}`, borderRadius:3, padding:"1px 5px" }}>
+                            {bh.won ? (ko?"승리":ja?"勝利":"Won") : (ko?"패배":ja?"敗北":"Lost")}
+                          </span>
+                          <span style={{ fontSize:9, fontFamily:"monospace", color: bh.pointsDelta >= 0 ? "#4ade80" : "#f87171" }}>
+                            {bh.pointsDelta >= 0 ? `+${bh.pointsDelta}` : bh.pointsDelta}pts
+                          </span>
+                          <span style={{ fontSize:9, color:"#4b5563", marginLeft:"auto" }}>{ago}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => openReplay(bh.id)}
+                        disabled={replayLoadingId === bh.id}
+                        style={{ display:"flex", alignItems:"center", gap:4, background:"linear-gradient(180deg,#3b82f6,#1d4ed8)", border:"2px solid #1e3a8a", color:"#fff", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 10px", borderRadius:4, cursor: replayLoadingId === bh.id ? "wait" : "pointer", flexShrink:0, boxShadow:"0 3px 0 #1e3a8a", opacity: replayLoadingId === bh.id ? 0.6 : 1 }}
+                      >
+                        <PlayCircle size={10} strokeWidth={2.5}/>{ko?"리플레이":ja?"リプレイ":"Replay"}
                       </button>
                     </div>
                   );
