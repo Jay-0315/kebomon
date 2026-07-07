@@ -1199,9 +1199,15 @@ export class ArenaService {
     if (battle.attackerId !== userId && battle.defenderId !== userId) {
       throw new Error("이 전투를 조회할 권한이 없습니다");
     }
+    const isAttacker = battle.attackerId === userId;
+    const opponent = await this.prisma.user.findUnique({
+      where: { id: isAttacker ? battle.defenderId : battle.attackerId }, select: { name: true },
+    });
     return {
-      won: battle.attackerWon,
-      pointsDelta: battle.pointsDelta,
+      won: isAttacker ? battle.attackerWon : !battle.attackerWon,
+      pointsDelta: isAttacker ? battle.pointsDelta : battle.defenderPointsDelta,
+      opponentName: opponent?.name ?? "알 수 없음",
+      isAttacker,
       log: battle.log,
       attackerChars: battle.attackerChars,
       defenderChars: battle.defenderChars,

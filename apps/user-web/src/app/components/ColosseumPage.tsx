@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   Swords, Sword, Shield, Bot, Leaf, Cog, Skull, Star,
-  ChevronLeft, ChevronRight, Crown, Gift, History, PlayCircle,
+  ChevronLeft, ChevronRight, Crown, Gift, History, PlayCircle, Loader2,
   X, Plus, SkipForward, Ticket,
 } from "lucide-react";
 import { getStoredUser } from "../lib/auth";
@@ -357,7 +357,17 @@ function useTickets() {
     return h > 0 ? `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}` : `${m}:${String(s).padStart(2,"0")}`;
   };
 
-  return { ...state, msToNext, fmtMs, consume };
+  // 네트워크 실패 등으로 소모한 티켓을 되돌려줄 때 사용
+  const refund = () => {
+    const cur = syncTickets();
+    const newT = Math.min(MAX_TICKETS, cur.tickets + 1);
+    localStorage.setItem(TK_KEY, String(newT));
+    const newB = newT >= MAX_TICKETS ? null : cur.regenBase;
+    if (newB === null) localStorage.removeItem(TK_REGEN); else localStorage.setItem(TK_REGEN, String(newB));
+    setState({ tickets: newT, regenBase: newB });
+  };
+
+  return { ...state, msToNext, fmtMs, consume, refund };
 }
 
 // ─── 티어 유틸 ────────────────────────────────────────────────────────────────
@@ -428,6 +438,8 @@ interface BattleResult {
   won: boolean; pointsDelta: number; tierPoints: number;
   wins: number; losses: number; winStreak: number;
   log: BattleEvent[]; attackerChars: CharInfo[]; defenderChars: CharInfo[];
+  // 전투 기록 리플레이 조회 시에만 채워짐 (실전 배틀 응답에는 없음)
+  opponentName?: string; isAttacker?: boolean;
 }
 type Phase = "lobby" | "deck-edit" | "attack-confirm" | "battle" | "result";
 
@@ -441,6 +453,7 @@ const CSS = `
 @keyframes col-attack{0%{transform:translate(0,0) scale(1)}20%{transform:translate(0,-6px) scale(1.08)}50%{transform:translate(14px,-2px) scale(1.13)}70%{transform:translate(-4px,2px) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
 @keyframes col-attack-rev{0%{transform:translate(0,0) scale(1)}20%{transform:translate(0,-6px) scale(1.08)}50%{transform:translate(-14px,-2px) scale(1.13)}70%{transform:translate(4px,2px) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
 @keyframes col-win-in{0%{letter-spacing:0.6em;opacity:0}100%{letter-spacing:0.12em;opacity:1}}
+@keyframes col-spin{to{transform:rotate(360deg)}}
 @keyframes col-log-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes col-roll-in{0%{opacity:0;transform:scale(0.5) rotate(-12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes col-active-glow{0%,100%{filter:drop-shadow(0 0 6px #c8a44a)}50%{filter:drop-shadow(0 0 18px #c8a44a)}}
@@ -2247,6 +2260,50 @@ function BattleReplay({
   );
 }
 
+// ─── 액션 실패 등 즉시 피드백용 토스트 ────────────────────────────────────────
+function FeedbackToast({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <div style={{ position:"fixed", left:"50%", bottom:24, transform:"translateX(-50%)", zIndex:200, pointerEvents:"none" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(20,14,6,0.95)", border:`1px solid ${C.border}`, borderRadius:20, padding:"9px 16px", boxShadow:"0 4px 20px rgba(0,0,0,0.5)", fontFamily:FONT, fontSize:12, fontWeight:700, color:"#f87171", maxWidth:"88vw", animation:"col-win-in 0.2s ease-out both" }}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// ─── 과거 전투 리플레이 종료 후 요약 카드 ─────────────────────────────────────
+function ReplaySummaryCard({
+  result, ko, ja, onClose,
+}: {
+  result: BattleResult; ko: boolean; ja: boolean; onClose: () => void;
+}) {
+  const won = result.won;
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:FONT, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20, padding:20 }}>
+      <style>{CSS}</style>
+      <div style={{ textAlign:"center" }}>
+        <p style={{ fontFamily:"'Courier New',monospace", fontSize:44, fontWeight:900, color: won?"#ffd700":"#f87171", textShadow: won?"0 0 30px #ffd700":"0 0 20px #ef4444", margin:"0 0 8px", animation:"col-win-in 0.6s ease-out both", letterSpacing:"0.12em" }}>
+          {won ? (ko?"승리":"VICTORY") : (ko?"패배":"DEFEAT")}
+        </p>
+        <p style={{ fontSize:14, color:C.stone, margin:0 }}>
+          vs. {result.opponentName ?? (ko?"상대방":"Opponent")}
+        </p>
+      </div>
+      <div style={{ background:"linear-gradient(135deg,#1e1508,#120e06)", border:`2px solid ${C.border}`, borderRadius:8, padding:"16px 28px", textAlign:"center" }}>
+        <p style={{ fontFamily:"monospace", fontSize:32, fontWeight:900, color: result.pointsDelta >= 0 ? "#4ade80" : "#f87171", margin:0 }}>
+          {result.pointsDelta >= 0 ? "+" : ""}{result.pointsDelta} pts
+        </p>
+      </div>
+      <div style={{ width:"100%", maxWidth:320 }}>
+        <PixelBtn onClick={onClose}>
+          {ko?"닫기":ja?"閉じる":"Close"}
+        </PixelBtn>
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function ColosseumPage() {
   const { rewardSummary } = useAppData();
@@ -2291,11 +2348,22 @@ export default function ColosseumPage() {
   // 전투 기록 / 리플레이
   const [battleHistory, setBattleHistory]   = useState<BattleHistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen]       = useState(false);
+  const [historyHighlightId, setHistoryHighlightId] = useState<string | null>(null);
   const [replayResult, setReplayResult]     = useState<BattleResult | null>(null);
+  const [replayPhase, setReplayPhase]       = useState<"playing"|"summary">("playing");
   const [replayLoadingId, setReplayLoadingId] = useState<string | null>(null);
 
-  const { tickets, msToNext, fmtMs, consume } = useTickets();
+  const { tickets, msToNext, fmtMs, consume, refund } = useTickets();
   const { isOnCooldown, getRemainingMs, applyCooldown } = useNpcCooldowns();
+
+  // 액션 실패 피드백 토스트
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
+  }, []);
 
   const ownedIds = rewardSummary.ownedCharacterIds ?? [];
 
@@ -2344,9 +2412,15 @@ export default function ColosseumPage() {
     try {
       const res = await api.get<BattleResult>(`/arena/replay/${encodeURIComponent(battleId)}?userId=${encodeURIComponent(user.id)}`);
       setReplayResult(res);
-    } catch { /* silent */ }
+      setReplayPhase("playing");
+      setHistoryOpen(true);
+      setHistoryHighlightId(battleId);
+      setTimeout(() => setHistoryHighlightId(cur => cur === battleId ? null : cur), 4000);
+    } catch {
+      showToast(ko?"리플레이를 불러오지 못했습니다.":ja?"リプレイの読み込みに失敗しました。":"Failed to load replay.");
+    }
     setReplayLoadingId(null);
-  }, [user?.id]);
+  }, [user?.id, ko, ja, showToast]);
 
   useEffect(() => { fetchMyData(); fetchRankings(); fetchRevengeTargets(); fetchBattleHistory(); }, [fetchMyData, fetchRankings, fetchRevengeTargets, fetchBattleHistory]);
 
@@ -2369,8 +2443,10 @@ export default function ColosseumPage() {
       await api.put("/arena/deck", { userId: user.id, deckType, slots });
       if (deckType === "attack") setMyAtkSlots(slots);
       else setMyDefSlots(slots);
-    } catch { /* silent */ }
-    setPhase("lobby");
+      setPhase("lobby");
+    } catch {
+      showToast(ko?"덱 저장에 실패했습니다. 다시 시도해주세요.":ja?"デッキの保存に失敗しました。もう一度お試しください。":"Failed to save deck. Please try again.");
+    }
   };
 
   // ── 공격 확인 (실제 플레이어) ──
@@ -2415,7 +2491,9 @@ export default function ColosseumPage() {
       setStats({ wins:res.wins, losses:res.losses, winStreak:res.winStreak });
       if (res.won && npcTarget) applyCooldown(npcTarget.id);
     } catch {
+      refund();
       setPhase("lobby");
+      showToast(ko?"전투 시작에 실패했습니다. 티켓이 반환되었습니다.":ja?"バトル開始に失敗しました。チケットを返却しました。":"Failed to start the battle. Your ticket was refunded.");
     }
   };
 
@@ -2423,10 +2501,19 @@ export default function ColosseumPage() {
 
   // 전투 기록 리플레이 (현재 phase와 무관하게 최우선 표시)
   if (replayResult) {
+    if (replayPhase === "summary") {
+      return (
+        <ReplaySummaryCard
+          result={replayResult}
+          ko={ko} ja={ja}
+          onClose={() => { setReplayResult(null); setReplayPhase("playing"); }}
+        />
+      );
+    }
     return (
       <BattleReplay
         result={replayResult}
-        onDone={() => setReplayResult(null)}
+        onDone={() => setReplayPhase("summary")}
       />
     );
   }
@@ -2434,15 +2521,18 @@ export default function ColosseumPage() {
   // 덱 편집
   if (phase === "deck-edit") {
     return (
-      <DeckEditor
-        deckType={editingDeckType}
-        currentSlots={editingDeckType === "attack" ? myAtkSlots : myDefSlots}
-        ownedIds={ownedIds}
-        onSave={slots => saveDeck(editingDeckType, slots)}
-        onBack={() => setPhase("lobby")}
-        ko={ko} ja={ja}
-        charEnhancements={rewardSummary.characterEnhancements ?? {}}
-      />
+      <>
+        <DeckEditor
+          deckType={editingDeckType}
+          currentSlots={editingDeckType === "attack" ? myAtkSlots : myDefSlots}
+          ownedIds={ownedIds}
+          onSave={slots => saveDeck(editingDeckType, slots)}
+          onBack={() => setPhase("lobby")}
+          ko={ko} ja={ja}
+          charEnhancements={rewardSummary.characterEnhancements ?? {}}
+        />
+        <FeedbackToast text={toast} />
+      </>
     );
   }
 
@@ -2508,6 +2598,7 @@ export default function ColosseumPage() {
     return (
       <div style={{ minHeight:"100vh", background:C.bg, fontFamily:FONT, padding:"16px 16px 40px" }}>
         <style>{CSS}</style>
+        <FeedbackToast text={toast} />
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:18 }}>
           <button onClick={() => setPhase("lobby")} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
             <ChevronLeft size={22} color={C.stone}/>
@@ -2650,6 +2741,7 @@ export default function ColosseumPage() {
   return (
     <div style={{ minHeight:"100vh", background:C.bg, padding:"0 0 60px", fontFamily:FONT }}>
       <style>{CSS}</style>
+      <FeedbackToast text={toast} />
 
       {/* ══ 히어로 배너 ══════════════════════════════════════════════════════ */}
       <div style={{ position:"relative", background:"linear-gradient(180deg,#1e1006 0%,#120a04 55%,#0c0703 100%)", borderBottom:`3px solid #6b3a0e`, boxShadow:`0 6px 40px ${C.goldGlow}55` }}>
@@ -3007,8 +3099,9 @@ export default function ColosseumPage() {
                     const m = Math.floor((diff % 3600000) / 60000);
                     return h > 0 ? (ko?`${h}시간 전`:ja?`${h}時間前`:`${h}h ago`) : (ko?`${m}분 전`:ja?`${m}分前`:`${m}m ago`);
                   })();
+                  const highlighted = historyHighlightId === bh.id;
                   return (
-                    <div key={bh.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom: i < battleHistory.length - 1 ? "1px solid #0e2233" : "none", background: i%2===0?"transparent":"rgba(255,255,255,0.012)" }}>
+                    <div key={bh.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom: i < battleHistory.length - 1 ? "1px solid #0e2233" : "none", background: highlighted ? "rgba(96,165,250,0.14)" : i%2===0?"transparent":"rgba(255,255,255,0.012)", boxShadow: highlighted ? "inset 3px 0 0 #60a5fa" : "none", transition:"background 0.4s, box-shadow 0.4s" }}>
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ margin:0, fontSize:12, color:"#e2e8f0", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                           {bh.isAttacker ? (ko?`vs ${bh.opponentName}`:ja?`vs ${bh.opponentName}`:`vs ${bh.opponentName}`) : (ko?`${bh.opponentName}의 공격`:ja?`${bh.opponentName}の攻撃`:`Attacked by ${bh.opponentName}`)}
@@ -3017,7 +3110,7 @@ export default function ColosseumPage() {
                           <span style={{ fontSize:9, color: bh.won ? "#4ade80" : "#f87171", background: bh.won ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)", border: `1px solid ${bh.won?"rgba(74,222,128,0.3)":"rgba(248,113,113,0.3)"}`, borderRadius:3, padding:"1px 5px" }}>
                             {bh.won ? (ko?"승리":ja?"勝利":"Won") : (ko?"패배":ja?"敗北":"Lost")}
                           </span>
-                          <span style={{ fontSize:9, fontFamily:"monospace", color: bh.pointsDelta >= 0 ? "#4ade80" : "#f87171" }}>
+                          <span style={{ fontSize:11, fontWeight:800, fontFamily:"monospace", color: bh.pointsDelta >= 0 ? "#4ade80" : "#f87171" }}>
                             {bh.pointsDelta >= 0 ? `+${bh.pointsDelta}` : bh.pointsDelta}pts
                           </span>
                           <span style={{ fontSize:9, color:"#4b5563", marginLeft:"auto" }}>{ago}</span>
@@ -3028,7 +3121,16 @@ export default function ColosseumPage() {
                         disabled={replayLoadingId === bh.id}
                         style={{ display:"flex", alignItems:"center", gap:4, background:"linear-gradient(180deg,#3b82f6,#1d4ed8)", border:"2px solid #1e3a8a", color:"#fff", fontFamily:FONT, fontSize:10, fontWeight:900, padding:"5px 10px", borderRadius:4, cursor: replayLoadingId === bh.id ? "wait" : "pointer", flexShrink:0, boxShadow:"0 3px 0 #1e3a8a", opacity: replayLoadingId === bh.id ? 0.6 : 1 }}
                       >
-                        <PlayCircle size={10} strokeWidth={2.5}/>{ko?"리플레이":ja?"リプレイ":"Replay"}
+                        {replayLoadingId === bh.id ? (
+                          <>
+                            <Loader2 size={10} strokeWidth={2.5} style={{ animation:"col-spin 0.8s linear infinite" }}/>
+                            {ko?"로딩...":ja?"読込中...":"Loading..."}
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle size={10} strokeWidth={2.5}/>{ko?"리플레이":ja?"リプレイ":"Replay"}
+                          </>
+                        )}
                       </button>
                     </div>
                   );
