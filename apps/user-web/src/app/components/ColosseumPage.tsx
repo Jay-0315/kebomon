@@ -2490,6 +2490,7 @@ export default function ColosseumPage() {
       setTierPts(res.tierPoints);
       setStats({ wins:res.wins, losses:res.losses, winStreak:res.winStreak });
       if (res.won && npcTarget) applyCooldown(npcTarget.id);
+      if (!npcTarget) fetchBattleHistory(); // 실제 유저 전투만 기록에 남음
     } catch {
       refund();
       setPhase("lobby");

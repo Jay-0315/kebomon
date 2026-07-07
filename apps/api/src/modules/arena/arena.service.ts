@@ -1167,10 +1167,16 @@ export class ArenaService {
     return targets;
   }
 
+  // 리플레이 저장 기능 배포 시점 — 이전 기록은 log/attackerChars/defenderChars가 없어 목록에서 제외
+  private readonly BATTLE_REPLAY_SINCE = new Date("2026-07-07T00:00:00+09:00");
+
   /** 전투 기록 목록 (내가 공격한 것 + 나를 공격한 것) */
   async getBattleHistory(userId: string, limit = 20) {
     const logs = await this.prisma.arenaAttackLog.findMany({
-      where: { OR: [{ attackerId: userId }, { defenderId: userId }] },
+      where: {
+        OR: [{ attackerId: userId }, { defenderId: userId }],
+        createdAt: { gte: this.BATTLE_REPLAY_SINCE },
+      },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
