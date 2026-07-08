@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ARENA_POINTS } from "./arena.constants";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 캐릭터 ID → 타입 매핑
@@ -1056,20 +1057,21 @@ export class ArenaService {
     const attackerChars = attackerUnits.map(u => this.charInfoFromUnit(u));
     const defenderChars = defenderUnits.map(u => this.charInfoFromUnit(u));
 
-    const [atkResult, defResult] = await Promise.all([
-      this.updateArenaStats(attackerId, won, false),
-      this.updateArenaStats(defenderId, !won, true),
-    ]);
-
-    // 공격 로그 기록 (복수 시스템 + 리플레이용)
-    const battleLog = await this.prisma.arenaAttackLog.create({
-      data: {
-        attackerId, defenderId, attackerWon: won,
-        pointsDelta: atkResult.pointsDelta, defenderPointsDelta: defResult.pointsDelta,
-        log: log as unknown as Prisma.InputJsonValue,
-        attackerChars: attackerChars as unknown as Prisma.InputJsonValue,
-        defenderChars: defenderChars as unknown as Prisma.InputJsonValue,
-      },
+    // 전적 갱신 2건 + 로그 기록을 하나의 트랜잭션으로 묶어, 중간에 실패해도
+    // "공격자 전적만 갱신되고 로그는 안 남는" 식의 반쪽 상태가 남지 않게 함
+    const [atkResult, defResult, battleLog] = await this.prisma.$transaction(async (tx) => {
+      const atkResult = await this.updateArenaStats(tx, attackerId, won, false);
+      const defResult = await this.updateArenaStats(tx, defenderId, !won, true);
+      const battleLog = await tx.arenaAttackLog.create({
+        data: {
+          attackerId, defenderId, attackerWon: won,
+          pointsDelta: atkResult.pointsDelta, defenderPointsDelta: defResult.pointsDelta,
+          log: log as unknown as Prisma.InputJsonValue,
+          attackerChars: attackerChars as unknown as Prisma.InputJsonValue,
+          defenderChars: defenderChars as unknown as Prisma.InputJsonValue,
+        },
+      });
+      return [atkResult, defResult, battleLog] as const;
     });
 
     // 방어덱 피격 알림 — 승패 무관하게 방어자에게 통지
@@ -1220,14 +1222,16 @@ export class ArenaService {
     };
   }
 
-  private async updateArenaStats(userId: string, won: boolean, isDefender: boolean) {
-    const ex   = await this.prisma.battleStats.findUnique({ where: { userId } });
+  private async updateArenaStats(
+    tx: Prisma.TransactionClient, userId: string, won: boolean, isDefender: boolean,
+  ) {
+    const ex   = await tx.battleStats.findUnique({ where: { userId } });
     const prev = ex ?? { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
     let pointsDelta: number;
     if (won) {
-      pointsDelta = isDefender ? 20 : 600 + (prev.winStreak >= 1 ? 20 : 0);
+      pointsDelta = isDefender ? ARENA_POINTS.defenderWin : ARENA_POINTS.attackerWin + (prev.winStreak >= 1 ? ARENA_POINTS.streakBonus : 0);
     } else {
-      pointsDelta = isDefender ? -20 : -50;
+      pointsDelta = isDefender ? ARENA_POINTS.defenderLoss : ARENA_POINTS.attackerLoss;
     }
     const newWinStreak = won && !isDefender ? prev.winStreak + 1 : won ? prev.winStreak : 0;
     const newPoints    = Math.max(0, prev.tierPoints + pointsDelta);
@@ -1238,7 +1242,7 @@ export class ArenaService {
       winStreak:  newWinStreak,
       bestStreak: Math.max(prev.bestStreak, newWinStreak),
     };
-    await this.prisma.battleStats.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+    await tx.battleStats.upsert({ where: { userId }, create: { userId, ...data }, update: data });
     return { ...data, pointsDelta };
   }
 }
