@@ -59,7 +59,7 @@ export class NotificationsService implements OnModuleInit {
   }) {
     const settings = await this.prisma.appSetting.findUnique({
       where: { userId: input.userId },
-      select: { language: true },
+      select: { language: true, notifications: true },
     });
     const lang = settings?.language ?? "ko";
     const title =
@@ -85,8 +85,10 @@ export class NotificationsService implements OnModuleInit {
     });
     const payload = this.serialize(notif);
     this.gateway.emitToUser(input.userId, "notification", payload);
-    // Web Push (실패해도 메인 플로우 중단 안 함)
-    void this.sendPush(input.userId, input.title, input.body, input.link ?? undefined).catch(() => undefined);
+    // Web Push (알람 설정 꺼져있으면 발송 안 함, 실패해도 메인 플로우 중단 안 함)
+    if (settings?.notifications !== false) {
+      void this.sendPush(input.userId, input.title, input.body, input.link ?? undefined).catch(() => undefined);
+    }
     return payload;
   }
 
