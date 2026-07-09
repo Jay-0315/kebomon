@@ -585,13 +585,37 @@ export class RewardsService {
     return { ...rewards, expeditionCount: updatedReward.expeditionCount };
   }
 
+  // 로그라이크 한 판을 실제로 플레이하는 데 걸리는 최소 시간 — 이보다 빨리 complete가
+  // 들어오면 클라이언트 검증 없이 반복 호출해 보상만 채굴하는 것으로 간주해 거부한다.
+  private static readonly MIN_ROGUE_RUN_MS = 60_000;
+  // 도전 모드: 스테이지당 최소 이만큼은 걸린다고 가정 (climbed stage 수에 비례해 요구)
+  private static readonly MIN_MS_PER_CHALLENGE_STAGE = 3_000;
+
+  /** 로그라이크/도전 모드 런 시작 기록 — 이후 complete/submit에서 경과 시간을 검증하는 데 사용 */
+  async startRun(userId: string) {
+    await this.getOrCreateReward(userId);
+    const startedAt = new Date();
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: { activeRunStartedAt: startedAt },
+    });
+    return { startedAt: startedAt.toISOString() };
+  }
+
   async completeRogue(userId: string, difficulty = "normal") {
     const reward = await this.getOrCreateReward(userId);
+    if (!reward.activeRunStartedAt) {
+      throw new BadRequestException("시작되지 않은 런입니다.");
+    }
+    const elapsed = Date.now() - reward.activeRunStartedAt.getTime();
+    if (elapsed < RewardsService.MIN_ROGUE_RUN_MS) {
+      throw new BadRequestException("비정상적으로 빠른 진행입니다.");
+    }
     const prevClears = reward.rogueClears;
 
     const updated = await this.prisma.userReward.update({
       where: { userId },
-      data: { rogueClears: { increment: 1 } },
+      data: { rogueClears: { increment: 1 }, activeRunStartedAt: null },
     });
     const newClears = updated.rogueClears;
 
@@ -626,14 +650,22 @@ export class RewardsService {
   async submitChallenge(userId: string, stage: number) {
     const s = Math.max(0, Math.min(100, Math.floor(Number(stage) || 0)));
     const reward = await this.getOrCreateReward(userId);
+    if (!reward.activeRunStartedAt) {
+      throw new BadRequestException("시작되지 않은 도전입니다.");
+    }
+    const elapsed = Date.now() - reward.activeRunStartedAt.getTime();
     const prevBest = reward.challengeBest;
     let challengeBest = prevBest;
     let milestones: RogueMilestone[] = [];
 
     if (s > prevBest) {
+      // 신기록 갱신 시에만 시간 검증 — 보상이 걸려있는 경우만 막으면 됨
+      if (elapsed < s * RewardsService.MIN_MS_PER_CHALLENGE_STAGE) {
+        throw new BadRequestException("비정상적으로 빠른 진행입니다.");
+      }
       const updated = await this.prisma.userReward.update({
         where: { userId },
-        data: { challengeBest: s },
+        data: { challengeBest: s, activeRunStartedAt: null },
       });
       challengeBest = updated.challengeBest;
       milestones = getChallengeMilestones(prevBest, s);
@@ -654,6 +686,11 @@ export class RewardsService {
           },
         });
       }
+    } else {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { activeRunStartedAt: null },
+      });
     }
 
     return { challengeBest, prevBest, stage: s, isNewRecord: s > prevBest, milestones };
@@ -1216,14 +1253,6 @@ export class RewardsService {
       update: { equippedBorderId: null },
     });
     return { equippedBorderId: updated.equippedBorderId };
-  }
-
-  async grantBorders(userId: string, borderIds: string[]) {
-    if (borderIds.length === 0) return;
-    await this.prisma.userBorder.createMany({
-      data: borderIds.map((borderId) => ({ userId, borderId })),
-      skipDuplicates: true,
-    });
   }
 
   async checkAndGrantTitles(userId: string) {

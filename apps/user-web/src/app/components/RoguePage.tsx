@@ -3369,6 +3369,7 @@ function NodeIcon({ type, size = 20 }: { type: NodeType; size?: number }) {
 export default function RoguePage() {
   const {
     rewardSummary,
+    startGameRun,
     completeRogue,
     submitChallenge,
     fetchChallengeRankings,
@@ -3608,6 +3609,7 @@ export default function RoguePage() {
   // ── Start run ────────────────────────────────────────────────────────────
   const startRun = useCallback(
     (mode: RunMode = "story") => {
+      void startGameRun(); // 서버에 런 시작 시각 기록 — complete/submit 시 실제 플레이 시간 검증용
       const maxHp = RARITY_HP[myChar.rarity] ?? 75;
       const deck = makeStarterDeck(myChar.type);
       const rogueType = ROGUE_TYPE_MAP[myChar.type] ?? "energy";
@@ -3654,7 +3656,7 @@ export default function RoguePage() {
       setSelIdx(null);
       immortalHeartUsedRef.current = false;
     },
-    [myChar, difficulty],
+    [myChar, difficulty, startGameRun],
   );
 
   // ── Enter a map node ─────────────────────────────────────────────────────

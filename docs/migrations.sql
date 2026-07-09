@@ -146,3 +146,10 @@ CREATE TABLE IF NOT EXISTS expeditions (
   created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_expeditions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- ============================================================
+-- Migration: Add active_run_started_at (로그라이크/도전 진행시간 검증용)
+-- Applied: 2026-07-09
+-- ============================================================
+ALTER TABLE user_rewards
+  ADD COLUMN active_run_started_at DATETIME NULL AFTER arena_ticket_date;

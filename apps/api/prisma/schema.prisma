@@ -122,6 +122,7 @@ model UserReward {
   arenaTickets        Int      @default(5) @map("arena_tickets")
   arenaTicketRegenAt  DateTime? @map("arena_ticket_regen_at")
   arenaTicketDate     String?  @map("arena_ticket_date") @db.VarChar(10)
+  activeRunStartedAt  DateTime? @map("active_run_started_at")
   lastAttendanceDate  String?  @map("last_attendance_date") @db.VarChar(10)
   monthKey            String?  @map("month_key") @db.VarChar(7)
   monthDays           Int      @default(0) @map("month_days")

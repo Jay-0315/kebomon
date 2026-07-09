@@ -85,6 +85,7 @@ interface AppDataContextValue {
   getExpeditionState: () => Promise<ExpeditionState | null>;
   resolveExpeditionEvent: (risky: boolean) => Promise<{ eventBonusMult: number }>;
   completeExpedition: () => Promise<ExpeditionRewardResult>;
+  startGameRun: () => Promise<void>;
   completeRogue: (difficulty?: string) => Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null>;
   submitChallenge: (stage: number) => Promise<ChallengeResult | null>;
   fetchChallengeRankings: () => Promise<ChallengeRankRow[]>;
@@ -601,6 +602,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const startGameRun = async (): Promise<void> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    await api.post("/rewards/run/start", { userId: currentUser.id }).catch(() => undefined);
+  };
+
   const completeRogue = async (difficulty = "normal"): Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null> => {
     const currentUser = getStoredUser();
     if (!currentUser) return null;
@@ -709,6 +716,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     getExpeditionState,
     resolveExpeditionEvent,
     completeExpedition,
+    startGameRun,
     completeRogue,
     submitChallenge,
     fetchChallengeRankings,

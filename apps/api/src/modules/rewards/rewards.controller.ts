@@ -65,11 +65,6 @@ export class RewardsController {
     return this.rewardsService.unequipBorder(body.userId);
   }
 
-  @Post("borders/grant")
-  grantBorders(@Body() body: { userId: string; borderIds: string[] }) {
-    return this.rewardsService.grantBorders(body.userId, body.borderIds);
-  }
-
   @Post("ping")
   ping(@Body() body: { userId: string }) {
     return this.rewardsService.recordAttendance(body.userId);
@@ -123,6 +118,12 @@ export class RewardsController {
   @Post("expedition/complete")
   completeExpedition(@Body() body: { userId: string }) {
     return this.rewardsService.completeExpedition(body.userId);
+  }
+
+  /** 로그라이크/도전 모드 런 시작 기록 — complete/submit 시 실제 플레이 시간 검증에 사용 */
+  @Post("run/start")
+  startRun(@Body() body: { userId: string }) {
+    return this.rewardsService.startRun(body.userId);
   }
 
   @Post("rogue/complete")
