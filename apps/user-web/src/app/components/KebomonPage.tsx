@@ -79,9 +79,9 @@ const ARCH_LABEL: Record<string, { ko: string; ja: string; en: string }> = {
   rogue:   { ko: "도적", ja: "盗賊", en: "Rogue" },
   mage:    { ko: "마법사", ja: "魔法士", en: "Mage" },
   tank:    { ko: "수호자", ja: "守護者", en: "Tank" },
-  nature:  { ko: "자연사", ja: "自然士", en: "Nature" },
+  nature:  { ko: "자연술사", ja: "自然術士", en: "Nature" },
   meka:    { ko: "메카", ja: "メカ", en: "Meka" },
-  cursed:  { ko: "저주사", ja: "呪術士", en: "Cursed" },
+  cursed:  { ko: "저주술사", ja: "呪術士", en: "Cursed" },
 };
 function archIconFor(arch: string, className?: string) {
   const color = arch==="warrior"?"#f97316":arch==="rogue"?"#c084fc":arch==="mage"?"#60a5fa":arch==="tank"?"#94a3b8":arch==="nature"?"#4ade80":arch==="cursed"?"#7c3aed":"#2dd4bf";
@@ -1428,16 +1428,19 @@ function CollectionTab({
         if (!next) return null;
         const belowNext = DEX_MILESTONE_COUNTS.filter((c) => c <= dexMilestoneBest);
         const prev = belowNext.length > 0 ? belowNext[belowNext.length - 1] : 0;
+        const pending = totalOwned >= next; // 이미 조건은 채웠지만 아직 지급 안 된 상태 (업적 확인 필요)
         const pct = Math.min(
           100,
-          Math.round(((totalOwned - prev) / (next - prev)) * 100),
+          Math.round(((Math.min(totalOwned, next) - prev) / (next - prev)) * 100),
         );
         return (
           <div className="rounded-xl border border-border bg-muted/40 p-2.5">
             <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-              <span>{t("kebomon.dex_milestone_next")}</span>
+              <span>
+                {pending ? t("kebomon.dex_milestone_pending") : t("kebomon.dex_milestone_next")}
+              </span>
               <span className="font-bold text-foreground">
-                {totalOwned}/{next}
+                {Math.min(totalOwned, next)}/{next}
               </span>
             </div>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">

@@ -660,7 +660,7 @@ function useTickets(userId: string | undefined) {
     if (!userId) return;
     api
       .get<{ tickets: number; maxTickets: number; regenAt: string | null }>(
-        "/arena/tickets",
+        `/arena/tickets?userId=${userId}`,
       )
       .then((res) => {
         setState({
@@ -927,9 +927,9 @@ const ARCHETYPE_LABEL: Record<string, { ko: string; ja: string; en: string }> =
     tank: { ko: "수호자", ja: "守護者", en: "Tank" },
     mage: { ko: "마법사", ja: "魔法士", en: "Mage" },
     rogue: { ko: "도적", ja: "盗賊", en: "Rogue" },
-    nature: { ko: "자연사", ja: "自然士", en: "Nature" },
+    nature: { ko: "자연술사", ja: "自然術士", en: "Nature" },
     meka: { ko: "메카", ja: "メカ", en: "Meka" },
-    cursed: { ko: "저주사", ja: "呪術士", en: "Cursed" },
+    cursed: { ko: "저주술사", ja: "呪術士", en: "Cursed" },
     all: { ko: "만능", ja: "万能", en: "All" },
   };
 function ArchetypeIcon({ arch, size = 10 }: { arch: string; size?: number }) {

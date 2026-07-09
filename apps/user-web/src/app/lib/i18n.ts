@@ -91,6 +91,7 @@ const dict = {
     // Kebomon - 수집
     "kebomon.collection_count": "수집",
     "kebomon.dex_milestone_next": "다음 도감 보상까지",
+    "kebomon.dex_milestone_pending": "보상 대기 중 · 업적 확인에서 받기",
     "kebomon.dex_milestone_toast": "케보몬 {n}종 달성! 도감 보상을 받았어요.",
     "kebomon.all_filter": "전체",
     "kebomon.gacha_tab": "뽑기",
@@ -835,6 +836,7 @@ const dict = {
     // Kebomon - コレクション
     "kebomon.collection_count": "コレクション",
     "kebomon.dex_milestone_next": "次の図鑑報酬まで",
+    "kebomon.dex_milestone_pending": "報酬待機中・実績確認で受取",
     "kebomon.dex_milestone_toast": "ケボモン{n}種達成！図鑑報酬を獲得しました。",
     "kebomon.all_filter": "全て",
     "kebomon.gacha_tab": "ガチャ",
@@ -1549,6 +1551,7 @@ const dict = {
     // Kebomon - Collection
     "kebomon.collection_count": "Collected",
     "kebomon.dex_milestone_next": "Next Pokédex reward at",
+    "kebomon.dex_milestone_pending": "Reward pending · claim in Achievements",
     "kebomon.dex_milestone_toast": "{n} Kebomon collected! Pokédex reward earned.",
     "kebomon.all_filter": "All",
     "kebomon.gacha_tab": "Gacha",
