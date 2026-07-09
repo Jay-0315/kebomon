@@ -11,6 +11,12 @@ export class ArenaController {
     return this.arena.getMyData(userId);
   }
 
+  /** 입장권 상태 조회 (일일 리셋 + 자연 회복 서버 계산) */
+  @Get("tickets")
+  getTickets(@Query("userId") userId: string) {
+    return this.arena.getTicketState(userId);
+  }
+
   /** 공격/방어 덱 저장 */
   @Put("deck")
   saveDeck(
@@ -34,21 +40,10 @@ export class ArenaController {
     return this.arena.attack(body.userId, defenderId);
   }
 
-  /** NPC 전투 실행 */
+  /** NPC 전투 실행 — NPC 스탯/보상은 서버가 npcId로 직접 조회 (클라이언트 값 신뢰 안 함) */
   @Post("attack-npc")
-  attackNpc(
-    @Body() body: {
-      userId: string;
-      npcSlots: number[];
-      npcEnhLvs: number[];
-      pointsOnWin: number;
-      pointsOnLoss: number;
-    },
-  ) {
-    return this.arena.attackNpc(
-      body.userId, body.npcSlots, body.npcEnhLvs,
-      body.pointsOnWin, body.pointsOnLoss,
-    );
+  attackNpc(@Body() body: { userId: string; npcId: string }) {
+    return this.arena.attackNpc(body.userId, body.npcId);
   }
 
   /** 복수 대상 목록 (나를 공격한 유저) */

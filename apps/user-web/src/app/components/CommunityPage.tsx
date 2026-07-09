@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Heart, Plus, X, ChevronRight } from "lucide-react";
+import { Heart, Plus, X, ChevronRight, Clock, Flame } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
 import { useNavigate } from "react-router";
 import { useAppData } from "../context/AppDataContext";
@@ -80,6 +80,7 @@ export default function CommunityPage() {
   const currentUser = getStoredUser();
 
   const [activeTab, setActiveTab] = useState<PostCategory | "all">("all");
+  const [sort, setSort] = useState<"latest" | "likes">("latest");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -103,12 +104,13 @@ export default function CommunityPage() {
       .trim();
 
   const fetchPosts = useCallback(
-    async (p: number, cat: PostCategory | "all") => {
+    async (p: number, cat: PostCategory | "all", sortMode: "latest" | "likes") => {
       setLoading(true);
       try {
         const qs = new URLSearchParams({ page: String(p) });
         if (currentUser) qs.set("userId", currentUser.id);
         if (cat !== "all") qs.set("category", cat);
+        if (sortMode === "likes") qs.set("sort", "likes");
         const data = await api.get<{
           posts: Record<string, unknown>[];
           totalPages: number;
@@ -124,12 +126,12 @@ export default function CommunityPage() {
 
   useEffect(() => {
     setPage(1);
-    void fetchPosts(1, activeTab);
-  }, [activeTab]);
+    void fetchPosts(1, activeTab, sort);
+  }, [activeTab, sort]);
 
   const handlePageChange = (p: number) => {
     setPage(p);
-    void fetchPosts(p, activeTab);
+    void fetchPosts(p, activeTab, sort);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -156,7 +158,7 @@ export default function CommunityPage() {
       });
       closeForm();
       setPage(1);
-      await fetchPosts(1, activeTab);
+      await fetchPosts(1, activeTab, sort);
     } finally {
       setSubmitting(false);
     }
@@ -210,6 +212,32 @@ export default function CommunityPage() {
             {tab === "all" ? t("community.all") : catLabel(tab)}
           </button>
         ))}
+      </div>
+
+      {/* 정렬 */}
+      <div className="flex items-center justify-end gap-1">
+        <button
+          onClick={() => setSort("latest")}
+          className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all ${
+            sort === "latest"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Clock className="w-3 h-3" />
+          {t("community.sort_latest")}
+        </button>
+        <button
+          onClick={() => setSort("likes")}
+          className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all ${
+            sort === "likes"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Flame className="w-3 h-3" />
+          {t("community.sort_likes")}
+        </button>
       </div>
 
       {/* 게시글 목록 */}

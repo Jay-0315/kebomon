@@ -105,15 +105,24 @@ export class RewardsController {
     return this.rewardsService.getBattleStats(userId);
   }
 
+  @Post("expedition/start")
+  startExpedition(@Body() body: { userId: string; regionId: string; partyIds: number[]; durationHours: number }) {
+    return this.rewardsService.startExpedition(body.userId, body.regionId, body.partyIds, body.durationHours);
+  }
+
+  @Get("expedition/state")
+  getExpeditionState(@Query("userId") userId: string) {
+    return this.rewardsService.getExpeditionState(userId);
+  }
+
+  @Post("expedition/event")
+  resolveExpeditionEvent(@Body() body: { userId: string; risky: boolean }) {
+    return this.rewardsService.resolveExpeditionEvent(body.userId, body.risky);
+  }
+
   @Post("expedition/complete")
-  completeExpedition(@Body() body: { userId: string; points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }) {
-    return this.rewardsService.completeExpedition(body.userId, {
-      points:    body.points,
-      stones:    body.stones,
-      normalEgg: body.normalEgg,
-      bigEgg:    body.bigEgg,
-      goldEgg:   body.goldEgg,
-    });
+  completeExpedition(@Body() body: { userId: string }) {
+    return this.rewardsService.completeExpedition(body.userId);
   }
 
   @Post("rogue/complete")

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useSearchParams, useNavigate } from "react-router";
 import {
   Swords,
   Sword,
@@ -642,43 +642,34 @@ function useNpcCooldowns() {
   return { isOnCooldown, getRemainingMs, applyCooldown };
 }
 
-// ─── 입장권 ───────────────────────────────────────────────────────────────────
+// ─── 입장권 (서버 검증) ─────────────────────────────────────────────────────────
+// 실제 차감/회복은 백엔드(UserReward.arenaTickets)가 계산 — 여기서는 표시용 낙관적 상태만 유지하고
+// 전투 응답(res.tickets/ticketRegenAt)으로 항상 서버 값에 맞춰 확정한다.
 const MAX_TICKETS = 5;
 const REGEN_MS = 2 * 60 * 60 * 1000;
-const TK_KEY = "col_tickets";
-const TK_REGEN = "col_regen_base_ts";
-const TK_DATE = "col_reset_date";
 
-function syncTickets() {
-  const today = new Date().toISOString().slice(0, 10);
-  if (localStorage.getItem(TK_DATE) !== today) {
-    localStorage.setItem(TK_DATE, today);
-    localStorage.setItem(TK_KEY, "5");
-    localStorage.removeItem(TK_REGEN);
-    return { tickets: 5, regenBase: null as number | null };
-  }
-  let t = parseInt(localStorage.getItem(TK_KEY) ?? "5", 10);
-  if (isNaN(t) || t > 5) t = 5;
-  const raw = localStorage.getItem(TK_REGEN);
-  let base = raw ? parseInt(raw, 10) : (null as number | null);
-  if (base && t < MAX_TICKETS) {
-    const earned = Math.floor((Date.now() - base) / REGEN_MS);
-    if (earned > 0) {
-      t = Math.min(MAX_TICKETS, t + earned);
-      base = base + earned * REGEN_MS;
-      localStorage.setItem(TK_KEY, String(t));
-      if (t >= MAX_TICKETS) {
-        base = null;
-        localStorage.removeItem(TK_REGEN);
-      } else localStorage.setItem(TK_REGEN, String(base));
-    }
-  }
-  return { tickets: t, regenBase: base };
-}
-
-function useTickets() {
-  const [state, setState] = useState(() => syncTickets());
+function useTickets(userId: string | undefined) {
+  const [state, setState] = useState<{ tickets: number; regenBase: number | null }>({
+    tickets: 0,
+    regenBase: null,
+  });
   const [msToNext, setMsToNext] = useState<number | null>(null);
+
+  // 마운트 시 서버에서 현재 상태 조회
+  useEffect(() => {
+    if (!userId) return;
+    api
+      .get<{ tickets: number; maxTickets: number; regenAt: string | null }>(
+        "/arena/tickets",
+      )
+      .then((res) => {
+        setState({
+          tickets: res.tickets,
+          regenBase: res.regenAt ? new Date(res.regenAt).getTime() : null,
+        });
+      })
+      .catch(() => {});
+  }, [userId]);
 
   useEffect(() => {
     if (!state.regenBase || state.tickets >= MAX_TICKETS) {
@@ -687,24 +678,20 @@ function useTickets() {
     }
     const tick = () => {
       const rem = state.regenBase! + REGEN_MS - Date.now();
-      if (rem <= 0) setState(syncTickets());
-      else setMsToNext(rem);
+      if (rem <= 0) {
+        // 자연 회복 낙관적 반영 — 다음 전투 응답에서 서버 값으로 재확정됨
+        setState((s) => {
+          const newT = Math.min(MAX_TICKETS, s.tickets + 1);
+          return { tickets: newT, regenBase: newT >= MAX_TICKETS ? null : Date.now() };
+        });
+      } else {
+        setMsToNext(rem);
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [state.regenBase, state.tickets]);
-
-  const consume = () => {
-    const cur = syncTickets();
-    if (cur.tickets <= 0) return false;
-    const newT = cur.tickets - 1;
-    const newB = cur.regenBase ?? Date.now();
-    localStorage.setItem(TK_KEY, String(newT));
-    if (newT < MAX_TICKETS) localStorage.setItem(TK_REGEN, String(newB));
-    setState({ tickets: newT, regenBase: newB });
-    return true;
-  };
 
   const fmtMs = (ms: number) => {
     const h = Math.floor(ms / 3600000),
@@ -715,18 +702,30 @@ function useTickets() {
       : `${m}:${String(s).padStart(2, "0")}`;
   };
 
-  // 네트워크 실패 등으로 소모한 티켓을 되돌려줄 때 사용
-  const refund = () => {
-    const cur = syncTickets();
-    const newT = Math.min(MAX_TICKETS, cur.tickets + 1);
-    localStorage.setItem(TK_KEY, String(newT));
-    const newB = newT >= MAX_TICKETS ? null : cur.regenBase;
-    if (newB === null) localStorage.removeItem(TK_REGEN);
-    else localStorage.setItem(TK_REGEN, String(newB));
-    setState({ tickets: newT, regenBase: newB });
+  // 요청 보내기 전 낙관적 소모 (버튼 즉시 반응용) — 실제 값은 서버 응답으로 확정
+  const consume = () => {
+    if (state.tickets <= 0) return false;
+    setState((s) => ({ tickets: s.tickets - 1, regenBase: s.regenBase ?? Date.now() }));
+    return true;
   };
 
-  return { ...state, msToNext, fmtMs, consume, refund };
+  // 전투 응답에 포함된 서버 계산값으로 상태 확정
+  const applyServer = (tickets: number, regenAtIso: string | null | undefined) => {
+    setState({
+      tickets,
+      regenBase: regenAtIso ? new Date(regenAtIso).getTime() : null,
+    });
+  };
+
+  // 요청이 서버에 닿지 못한 경우(네트워크 실패 등) 낙관적 소모를 되돌림
+  const refund = () => {
+    setState((s) => {
+      const newT = Math.min(MAX_TICKETS, s.tickets + 1);
+      return { tickets: newT, regenBase: newT >= MAX_TICKETS ? null : s.regenBase };
+    });
+  };
+
+  return { tickets: state.tickets, msToNext, fmtMs, consume, refund, applyServer };
 }
 
 // ─── 티어 유틸 ────────────────────────────────────────────────────────────────
@@ -835,6 +834,9 @@ interface BattleResult {
   // 전투 기록 리플레이 조회 시에만 채워짐 (실전 배틀 응답에는 없음)
   opponentName?: string;
   isAttacker?: boolean;
+  // 실전 배틀 응답에만 채워짐 — 서버가 계산한 전투 후 입장권 상태
+  tickets?: number;
+  ticketRegenAt?: string | null;
 }
 type Phase = "lobby" | "deck-edit" | "attack-confirm" | "battle" | "result";
 
@@ -5582,6 +5584,7 @@ export default function ColosseumPage() {
   const ko = lang === "ko";
   const ja = lang === "ja";
   const user = getStoredUser();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // 세션 상태
@@ -5634,7 +5637,7 @@ export default function ColosseumPage() {
   );
   const [replayLoadingId, setReplayLoadingId] = useState<string | null>(null);
 
-  const { tickets, msToNext, fmtMs, consume, refund } = useTickets();
+  const { tickets, msToNext, fmtMs, consume, refund, applyServer } = useTickets(user?.id);
   const { isOnCooldown, getRemainingMs, applyCooldown } = useNpcCooldowns();
 
   // 액션 실패 피드백 토스트
@@ -5819,10 +5822,7 @@ export default function ColosseumPage() {
       if (npcTarget) {
         res = await api.post<BattleResult>("/arena/attack-npc", {
           userId: user.id,
-          npcSlots: npcTarget.slots,
-          npcEnhLvs: npcTarget.enhLvs,
-          pointsOnWin: npcTarget.winPts,
-          pointsOnLoss: npcTarget.lossPts,
+          npcId: npcTarget.id,
         });
       } else {
         res = await api.post<BattleResult>(
@@ -5837,6 +5837,7 @@ export default function ColosseumPage() {
         losses: res.losses,
         winStreak: res.winStreak,
       });
+      if (res.tickets !== undefined) applyServer(res.tickets, res.ticketRegenAt);
       if (res.won && npcTarget) applyCooldown(npcTarget.id);
       if (!npcTarget) fetchBattleHistory(); // 실제 유저 전투만 기록에 남음
     } catch {
@@ -8223,6 +8224,7 @@ export default function ColosseumPage() {
                   return (
                     <div
                       key={entry.userId}
+                      onClick={() => navigate(`/profile/${entry.userId}`)}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -8235,6 +8237,7 @@ export default function ColosseumPage() {
                             ? "transparent"
                             : "rgba(255,255,255,0.015)",
                         transition: "background 0.15s",
+                        cursor: "pointer",
                       }}
                     >
                       {/* 순위 */}
@@ -8322,7 +8325,7 @@ export default function ColosseumPage() {
                       {/* 공격 버튼 */}
                       {!isMe && (
                         <button
-                          onClick={() => startAttackConfirm(entry)}
+                          onClick={(e) => { e.stopPropagation(); startAttackConfirm(entry); }}
                           disabled={tickets === 0 || !myAtkSlots.some(Boolean)}
                           style={{
                             display: "flex",

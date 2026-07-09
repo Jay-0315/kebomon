@@ -7,6 +7,7 @@ import {
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
+import { PrismaService } from "../prisma/prisma.service";
 
 /**
  * 1:1 카드 배틀 (PvP) — 로그라이크 전투 로직을 그대로 사용하되 유저 vs 유저.
@@ -153,6 +154,8 @@ function newPlayer(socketId: string, userId: string | null, nickname: string, ch
 export class DuelGateway implements OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private rooms = new Map<string, DuelRoom>();
+
+  constructor(private readonly prisma: PrismaService) {}
 
   // ── 로비 ──
   @SubscribeMessage("duel:list")
@@ -376,10 +379,62 @@ export class DuelGateway implements OnGatewayDisconnect {
     room.phase = "over";
     room.winnerSocketId = winnerSocketId;
     const winner = room.players.find((x) => x.socketId === winnerSocketId);
+    const loser = room.players.find((x) => x.socketId !== winnerSocketId);
     room.log.push(byForfeit ? `상대가 나가 ${winner?.nickname} 승리!` : `${winner?.nickname} 승리!`);
+    if (winner?.userId) void this.recordDuelResult(winner.userId, true);
+    if (loser?.userId) void this.recordDuelResult(loser.userId, false);
     this.broadcastState(room);
     this.server.to(this.ch(room.id)).emit("duel:over", { winnerSocketId, byForfeit });
     this.broadcastLobby();
+  }
+
+  // ── 전적/랭킹 ──
+  private async recordDuelResult(userId: string, won: boolean) {
+    try {
+      const ex = await this.prisma.duelStats.findUnique({ where: { userId } });
+      const prev = ex ?? { wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
+      const winStreak = won ? prev.winStreak + 1 : 0;
+      const data = {
+        wins: won ? prev.wins + 1 : prev.wins,
+        losses: won ? prev.losses : prev.losses + 1,
+        winStreak,
+        bestStreak: Math.max(prev.bestStreak, winStreak),
+      };
+      await this.prisma.duelStats.upsert({
+        where: { userId }, create: { userId, ...data }, update: data,
+      });
+    } catch {
+      // 전적 갱신 실패가 게임 결과 자체에 영향을 주지 않도록 무시
+    }
+  }
+
+  async getUserStats(userId: string) {
+    const s = await this.prisma.duelStats.findUnique({ where: { userId } });
+    return {
+      wins: s?.wins ?? 0, losses: s?.losses ?? 0,
+      winStreak: s?.winStreak ?? 0, bestStreak: s?.bestStreak ?? 0,
+    };
+  }
+
+  async getRanking(limit = 50) {
+    const rows = await this.prisma.duelStats.findMany({
+      where: { wins: { gt: 0 } },
+      orderBy: [{ wins: "desc" }, { bestStreak: "desc" }],
+      take: limit,
+    });
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: rows.map((r) => r.userId) } },
+      select: { id: true, name: true },
+    });
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
+    return rows.map((r, i) => ({
+      rank: i + 1,
+      userId: r.userId,
+      nickname: nameById.get(r.userId) ?? "플레이어",
+      wins: r.wins,
+      losses: r.losses,
+      bestStreak: r.bestStreak,
+    }));
   }
 
   // ── 브로드캐스트 ──

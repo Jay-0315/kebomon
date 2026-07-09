@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router";
 import {
   Layers,
   Swords,
@@ -3372,6 +3373,7 @@ export default function RoguePage() {
     submitChallenge,
     fetchChallengeRankings,
   } = useAppData();
+  const navigate = useNavigate();
   const { lang } = useLang();
   const ko = lang === "ko";
   const ja = lang === "ja";
@@ -6703,12 +6705,14 @@ export default function RoguePage() {
                   {challengeRanks.slice(0, 5).map((r) => (
                     <div
                       key={r.userId}
+                      onClick={() => navigate(`/profile/${r.userId}`)}
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
                         padding: "2px 0",
                         fontSize: 12,
+                        cursor: "pointer",
                       }}
                     >
                       <span

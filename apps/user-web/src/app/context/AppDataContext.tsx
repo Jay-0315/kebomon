@@ -42,6 +42,8 @@ import type {
   RogueMilestone,
   ChallengeResult,
   ChallengeRankRow,
+  ExpeditionState,
+  ExpeditionRewardResult,
   UserProfile,
 } from "../types/domain";
 
@@ -68,7 +70,7 @@ interface AppDataContextValue {
   openEggs: (eggType: EggType, count: number) => Promise<EggOpenResult[]>;
   refreshRewards: () => Promise<void>;
   refreshRewardsWithCheck: () => Promise<void>;
-  checkAchievements: () => Promise<number[]>;
+  checkAchievements: () => Promise<{ newlyUnlocked: number[]; dexMilestones: number[] }>;
   pendingAchievements: number[];
   clearPendingAchievements: () => void;
   equipTitle: (titleId: number) => Promise<void>;
@@ -79,7 +81,10 @@ interface AppDataContextValue {
   claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
   buyShopItem: (itemId: string, quantity?: number) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
-  completeExpedition: (rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }) => Promise<void>;
+  startExpedition: (regionId: string, partyIds: number[], durationHours: number) => Promise<ExpeditionState>;
+  getExpeditionState: () => Promise<ExpeditionState | null>;
+  resolveExpeditionEvent: (risky: boolean) => Promise<{ eventBonusMult: number }>;
+  completeExpedition: () => Promise<ExpeditionRewardResult>;
   completeRogue: (difficulty?: string) => Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null>;
   submitChallenge: (stage: number) => Promise<ChallengeResult | null>;
   fetchChallengeRankings: () => Promise<ChallengeRankRow[]>;
@@ -115,6 +120,7 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     expeditionCount: summary?.expeditionCount ?? 0,
     rogueClears: summary?.rogueClears ?? 0,
     challengeBest: summary?.challengeBest ?? 0,
+    dexMilestoneBest: summary?.dexMilestoneBest ?? 0,
     attendanceClaimedToday: summary?.attendanceClaimedToday ?? false,
     monthDays: summary?.monthDays ?? 0,
     monthWeekRewards: summary?.monthWeekRewards ?? 0,
@@ -524,18 +530,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { alreadyClaimed: result.alreadyClaimed, points: result.points };
   };
 
-  const checkAchievements = async (): Promise<number[]> => {
+  const checkAchievements = async (): Promise<{ newlyUnlocked: number[]; dexMilestones: number[] }> => {
     const currentUser = getStoredUser();
-    if (!currentUser) return [];
-    const result = await api.post<{ newlyUnlocked: number[] }>("/rewards/achievements/check", {
-      userId: currentUser.id,
-    });
-    if (result.newlyUnlocked.length > 0) {
+    if (!currentUser) return { newlyUnlocked: [], dexMilestones: [] };
+    const result = await api.post<{ newlyUnlocked: number[]; dexMilestones?: number[] }>(
+      "/rewards/achievements/check",
+      { userId: currentUser.id },
+    );
+    const dexMilestones = result.dexMilestones ?? [];
+    if (result.newlyUnlocked.length > 0 || dexMilestones.length > 0) {
       const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
       setRewardSummary(normalizeRewardSummary(summary));
       setPendingAchievements((prev) => [...new Set([...prev, ...result.newlyUnlocked])]);
     }
-    return result.newlyUnlocked;
+    return { newlyUnlocked: result.newlyUnlocked, dexMilestones };
   };
 
   const buyShopItem = async (itemId: string, quantity = 1): Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }> => {
@@ -554,11 +562,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  const completeExpedition = async (rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number }): Promise<void> => {
+  const startExpedition = async (regionId: string, partyIds: number[], durationHours: number): Promise<ExpeditionState> => {
     const currentUser = getStoredUser();
-    if (!currentUser) return;
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
+    return api.post<ExpeditionState>("/rewards/expedition/start", {
+      userId: currentUser.id, regionId, partyIds, durationHours,
+    });
+  };
+
+  const getExpeditionState = async (): Promise<ExpeditionState | null> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return null;
+    return api.get<ExpeditionState | null>(`/rewards/expedition/state?userId=${currentUser.id}`);
+  };
+
+  const resolveExpeditionEvent = async (risky: boolean): Promise<{ eventBonusMult: number }> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
+    return api.post<{ eventBonusMult: number }>("/rewards/expedition/event", {
+      userId: currentUser.id, risky,
+    });
+  };
+
+  const completeExpedition = async (): Promise<ExpeditionRewardResult> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
     const prevOwnedIds = new Set(rewardSummary.ownedCharacterIds);
-    await api.post("/rewards/expedition/complete", { userId: currentUser.id, ...rewards });
+    const result = await api.post<ExpeditionRewardResult>("/rewards/expedition/complete", { userId: currentUser.id });
     const summary = await api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`);
     const newSummary = normalizeRewardSummary(summary);
     setRewardSummary(newSummary);
@@ -568,6 +598,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (newAchievementChars.length > 0) {
       setPendingAchievements((prev) => [...new Set([...prev, ...newAchievementChars])]);
     }
+    return result;
   };
 
   const completeRogue = async (difficulty = "normal"): Promise<{ rogueClears: number; milestones: RogueMilestone[] } | null> => {
@@ -674,6 +705,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     claimAttendance,
     buyShopItem,
     enhanceCharacter,
+    startExpedition,
+    getExpeditionState,
+    resolveExpeditionEvent,
     completeExpedition,
     completeRogue,
     submitChallenge,

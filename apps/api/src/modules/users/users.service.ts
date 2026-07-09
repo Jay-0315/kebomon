@@ -44,6 +44,48 @@ export class UsersService {
     };
   }
 
+  /** 다른 유저에게 공개해도 되는 필드만 반환 (랭킹 → 프로필 딥링크용) */
+  async getPublicProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        profilePhoto: true,
+        reward: {
+          select: { equippedCharacterId: true, equippedTitleId: true, equippedBorderId: true },
+        },
+        battleStats: {
+          select: { tierPoints: true, wins: true, losses: true, bestStreak: true },
+        },
+        duelStats: {
+          select: { wins: true, losses: true, bestStreak: true },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
+
+    return {
+      id: user.id,
+      name: user.name,
+      profilePhoto: user.profilePhoto ?? null,
+      equippedCharacterId: user.reward?.equippedCharacterId ?? null,
+      equippedTitleId: user.reward?.equippedTitleId ?? null,
+      equippedBorderId: user.reward?.equippedBorderId ?? null,
+      arena: {
+        tierPoints: user.battleStats?.tierPoints ?? 0,
+        wins: user.battleStats?.wins ?? 0,
+        losses: user.battleStats?.losses ?? 0,
+        bestStreak: user.battleStats?.bestStreak ?? 0,
+      },
+      duel: {
+        wins: user.duelStats?.wins ?? 0,
+        losses: user.duelStats?.losses ?? 0,
+        bestStreak: user.duelStats?.bestStreak ?? 0,
+      },
+    };
+  }
+
   async updateProfilePhoto(userId: string, photo: string | null) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");

@@ -8,6 +8,7 @@ import { useAppData } from "../context/AppDataContext";
 import { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS, getCharName, type CharacterRarity } from "../data/characters";
 import { useLang } from "../context/LangContext";
+import type { ExpeditionState, ExpeditionRewardResult } from "../types/domain";
 
 // ── Style constants ─────────────────────────────────────────────────────────
 const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
@@ -120,7 +121,8 @@ interface RegionDef {
   color: string;
   borderColor: string;
   icon: React.ReactNode;
-  unlockRaidId: number | null;
+  /** 이 지역을 해금하는 데 필요한 누적 레이드 클리어 횟수 (0 = 항상 해금) — 서버 expedition.constants.ts와 맞출 것 */
+  unlockRaidCount: number;
   unlockDescKo: string; unlockDescJa: string; unlockDescEn: string;
   rewardBase: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number };
 }
@@ -134,7 +136,7 @@ const REGIONS: RegionDef[] = [
     descEn: "A vast, open grassland — the perfect starting zone for beginner expeditions.",
     difficulty: "low", minParty: 2, minRarity: "common",
     color: "#22c55e", borderColor: "#15803d",
-    icon: <Map size={18}/>, unlockRaidId: null, unlockDescKo: "", unlockDescJa: "", unlockDescEn: "",
+    icon: <Map size={18}/>, unlockRaidCount: 0, unlockDescKo: "", unlockDescJa: "", unlockDescEn: "",
     rewardBase: { points: 80, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
   },
   {
@@ -145,35 +147,35 @@ const REGIONS: RegionDef[] = [
     descEn: "Treasures hidden deep within a dense forest. A mid-tier expedition zone.",
     difficulty: "low", minParty: 2, minRarity: "common",
     color: "#16a34a", borderColor: "#14532d",
-    icon: <Map size={18}/>, unlockRaidId: null, unlockDescKo: "", unlockDescJa: "", unlockDescEn: "",
+    icon: <Map size={18}/>, unlockRaidCount: 0, unlockDescKo: "", unlockDescJa: "", unlockDescEn: "",
     rewardBase: { points: 100, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
   },
   {
     id: "ruins",
     nameKo: "폐허의 유적", nameJa: "廃墟の遺跡", nameEn: "Ancient Ruins",
-    descKo: "황폐한 성터에 숨겨진 고대의 비밀. 점프 레이드 클리어 후 해금됩니다.",
-    descJa: "廃城に隠された古代の秘密。ジャンプレイドクリア後に解放されます。",
-    descEn: "Ancient secrets buried in a crumbling fortress. Unlocked after clearing the Jump Raid.",
+    descKo: "황폐한 성터에 숨겨진 고대의 비밀. 레이드 1회 클리어 후 해금됩니다.",
+    descJa: "廃城に隠された古代の秘密。レイド1回クリア後に解放されます。",
+    descEn: "Ancient secrets buried in a crumbling fortress. Unlocked after clearing 1 raid.",
     difficulty: "medium", minParty: 3, minRarity: "uncommon",
     color: "#a8a29e", borderColor: "#57534e",
-    icon: <Castle size={18}/>, unlockRaidId: 1,
-    unlockDescKo: "점프 레이드 최초 클리어",
-    unlockDescJa: "ジャンプレイド初回クリア",
-    unlockDescEn: "Clear the Jump Raid for the first time",
+    icon: <Castle size={18}/>, unlockRaidCount: 1,
+    unlockDescKo: "레이드 1회 클리어",
+    unlockDescJa: "レイド1回クリア",
+    unlockDescEn: "Clear 1 raid",
     rewardBase: { points: 150, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
   },
   {
     id: "altar",
     nameKo: "제단의 신비", nameJa: "祭壇の神秘", nameEn: "Blazing Altar",
-    descKo: "불꽃이 타오르는 고대 제단. 탄막 레이드 클리어 후 해금됩니다.",
-    descJa: "炎燃える古代の祭壇。弾幕レイドクリア後に解放されます。",
-    descEn: "An ancient altar wreathed in flames. Unlocked after clearing the Bullet Raid.",
+    descKo: "불꽃이 타오르는 고대 제단. 레이드 5회 클리어 후 해금됩니다.",
+    descJa: "炎燃える古代の祭壇。レイド5回クリア後に解放されます。",
+    descEn: "An ancient altar wreathed in flames. Unlocked after clearing 5 raids.",
     difficulty: "extreme", minParty: 4, minRarity: "rare",
     color: "#f97316", borderColor: "#c2410c",
-    icon: <Flame size={18}/>, unlockRaidId: 5,
-    unlockDescKo: "탄막 레이드 최초 클리어",
-    unlockDescJa: "弾幕レイド初回クリア",
-    unlockDescEn: "Clear the Bullet Raid for the first time",
+    icon: <Flame size={18}/>, unlockRaidCount: 5,
+    unlockDescKo: "레이드 5회 클리어",
+    unlockDescJa: "レイド5回クリア",
+    unlockDescEn: "Clear 5 raids",
     rewardBase: { points: 280, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
   },
 ];
@@ -184,6 +186,64 @@ const DURATIONS = [
   { hours: 4, multiplier: 1.6 },
   { hours: 6, multiplier: 2.1 },
 ];
+
+// ── Random events (원정 도중 조우) ───────────────────────────────────────────
+// 원정 진행 50% 시점에 무작위로 하나가 등장 — 안전한 선택은 소폭 확정 보너스,
+// 모험적인 선택은 크게 잃거나(-15%) 크게 얻을(+70%) 수 있는 도박.
+interface EventTemplate {
+  id: string;
+  icon: React.ReactNode;
+  titleKo: string; titleJa: string; titleEn: string;
+  descKo: string; descJa: string; descEn: string;
+  safeLabelKo: string; safeLabelJa: string; safeLabelEn: string;
+  riskyLabelKo: string; riskyLabelJa: string; riskyLabelEn: string;
+}
+const EVENT_TEMPLATES: EventTemplate[] = [
+  {
+    id: "fork",
+    icon: <Map size={22} />,
+    titleKo: "갈림길", titleJa: "分かれ道", titleEn: "A Fork in the Road",
+    descKo: "원정대가 갈림길에 도착했습니다. 안전한 길로 돌아갈까요, 지름길로 모험을 걸어볼까요?",
+    descJa: "遠征隊が分かれ道に到着しました。安全な道を選びますか、近道に賭けますか？",
+    descEn: "Your party reaches a fork in the road. Take the safe route, or gamble on a shortcut?",
+    safeLabelKo: "안전한 길", safeLabelJa: "安全な道", safeLabelEn: "Safe Route",
+    riskyLabelKo: "위험한 지름길", riskyLabelJa: "危険な近道", riskyLabelEn: "Risky Shortcut",
+  },
+  {
+    id: "cave",
+    icon: <Castle size={22} />,
+    titleKo: "수상한 동굴", titleJa: "怪しい洞窟", titleEn: "A Suspicious Cave",
+    descKo: "동굴 안에서 반짝이는 빛이 보입니다. 그냥 지나칠까요, 안으로 들어가 볼까요?",
+    descJa: "洞窟の奥で何かが光っています。素通りしますか、中に入ってみますか？",
+    descEn: "Something glimmers deep inside a cave. Walk past it, or venture inside?",
+    safeLabelKo: "그냥 지나가기", safeLabelJa: "素通りする", safeLabelEn: "Walk Past",
+    riskyLabelKo: "동굴 탐험", riskyLabelJa: "洞窟探検", riskyLabelEn: "Explore the Cave",
+  },
+  {
+    id: "merchant",
+    icon: <Package size={22} />,
+    titleKo: "떠돌이 상인", titleJa: "旅の商人", titleEn: "A Wandering Merchant",
+    descKo: "정체 모를 상인이 거래를 제안합니다. 정직한 거래를 할까요, 수상한 흥정에 응할까요?",
+    descJa: "見知らぬ商人が取引を持ちかけてきました。堅実な取引にしますか、怪しい交渉に乗りますか？",
+    descEn: "A mysterious merchant offers a deal. Take the honest trade, or the shady bargain?",
+    safeLabelKo: "정직한 거래", safeLabelJa: "堅実な取引", safeLabelEn: "Honest Trade",
+    riskyLabelKo: "수상한 흥정", riskyLabelJa: "怪しい交渉", riskyLabelEn: "Shady Bargain",
+  },
+  {
+    id: "storm",
+    icon: <Flame size={22} />,
+    titleKo: "몰아치는 폭풍", titleJa: "吹き荒れる嵐", titleEn: "A Raging Storm",
+    descKo: "갑작스런 폭풍을 만났습니다. 안전하게 야영할까요, 폭풍을 뚫고 강행할까요?",
+    descJa: "突然の嵐に見舞われました。安全に野営しますか、嵐を突き進みますか？",
+    descEn: "A sudden storm rolls in. Make camp and wait it out, or push through?",
+    safeLabelKo: "안전하게 야영", safeLabelJa: "安全に野営", safeLabelEn: "Make Camp",
+    riskyLabelKo: "폭풍 강행 돌파", riskyLabelJa: "嵐を突破する", riskyLabelEn: "Push Through",
+  },
+];
+// 안전 선택 배율(+10%)과 도박 배율(-15%~+70%)은 서버가 계산 — 여기선 표시용 라벨에만 근사치를 씀
+const EVENT_SAFE_MULT_LABEL = 1.1;
+// 클라이언트는 "50% 경과했으니 서버에 이벤트 상태를 물어보자"는 힌트로만 사용 — 실제 판정은 서버가 함
+const EVENT_TRIGGER_RATIO = 0.5;
 
 // ── Reward calculation ──────────────────────────────────────────────────────
 function calcReward(region: RegionDef, partySize: number, durationMultiplier: number, difficulty: string) {
@@ -198,36 +258,6 @@ function calcReward(region: RegionDef, partySize: number, durationMultiplier: nu
     bigEgg:    b.bigEgg > 0 ? Math.round(b.bigEgg * mult) : 0,
     goldEgg:   b.goldEgg > 0 ? Math.round(b.goldEgg * mult) : 0,
   };
-}
-
-// ── localStorage helpers ────────────────────────────────────────────────────
-const STORAGE_KEY = "kebo_expedition";
-const COUNT_KEY   = "kebo_expedition_count";
-const RAID_KEY    = "kebo_raid_first_clears";
-
-interface ExpeditionState {
-  regionId: string;
-  partyIds: number[];
-  startTime: number;
-  durationMs: number;
-  durationHours: number;
-  rewardClaimed: boolean;
-}
-
-function loadExpedition(): ExpeditionState | null {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"); }
-  catch { return null; }
-}
-function saveExpedition(s: ExpeditionState | null) {
-  if (s) localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  else localStorage.removeItem(STORAGE_KEY);
-}
-function loadRaidClears(): Record<number, boolean> {
-  try { return JSON.parse(localStorage.getItem(RAID_KEY) ?? "{}"); }
-  catch { return {}; }
-}
-function getExpeditionCount(): number {
-  return parseInt(localStorage.getItem(COUNT_KEY) ?? "0", 10);
 }
 
 // ── Time display ────────────────────────────────────────────────────────────
@@ -312,6 +342,62 @@ function CharPickerModal({ ownedIds, selected, maxParty, minRarity, onToggle, on
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Random event modal ──────────────────────────────────────────────────────
+function EventModal({ template, onChoose, ko, ja }: {
+  template: EventTemplate;
+  onChoose: (risky: boolean) => void;
+  ko: boolean;
+  ja: boolean;
+}) {
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:1000, background:"#000c", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div style={{
+        background:C.panel, border:`2px solid ${C.gold}66`, borderRadius:14,
+        padding:20, width:"min(380px,94vw)", fontFamily:FONT,
+        textAlign:"center", boxShadow:`0 0 32px ${C.gold}22`,
+      }}>
+        <div style={{ display:"flex", justifyContent:"center", marginBottom:8, color:C.gold }}>
+          {template.icon}
+        </div>
+        <p style={{ margin:"0 0 8px", fontSize:16, fontWeight:900, color:C.gold }}>
+          {ko ? template.titleKo : ja ? template.titleJa : template.titleEn}
+        </p>
+        <p style={{ margin:"0 0 18px", fontSize:12, color:C.textDim, lineHeight:1.7 }}>
+          {ko ? template.descKo : ja ? template.descJa : template.descEn}
+        </p>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <button
+            onClick={() => onChoose(false)}
+            style={{
+              background:`${C.green}18`, border:`1.5px solid ${C.green}`, borderRadius:10,
+              padding:"10px 14px", color:C.green, fontWeight:800, fontSize:13,
+              cursor:"pointer", fontFamily:FONT,
+            }}
+          >
+            {ko ? template.safeLabelKo : ja ? template.safeLabelJa : template.safeLabelEn}
+            <span style={{ marginLeft:6, fontSize:10, opacity:0.75 }}>
+              (+{Math.round((EVENT_SAFE_MULT_LABEL - 1) * 100)}%)
+            </span>
+          </button>
+          <button
+            onClick={() => onChoose(true)}
+            style={{
+              background:"#a855f718", border:"1.5px solid #a855f7", borderRadius:10,
+              padding:"10px 14px", color:"#c084fc", fontWeight:800, fontSize:13,
+              cursor:"pointer", fontFamily:FONT,
+            }}
+          >
+            {ko ? template.riskyLabelKo : ja ? template.riskyLabelJa : template.riskyLabelEn}
+            <span style={{ marginLeft:6, fontSize:10, opacity:0.75 }}>
+              (-15% ~ +70%)
+            </span>
+          </button>
         </div>
       </div>
     </div>
@@ -480,7 +566,7 @@ function RewardInfoPopup({ ko, ja, onClose }: { ko: boolean; ja: boolean; onClos
 
 // ── Main Component ──────────────────────────────────────────────────────────
 export default function ExpeditionPage() {
-  const { rewardSummary, completeExpedition } = useAppData();
+  const { rewardSummary, startExpedition, getExpeditionState, resolveExpeditionEvent, completeExpedition } = useAppData();
   const { lang } = useLang();
   const ko = lang === "ko";
   const ja = lang === "ja";
@@ -494,86 +580,114 @@ export default function ExpeditionPage() {
   const [party, setParty] = useState<number[]>([]);
   const [durationIdx, setDurationIdx] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
-  const [expedition, setExpedition] = useState<ExpeditionState | null>(() => loadExpedition());
-  const [raidClears, setRaidClears] = useState<Record<number, boolean>>(() => loadRaidClears());
+  const [expedition, setExpedition] = useState<ExpeditionState | null>(null);
+  const [loadingExpedition, setLoadingExpedition] = useState(true);
+  const [departing, setDeparting] = useState(false);
+  const [departError, setDepartError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const [showRewardResult, setShowRewardResult] = useState<ReturnType<typeof calcReward> | null>(null);
+  const [showRewardResult, setShowRewardResult] = useState<ExpeditionRewardResult | null>(null);
+  const [activeEvent, setActiveEvent] = useState<EventTemplate | null>(null);
+  const [eventResult, setEventResult] = useState<{ mult: number; risky: boolean } | null>(null);
+  const [pollingEvent, setPollingEvent] = useState(false);
+
+  // 서버에 기록된 진행 중인 원정을 불러옴 (localStorage 대신 서버가 진실 공급원)
+  useEffect(() => {
+    let cancelled = false;
+    getExpeditionState()
+      .then((state) => { if (!cancelled) setExpedition(state); })
+      .finally(() => { if (!cancelled) setLoadingExpedition(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Refresh countdown every second when active
   useEffect(() => {
-    if (!expedition || expedition.rewardClaimed) return;
+    if (!expedition) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [expedition]);
 
-  // Sync raid clears from localStorage when page is focused
+  // 원정 50% 경과 시 랜덤 이벤트 등장 — 실제 판정(어떤 이벤트/보상 배율)은 서버가 함,
+  // 여기선 "경과했으니 물어보자"는 신호만 보내고 서버 응답으로 상태를 갱신
   useEffect(() => {
-    const onFocus = () => setRaidClears(loadRaidClears());
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, []);
+    if (!expedition) return;
+    if (expedition.eventTemplateId) {
+      if (expedition.eventBonusMult === null && !activeEvent) {
+        const tmpl = EVENT_TEMPLATES.find(e => e.id === expedition.eventTemplateId);
+        if (tmpl) setActiveEvent(tmpl);
+      }
+      return;
+    }
+    const elapsed = now - expedition.startTime;
+    if (elapsed >= expedition.durationMs * EVENT_TRIGGER_RATIO && !pollingEvent) {
+      setPollingEvent(true);
+      getExpeditionState()
+        .then((state) => { if (state) setExpedition(state); })
+        .finally(() => setPollingEvent(false));
+    }
+  }, [expedition, now, activeEvent, pollingEvent]);
+
+  const resolveEvent = useCallback(async (risky: boolean) => {
+    if (!expedition) return;
+    try {
+      const { eventBonusMult } = await resolveExpeditionEvent(risky);
+      setExpedition((e) => (e ? { ...e, eventBonusMult } : e));
+      setActiveEvent(null);
+      setEventResult({ mult: eventBonusMult, risky });
+      setTimeout(() => setEventResult(null), 3200);
+    } catch {
+      setActiveEvent(null);
+    }
+  }, [expedition, resolveExpeditionEvent]);
 
   const isUnlocked = useCallback((region: RegionDef) => {
-    if (region.unlockRaidId === null) return true;
-    return !!raidClears[region.unlockRaidId];
-  }, [raidClears]);
-
-  const canDepart = useCallback(() => {
-    if (!expedition || expedition.rewardClaimed) {
-      if (party.length < selectedRegion.minParty) return false;
-      if (!!expedition && !expedition.rewardClaimed) return false;
-      return true;
-    }
-    return false;
-  }, [expedition, party, selectedRegion]);
+    return rewardSummary.raidCount >= region.unlockRaidCount;
+  }, [rewardSummary.raidCount]);
 
   const isComplete = expedition
-    ? !expedition.rewardClaimed && Date.now() >= expedition.startTime + expedition.durationMs
+    ? Date.now() >= expedition.startTime + expedition.durationMs
     : false;
 
   const activeRegion = expedition ? REGIONS.find(r => r.id === expedition.regionId) ?? null : null;
 
   // ── Depart ────────────────────────────────────────────────────────────────
-  const depart = useCallback(() => {
-    if (!canDepart()) return;
-    const dur = DURATIONS[durationIdx];
-    const state: ExpeditionState = {
-      regionId: selectedRegion.id,
-      partyIds: party,
-      startTime: Date.now(),
-      durationMs: dur.hours * 3600000,
-      durationHours: dur.hours,
-      rewardClaimed: false,
-    };
-    saveExpedition(state);
-    setExpedition(state);
-    setParty([]);
-  }, [canDepart, selectedRegion, party, durationIdx]);
+  const depart = useCallback(async () => {
+    if (expedition || departing || party.length < selectedRegion.minParty) return;
+    setDeparting(true);
+    setDepartError(null);
+    try {
+      const dur = DURATIONS[durationIdx];
+      const state = await startExpedition(selectedRegion.id, party, dur.hours);
+      setExpedition(state);
+      setParty([]);
+    } catch {
+      setDepartError(
+        ko ? "원정을 시작하지 못했습니다. 다시 시도해주세요."
+          : ja ? "遠征を開始できませんでした。もう一度お試しください。"
+          : "Failed to start the expedition. Please try again.",
+      );
+    } finally {
+      setDeparting(false);
+    }
+  }, [expedition, departing, selectedRegion, party, durationIdx, startExpedition, ko, ja]);
 
   // ── Claim reward ──────────────────────────────────────────────────────────
-  const claimReward = useCallback(() => {
-    if (!expedition || !activeRegion || !isComplete) return;
-    const dur = DURATIONS.find(d => d.hours === expedition.durationHours) ?? DURATIONS[0];
-    const reward = calcReward(activeRegion, expedition.partyIds.length, dur.multiplier, activeRegion.difficulty);
-    setShowRewardResult(reward);
-    const newCount = getExpeditionCount() + 1;
-    localStorage.setItem(COUNT_KEY, String(newCount));
-    const updated: ExpeditionState = { ...expedition, rewardClaimed: true };
-    saveExpedition(updated);
-    setExpedition(updated);
-    void completeExpedition({
-      points:    reward.points,
-      stones:    reward.stones,
-      normalEgg: reward.normalEgg,
-      bigEgg:    reward.bigEgg,
-      goldEgg:   reward.goldEgg,
-    });
-  }, [expedition, activeRegion, isComplete, completeExpedition]);
+  const claimReward = useCallback(async () => {
+    if (!expedition || !isComplete || claiming) return;
+    setClaiming(true);
+    try {
+      const result = await completeExpedition();
+      setShowRewardResult(result);
+      setExpedition(null);
+    } catch {
+      // 실패 시 상태를 유지해 다시 시도할 수 있게 함
+    } finally {
+      setClaiming(false);
+    }
+  }, [expedition, isComplete, claiming, completeExpedition]);
 
   const dismissResult = useCallback(() => {
     setShowRewardResult(null);
-    saveExpedition(null);
-    setExpedition(null);
   }, []);
 
   const css = `
@@ -582,11 +696,11 @@ export default function ExpeditionPage() {
     @keyframes exp-pulse{0%,100%{opacity:1}50%{opacity:0.6}}
   `;
 
-  const remaining = expedition && !expedition.rewardClaimed
+  const remaining = expedition
     ? Math.max(0, expedition.startTime + expedition.durationMs - now)
     : 0;
 
-  const totalCount = getExpeditionCount();
+  const totalCount = rewardSummary.expeditionCount;
 
   // ── Reward result overlay ─────────────────────────────────────────────────
   if (showRewardResult) {
@@ -598,7 +712,7 @@ export default function ExpeditionPage() {
         <div style={{ textAlign:"center" }}>
           <p style={{ margin:0, fontSize:22, fontWeight:900, color:C.gold }}>{ko ? "원정 완료!" : ja ? "遠征完了！" : "Expedition Complete!"}</p>
           <p style={{ margin:"4px 0 0", fontSize:13, color:C.textDim }}>
-            {ko ? `원정 ${totalCount}회 달성` : ja ? `遠征${totalCount}回達成` : `${totalCount} expedition${totalCount!==1?"s":""} completed`}
+            {ko ? `원정 ${r.expeditionCount}회 달성` : ja ? `遠征${r.expeditionCount}回達成` : `${r.expeditionCount} expedition${r.expeditionCount!==1?"s":""} completed`}
           </p>
         </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center" }}>
@@ -626,6 +740,24 @@ export default function ExpeditionPage() {
     <div style={{ minHeight:"100vh", background:C.bg, fontFamily:FONT }}>
       <style>{css}</style>
       {showInfo && <RewardInfoPopup ko={ko} ja={ja} onClose={() => setShowInfo(false)} />}
+      {activeEvent && <EventModal template={activeEvent} onChoose={resolveEvent} ko={ko} ja={ja} />}
+      {eventResult && (
+        <div style={{
+          position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", zIndex:1001,
+          background: eventResult.mult >= 1.1 ? `${C.green}22` : "#7f1d1d33",
+          border:`1.5px solid ${eventResult.mult >= 1.1 ? C.green : "#ef4444"}`,
+          borderRadius:10, padding:"8px 16px", fontFamily:FONT,
+          display:"flex", alignItems:"center", gap:8,
+          animation:"exp-in 0.25s ease-out both",
+        }}>
+          <span style={{ fontSize:12, fontWeight:800, color: eventResult.mult >= 1.1 ? C.green : "#f87171" }}>
+            {ko
+              ? `보상 배율 ×${eventResult.mult.toFixed(2)} 확정!`
+              : ja ? `報酬倍率 ×${eventResult.mult.toFixed(2)} 確定！`
+              : `Reward multiplier locked at ×${eventResult.mult.toFixed(2)}!`}
+          </span>
+        </div>
+      )}
       {showPicker && (
         <CharPickerModal
           ownedIds={ownedIds}
@@ -688,7 +820,7 @@ export default function ExpeditionPage() {
       </div>
 
       {/* Active expedition banner */}
-      {expedition && !expedition.rewardClaimed && (
+      {expedition && (
         <div style={{
           maxWidth:800, margin:"12px auto 0", padding:"0 16px",
           animation:"exp-in 0.3s ease-out both",
@@ -721,19 +853,26 @@ export default function ExpeditionPage() {
                   {ko ? "남은 시간: " : ja ? "残り時間: " : "Time left: "}{fmtRemaining(remaining, ko, ja)}
                 </p>
               )}
+              {expedition.eventBonusMult !== null && (
+                <p style={{ margin:"2px 0 0", fontSize:11, color:"#c084fc", fontWeight:700 }}>
+                  {ko ? "조우 이벤트 보상 배율: " : ja ? "遭遇イベント倍率: " : "Encounter bonus: "}×{expedition.eventBonusMult.toFixed(2)}
+                </p>
+              )}
             </div>
             {isComplete && (
               <button
-                onClick={claimReward}
+                onClick={() => void claimReward()}
+                disabled={claiming}
                 style={{
                   background:`linear-gradient(135deg,${C.green}cc,${C.green}88)`,
                   border:`2px solid ${C.green}`,
                   borderRadius:8, padding:"8px 16px",
                   color:"#052e16", fontWeight:900, fontSize:13,
-                  cursor:"pointer", fontFamily:FONT, flexShrink:0,
+                  cursor: claiming ? "not-allowed" : "pointer", opacity: claiming ? 0.7 : 1,
+                  fontFamily:FONT, flexShrink:0,
                 }}
               >
-                {ko ? "수령하기" : ja ? "受け取る" : "Claim"}
+                {claiming ? (ko ? "수령 중…" : ja ? "受取中…" : "Claiming…") : (ko ? "수령하기" : ja ? "受け取る" : "Claim")}
               </button>
             )}
           </div>
@@ -765,7 +904,7 @@ export default function ExpeditionPage() {
           {REGIONS.map((region, idx) => {
             const unlocked = isUnlocked(region);
             const isActive = selectedRegion.id === region.id;
-            const isDefault = region.unlockRaidId === null;
+            const isDefault = region.unlockRaidCount === 0;
             const col = region.color;
             return (
               <button
@@ -885,7 +1024,7 @@ export default function ExpeditionPage() {
           )}
 
           {/* Party formation & time — only when unlocked and no active expedition */}
-          {isUnlocked(selectedRegion) && (!expedition || expedition.rewardClaimed) && (
+          {isUnlocked(selectedRegion) && !expedition && (
             <>
               {/* Party selection */}
               <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px" }}>
@@ -981,10 +1120,15 @@ export default function ExpeditionPage() {
                 </p>
               </div>
 
+              {/* Depart error */}
+              {departError && (
+                <p style={{ margin:0, fontSize:11, color:"#f87171", textAlign:"center" }}>{departError}</p>
+              )}
+
               {/* Depart button */}
               <button
-                disabled={party.length < selectedRegion.minParty}
-                onClick={depart}
+                disabled={party.length < selectedRegion.minParty || departing || loadingExpedition}
+                onClick={() => void depart()}
                 style={{
                   background: party.length >= selectedRegion.minParty
                     ? `linear-gradient(135deg,${selectedRegion.color}cc,${selectedRegion.color}88)`
@@ -992,11 +1136,15 @@ export default function ExpeditionPage() {
                   border: `2px solid ${party.length >= selectedRegion.minParty ? selectedRegion.color : C.border}`,
                   borderRadius:10, padding:"13px 0",
                   color: party.length >= selectedRegion.minParty ? "#052e16" : C.textDim,
-                  fontWeight:900, fontSize:15, cursor: party.length >= selectedRegion.minParty ? "pointer" : "not-allowed",
+                  fontWeight:900, fontSize:15,
+                  cursor: party.length >= selectedRegion.minParty && !departing && !loadingExpedition ? "pointer" : "not-allowed",
+                  opacity: departing ? 0.7 : 1,
                   fontFamily:FONT, width:"100%",
                 }}
               >
-                {party.length < selectedRegion.minParty
+                {departing
+                  ? ko ? "출발 준비 중…" : ja ? "出発準備中…" : "Departing…"
+                  : party.length < selectedRegion.minParty
                   ? ko ? `최소 ${selectedRegion.minParty}마리 필요` : ja ? `最低${selectedRegion.minParty}匹必要` : `Need at least ${selectedRegion.minParty}`
                   : ko ? "원정 출발!" : ja ? "遠征出発！" : "Depart!"
                 }
@@ -1005,7 +1153,7 @@ export default function ExpeditionPage() {
           )}
 
           {/* Ongoing expedition: can't depart again */}
-          {expedition && !expedition.rewardClaimed && !isComplete && (
+          {expedition && !isComplete && (
             <div style={{
               background:C.panelDark, border:`1px solid ${C.border}`,
               borderRadius:10, padding:"12px 14px",

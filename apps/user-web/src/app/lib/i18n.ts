@@ -51,6 +51,8 @@ const dict = {
     "home.first_post": "첫 글 작성하기",
     // Community
     "community.all": "전체",
+    "community.sort_latest": "최신순",
+    "community.sort_likes": "인기순",
     "community.brag": "자랑",
     "community.tip": "공략",
     "community.chat": "잡담",
@@ -88,6 +90,8 @@ const dict = {
     "footer.operational": "운영정책",
     // Kebomon - 수집
     "kebomon.collection_count": "수집",
+    "kebomon.dex_milestone_next": "다음 도감 보상까지",
+    "kebomon.dex_milestone_toast": "케보몬 {n}종 달성! 도감 보상을 받았어요.",
     "kebomon.all_filter": "전체",
     "kebomon.gacha_tab": "뽑기",
     "kebomon.achievement_tab": "업적",
@@ -428,6 +432,9 @@ const dict = {
     "notification.achievement_title": "업적 달성!",
     "notification.achievement_body":
       "새로운 케보몬을 획득했어요. 도감에서 확인해보세요.",
+    "notification.dex_milestone_title": "도감 마일스톤 달성!",
+    "notification.dex_milestone_body":
+      "케보몬 수집 보상을 받았어요. 도감에서 확인해보세요.",
     "notification.season_title": "시즌 랭킹 칭호 획득!",
     "notification.season_body":
       "시즌 최종 랭킹 칭호가 지급됐습니다. 칭호 목록에서 확인하세요.",
@@ -584,6 +591,13 @@ const dict = {
     "duel.to_lobby": "로비로",
     "duel.str": "힘",
     "duel.psn": "독",
+    "duel.record": "전적",
+    "duel.wins": "승",
+    "duel.losses": "패",
+    "duel.streak": "연승",
+    "duel.ranking": "랭킹",
+    "duel.ranking_title": "듀얼 랭킹",
+    "duel.no_ranking": "아직 랭킹 기록이 없어요.",
     // Colosseum UI
     "col.enter": "입  장  !",
     "col.rematch": "다음 전투로",
@@ -781,6 +795,8 @@ const dict = {
     "home.first_post": "最初の投稿をしよう",
     // Community
     "community.all": "すべて",
+    "community.sort_latest": "最新順",
+    "community.sort_likes": "人気順",
     "community.brag": "自慢",
     "community.tip": "攻略",
     "community.chat": "おしゃべり",
@@ -818,6 +834,8 @@ const dict = {
     "footer.operational": "運営ポリシー",
     // Kebomon - コレクション
     "kebomon.collection_count": "コレクション",
+    "kebomon.dex_milestone_next": "次の図鑑報酬まで",
+    "kebomon.dex_milestone_toast": "ケボモン{n}種達成！図鑑報酬を獲得しました。",
     "kebomon.all_filter": "全て",
     "kebomon.gacha_tab": "ガチャ",
     "kebomon.achievement_tab": "実績",
@@ -1143,6 +1161,9 @@ const dict = {
     "notification.achievement_title": "実績達成！",
     "notification.achievement_body":
       "新しいケボモンを獲得しました。図鑑で確認してみてください。",
+    "notification.dex_milestone_title": "図鑑マイルストーン達成！",
+    "notification.dex_milestone_body":
+      "ケボモン収集報酬を獲得しました。図鑑で確認してみてください。",
     "notification.season_title": "シーズンランキング称号獲得！",
     "notification.season_body":
       "シーズン最終ランキング称号が付与されました。称号一覧で確認してください。",
@@ -1300,6 +1321,13 @@ const dict = {
     "duel.to_lobby": "ロビーへ",
     "duel.str": "力",
     "duel.psn": "毒",
+    "duel.record": "戦績",
+    "duel.wins": "勝",
+    "duel.losses": "敗",
+    "duel.streak": "連勝",
+    "duel.ranking": "ランキング",
+    "duel.ranking_title": "デュエルランキング",
+    "duel.no_ranking": "まだランキング記録がありません。",
     // Colosseum UI
     "col.enter": "入  場  ！",
     "col.rematch": "次の戦闘へ",
@@ -1481,6 +1509,8 @@ const dict = {
     "home.first_post": "Write the first post",
     // Community
     "community.all": "All",
+    "community.sort_latest": "Latest",
+    "community.sort_likes": "Most Liked",
     "community.brag": "Brag",
     "community.tip": "Tips",
     "community.chat": "Chat",
@@ -1518,6 +1548,8 @@ const dict = {
     "footer.operational": "Operational Policy",
     // Kebomon - Collection
     "kebomon.collection_count": "Collected",
+    "kebomon.dex_milestone_next": "Next Pokédex reward at",
+    "kebomon.dex_milestone_toast": "{n} Kebomon collected! Pokédex reward earned.",
     "kebomon.all_filter": "All",
     "kebomon.gacha_tab": "Gacha",
     "kebomon.achievement_tab": "Achievements",
@@ -1858,6 +1890,9 @@ const dict = {
     "notification.achievement_title": "Achievement Unlocked!",
     "notification.achievement_body":
       "New Kebomon obtained. Check your Pokédex!",
+    "notification.dex_milestone_title": "Pokédex Milestone Reached!",
+    "notification.dex_milestone_body":
+      "Collected Kebomon rewards earned. Check your Pokédex!",
     "notification.season_title": "Season Ranking Title Earned!",
     "notification.season_body":
       "Season final ranking title awarded. Check your titles!",
@@ -2017,6 +2052,13 @@ const dict = {
     "duel.to_lobby": "To Lobby",
     "duel.str": "Str",
     "duel.psn": "Psn",
+    "duel.record": "Record",
+    "duel.wins": "W",
+    "duel.losses": "L",
+    "duel.streak": "Streak",
+    "duel.ranking": "Ranking",
+    "duel.ranking_title": "Duel Ranking",
+    "duel.no_ranking": "No ranking records yet.",
     // Colosseum UI
     "col.enter": "ENTER!",
     "col.rematch": "Next Battle",

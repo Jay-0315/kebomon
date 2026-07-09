@@ -3,6 +3,16 @@ import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ARENA_TIERS, getArenaTierKey } from "../arena/arena.constants";
+import {
+  EXPEDITION_DURATIONS,
+  EXPEDITION_EVENT_IDS,
+  EXPEDITION_EVENT_SAFE_MULT,
+  EXPEDITION_EVENT_TRIGGER_RATIO,
+  calcExpeditionReward,
+  getExpeditionRegion,
+  rarityAtLeast,
+  rollExpeditionRiskyMult,
+} from "./expedition.constants";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   // 기존 칭호
@@ -139,6 +149,18 @@ const GACHA_RATES: Record<string, number> = {
 const GACHA_COST_SINGLE = 120;
 const GACHA_COST_TEN = 1200;
 const STARTER_IDS = [141, 11, 12];
+
+// 도감 컴플리트 마일스톤 — 전체 수집 가능 캐릭터 180종 기준 (누적 보유 종 수)
+const DEX_MILESTONES: { count: number; kp: number; normalEgg?: number; bigEgg?: number; goldenEgg?: number; stones?: number }[] = [
+  { count: 25,  kp: 300 },
+  { count: 50,  kp: 600,  normalEgg: 1 },
+  { count: 75,  kp: 1000 },
+  { count: 100, kp: 1500, bigEgg: 1 },
+  { count: 125, kp: 2200 },
+  { count: 150, kp: 3000, goldenEgg: 1 },
+  { count: 175, kp: 4500 },
+  { count: 180, kp: 8000, goldenEgg: 2, stones: 3 },
+];
 
 // Achievement definitions: which stat value unlocks which character
 const ACHIEVEMENTS: { characterId: number; type: string; value: number }[] = [
@@ -436,27 +458,131 @@ export class RewardsService {
     await this.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
   }
 
-  async completeExpedition(
-    userId: string,
-    rewards: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number },
-  ) {
-    await this.getOrCreateReward(userId);
-    const updated = await this.prisma.userReward.update({
-      where: { userId },
-      data: {
-        expeditionCount:  { increment: 1 },
-        missionPoints:    { increment: Math.max(0, rewards.points) },
-        enhancementStones:{ increment: Math.max(0, rewards.stones) },
-        normalEggs:       { increment: Math.max(0, rewards.normalEgg) },
-        bigEggs:          { increment: Math.max(0, rewards.bigEgg) },
-        goldenEggs:       { increment: Math.max(0, rewards.goldEgg) },
-      },
+  // ─── 원정 (서버 권위 상태 — 보상은 클라이언트가 아닌 서버가 계산) ──────────────────
+  private formatExpedition(exp: {
+    regionId: string; partyIds: unknown; startTime: Date; durationHours: number;
+    eventTemplateId: string | null; eventBonusMult: number | null;
+  }) {
+    return {
+      regionId: exp.regionId,
+      partyIds: exp.partyIds as number[],
+      startTime: exp.startTime.getTime(),
+      durationHours: exp.durationHours,
+      durationMs: exp.durationHours * 3600000,
+      eventTemplateId: exp.eventTemplateId,
+      eventBonusMult: exp.eventBonusMult,
+    };
+  }
+
+  async startExpedition(userId: string, regionId: string, partyIds: number[], durationHours: number) {
+    const region = getExpeditionRegion(regionId);
+    if (!region) throw new BadRequestException("존재하지 않는 지역입니다.");
+    if (!(durationHours in EXPEDITION_DURATIONS)) {
+      throw new BadRequestException("올바르지 않은 원정 시간입니다.");
+    }
+
+    const existing = await this.prisma.expedition.findUnique({ where: { userId } });
+    if (existing) throw new BadRequestException("이미 진행 중인 원정이 있습니다.");
+
+    const reward = await this.getOrCreateReward(userId);
+    if (region.unlockRaidCount > 0 && reward.raidCount < region.unlockRaidCount) {
+      throw new BadRequestException("아직 해금되지 않은 지역입니다.");
+    }
+
+    const uniqueParty = [...new Set(partyIds)];
+    if (uniqueParty.length < region.minParty || uniqueParty.length > 5) {
+      throw new BadRequestException("원정대 인원이 올바르지 않습니다.");
+    }
+    const owned = await this.prisma.userCharacter.findMany({
+      where: { userId, characterId: { in: uniqueParty } },
+      select: { characterId: true },
     });
+    if (owned.length !== uniqueParty.length) {
+      throw new BadRequestException("보유하지 않은 케보몬이 포함되어 있습니다.");
+    }
+    for (const id of uniqueParty) {
+      if (!rarityAtLeast(this.getCharRarity(id), region.minRarity)) {
+        throw new BadRequestException("등급 조건을 만족하지 않는 케보몬이 있습니다.");
+      }
+    }
+
+    const expedition = await this.prisma.expedition.create({
+      data: { userId, regionId, partyIds: uniqueParty, startTime: new Date(), durationHours },
+    });
+    return this.formatExpedition(expedition);
+  }
+
+  /** 진행 중인 원정 조회 — 50% 경과 시 이 시점에서 랜덤 이벤트를 지연 확정(lazy) 시킴 */
+  async getExpeditionState(userId: string) {
+    const exp = await this.prisma.expedition.findUnique({ where: { userId } });
+    if (!exp) return null;
+    if (!exp.eventTemplateId) {
+      const elapsed = Date.now() - exp.startTime.getTime();
+      if (elapsed >= exp.durationHours * 3600000 * EXPEDITION_EVENT_TRIGGER_RATIO) {
+        const templateId = EXPEDITION_EVENT_IDS[Math.floor(Math.random() * EXPEDITION_EVENT_IDS.length)];
+        const updated = await this.prisma.expedition.update({
+          where: { userId },
+          data: { eventTemplateId: templateId },
+        });
+        return this.formatExpedition(updated);
+      }
+    }
+    return this.formatExpedition(exp);
+  }
+
+  async resolveExpeditionEvent(userId: string, risky: boolean) {
+    const exp = await this.prisma.expedition.findUnique({ where: { userId } });
+    if (!exp) throw new BadRequestException("진행 중인 원정이 없습니다.");
+    if (!exp.eventTemplateId) throw new BadRequestException("아직 이벤트가 발생하지 않았습니다.");
+    if (exp.eventBonusMult !== null) throw new BadRequestException("이미 선택을 완료했습니다.");
+
+    const mult = risky ? rollExpeditionRiskyMult() : EXPEDITION_EVENT_SAFE_MULT;
+    await this.prisma.expedition.update({ where: { userId }, data: { eventBonusMult: mult } });
+    return { eventBonusMult: mult };
+  }
+
+  async completeExpedition(userId: string) {
+    const exp = await this.prisma.expedition.findUnique({ where: { userId } });
+    if (!exp) throw new BadRequestException("진행 중인 원정이 없습니다.");
+    const elapsed = Date.now() - exp.startTime.getTime();
+    if (elapsed < exp.durationHours * 3600000) {
+      throw new BadRequestException("아직 원정이 끝나지 않았습니다.");
+    }
+
+    const region = getExpeditionRegion(exp.regionId)!;
+    const durationMultiplier = EXPEDITION_DURATIONS[exp.durationHours] ?? 1;
+    const partyIds = exp.partyIds as number[];
+    const base = calcExpeditionReward(region, partyIds.length, durationMultiplier);
+    const eventMult = exp.eventBonusMult ?? 1;
+    const rewards = eventMult === 1 ? base : {
+      points:    Math.round(base.points * eventMult),
+      stones:    Math.round(base.stones * eventMult),
+      normalEgg: Math.round(base.normalEgg * eventMult),
+      bigEgg:    Math.round(base.bigEgg * eventMult),
+      goldEgg:   Math.round(base.goldEgg * eventMult),
+    };
+
+    const [updatedReward] = await this.prisma.$transaction([
+      this.prisma.userReward.update({
+        where: { userId },
+        data: {
+          expeditionCount:   { increment: 1 },
+          missionPoints:     { increment: rewards.points },
+          enhancementStones: { increment: rewards.stones },
+          normalEggs:        { increment: rewards.normalEgg },
+          bigEggs:           { increment: rewards.bigEgg },
+          goldenEggs:        { increment: rewards.goldEgg },
+        },
+      }),
+      this.prisma.expedition.delete({ where: { userId } }),
+    ]);
+
     await Promise.all([
       this.checkAndGrantAchievements(userId),
       this.checkAndGrantTitles(userId),
     ]).catch(() => undefined);
-    return { expeditionCount: updated.expeditionCount };
+
+    return { ...rewards, expeditionCount: updatedReward.expeditionCount };
   }
 
   async completeRogue(userId: string, difficulty = "normal") {
@@ -687,6 +813,7 @@ export class RewardsService {
       liveCount: reward.liveCount,
       expeditionCount: reward.expeditionCount,
       rogueClears: reward.rogueClears,
+      dexMilestoneBest: reward.dexMilestoneBest,
       attendanceClaimedToday: reward.lastAttendanceDate === todayKTC,
       monthDays: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthDays : 0,
       monthWeekRewards: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthWeekRewards : 0,
@@ -1214,7 +1341,60 @@ export class RewardsService {
       }
     }
 
-    return { newlyUnlocked };
+    // 도감 컴플리트 마일스톤 — 방금 새로 얻은 캐릭터까지 포함한 총 보유 종 수 기준
+    const dexReward = await this.checkAndGrantDexMilestones(userId, ownedSet.size + newlyUnlocked.length);
+
+    return { newlyUnlocked, dexMilestones: dexReward.milestones, dexReward };
+  }
+
+  /** 도감 보유 종 수가 마일스톤을 새로 넘겼으면 KP/알/강화석을 지급 */
+  private async checkAndGrantDexMilestones(userId: string, ownedCount: number) {
+    const reward = await this.getOrCreateReward(userId);
+    const crossed = DEX_MILESTONES.filter(
+      (m) => m.count > reward.dexMilestoneBest && ownedCount >= m.count,
+    );
+    const empty = { milestones: [] as number[], kp: 0, normalEgg: 0, bigEgg: 0, goldenEgg: 0, stones: 0 };
+    if (crossed.length === 0) return empty;
+
+    const totals = crossed.reduce(
+      (acc, m) => ({
+        kp: acc.kp + m.kp,
+        normalEgg: acc.normalEgg + (m.normalEgg ?? 0),
+        bigEgg: acc.bigEgg + (m.bigEgg ?? 0),
+        goldenEgg: acc.goldenEgg + (m.goldenEgg ?? 0),
+        stones: acc.stones + (m.stones ?? 0),
+      }),
+      { kp: 0, normalEgg: 0, bigEgg: 0, goldenEgg: 0, stones: 0 },
+    );
+    const newBest = Math.max(...crossed.map((m) => m.count));
+
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        missionPoints:     { increment: totals.kp },
+        normalEggs:        { increment: totals.normalEgg },
+        bigEggs:           { increment: totals.bigEgg },
+        goldenEggs:        { increment: totals.goldenEgg },
+        enhancementStones: { increment: totals.stones },
+        dexMilestoneBest:  newBest,
+      },
+    });
+
+    void this.notifications.create({
+      userId,
+      type: "achievement",
+      title: "도감 마일스톤 달성!",
+      body: `케보몬 ${newBest}종을 수집해 보상을 받았어요. 도감에서 확인해보세요.`,
+      titleKey: "notification.dex_milestone_title",
+      bodyKey: "notification.dex_milestone_body",
+      titleJa: "図鑑マイルストーン達成！",
+      bodyJa: `ケボモンを${newBest}種収集して報酬を獲得しました。図鑑で確認してみてください。`,
+      titleEn: "Pokédex Milestone Reached!",
+      bodyEn: `Collected ${newBest} Kebomon and earned rewards. Check your Pokédex!`,
+      link: "/kebomon?tab=collection",
+    }).catch(() => undefined);
+
+    return { milestones: crossed.map((m) => m.count), ...totals };
   }
 
   // ─── 콜로세움 랭킹 (1시간 서버캐시) ────────────────────────────────────

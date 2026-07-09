@@ -70,6 +70,25 @@ function CardArchIcon({ type, className }: { type: string; className?: string })
   return <Icon className={className} style={{ color }} />;
 }
 
+// 도감 컴플리트 마일스톤 — 실제 보상 계산은 서버(rewards.service.ts DEX_MILESTONES)가 담당, 여기선 진행도 표시용
+const DEX_MILESTONE_COUNTS = [25, 50, 75, 100, 125, 150, 175, 180];
+
+const ARCHETYPES = ["warrior", "rogue", "mage", "tank", "nature", "meka", "cursed"] as const;
+const ARCH_LABEL: Record<string, { ko: string; ja: string; en: string }> = {
+  warrior: { ko: "전사", ja: "戦士", en: "Warrior" },
+  rogue:   { ko: "도적", ja: "盗賊", en: "Rogue" },
+  mage:    { ko: "마법사", ja: "魔法士", en: "Mage" },
+  tank:    { ko: "수호자", ja: "守護者", en: "Tank" },
+  nature:  { ko: "자연사", ja: "自然士", en: "Nature" },
+  meka:    { ko: "메카", ja: "メカ", en: "Meka" },
+  cursed:  { ko: "저주사", ja: "呪術士", en: "Cursed" },
+};
+function archIconFor(arch: string, className?: string) {
+  const color = arch==="warrior"?"#f97316":arch==="rogue"?"#c084fc":arch==="mage"?"#60a5fa":arch==="tank"?"#94a3b8":arch==="nature"?"#4ade80":arch==="cursed"?"#7c3aed":"#2dd4bf";
+  const Icon = arch==="warrior"?Sword:arch==="rogue"?Wind:arch==="mage"?Wand2:arch==="tank"?Layers:arch==="nature"?Leaf:arch==="cursed"?Flame:Cpu;
+  return <Icon className={className} style={{ color }} />;
+}
+
 const CHAR_DISPLAY_NUM = new Map(CHARACTERS.map((c, i) => [c.id, i + 1]));
 const charNum = (id: number) =>
   String(CHAR_DISPLAY_NUM.get(id) ?? id).padStart(3, "0");
@@ -830,6 +849,8 @@ export default function KebomonPage() {
     null,
   );
   const [checkingAchievements, setCheckingAchievements] = useState(false);
+  const [dexMilestoneToast, setDexMilestoneToast] = useState<number | null>(null);
+  const [archFilter, setArchFilter] = useState<"all" | string>("all");
 
   const setTab = (nextTab: Tab) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -886,7 +907,11 @@ export default function KebomonPage() {
   const handleCheckAchievements = async () => {
     setCheckingAchievements(true);
     try {
-      await checkAchievements();
+      const { dexMilestones } = await checkAchievements();
+      if (dexMilestones.length > 0) {
+        setDexMilestoneToast(Math.max(...dexMilestones));
+        setTimeout(() => setDexMilestoneToast(null), 3500);
+      }
     } finally {
       setCheckingAchievements(false);
     }
@@ -957,6 +982,7 @@ export default function KebomonPage() {
       ? CHARACTERS
       : CHARACTERS.filter((c) => c.rarity === filter)
   )
+    .filter((c) => archFilter === "all" || CARD_ARCH_MAP[c.type] === archFilter)
     .slice()
     .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]);
   const selectedChar =
@@ -1282,11 +1308,15 @@ export default function KebomonPage() {
             selected={selected}
             selectedChar={selectedChar}
             filter={filter}
+            archFilter={archFilter}
             filtered={filtered}
             rarities={rarities}
             equipping={equipping}
             characterEnhancements={rewardSummary.characterEnhancements}
+            dexMilestoneBest={rewardSummary.dexMilestoneBest}
+            totalOwned={ownedCharacterIds.length}
             onSelectFilter={setFilter}
+            onSelectArchFilter={setArchFilter}
             onSelectChar={(id) => setSelected(selected === id ? null : id)}
             onEquip={(id) => void handleEquip(id)}
             t={t}
@@ -1310,6 +1340,15 @@ export default function KebomonPage() {
           />
         )}
       </div>
+
+      {dexMilestoneToast !== null && (
+        <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-primary/40 bg-card px-4 py-2.5 shadow-lg">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            <Trophy className="w-4 h-4 text-primary" />
+            {t("kebomon.dex_milestone_toast").replace("{n}", String(dexMilestoneToast))}
+          </p>
+        </div>
+      )}
     </>
   );
 }
@@ -1321,13 +1360,17 @@ function CollectionTab({
   selected,
   selectedChar,
   filter,
+  archFilter,
   filtered,
   rarities,
   equipping,
   onSelectFilter,
+  onSelectArchFilter,
   onSelectChar,
   onEquip,
   characterEnhancements,
+  dexMilestoneBest,
+  totalOwned,
   t,
 }: {
   ownedSet: Set<number>;
@@ -1335,11 +1378,15 @@ function CollectionTab({
   selected: number | null;
   selectedChar: CharacterDef | null | undefined;
   filter: Filter;
+  archFilter: string;
   filtered: CharacterDef[];
   rarities: Filter[];
   equipping: boolean;
   characterEnhancements: Record<number, number>;
+  dexMilestoneBest: number;
+  totalOwned: number;
   onSelectFilter: (f: Filter) => void;
+  onSelectArchFilter: (a: string) => void;
   onSelectChar: (id: number) => void;
   onEquip: (id: number) => void;
   t: TFunc;
@@ -1375,6 +1422,34 @@ function CollectionTab({
         />
       )}
 
+      {/* 도감 컴플리트 마일스톤 진행도 */}
+      {(() => {
+        const next = DEX_MILESTONE_COUNTS.find((c) => c > dexMilestoneBest);
+        if (!next) return null;
+        const belowNext = DEX_MILESTONE_COUNTS.filter((c) => c <= dexMilestoneBest);
+        const prev = belowNext.length > 0 ? belowNext[belowNext.length - 1] : 0;
+        const pct = Math.min(
+          100,
+          Math.round(((totalOwned - prev) / (next - prev)) * 100),
+        );
+        return (
+          <div className="rounded-xl border border-border bg-muted/40 p-2.5">
+            <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+              <span>{t("kebomon.dex_milestone_next")}</span>
+              <span className="font-bold text-foreground">
+                {totalOwned}/{next}
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${Math.max(0, pct)}%` }}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Rarity filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {rarities.map((r) => (
@@ -1390,6 +1465,34 @@ function CollectionTab({
             {r === "all"
               ? t("kebomon.all_filter")
               : getRarityLabel(r as CharacterRarity, lang)}
+          </button>
+        ))}
+      </div>
+
+      {/* 직업(아키타입) filter */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          onClick={() => onSelectArchFilter("all")}
+          className={`shrink-0 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all ${
+            archFilter === "all"
+              ? "bg-primary/80 text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/70"
+          }`}
+        >
+          {t("kebomon.all_filter")}
+        </button>
+        {ARCHETYPES.map((a) => (
+          <button
+            key={a}
+            onClick={() => onSelectArchFilter(a)}
+            className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all ${
+              archFilter === a
+                ? "bg-primary/80 text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/70"
+            }`}
+          >
+            {archIconFor(a, "w-3 h-3")}
+            {ARCH_LABEL[a][lang === "ja" ? "ja" : lang === "en" ? "en" : "ko"]}
           </button>
         ))}
       </div>

@@ -17,8 +17,9 @@ export class CommunityController {
     @Query("userId") userId?: string,
     @Query("page") page?: string,
     @Query("category") category?: PostCategory,
+    @Query("sort") sort?: "latest" | "likes",
   ) {
-    return this.communityService.findAll(userId, page ? Number(page) : 1, category);
+    return this.communityService.findAll(userId, page ? Number(page) : 1, category, sort);
   }
 
   @Get("my")

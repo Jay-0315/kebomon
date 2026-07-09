@@ -132,9 +132,29 @@ export interface RewardSummary {
   expeditionCount: number;
   rogueClears: number;
   challengeBest: number;
+  dexMilestoneBest: number;
   attendanceClaimedToday: boolean;
   monthDays: number;
   monthWeekRewards: number;
+}
+
+export interface ExpeditionState {
+  regionId: string;
+  partyIds: number[];
+  startTime: number;
+  durationHours: number;
+  durationMs: number;
+  eventTemplateId: string | null;
+  eventBonusMult: number | null;
+}
+
+export interface ExpeditionRewardResult {
+  points: number;
+  stones: number;
+  normalEgg: number;
+  bigEgg: number;
+  goldEgg: number;
+  expeditionCount: number;
 }
 
 export interface RogueMilestone {

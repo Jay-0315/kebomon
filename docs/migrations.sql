@@ -103,3 +103,46 @@ CREATE TABLE IF NOT EXISTS arena_attack_logs (
   CONSTRAINT fk_aal_attacker FOREIGN KEY (attacker_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_aal_defender FOREIGN KEY (defender_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- ============================================================
+-- Migration: Add arena tickets (server-authoritative) + dex milestone tracking
+-- Applied: 2026-07-09
+-- ============================================================
+ALTER TABLE user_rewards
+  ADD COLUMN arena_tickets          INT      NOT NULL DEFAULT 5 AFTER challenge_best,
+  ADD COLUMN arena_ticket_regen_at  DATETIME NULL     AFTER arena_tickets,
+  ADD COLUMN arena_ticket_date      VARCHAR(10) NULL  AFTER arena_ticket_regen_at,
+  ADD COLUMN dex_milestone_best     INT      NOT NULL DEFAULT 0 AFTER arena_ticket_date;
+
+-- ============================================================
+-- Migration: Add duel_stats table (1:1 카드 대전 전적/랭킹)
+-- Applied: 2026-07-09
+-- ============================================================
+CREATE TABLE IF NOT EXISTS duel_stats (
+  id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+  user_id     VARCHAR(36)  NOT NULL UNIQUE,
+  wins        INT          NOT NULL DEFAULT 0,
+  losses      INT          NOT NULL DEFAULT 0,
+  win_streak  INT          NOT NULL DEFAULT 0,
+  best_streak INT          NOT NULL DEFAULT 0,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_duel_stats_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- Migration: Add expeditions table (원정 서버 상태 추적 — 보상 위조 방지)
+-- Applied: 2026-07-09
+-- ============================================================
+CREATE TABLE IF NOT EXISTS expeditions (
+  id                VARCHAR(36)  NOT NULL PRIMARY KEY,
+  user_id           VARCHAR(36)  NOT NULL UNIQUE,
+  region_id         VARCHAR(20)  NOT NULL,
+  party_ids         JSON         NOT NULL,
+  start_time        DATETIME     NOT NULL,
+  duration_hours    INT          NOT NULL,
+  event_template_id VARCHAR(20)  NULL,
+  event_bonus_mult  FLOAT        NULL,
+  created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_expeditions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

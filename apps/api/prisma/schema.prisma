@@ -42,6 +42,8 @@ model User {
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
   battleStats           BattleStats?
+  duelStats             DuelStats?
+  expedition            Expedition?
   arenaDecks            ArenaDeck[]
   attacksGiven          ArenaAttackLog[] @relation("Attacker")
   attacksReceived       ArenaAttackLog[] @relation("Defender")
@@ -116,6 +118,10 @@ model UserReward {
   expeditionCount     Int      @default(0) @map("expedition_count")
   rogueClears         Int      @default(0) @map("rogue_clears")
   challengeBest       Int      @default(0) @map("challenge_best")
+  dexMilestoneBest    Int      @default(0) @map("dex_milestone_best")
+  arenaTickets        Int      @default(5) @map("arena_tickets")
+  arenaTicketRegenAt  DateTime? @map("arena_ticket_regen_at")
+  arenaTicketDate     String?  @map("arena_ticket_date") @db.VarChar(10)
   lastAttendanceDate  String?  @map("last_attendance_date") @db.VarChar(10)
   monthKey            String?  @map("month_key") @db.VarChar(7)
   monthDays           Int      @default(0) @map("month_days")
@@ -178,6 +184,37 @@ model BattleStats {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("battle_stats")
+}
+
+/** 듀얼(1:1 카드 대전) 전적 */
+model DuelStats {
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  wins       Int      @default(0)
+  losses     Int      @default(0)
+  winStreak  Int      @default(0) @map("win_streak")
+  bestStreak Int      @default(0) @map("best_streak")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("duel_stats")
+}
+
+/** 원정 (진행 중인 것 1건만 유지 — 완료 시 row 삭제) */
+model Expedition {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  regionId        String   @map("region_id") @db.VarChar(20)
+  partyIds        Json     @map("party_ids")
+  startTime       DateTime @map("start_time")
+  durationHours   Int      @map("duration_hours")
+  eventTemplateId String?  @map("event_template_id") @db.VarChar(20)
+  eventBonusMult  Float?   @map("event_bonus_mult")
+  createdAt       DateTime @default(now()) @map("created_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("expeditions")
 }
 
 /** 아레나 공격/방어 덱 */

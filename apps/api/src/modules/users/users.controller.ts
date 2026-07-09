@@ -14,6 +14,12 @@ export class UsersController {
     return this.usersService.getProfile(id);
   }
 
+  /** 랭킹 등에서 다른 유저를 조회할 때 쓰는 공개 프로필 (이메일/설정 등 비공개 필드 제외) */
+  @Get(":id/public-profile")
+  getPublicProfile(@Param("id") id: string) {
+    return this.usersService.getPublicProfile(id);
+  }
+
   @Patch(":id/profile")
   updateProfile(@Param("id") id: string, @Body() dto: UpdateUserProfileDto) {
     return this.usersService.updateProfile(id, dto);

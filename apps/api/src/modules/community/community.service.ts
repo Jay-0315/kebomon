@@ -89,15 +89,19 @@ export class CommunityService {
 
   //게시글
 
-  async findAll(userId?: string, page = 1, category?: PostCategory) {
+  async findAll(userId?: string, page = 1, category?: PostCategory, sort?: "latest" | "likes") {
     const skip = (page - 1) * PAGE_SIZE;
     const where = category ? { category } : {};
+    const orderBy =
+      sort === "likes"
+        ? [{ likesCount: "desc" as const }, { createdAt: "desc" as const }]
+        : { createdAt: "desc" as const };
 
     const [posts, total] = await Promise.all([
       this.prisma.communityPost.findMany({
         where,
         include: postInclude as any,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: PAGE_SIZE,
       }),

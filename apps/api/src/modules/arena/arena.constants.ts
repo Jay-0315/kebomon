@@ -33,3 +33,31 @@ export const ARENA_TIERS: ArenaTier[] = [
 export function getArenaTierKey(tierPoints: number): string | null {
   return ARENA_TIERS.find((t) => tierPoints >= t.min)?.key ?? null;
 }
+
+// ─── NPC 전투 상대 ──────────────────────────────────────────────────────────
+// 프론트 ColosseumPage.tsx의 NPC_OPPONENTS와 id/slots/enhLvs/winPts/lossPts를
+// 반드시 동일하게 유지할 것 — 여기 값이 실제 전투에 쓰이는 서버 검증 기준임.
+export interface ArenaNpc {
+  id: string;
+  slots: number[];
+  enhLvs: number[];
+  winPts: number;
+  lossPts: number;
+}
+
+export const ARENA_NPCS: ArenaNpc[] = [
+  { id: "npc_1",  slots: [4, 7, 8, 9],        enhLvs: [0, 0, 0, 0], winPts: 50,  lossPts: 0 },
+  { id: "npc_2",  slots: [5, 6, 11, 12],      enhLvs: [0, 0, 0, 0], winPts: 60,  lossPts: 0 },
+  { id: "npc_3",  slots: [20, 14, 22, 84],    enhLvs: [0, 0, 0, 0], winPts: 90,  lossPts: 0 },
+  { id: "npc_4",  slots: [16, 91, 90, 21],    enhLvs: [1, 1, 0, 0], winPts: 100, lossPts: 0 },
+  { id: "npc_5",  slots: [26, 35, 33, 36],    enhLvs: [2, 2, 1, 1], winPts: 150, lossPts: 0 },
+  { id: "npc_6",  slots: [40, 39, 99, 131],   enhLvs: [2, 2, 3, 2], winPts: 180, lossPts: 0 },
+  { id: "npc_7",  slots: [57, 53, 52, 135],   enhLvs: [3, 3, 3, 4], winPts: 250, lossPts: 0 },
+  { id: "npc_8",  slots: [137, 154, 191, 216],enhLvs: [4, 4, 3, 4], winPts: 280, lossPts: 0 },
+  { id: "npc_9",  slots: [64, 72, 83, 150],   enhLvs: [5, 5, 5, 5], winPts: 350, lossPts: 0 },
+  { id: "npc_10", slots: [158, 204, 208, 235],enhLvs: [6, 6, 6, 6], winPts: 500, lossPts: 0 },
+];
+
+export function getArenaNpc(id: string): ArenaNpc | undefined {
+  return ARENA_NPCS.find((n) => n.id === id);
+}

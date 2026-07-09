@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy, Zap, Star, Skull, Check, ChevronRight } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getStoredUser } from "../lib/auth";
 import { getDuelSocket, disconnectDuelSocket } from "../lib/socket";
+import { api } from "../lib/api";
 import { CHARACTERS } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
+
+type DuelStats = { wins: number; losses: number; winStreak: number; bestStreak: number };
+type DuelRankRow = { rank: number; userId: string; nickname: string; wins: number; losses: number; bestStreak: number };
 
 type DuelPhase = "waiting" | "deck" | "battle" | "over";
 type DeckMeta = { id: string; name: string; nameJa: string; nameEn: string; color: string; charType: string };
@@ -229,6 +234,7 @@ function TavernBanner({ title, desc }: { title: string; desc: string }) {
 
 export default function DuelPage() {
   const { rewardSummary, profile } = useAppData();
+  const navigate = useNavigate();
   const { t, lang } = useLang();
   const ko = lang === "ko", ja = lang === "ja";
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
@@ -243,6 +249,9 @@ export default function DuelPage() {
   const [pw, setPw] = useState("");
   const [selIdx, setSelIdx] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [myStats, setMyStats] = useState<DuelStats | null>(null);
+  const [ranking, setRanking] = useState<DuelRankRow[] | null>(null);
+  const [showRanking, setShowRanking] = useState(false);
 
   // Animation state
   const [oppHit, setOppHit] = useState(0);
@@ -275,6 +284,19 @@ export default function DuelPage() {
 
   useEffect(() => () => { getDuelSocket().emit("duel:leave"); disconnectDuelSocket(); }, []);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(id); }, []);
+
+  // 내 전적 조회 (로비 진입 시 + 대전 종료 시 갱신)
+  useEffect(() => {
+    const uid = getStoredUser()?.id;
+    if (!uid) return;
+    api.get<DuelStats>(`/duel/stats/${uid}`).then(setMyStats).catch(() => {});
+  }, [battle?.phase]);
+
+  // 랭킹 패널을 열 때 한 번만 조회
+  useEffect(() => {
+    if (!showRanking || ranking) return;
+    api.get<DuelRankRow[]>("/duel/ranking").then(setRanking).catch(() => setRanking([]));
+  }, [showRanking, ranking]);
 
   // Detect HP changes → trigger animations
   useEffect(() => {
@@ -363,6 +385,63 @@ export default function DuelPage() {
         <TavernBanner title={t("duel.title")} desc={t("duel.desc")} />
         <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
           {error && <div className="mb-4 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
+
+          {/* 내 전적 + 랭킹 버튼 */}
+          <div className="mb-4 flex items-center justify-between rounded-xl border p-3"
+            style={{ background: "rgba(15,8,2,0.82)", borderColor: "rgba(139,82,32,0.45)" }}>
+            <div className="flex items-center gap-2 text-sm">
+              <Trophy className="h-4 w-4 text-amber-400" />
+              <span className="font-semibold text-amber-200/80">{t("duel.record")}</span>
+              <span className="font-bold text-amber-100">
+                {myStats ? `${myStats.wins}${t("duel.wins")} ${myStats.losses}${t("duel.losses")}` : "-"}
+              </span>
+              {!!myStats?.winStreak && myStats.winStreak > 1 && (
+                <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300">
+                  {myStats.winStreak}{t("duel.streak")}
+                </span>
+              )}
+            </div>
+            <button onClick={() => setShowRanking(true)}
+              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-amber-100 transition-all hover:brightness-110"
+              style={{ background: "rgba(200,164,64,0.18)", border: "1px solid rgba(200,164,64,0.4)" }}>
+              <Crown className="h-3.5 w-3.5" />{t("duel.ranking")}
+            </button>
+          </div>
+
+          {/* 랭킹 패널 */}
+          {showRanking && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowRanking(false)}>
+              <div onClick={(e) => e.stopPropagation()}
+                className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl border p-4"
+                style={{ background: "#140b03", borderColor: "rgba(139,82,32,0.55)" }}>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-sm font-bold text-amber-200">
+                    <Crown className="h-4 w-4" />{t("duel.ranking_title")}
+                  </h3>
+                  <button onClick={() => setShowRanking(false)} className="text-xs text-amber-400/70 hover:text-amber-200">✕</button>
+                </div>
+                {ranking === null ? (
+                  <p className="py-8 text-center text-xs text-amber-200/40">{t("duel.loading")}</p>
+                ) : ranking.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-amber-200/40">{t("duel.no_ranking")}</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {ranking.map((r) => (
+                      <button key={r.userId} onClick={() => navigate(`/profile/${r.userId}`)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-left transition-colors hover:brightness-125"
+                        style={{ background: r.rank <= 3 ? "rgba(200,164,64,0.12)" : "rgba(255,255,255,0.03)" }}>
+                        <span className={`w-5 shrink-0 text-center font-extrabold ${r.rank === 1 ? "text-yellow-300" : r.rank === 2 ? "text-slate-300" : r.rank === 3 ? "text-amber-600" : "text-amber-200/50"}`}>
+                          {r.rank}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-semibold text-amber-100">{r.nickname}</span>
+                        <span className="shrink-0 text-xs text-amber-200/60">{r.wins}{t("duel.wins")} {r.losses}{t("duel.losses")}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Create room button */}
           <button onClick={() => setCreating((v) => !v)}

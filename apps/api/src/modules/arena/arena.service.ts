@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { ARENA_POINTS } from "./arena.constants";
+import { ARENA_POINTS, getArenaNpc } from "./arena.constants";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 캐릭터 ID → 타입 매핑
@@ -948,6 +948,90 @@ export class ArenaService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 입장권 (서버 검증) — 클라이언트 localStorage 신뢰 대신 UserReward에 저장
+  // ═══════════════════════════════════════════════════════════════════════════
+  private static readonly MAX_TICKETS = 5;
+  private static readonly TICKET_REGEN_MS = 2 * 60 * 60 * 1000;
+
+  private todayKey(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  /** DB에 저장된 값 + 경과 시간을 바탕으로 "지금 시점" 티켓 상태를 계산 (일일 리셋 + 자연 회복 반영) */
+  private syncTicketState(row: {
+    arenaTickets: number;
+    arenaTicketRegenAt: Date | null;
+    arenaTicketDate: string | null;
+  } | null) {
+    const today = this.todayKey();
+    if (!row || row.arenaTicketDate !== today) {
+      return { tickets: ArenaService.MAX_TICKETS, regenAt: null as Date | null, date: today };
+    }
+    let tickets = Math.min(ArenaService.MAX_TICKETS, row.arenaTickets);
+    let regenAt = row.arenaTicketRegenAt;
+    if (regenAt && tickets < ArenaService.MAX_TICKETS) {
+      const earned = Math.floor((Date.now() - regenAt.getTime()) / ArenaService.TICKET_REGEN_MS);
+      if (earned > 0) {
+        tickets = Math.min(ArenaService.MAX_TICKETS, tickets + earned);
+        regenAt = tickets >= ArenaService.MAX_TICKETS
+          ? null
+          : new Date(regenAt.getTime() + earned * ArenaService.TICKET_REGEN_MS);
+      }
+    }
+    return { tickets, regenAt, date: today };
+  }
+
+  /** 티켓 상태 조회 (필요 시 일일 리셋/자연 회복을 DB에 반영) */
+  async getTicketState(userId: string) {
+    const row = await this.prisma.userReward.findUnique({
+      where: { userId },
+      select: { arenaTickets: true, arenaTicketRegenAt: true, arenaTicketDate: true },
+    });
+    const synced = this.syncTicketState(row);
+    const changed =
+      !row ||
+      row.arenaTickets !== synced.tickets ||
+      row.arenaTicketDate !== synced.date ||
+      (row.arenaTicketRegenAt?.getTime() ?? null) !== (synced.regenAt?.getTime() ?? null);
+    if (changed) {
+      await this.prisma.userReward.upsert({
+        where: { userId },
+        create: { userId, arenaTickets: synced.tickets, arenaTicketRegenAt: synced.regenAt, arenaTicketDate: synced.date },
+        update: { arenaTickets: synced.tickets, arenaTicketRegenAt: synced.regenAt, arenaTicketDate: synced.date },
+      });
+    }
+    return {
+      tickets: synced.tickets,
+      maxTickets: ArenaService.MAX_TICKETS,
+      regenAt: synced.regenAt?.toISOString() ?? null,
+      regenMs: ArenaService.TICKET_REGEN_MS,
+    };
+  }
+
+  /** 전투 시작 전 티켓 1개 차감 — 부족하면 예외를 던져 전투 자체를 막음 */
+  private async consumeTicket(userId: string) {
+    const row = await this.prisma.userReward.findUnique({
+      where: { userId },
+      select: { arenaTickets: true, arenaTicketRegenAt: true, arenaTicketDate: true },
+    });
+    const synced = this.syncTicketState(row);
+    if (synced.tickets <= 0) throw new Error("입장권이 부족합니다");
+    const newTickets = synced.tickets - 1;
+    const newRegenAt = newTickets < ArenaService.MAX_TICKETS ? (synced.regenAt ?? new Date()) : null;
+    await this.prisma.userReward.upsert({
+      where: { userId },
+      create: { userId, arenaTickets: newTickets, arenaTicketRegenAt: newRegenAt, arenaTicketDate: synced.date },
+      update: { arenaTickets: newTickets, arenaTicketRegenAt: newRegenAt, arenaTicketDate: synced.date },
+    });
+    return {
+      tickets: newTickets,
+      maxTickets: ArenaService.MAX_TICKETS,
+      regenAt: newRegenAt?.toISOString() ?? null,
+      regenMs: ArenaService.TICKET_REGEN_MS,
+    };
+  }
+
   private async getEnhLevel(userId: string, charId: number): Promise<number> {
     try {
       const rec = await this.prisma.userCharacter.findUnique({
@@ -1045,6 +1129,9 @@ export class ArenaService {
     if (!atkSlots.some(id => id > 0)) throw new Error("공격 덱이 비어있습니다");
     if (!defSlots.some(id => id > 0)) throw new Error("상대방의 방어 덱이 비어있습니다");
 
+    // 덱 검증을 통과한 뒤에만 티켓 차감 — 무효 요청으로 티켓만 날아가는 것을 방지
+    const ticketState = await this.consumeTicket(attackerId);
+
     const [atkEnhLvs, defEnhLvs] = await Promise.all([
       Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0))),
       Promise.all(defSlots.map(id => id > 0 ? this.getEnhLevel(defenderId, id) : Promise.resolve(0))),
@@ -1104,10 +1191,15 @@ export class ArenaService {
       attackerChars,
       defenderChars,
       battleId: battleLog.id.toString(),
+      tickets: ticketState.tickets,
+      ticketRegenAt: ticketState.regenAt,
     };
   }
 
-  async attackNpc(attackerId: string, npcSlots: number[], npcEnhLvs: number[], pointsOnWin: number, pointsOnLoss: number) {
+  async attackNpc(attackerId: string, npcId: string) {
+    const npc = getArenaNpc(npcId);
+    if (!npc) throw new Error("존재하지 않는 NPC입니다");
+
     const atkRow = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: attackerId, deckType: "attack" } } });
     let atkSlots = (atkRow?.slots as number[]) ?? [];
     if (!atkSlots.some(id => id > 0)) {
@@ -1116,12 +1208,15 @@ export class ArenaService {
     }
     if (!atkSlots.some(id => id > 0)) throw new Error("공격 덱이 비어있습니다");
 
+    // 덱 검증을 통과한 뒤에만 티켓 차감 — 무효 요청으로 티켓만 날아가는 것을 방지
+    const ticketState = await this.consumeTicket(attackerId);
+
     const atkEnhLvs = await Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0)));
     const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
-    const defenderUnits = npcSlots.map((id, i) => makeUnit(id, i, "defender", npcEnhLvs[i] ?? 0));
+    const defenderUnits = npc.slots.map((id, i) => makeUnit(id, i, "defender", npc.enhLvs[i] ?? 0));
     const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
 
-    const pointsDelta = won ? pointsOnWin : pointsOnLoss;
+    const pointsDelta = won ? npc.winPts : npc.lossPts;
     const ex   = await this.prisma.battleStats.findUnique({ where: { userId: attackerId } });
     const prev = ex ?? { tierPoints: 0, wins: 0, losses: 0, winStreak: 0, bestStreak: 0 };
     const newWinStreak = won ? prev.winStreak + 1 : 0;
@@ -1141,6 +1236,8 @@ export class ArenaService {
       log,
       attackerChars: attackerUnits.map(u => this.charInfoFromUnit(u)),
       defenderChars: defenderUnits.map(u => this.charInfoFromUnit(u)),
+      tickets: ticketState.tickets,
+      ticketRegenAt: ticketState.regenAt,
     };
   }
 
