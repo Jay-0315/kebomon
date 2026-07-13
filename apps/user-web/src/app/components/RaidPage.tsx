@@ -708,11 +708,13 @@ function ShootingGame({
   cleared,
   onGemCollect,
   onDied,
+  onGameOver,
 }: {
   charDef: ReturnType<typeof charById>;
   cleared: boolean;
   onGemCollect: () => void;
   onDied?: () => void;
+  onGameOver?: () => void;
 }) {
   const { t } = useLang();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -722,6 +724,8 @@ function ShootingGame({
   onKillRef.current = onGemCollect;
   const onDiedRef = useRef(onDied);
   onDiedRef.current = onDied;
+  const onGameOverRef = useRef(onGameOver);
+  onGameOverRef.current = onGameOver;
   const clearedRef = useRef(cleared);
   clearedRef.current = cleared;
 
@@ -1161,7 +1165,7 @@ function ShootingGame({
     };
     syncCanvasSize();
     g.current.px = canvas.width / 2;
-    g.current.py = canvas.height - 36;
+    g.current.py = canvas.height - 60;
 
     const resizeObserver = new ResizeObserver(() => syncCanvasSize());
     if (wrapRef.current) resizeObserver.observe(wrapRef.current);
@@ -1179,16 +1183,6 @@ function ShootingGame({
       const dead = st.deadUntil > realNow;
 
       if (!clearedRef.current && !dead) {
-        if (st.deadUntil !== 0 && realNow >= st.deadUntil) {
-          st.deadUntil = 0;
-          st.hits = 0;
-          st.eBullets = [];
-          st.pBullets = [];
-          st.px = W / 2;
-          st.py = H - 36;
-          setDeadUntil(0);
-          setLives(MAX_HITS);
-        }
         st.elapsed += dt;
 
         // 플레이어 이동
@@ -1206,7 +1200,7 @@ function ShootingGame({
         if (mx !== 0 && my !== 0) { const d = Math.sqrt(mx*mx+my*my); mx/=d; my/=d; }
         const spd = P_SPEED * dtf;
         st.px = Math.max(P_HIT_R+4, Math.min(W-P_HIT_R-4, st.px + mx*spd));
-        st.py = Math.max(H*0.32, Math.min(H-14, st.py + my*spd));
+        st.py = Math.max(H*0.32, Math.min(H-40, st.py + my*spd));
 
         // 자동 발사
         const fireInterval = 260;
@@ -1433,12 +1427,13 @@ function ShootingGame({
               setLives(Math.max(0, MAX_HITS - st.hits));
               st.invUntil = realNow + 1500;
               if (st.hits >= MAX_HITS) {
-                st.deadUntil = realNow + 1;
+                // 체력 소진 → 게임 종료(재입장 불가), 잠시 후 로비로 복귀
+                st.deadUntil = Infinity;
                 st.eBullets = [];
                 st.pBullets = [];
-                st.px = W/2; st.py = H - 36;
-                setDeadUntil(st.deadUntil);
+                setDeadUntil(Infinity);
                 onDiedRef.current?.();
+                window.setTimeout(() => onGameOverRef.current?.(), 1600);
               }
               return false;
             }
@@ -1673,8 +1668,9 @@ function ShootingGame({
         </div>
       )}
       {isDead && (
-        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/72 text-white">
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 bg-black/72 text-center text-white">
           <div className="text-lg font-extrabold">{t("raid.eliminated")}</div>
+          <div className="px-6 text-xs text-white/80">{t("raid.eliminated_msg")}</div>
         </div>
       )}
     </div>
@@ -2014,6 +2010,10 @@ export default function RaidPage() {
   }, []);
   const emitDied = useCallback(() => {
     getRaidSocket().emit("raid:died");
+  }, []);
+  const handleGameOver = useCallback(() => {
+    setEliminated(true);
+    leave();
   }, []);
   if (view === "lobby") {
     return (
@@ -2564,6 +2564,7 @@ export default function RaidPage() {
             cleared={state?.cleared ?? false}
             onGemCollect={emitGem}
             onDied={emitDied}
+            onGameOver={handleGameOver}
           />
         </div>
       ) : null}
