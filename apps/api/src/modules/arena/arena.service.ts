@@ -1275,6 +1275,11 @@ export class ArenaService {
       },
       orderBy: { createdAt: "desc" },
       take: limit,
+      select: {
+        id: true, attackerId: true, defenderId: true,
+        attackerWon: true, pointsDelta: true, defenderPointsDelta: true,
+        createdAt: true,
+      },
     });
     const opponentIds = [...new Set(logs.map(l => (l.attackerId === userId ? l.defenderId : l.attackerId)))];
     const opponents = await this.prisma.user.findMany({
