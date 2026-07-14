@@ -154,14 +154,19 @@ export class GuildService {
         })
         .catch(() => undefined);
     }
-    return app;
+    return this.serializeApplication(app);
+  }
+
+  private serializeApplication<T extends { id: bigint }>(app: T) {
+    return { ...app, id: app.id.toString() };
   }
 
   async listMyApplications(userId: string) {
-    return this.prisma.guildApplication.findMany({
+    const apps = await this.prisma.guildApplication.findMany({
       where: { userId },
       include: { guild: { select: { id: true, name: true, iconId: true, level: true } } },
     });
+    return apps.map((a) => this.serializeApplication(a));
   }
 
   async cancelApplication(userId: string, applicationId: string) {
@@ -173,11 +178,12 @@ export class GuildService {
 
   async listApplications(userId: string, guildId: string) {
     await this.requireOfficer(userId, guildId);
-    return this.prisma.guildApplication.findMany({
+    const apps = await this.prisma.guildApplication.findMany({
       where: { guildId },
       orderBy: { createdAt: "asc" },
       include: { user: { select: { name: true } } },
     });
+    return apps.map((a) => this.serializeApplication(a));
   }
 
   async approveApplication(userId: string, applicationId: string) {

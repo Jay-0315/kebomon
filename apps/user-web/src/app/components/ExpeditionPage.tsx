@@ -9,6 +9,7 @@ import { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS, getCharName, type CharacterRarity } from "../data/characters";
 import { useLang } from "../context/LangContext";
 import type { ExpeditionState, ExpeditionRewardResult } from "../types/domain";
+import { getDexCompletionBonus } from "../data/dexBonus";
 
 // ── Style constants ─────────────────────────────────────────────────────────
 const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
@@ -246,18 +247,6 @@ const EVENT_SAFE_MULT_LABEL = 1.1;
 const EVENT_TRIGGER_RATIO = 0.5;
 
 // ── Reward calculation ──────────────────────────────────────────────────────
-// 도감 완성도(dexMilestoneBest) 구간별 원정 보상 배율 보너스 — 서버 expedition.constants.ts와 맞출 것
-const DEX_COMPLETION_BONUS: Record<number, number> = {
-  0: 1.0, 25: 1.02, 50: 1.04, 75: 1.06, 100: 1.08, 125: 1.1, 150: 1.13, 175: 1.16, 180: 1.2,
-};
-function getDexCompletionBonus(dexMilestoneBest: number): number {
-  let bonus = 1.0;
-  for (const [threshold, mult] of Object.entries(DEX_COMPLETION_BONUS)) {
-    if (dexMilestoneBest >= Number(threshold)) bonus = mult;
-  }
-  return bonus;
-}
-
 function calcReward(region: RegionDef, partySize: number, durationMultiplier: number, difficulty: string, dexBonusMult = 1) {
   const diffBonus = difficulty === "extreme" ? 1.5 : difficulty === "high" ? 1.3 : difficulty === "medium" ? 1.1 : 1.0;
   const partyBonus = 1 + (partySize - region.minParty) * 0.12;

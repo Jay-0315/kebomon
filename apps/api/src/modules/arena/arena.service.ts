@@ -176,8 +176,7 @@ type BuffType =
   | "immune"       // 디버프 면역
   | "counter"      // 피격 시 반격
   | "revive"       // 1회 부활 (30% HP)
-  | "recovery"     // 매 턴 HP 5% 회복
-  | "cr_boost";    // 다음 턴 CR +30
+  | "recovery";    // 매 턴 HP 5% 회복
 
 type DebuffType =
   | "defense_break" // DEF × 0.5
@@ -192,13 +191,12 @@ type DebuffType =
   | "burn"          // 매 턴 (value) 피해
   | "poison"        // 매 턴 maxHp × 5% 피해
   | "bleed"         // 매 턴 currentHp × 8% 피해
-  | "bomb"          // N턴 후 maxHp × 60% 폭발 (value = 남은 턴)
   | "unhealable";   // 회복 불가
 
 interface StatusEffect {
   type: BuffType | DebuffType;
   duration: number;    // 남은 턴
-  value?: number;      // barrier: 남은 흡수량, burn: 턴당 피해, bomb: 남은 폭발 카운터
+  value?: number;      // barrier: 남은 흡수량, burn: 턴당 피해
   fromSlot?: number;   // 도발 발동 유닛 슬롯 (provoke용)
   fromTeam?: string;
 }
@@ -403,7 +401,6 @@ interface CombatUnit {
   // passive data
   passive:       PassiveDef;
   reviveUsed:    boolean;
-  counterApplied:boolean;
 }
 
 export interface HitDetail {
@@ -934,7 +931,7 @@ function makeUnit(charId: number, slot: number, team: "attacker" | "defender", e
     s1Cd: 0, s2Cd: 0, s3Cd: 0,
     buffs: [], debuffs: [],
     passive,
-    reviveUsed: false, counterApplied: false,
+    reviveUsed: false,
   };
 }
 

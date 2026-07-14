@@ -13,10 +13,6 @@ export class NetworkError extends Error {
   }
 }
 
-export function isNetworkError(err: unknown): err is NetworkError {
-  return err instanceof NetworkError;
-}
-
 function emitNetworkError(type: NetworkErrorType) {
   window.dispatchEvent(new CustomEvent("kebo:network-error", { detail: type }));
 }

@@ -16,6 +16,7 @@ import ColosseumPage from "./components/ColosseumPage";
 import RoguePage from "./components/RoguePage";
 import DuelPage from "./components/DuelPage";
 import ExpeditionPage from "./components/ExpeditionPage";
+import GuildPage from "./components/GuildPage";
 import ShopPage from "./components/ShopPage";
 import SettingsPage from "./components/SettingsPage";
 import StarterSelectionPage from "./components/StarterSelectionPage";
@@ -119,6 +120,7 @@ export default function App() {
           <Route path="rogue" element={<RoguePage />} />
           <Route path="duel" element={<DuelPage />} />
           <Route path="expedition" element={<ExpeditionPage />} />
+          <Route path="guild" element={<GuildPage />} />
           <Route path="shop" element={<ShopPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="mypage/character" element={<Navigate to="/kebomon" replace />} />

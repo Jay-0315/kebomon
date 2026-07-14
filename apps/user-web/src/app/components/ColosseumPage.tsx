@@ -36,8 +36,6 @@ import { api } from "../lib/api";
 // ─── 시즌/티어 상수 (외부 컴포넌트에서 import함 — 유지 필수) ──────────────────
 const SEASON = { number: 2, startDate: "2026-07-01", endDate: "2026-07-31" };
 
-export const SEASON_BORDER_ID = (tierKey: string) =>
-  `s${SEASON.number}_${tierKey}`;
 export const BORDER_STYLES: Record<string, { image: string }> = {
   s1_silver: { image: "/silver.png" },
   s1_gold: { image: "/gold.png" },

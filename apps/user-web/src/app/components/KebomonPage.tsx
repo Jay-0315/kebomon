@@ -29,6 +29,7 @@ import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { api } from "../lib/api";
 import { type TranslationKey } from "../lib/i18n";
+import { DEX_COMPLETION_BONUS, getDexCompletionBonus } from "../data/dexBonus";
 import PixelCharacter, { PixelSprite } from "./PixelCharacter";
 import {
   CHARACTERS,
@@ -1452,6 +1453,36 @@ function CollectionTab({
           </div>
         );
       })()}
+
+      {/* 도감 완성도 → 원정 보상 보너스 */}
+      <div className="rounded-xl border border-border bg-muted/40 p-2.5 space-y-1.5">
+        <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+          <span>{t("kebomon.dex_bonus_title")}</span>
+          <span className="font-bold text-emerald-500">
+            +{Math.round((getDexCompletionBonus(dexMilestoneBest) - 1) * 100)}%
+          </span>
+        </div>
+        <p className="text-[10px] text-muted-foreground">{t("kebomon.dex_bonus_desc")}</p>
+        <div className="flex flex-wrap gap-1">
+          {Object.entries(DEX_COMPLETION_BONUS)
+            .filter(([count]) => Number(count) > 0)
+            .map(([count, mult]) => {
+              const reached = dexMilestoneBest >= Number(count);
+              return (
+                <span
+                  key={count}
+                  className={`text-[10px] px-1.5 py-0.5 rounded-md border ${
+                    reached
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {count} · +{Math.round((mult - 1) * 100)}%
+                </span>
+              );
+            })}
+        </div>
+      </div>
 
       {/* Rarity filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">

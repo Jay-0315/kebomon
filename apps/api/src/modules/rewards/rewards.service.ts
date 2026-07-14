@@ -1361,7 +1361,7 @@ export class RewardsService {
         ),
       );
       // 업적 달성 알림
-      for (const characterId of newlyUnlocked) {
+      for (const _characterId of newlyUnlocked) {
         void this.notifications.create({
           userId,
           type: "achievement",

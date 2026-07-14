@@ -190,10 +190,7 @@ export class BattleGateway implements OnGatewayDisconnect {
 
   /** 플레이어 턴: 주사위 굴리기 */
   @SubscribeMessage("battle:roll")
-  async onRoll(
-    @MessageBody() data: { userId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
+  async onRoll(@ConnectedSocket() client: Socket) {
     const room = battles.get(client.id);
     if (!room || room.turn !== "player") return;
 

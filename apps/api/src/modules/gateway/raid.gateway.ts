@@ -362,7 +362,6 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (!player) return;
     const text = String(data?.text ?? "").trim().slice(0, 60);
     if (!text) return;
-    const r = this.getRoom(player.raidType);
 
     this.server.to(room(player.raidType)).emit("raid:message", {
       id: `${client.id}-${Date.now()}`,
@@ -372,15 +371,6 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
       text,
       ts: Date.now(),
     });
-
-    if (r.cleared) return;
-
-    let progressed = false;
-    let dmg = 0;
-
-    if (progressed) {
-      this.applyProgress(r, player.raidType, player.nickname, dmg);
-    }
   }
 
   handleDisconnect(client: Socket) {

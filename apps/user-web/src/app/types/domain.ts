@@ -7,45 +7,6 @@ export interface CountryOption {
   flag: string;
 }
 
-export interface ExchangeRate {
-  from: CurrencyCode;
-  to: CurrencyCode;
-  rate: number;
-  updatedAt: string;
-}
-
-export interface Expense {
-  id: string;
-  date: string;
-  category: string;
-  spentAmount: number;
-  spentCurrency: CurrencyCode;
-  baseAmount: number;
-  baseCurrency: CurrencyCode;
-  exchangeRate: number;
-  countryCode: string;
-  memo: string;
-  group?: string;
-  participants?: number;
-  receipt?: string;
-  sharedToCommunity: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ExpenseDraft {
-  date: string;
-  category: string;
-  spentAmount: number;
-  spentCurrency: CurrencyCode;
-  countryCode: string;
-  memo: string;
-  group?: string;
-  groupId?: string;
-  participants?: number;
-  receipt?: string;
-}
-
 export type PostCategory = "brag" | "tip" | "chat";
 
 export interface Comment {
@@ -62,12 +23,6 @@ export interface Comment {
   replies: Comment[];
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CommentDraft {
-  content: string;
-  imageUrl?: string;
-  parentId?: string;
 }
 
 export interface CommunityPost {
@@ -99,14 +54,6 @@ export interface CommentsPage {
   total: number;
   page: number;
   totalPages: number;
-}
-
-export interface PostsPage {
-  posts: CommunityPost[];
-  total: number;
-  page: number;
-  totalPages: number;
-  hasNext: boolean;
 }
 
 export interface RewardSummary {
@@ -199,11 +146,73 @@ themeColor: string;
   language?: "ko" | "ja" | "en";
 }
 
-export interface AppData {
-  profile: UserProfile;
-  settings: AppSettings;
-  countries: CountryOption[];
-  exchangeRates: ExchangeRate[];
-  expenses: Expense[];
-  posts: CommunityPost[];
+// ─── 길드 ────────────────────────────────────────────────────────────────────
+export type GuildRole = "owner" | "officer" | "member";
+
+export interface GuildSummary {
+  id: string;
+  name: string;
+  iconId: string;
+  notice: string | null;
+  level: number;
+  memberCount: number;
+  maxMembers: number;
+}
+
+export interface GuildMemberInfo {
+  userId: string;
+  nickname: string;
+  role: GuildRole;
+  totalContribution: number;
+  joinedAt: number;
+}
+
+export interface GuildDetail {
+  id: string;
+  name: string;
+  iconId: string;
+  notice: string | null;
+  level: number;
+  exp: number;
+  expToNext: number;
+  maxMembers: number;
+  myRole: GuildRole;
+  members: GuildMemberInfo[];
+}
+
+export interface GuildApplicationInfo {
+  id: string;
+  guildId: string;
+  userId: string;
+  message: string | null;
+  createdAt: string;
+  guild?: { id: string; name: string; iconId: string; level: number };
+  user?: { name: string };
+}
+
+export interface GuildBossContributor {
+  rank: number;
+  userId: string;
+  nickname: string;
+  damage: number;
+}
+
+export interface GuildBossState {
+  weekKey: string;
+  bossId: number;
+  hpRemaining: number;
+  maxHp: number;
+  cleared: boolean;
+  attacksRemaining: number;
+  dailyAttacksMax: number;
+  myContribution: number;
+  topContributors: GuildBossContributor[];
+}
+
+export interface GuildAttackResult {
+  hpRemaining: number;
+  maxHp: number;
+  damageDealt: number;
+  cleared: boolean;
+  attacksRemaining: number;
 }

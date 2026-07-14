@@ -22,6 +22,7 @@ import {
   Star,
   Zap,
   Radio,
+  Users,
 } from "lucide-react";
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
@@ -213,6 +214,12 @@ export default function Layout() {
         to="/live"
         icon={Radio}
         label={t("nav.live")}
+        onNav={onNav}
+      />
+      <NavLink
+        to="/guild"
+        icon={Users}
+        label={t("nav.guild")}
         onNav={onNav}
       />
 
