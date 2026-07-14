@@ -17,6 +17,10 @@ function emitNetworkError(type: NetworkErrorType) {
   window.dispatchEvent(new CustomEvent("kebo:network-error", { detail: type }));
 }
 
+function emitAuthExpired() {
+  window.dispatchEvent(new CustomEvent("kebo:auth-expired"));
+}
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -38,6 +42,11 @@ async function request<T>(
     });
 
     if (!response.ok) {
+      // 로그인된 상태에서 401을 받으면 토큰이 만료/무효화된 것 — 인증이 필요 없는
+      // 로그인/회원가입 자체의 실패(토큰 없음)와 구분하기 위해 기존 토큰 존재 여부로 판단
+      if (response.status === 401 && token) {
+        emitAuthExpired();
+      }
       const error = new Error(`HTTP ${response.status}`) as Error & {
         status: number;
       };

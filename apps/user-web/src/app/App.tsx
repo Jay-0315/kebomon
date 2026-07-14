@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import NetworkErrorToast from "./components/NetworkErrorToast";
+import AuthExpiredToast from "./components/AuthExpiredToast";
 import Layout from "./components/Layout";
 import HomePage from "./components/HomePage";
 import LoginPage from "./components/LoginPage";
@@ -127,6 +128,7 @@ export default function App() {
         </Route>
       </Routes>
       <NetworkErrorToast />
+      <AuthExpiredToast />
       </LangProvider>
     </BrowserRouter>
   );
