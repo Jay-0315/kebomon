@@ -17,36 +17,41 @@ enum AuthProvider {
 }
 
 model User {
-  id              String          @id @default(uuid())
-  name            String
-  email           String          @unique
-  passwordHash    String?         @map("password_hash")
-  role            String          @default("USER")
-  baseCountryCode String          @map("base_country_code") @db.Char(2)
-  baseCurrency    CurrencyCode    @map("base_currency")
-  profilePhoto    String?         @map("profile_photo") @db.LongText
-  hasPassword     Boolean         @default(false) @map("has_password")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  lastLoginAt     DateTime?       @map("last_login_at")
-  settings              AppSetting?
-  posts                 CommunityPost[]
-  comments              Comment[]
-  reward                UserReward?
-  characters            UserCharacter[]
-  titles                UserTitle[]
-  borders               UserBorder[]
-  identities            UserIdentity[]
-  postLikes             PostLike[]
-  passwordChangeHistory PasswordChangeHistory?
-  notifications         Notification[]
-  pushSubscriptions     PushSubscription[]
-  battleStats           BattleStats?
-  duelStats             DuelStats?
-  expedition            Expedition?
-  arenaDecks            ArenaDeck[]
-  attacksGiven          ArenaAttackLog[] @relation("Attacker")
-  attacksReceived       ArenaAttackLog[] @relation("Defender")
+  id                     String                  @id @default(uuid())
+  name                   String
+  email                  String                  @unique
+  passwordHash           String?                 @map("password_hash")
+  role                   String                  @default("USER")
+  baseCountryCode        String                  @map("base_country_code") @db.Char(2)
+  baseCurrency           CurrencyCode            @map("base_currency")
+  profilePhoto           String?                 @map("profile_photo") @db.LongText
+  hasPassword            Boolean                 @default(false) @map("has_password")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  lastLoginAt            DateTime?               @map("last_login_at")
+  settings               AppSetting?
+  posts                  CommunityPost[]
+  comments               Comment[]
+  reward                 UserReward?
+  characters             UserCharacter[]
+  titles                 UserTitle[]
+  borders                UserBorder[]
+  identities             UserIdentity[]
+  postLikes              PostLike[]
+  passwordChangeHistory  PasswordChangeHistory?
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
+  battleStats            BattleStats?
+  duelStats              DuelStats?
+  expedition             Expedition?
+  arenaDecks             ArenaDeck[]
+  attacksGiven           ArenaAttackLog[]        @relation("Attacker")
+  attacksReceived        ArenaAttackLog[]        @relation("Defender")
+  ownedGuild             Guild?
+  guildMembership        GuildMember?
+  guildApplications      GuildApplication[]
+  guildBossContributions GuildBossContribution[]
+
   @@map("users")
 }
 
@@ -98,38 +103,38 @@ model UserIdentity {
 }
 
 model UserReward {
-  id                  String   @id @default(uuid())
-  userId              String   @unique @map("user_id")
-  missionPoints       Int      @default(0) @map("mission_points")
-  attendanceDays      Int      @default(0) @map("attendance_days")
-  streakDays          Int      @default(0) @map("streak_days")
-  equippedCharacterId Int?     @map("equipped_character_id")
-  equippedTitleId     Int?     @map("equipped_title_id")
-  equippedBorderId    String?  @map("equipped_border_id") @db.VarChar(32)
-  gachaPityCount      Int      @default(0) @map("gacha_pity_count")
-  legendaryPityCount  Int      @default(0) @map("legendary_pity_count")
-  totalPointsUsed     Int      @default(0) @map("total_points_used")
-  normalEggs          Int      @default(0) @map("normal_eggs")
-  bigEggs             Int      @default(0) @map("big_eggs")
-  goldenEggs          Int      @default(0) @map("golden_eggs")
-  enhancementStones   Int      @default(0) @map("enhancement_stones")
-  raidCount           Int      @default(0) @map("raid_count")
-  liveCount           Int      @default(0) @map("live_count")
-  expeditionCount     Int      @default(0) @map("expedition_count")
-  rogueClears         Int      @default(0) @map("rogue_clears")
-  challengeBest       Int      @default(0) @map("challenge_best")
-  dexMilestoneBest    Int      @default(0) @map("dex_milestone_best")
-  arenaTickets        Int      @default(5) @map("arena_tickets")
+  id                  String    @id @default(uuid())
+  userId              String    @unique @map("user_id")
+  missionPoints       Int       @default(0) @map("mission_points")
+  attendanceDays      Int       @default(0) @map("attendance_days")
+  streakDays          Int       @default(0) @map("streak_days")
+  equippedCharacterId Int?      @map("equipped_character_id")
+  equippedTitleId     Int?      @map("equipped_title_id")
+  equippedBorderId    String?   @map("equipped_border_id") @db.VarChar(32)
+  gachaPityCount      Int       @default(0) @map("gacha_pity_count")
+  legendaryPityCount  Int       @default(0) @map("legendary_pity_count")
+  totalPointsUsed     Int       @default(0) @map("total_points_used")
+  normalEggs          Int       @default(0) @map("normal_eggs")
+  bigEggs             Int       @default(0) @map("big_eggs")
+  goldenEggs          Int       @default(0) @map("golden_eggs")
+  enhancementStones   Int       @default(0) @map("enhancement_stones")
+  raidCount           Int       @default(0) @map("raid_count")
+  liveCount           Int       @default(0) @map("live_count")
+  expeditionCount     Int       @default(0) @map("expedition_count")
+  rogueClears         Int       @default(0) @map("rogue_clears")
+  challengeBest       Int       @default(0) @map("challenge_best")
+  dexMilestoneBest    Int       @default(0) @map("dex_milestone_best")
+  arenaTickets        Int       @default(5) @map("arena_tickets")
   arenaTicketRegenAt  DateTime? @map("arena_ticket_regen_at")
-  arenaTicketDate     String?  @map("arena_ticket_date") @db.VarChar(10)
+  arenaTicketDate     String?   @map("arena_ticket_date") @db.VarChar(10)
   activeRunStartedAt  DateTime? @map("active_run_started_at")
-  lastAttendanceDate  String?  @map("last_attendance_date") @db.VarChar(10)
-  monthKey            String?  @map("month_key") @db.VarChar(7)
-  monthDays           Int      @default(0) @map("month_days")
-  monthWeekRewards    Int      @default(0) @map("month_week_rewards")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastAttendanceDate  String?   @map("last_attendance_date") @db.VarChar(10)
+  monthKey            String?   @map("month_key") @db.VarChar(7)
+  monthDays           Int       @default(0) @map("month_days")
+  monthWeekRewards    Int       @default(0) @map("month_week_rewards")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_rewards")
 }
@@ -171,23 +176,27 @@ model UserCharacter {
   @@map("user_characters")
 }
 
-/** 배틀 티어/전적 */
+/**
+ * 배틀 티어/전적
+ */
 model BattleStats {
-  id            String   @id @default(uuid())
-  userId        String   @unique @map("user_id")
-  tierPoints    Int      @default(0) @map("tier_points")
-  wins          Int      @default(0)
-  losses        Int      @default(0)
-  winStreak     Int      @default(0) @map("win_streak")
-  bestStreak    Int      @default(0) @map("best_streak")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  tierPoints Int      @default(0) @map("tier_points")
+  wins       Int      @default(0)
+  losses     Int      @default(0)
+  winStreak  Int      @default(0) @map("win_streak")
+  bestStreak Int      @default(0) @map("best_streak")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("battle_stats")
 }
 
-/** 듀얼(1:1 카드 대전) 전적 */
+/**
+ * 듀얼(1:1 카드 대전) 전적
+ */
 model DuelStats {
   id         String   @id @default(uuid())
   userId     String   @unique @map("user_id")
@@ -202,7 +211,9 @@ model DuelStats {
   @@map("duel_stats")
 }
 
-/** 원정 (진행 중인 것 1건만 유지 — 완료 시 row 삭제) */
+/**
+ * 원정 (진행 중인 것 1건만 유지 — 완료 시 row 삭제)
+ */
 model Expedition {
   id              String   @id @default(uuid())
   userId          String   @unique @map("user_id")
@@ -218,7 +229,9 @@ model Expedition {
   @@map("expeditions")
 }
 
-/** 아레나 공격/방어 덱 */
+/**
+ * 아레나 공격/방어 덱
+ */
 model ArenaDeck {
   userId    String   @map("user_id")
   deckType  String   @map("deck_type") @db.VarChar(10)
@@ -230,24 +243,120 @@ model ArenaDeck {
   @@map("arena_decks")
 }
 
-/** 아레나 공격 로그 (복수 시스템) */
+/**
+ * 아레나 공격 로그 (복수 시스템)
+ */
 model ArenaAttackLog {
-  id             BigInt   @id @default(autoincrement())
-  attackerId     String   @map("attacker_id")
-  defenderId     String   @map("defender_id")
-  attackerWon    Boolean  @map("attacker_won")
-  pointsDelta    Int      @default(0) @map("points_delta")
-  defenderPointsDelta Int @default(0) @map("defender_points_delta")
-  log            Json?    @map("log")
-  attackerChars  Json?    @map("attacker_chars")
-  defenderChars  Json?    @map("defender_chars")
-  createdAt      DateTime @default(now()) @map("created_at")
-  attacker       User     @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
-  defender       User     @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
+  id                  BigInt   @id @default(autoincrement())
+  attackerId          String   @map("attacker_id")
+  defenderId          String   @map("defender_id")
+  attackerWon         Boolean  @map("attacker_won")
+  pointsDelta         Int      @default(0) @map("points_delta")
+  defenderPointsDelta Int      @default(0) @map("defender_points_delta")
+  log                 Json?    @map("log")
+  attackerChars       Json?    @map("attacker_chars")
+  defenderChars       Json?    @map("defender_chars")
+  createdAt           DateTime @default(now()) @map("created_at")
+  attacker            User     @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
+  defender            User     @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
 
   @@index([defenderId, createdAt(sort: Desc)])
   @@index([attackerId, createdAt(sort: Desc)])
   @@map("arena_attack_logs")
+}
+
+/**
+ * 길드
+ */
+model Guild {
+  id           String             @id @default(uuid())
+  name         String             @unique @db.VarChar(20)
+  iconId       String             @default("default") @map("icon_id") @db.VarChar(32)
+  notice       String?            @db.VarChar(200)
+  level        Int                @default(1)
+  exp          Int                @default(0)
+  ownerId      String             @unique @map("owner_id")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  owner        User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members      GuildMember[]
+  applications GuildApplication[]
+  bossRuns     GuildBossRun[]
+
+  @@map("guilds")
+}
+
+/**
+ * 길드원 — 유저는 동시에 한 길드에만 소속 (userId unique)
+ */
+model GuildMember {
+  id                   BigInt   @id @default(autoincrement())
+  guildId              String   @map("guild_id")
+  userId               String   @unique @map("user_id")
+  role                 String   @default("member") @map("role") @db.VarChar(10) // "owner" | "officer" | "member"
+  totalContribution    Int      @default(0) @map("total_contribution")
+  dailyBossAttacks     Int      @default(0) @map("daily_boss_attacks")
+  dailyBossAttacksDate String?  @map("daily_boss_attacks_date") @db.VarChar(10)
+  joinedAt             DateTime @default(now()) @map("joined_at")
+  guild                Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([guildId])
+  @@map("guild_members")
+}
+
+/**
+ * 가입 신청 (승인제) — 길드장/부길드장이 승인·거절
+ */
+model GuildApplication {
+  id        BigInt   @id @default(autoincrement())
+  guildId   String   @map("guild_id")
+  userId    String   @map("user_id")
+  message   String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([userId])
+  @@map("guild_applications")
+}
+
+/**
+ * 길드 주간 보스전 — 길드당 주 1건, 길드원 전체가 공유하는 HP 풀 (매주 리셋)
+ */
+model GuildBossRun {
+  id             String                  @id @default(uuid())
+  guildId        String                  @map("guild_id")
+  weekKey        String                  @map("week_key") @db.VarChar(8) // "YYYY-Www" (KST 기준)
+  bossId         Int                     @map("boss_id")
+  maxHp          Int                     @map("max_hp")
+  hpRemaining    Int                     @map("hp_remaining")
+  clearedAt      DateTime?               @map("cleared_at")
+  rewardsGranted Boolean                 @default(false) @map("rewards_granted")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  guild          Guild                   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  contributions  GuildBossContribution[]
+
+  @@unique([guildId, weekKey])
+  @@index([rewardsGranted])
+  @@map("guild_boss_runs")
+}
+
+/**
+ * 유저별 이번 주 길드 보스 누적 데미지 (기여도 랭킹/보상 정산용 — 타격마다 increment)
+ */
+model GuildBossContribution {
+  id        BigInt       @id @default(autoincrement())
+  runId     String       @map("run_id")
+  userId    String       @map("user_id")
+  damage    Int          @default(0)
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  run       GuildBossRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, userId])
+  @@map("guild_boss_contributions")
 }
 
 model AppSetting {
@@ -335,16 +444,14 @@ enum VerificationPurpose {
 }
 
 model EmailVerificationCode {
-  id        BigInt                @id @default(autoincrement())
-  email     String                @db.VarChar(190)
-  code      String                @db.Char(6)
+  id        BigInt              @id @default(autoincrement())
+  email     String              @db.VarChar(190)
+  code      String              @db.Char(6)
   purpose   VerificationPurpose
-  expiresAt DateTime              @map("expires_at")
-  usedAt    DateTime?             @map("used_at")
-  createdAt DateTime              @default(now()) @map("created_at")
+  expiresAt DateTime            @map("expires_at")
+  usedAt    DateTime?           @map("used_at")
+  createdAt DateTime            @default(now()) @map("created_at")
 
   @@index([email, purpose])
   @@map("email_verification_codes")
 }
-
-

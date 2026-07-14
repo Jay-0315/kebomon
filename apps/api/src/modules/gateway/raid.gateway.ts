@@ -69,7 +69,7 @@ const RAID_META: Record<number, { name: string; points: number; goal: number; cr
   5: { name: "슈팅 미니게임",  points: 60, goal: 200, cry: "내 군단을 뚫을 수 있겠나?!" },
 };
 
-const BOSS_POOL = [
+export const BOSS_POOL = [
   75,76,116,125,127,139,140,152,155,156,159,174,176,205,258,275,292,333,351,391,
   13,14,84,90,91,105,128,132,144,153,160,161,177,221,259,276,294,304,322,352,355,377,392,
   26,28,29,30,96,104,117,129,163,169,173,178,179,194,240,260,271,277,287,305,323,335,378,393,
@@ -79,7 +79,7 @@ const BOSS_POOL = [
   4,5,6,7,8,9,74,16,17,18,19,20,21,22,31,32,33,34,35,36,37,38,39,40,51,52,53,54,55,56,57,58,59,60,71,72,73,
   11,12,141,
 ];
-const randomBoss = () => BOSS_POOL[(Math.random() * BOSS_POOL.length) | 0];
+export const randomBoss = () => BOSS_POOL[(Math.random() * BOSS_POOL.length) | 0];
 
 const BOSS_LINES = [
   (nick: string) => `엄청나군… ${nick}.`,

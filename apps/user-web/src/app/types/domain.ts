@@ -155,6 +155,7 @@ export interface ExpeditionRewardResult {
   bigEgg: number;
   goldEgg: number;
   expeditionCount: number;
+  dexBonusMult?: number;
 }
 
 export interface RogueMilestone {

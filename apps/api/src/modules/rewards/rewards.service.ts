@@ -9,6 +9,7 @@ import {
   EXPEDITION_EVENT_SAFE_MULT,
   EXPEDITION_EVENT_TRIGGER_RATIO,
   calcExpeditionReward,
+  getDexCompletionBonus,
   getExpeditionRegion,
   rarityAtLeast,
   rollExpeditionRiskyMult,
@@ -552,7 +553,9 @@ export class RewardsService {
     const region = getExpeditionRegion(exp.regionId)!;
     const durationMultiplier = EXPEDITION_DURATIONS[exp.durationHours] ?? 1;
     const partyIds = exp.partyIds as number[];
-    const base = calcExpeditionReward(region, partyIds.length, durationMultiplier);
+    const currentReward = await this.getOrCreateReward(userId);
+    const dexBonusMult = getDexCompletionBonus(currentReward.dexMilestoneBest);
+    const base = calcExpeditionReward(region, partyIds.length, durationMultiplier, dexBonusMult);
     const eventMult = exp.eventBonusMult ?? 1;
     const rewards = eventMult === 1 ? base : {
       points:    Math.round(base.points * eventMult),
@@ -582,7 +585,7 @@ export class RewardsService {
       this.checkAndGrantTitles(userId),
     ]).catch(() => undefined);
 
-    return { ...rewards, expeditionCount: updatedReward.expeditionCount };
+    return { ...rewards, expeditionCount: updatedReward.expeditionCount, dexBonusMult };
   }
 
   // 로그라이크 한 판을 실제로 플레이하는 데 걸리는 최소 시간 — 이보다 빨리 complete가
@@ -889,6 +892,11 @@ export class RewardsService {
     common: 3, uncommon: 3, rare: 4, epic: 4, legendary: 5, mythic: 6,
   };
   private static readonly ENHANCE_RATES = [1.0, 0.9, 0.8, 0.6, 0.4, 0.2]; // +1 ~ +6
+
+  /** 다른 모듈(길드 등)에서 캐릭터 레어리티가 필요할 때 사용하는 공개 진입점 */
+  getCharacterRarity(characterId: number): string {
+    return this.getCharRarity(characterId);
+  }
 
   private getCharRarity(characterId: number): string {
     const g = GACHA_POOL.find((c) => c.id === characterId);

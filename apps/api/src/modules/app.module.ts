@@ -10,6 +10,7 @@ import { UsersModule } from "./users/users.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { ArenaModule } from "./arena/arena.module";
+import { GuildModule } from "./guild/guild.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ArenaModule } from "./arena/arena.module";
     NotificationsModule,
     GatewayModule,
     ArenaModule,
+    GuildModule,
   ],
 })
 export class AppModule {}

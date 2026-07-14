@@ -246,10 +246,22 @@ const EVENT_SAFE_MULT_LABEL = 1.1;
 const EVENT_TRIGGER_RATIO = 0.5;
 
 // ── Reward calculation ──────────────────────────────────────────────────────
-function calcReward(region: RegionDef, partySize: number, durationMultiplier: number, difficulty: string) {
+// 도감 완성도(dexMilestoneBest) 구간별 원정 보상 배율 보너스 — 서버 expedition.constants.ts와 맞출 것
+const DEX_COMPLETION_BONUS: Record<number, number> = {
+  0: 1.0, 25: 1.02, 50: 1.04, 75: 1.06, 100: 1.08, 125: 1.1, 150: 1.13, 175: 1.16, 180: 1.2,
+};
+function getDexCompletionBonus(dexMilestoneBest: number): number {
+  let bonus = 1.0;
+  for (const [threshold, mult] of Object.entries(DEX_COMPLETION_BONUS)) {
+    if (dexMilestoneBest >= Number(threshold)) bonus = mult;
+  }
+  return bonus;
+}
+
+function calcReward(region: RegionDef, partySize: number, durationMultiplier: number, difficulty: string, dexBonusMult = 1) {
   const diffBonus = difficulty === "extreme" ? 1.5 : difficulty === "high" ? 1.3 : difficulty === "medium" ? 1.1 : 1.0;
   const partyBonus = 1 + (partySize - region.minParty) * 0.12;
-  const mult = durationMultiplier * diffBonus * partyBonus;
+  const mult = durationMultiplier * diffBonus * partyBonus * dexBonusMult;
   const b = region.rewardBase;
   return {
     points:    Math.round(b.points * mult),
@@ -722,6 +734,15 @@ export default function ExpeditionPage() {
           <RewardBadge label={ko?"고급 알":ja?"上級卵":"Big Egg"} count={r.bigEgg} color="#4ade80"/>
           <RewardBadge label={ko?"황금 알":ja?"黄金卵":"Gold Egg"} count={r.goldEgg} color={C.gold}/>
         </div>
+        {!!r.dexBonusMult && r.dexBonusMult > 1 && (
+          <p style={{ margin:0, fontSize:11, color:"#4ade80" }}>
+            {ko
+              ? `도감 완성 보너스 +${Math.round((r.dexBonusMult - 1) * 100)}% 적용됨`
+              : ja
+              ? `図鑑コンプリートボーナス+${Math.round((r.dexBonusMult - 1) * 100)}%適用`
+              : `Pokédex bonus +${Math.round((r.dexBonusMult - 1) * 100)}% applied`}
+          </p>
+        )}
         <p style={{ fontSize:11, color:C.textDim, maxWidth:280, textAlign:"center", lineHeight:1.6 }}>
           {ko ? "* 실제 보상은 케보몬 내 강화 시스템에서 직접 적용됩니다" : ja ? "* 実際の報酬はケボモン強化システムで適用されます" : "* Rewards are applied directly in the Kebomon enhancement system"}
         </p>
@@ -1105,7 +1126,8 @@ export default function ExpeditionPage() {
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                   {(() => {
                     const dur = DURATIONS[durationIdx];
-                    const r = calcReward(selectedRegion, Math.max(party.length, selectedRegion.minParty), dur.multiplier, selectedRegion.difficulty);
+                    const dexBonusMult = getDexCompletionBonus(rewardSummary.dexMilestoneBest);
+                    const r = calcReward(selectedRegion, Math.max(party.length, selectedRegion.minParty), dur.multiplier, selectedRegion.difficulty, dexBonusMult);
                     return <>
                       <RewardBadge label={ko?"케보포인트":ja?"KP":"KP"} count={r.points} color={C.gold}/>
                       <RewardBadge label={ko?"강화석":ja?"強化石":"Enhance Stones"} count={r.stones} color="#60a5fa"/>
@@ -1118,6 +1140,15 @@ export default function ExpeditionPage() {
                 <p style={{ margin:"6px 0 0", fontSize:10, color:C.textDim }}>
                   {ko ? "* 파티 마리 수가 많을수록 보상이 증가합니다" : ja ? "* 隊員が多いほど報酬が増加します" : "* More party members = more rewards"}
                 </p>
+                {rewardSummary.dexMilestoneBest > 0 && (
+                  <p style={{ margin:"2px 0 0", fontSize:10, color:"#4ade80" }}>
+                    {ko
+                      ? `* 도감 완성 보너스 +${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}% 적용 중`
+                      : ja
+                      ? `* 図鑑コンプリートボーナス+${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}%適用中`
+                      : `* Pokédex bonus +${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}% applied`}
+                  </p>
+                )}
               </div>
 
               {/* Depart error */}

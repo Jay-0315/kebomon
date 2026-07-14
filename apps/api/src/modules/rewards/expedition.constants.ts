@@ -13,14 +13,48 @@ export interface ExpeditionRegion {
   minRarity: string;
   /** 이 지역을 해금하는 데 필요한 누적 레이드 클리어 횟수 (0 = 항상 해금) */
   unlockRaidCount: number;
-  rewardBase: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number };
+  rewardBase: {
+    points: number;
+    stones: number;
+    normalEgg: number;
+    bigEgg: number;
+    goldEgg: number;
+  };
 }
 
 export const EXPEDITION_REGIONS: ExpeditionRegion[] = [
-  { id: "grassland", difficulty: "low",     minParty: 2, minRarity: "common",   unlockRaidCount: 0, rewardBase: { points: 80,  stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 } },
-  { id: "forest",    difficulty: "low",     minParty: 2, minRarity: "common",   unlockRaidCount: 0, rewardBase: { points: 100, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 } },
-  { id: "ruins",     difficulty: "medium",  minParty: 3, minRarity: "uncommon", unlockRaidCount: 1, rewardBase: { points: 150, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 } },
-  { id: "altar",     difficulty: "extreme", minParty: 4, minRarity: "rare",     unlockRaidCount: 5, rewardBase: { points: 280, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 } },
+  {
+    id: "grassland",
+    difficulty: "low",
+    minParty: 2,
+    minRarity: "common",
+    unlockRaidCount: 0,
+    rewardBase: { points: 80, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  },
+  {
+    id: "forest",
+    difficulty: "low",
+    minParty: 2,
+    minRarity: "common",
+    unlockRaidCount: 0,
+    rewardBase: { points: 100, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+  },
+  {
+    id: "ruins",
+    difficulty: "medium",
+    minParty: 3,
+    minRarity: "uncommon",
+    unlockRaidCount: 1,
+    rewardBase: { points: 150, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+  },
+  {
+    id: "altar",
+    difficulty: "extreme",
+    minParty: 4,
+    minRarity: "rare",
+    unlockRaidCount: 5,
+    rewardBase: { points: 280, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+  },
 ];
 
 export function getExpeditionRegion(id: string): ExpeditionRegion | undefined {
@@ -28,28 +62,69 @@ export function getExpeditionRegion(id: string): ExpeditionRegion | undefined {
 }
 
 /** durationHours → 보상 배율 */
-export const EXPEDITION_DURATIONS: Record<number, number> = { 2: 1.0, 4: 1.6, 6: 2.1 };
+export const EXPEDITION_DURATIONS: Record<number, number> = {
+  2: 1.0,
+  4: 1.6,
+  6: 2.1,
+};
 
-const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+const RARITY_ORDER = [
+  "common",
+  "uncommon",
+  "rare",
+  "epic",
+  "legendary",
+  "mythic",
+];
 
 export function rarityAtLeast(rarity: string, min: string): boolean {
   return RARITY_ORDER.indexOf(rarity) >= RARITY_ORDER.indexOf(min);
 }
 
-export function calcExpeditionReward(region: ExpeditionRegion, partySize: number, durationMultiplier: number) {
+/** 도감 완성도(dexMilestoneBest) 구간별 원정 보상 배율 보너스 */
+export const DEX_COMPLETION_BONUS: Record<number, number> = {
+  0: 1.0,
+  25: 1.02,
+  50: 1.04,
+  75: 1.06,
+  100: 1.08,
+  125: 1.1,
+  150: 1.13,
+  175: 1.16,
+  180: 1.2,
+};
+
+export function getDexCompletionBonus(dexMilestoneBest: number): number {
+  let bonus = 1.0;
+  for (const [threshold, mult] of Object.entries(DEX_COMPLETION_BONUS)) {
+    if (dexMilestoneBest >= Number(threshold)) bonus = mult;
+  }
+  return bonus;
+}
+
+export function calcExpeditionReward(
+  region: ExpeditionRegion,
+  partySize: number,
+  durationMultiplier: number,
+  dexBonusMult = 1,
+) {
   const diffBonus =
-    region.difficulty === "extreme" ? 1.5 :
-    region.difficulty === "high"    ? 1.3 :
-    region.difficulty === "medium"  ? 1.1 : 1.0;
+    region.difficulty === "extreme"
+      ? 1.5
+      : region.difficulty === "high"
+        ? 1.3
+        : region.difficulty === "medium"
+          ? 1.1
+          : 1.0;
   const partyBonus = 1 + (partySize - region.minParty) * 0.12;
-  const mult = durationMultiplier * diffBonus * partyBonus;
+  const mult = durationMultiplier * diffBonus * partyBonus * dexBonusMult;
   const b = region.rewardBase;
   return {
-    points:    Math.round(b.points * mult),
-    stones:    Math.round(b.stones * mult),
+    points: Math.round(b.points * mult),
+    stones: Math.round(b.stones * mult),
     normalEgg: b.normalEgg > 0 ? Math.round(b.normalEgg * mult) : 0,
-    bigEgg:    b.bigEgg > 0 ? Math.round(b.bigEgg * mult) : 0,
-    goldEgg:   b.goldEgg > 0 ? Math.round(b.goldEgg * mult) : 0,
+    bigEgg: b.bigEgg > 0 ? Math.round(b.bigEgg * mult) : 0,
+    goldEgg: b.goldEgg > 0 ? Math.round(b.goldEgg * mult) : 0,
   };
 }
 
