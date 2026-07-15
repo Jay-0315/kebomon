@@ -58,7 +58,13 @@ async function request<T>(
       return undefined as unknown as T;
     }
 
-    return response.json() as Promise<T>;
+    // NestJS는 컨트롤러가 null/undefined를 반환하면 200이어도 완전히 빈 바디를 보낸다 —
+    // 이 경우 response.json()이 "Unexpected end of JSON input"으로 죽으므로 먼저 텍스트로 확인
+    const text = await response.text();
+    if (!text) {
+      return null as unknown as T;
+    }
+    return JSON.parse(text) as T;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       emitNetworkError("timeout");
