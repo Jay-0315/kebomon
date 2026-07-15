@@ -9,6 +9,7 @@ import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RewardsService } from "../rewards/rewards.service";
+import { CommunityService } from "../community/community.service";
 import { randomBoss } from "../gateway/raid.gateway";
 import {
   APPLICATION_MESSAGE_MAX_LEN,
@@ -22,6 +23,7 @@ import {
   getBossRankReward,
   getGuildLevelInfo,
   getIsoWeekKey,
+  isValidGuildIconId,
   type GuildBossRankReward,
 } from "./guild.constants";
 
@@ -37,7 +39,14 @@ export class GuildService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly rewards: RewardsService,
+    private readonly community: CommunityService,
   ) {}
+
+  private async requireMembership(userId: string) {
+    const member = await this.prisma.guildMember.findUnique({ where: { userId } });
+    if (!member) throw new BadRequestException("소속된 길드가 없습니다.");
+    return member;
+  }
 
   // ─── 조회 ──────────────────────────────────────────────────────────────────
   async listGuilds(search?: string) {
@@ -300,6 +309,26 @@ export class GuildService {
       data: { notice: notice.trim().slice(0, GUILD_NOTICE_MAX_LEN) || null },
     });
     return { ok: true };
+  }
+
+  async updateIcon(userId: string, iconId: string) {
+    if (!isValidGuildIconId(iconId)) throw new BadRequestException("유효하지 않은 아이콘입니다.");
+    const member = await this.requireOfficerBySelf(userId);
+    await this.prisma.guild.update({ where: { id: member.guildId }, data: { iconId } });
+    return { ok: true };
+  }
+
+  // ─── 길드 게시판 ────────────────────────────────────────────────────────────
+  // guildId는 여기서 멤버십으로 확인한 값만 CommunityService로 넘긴다 — 클라이언트가
+  // 임의의 guildId를 지정해 다른 길드 게시판을 보거나 쓸 수 없다.
+  async listBoardPosts(userId: string, page = 1) {
+    const member = await this.requireMembership(userId);
+    return this.community.findAll(userId, page, undefined, undefined, member.guildId);
+  }
+
+  async createBoardPost(userId: string, content: string, imageUrl?: string) {
+    const member = await this.requireMembership(userId);
+    return this.community.create({ userId, content, imageUrl }, member.guildId);
   }
 
   async disbandGuild(userId: string) {

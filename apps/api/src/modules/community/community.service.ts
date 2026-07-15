@@ -89,9 +89,12 @@ export class CommunityService {
 
   //게시글
 
-  async findAll(userId?: string, page = 1, category?: PostCategory, sort?: "latest" | "likes") {
+  // guildId를 생략하면 전체 공개 게시판(guildId가 null인 글만) — 길드 게시글은 여기 섞이지 않는다.
+  // 특정 길드의 글을 보려면 guildId를 명시해야 하며, 이 값은 호출자(GuildService)가
+  // 멤버십을 확인한 뒤 서버에서 결정한 것이어야 한다 (클라이언트가 임의로 지정하면 안 됨).
+  async findAll(userId?: string, page = 1, category?: PostCategory, sort?: "latest" | "likes", guildId?: string) {
     const skip = (page - 1) * PAGE_SIZE;
-    const where = category ? { category } : {};
+    const where = { ...(category ? { category } : {}), guildId: guildId ?? null };
     const orderBy =
       sort === "likes"
         ? [{ likesCount: "desc" as const }, { createdAt: "desc" as const }]
@@ -156,13 +159,16 @@ export class CommunityService {
     return this.formatPost(post, likedSet.has(postId));
   }
 
-  async create(dto: CreateCommunityPostDto) {
+  // guildId는 클라이언트가 보낸 DTO가 아니라 호출자(GuildService)가 멤버십을 확인한 뒤
+  // 서버에서 결정해 넘기는 값이다 — 절대 클라이언트 입력을 그대로 신뢰하면 안 됨.
+  async create(dto: CreateCommunityPostDto, guildId: string | null = null) {
     const post = await this.prisma.communityPost.create({
       data: {
         userId: dto.userId,
         content: dto.content,
         category: (dto.category ?? "chat") as PostCategory,
         imageUrl: dto.imageUrl ?? null,
+        guildId,
       } as any,
       include: postInclude as any,
     });

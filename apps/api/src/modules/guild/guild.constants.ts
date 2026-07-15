@@ -106,3 +106,14 @@ export function getIsoWeekKey(date: Date): string {
 export const GUILD_NAME_MAX_LEN = 20;
 export const GUILD_NOTICE_MAX_LEN = 200;
 export const APPLICATION_MESSAGE_MAX_LEN = 100;
+
+/** 길드 아이콘 프리셋 — 프론트 GuildPage.tsx의 GUILD_ICON_MAP과 반드시 동일하게 유지 */
+export const GUILD_ICON_IDS = [
+  "default", "crown", "shield", "swords", "flame", "star", "trophy",
+  "skull", "leaf", "zap", "moon", "sun", "gem", "ghost",
+] as const;
+export type GuildIconId = (typeof GUILD_ICON_IDS)[number];
+
+export function isValidGuildIconId(iconId: string): iconId is GuildIconId {
+  return (GUILD_ICON_IDS as readonly string[]).includes(iconId);
+}

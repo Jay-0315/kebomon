@@ -8,5 +8,6 @@ import { CommunityService } from "./community.service";
   imports: [RewardsModule, NotificationsModule],
   controllers: [CommunityController],
   providers: [CommunityService],
+  exports: [CommunityService],
 })
 export class CommunityModule {}

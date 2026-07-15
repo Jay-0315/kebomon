@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ElementType } from "react";
 import {
   Users, Crown, ShieldHalf, Swords, Plus, Search, X, Check,
-  UserMinus, LogOut, Loader2, Sparkles, ArrowUpCircle,
+  UserMinus, LogOut, Loader2, Sparkles, ArrowUpCircle, Heart,
+  Shield, Flame, Star, Trophy, Skull, Leaf, Zap, Moon, Sun, Gem, Ghost,
+  MessageSquare, Send,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
@@ -14,9 +16,36 @@ import type {
   GuildBossState,
   GuildAttackResult,
   GuildRole,
+  CommunityPost,
 } from "../types/domain";
 
-type Tab = "members" | "boss" | "applications" | "settings";
+type Tab = "members" | "boss" | "board" | "applications" | "settings";
+
+// 서버 guild.constants.ts의 GUILD_ICON_IDS와 반드시 동일하게 유지
+const GUILD_ICON_MAP: Record<string, { icon: ElementType; color: string }> = {
+  default: { icon: Crown, color: "text-primary" },
+  crown: { icon: Crown, color: "text-amber-500" },
+  shield: { icon: Shield, color: "text-sky-500" },
+  swords: { icon: Swords, color: "text-red-500" },
+  flame: { icon: Flame, color: "text-orange-500" },
+  star: { icon: Star, color: "text-yellow-400" },
+  trophy: { icon: Trophy, color: "text-amber-400" },
+  skull: { icon: Skull, color: "text-slate-400" },
+  leaf: { icon: Leaf, color: "text-emerald-500" },
+  zap: { icon: Zap, color: "text-yellow-500" },
+  moon: { icon: Moon, color: "text-indigo-400" },
+  sun: { icon: Sun, color: "text-amber-300" },
+  gem: { icon: Gem, color: "text-pink-500" },
+  ghost: { icon: Ghost, color: "text-violet-400" },
+};
+function getGuildIcon(iconId: string) {
+  return GUILD_ICON_MAP[iconId] ?? GUILD_ICON_MAP.default;
+}
+
+function GuildIcon({ iconId, className }: { iconId: string; className?: string }) {
+  const { icon: Icon, color } = getGuildIcon(iconId);
+  return <Icon className={`${className ?? ""} ${color}`} />;
+}
 
 function RoleBadge({ role, ko, ja }: { role: GuildRole; ko: boolean; ja: boolean }) {
   const label = role === "owner" ? (ko ? "길드장" : ja ? "ギルド長" : "Owner")
@@ -94,6 +123,10 @@ export default function GuildPage() {
   const [lastAttack, setLastAttack] = useState<GuildAttackResult | null>(null);
   const [noticeDraft, setNoticeDraft] = useState("");
   const [confirmAction, setConfirmAction] = useState<{ label: string; run: () => void } | null>(null);
+  const [boardPosts, setBoardPosts] = useState<CommunityPost[]>([]);
+  const [boardLoaded, setBoardLoaded] = useState(false);
+  const [boardContent, setBoardContent] = useState("");
+  const [postingBoard, setPostingBoard] = useState(false);
 
   const loadBrowse = useCallback(async (q?: string) => {
     const [list, apps] = await Promise.all([
@@ -114,6 +147,11 @@ export default function GuildPage() {
       `/guild/applications?userId=${userId}&guildId=${guildId}`,
     );
     setPendingApps(apps);
+  }, [userId]);
+
+  const loadBoard = useCallback(async () => {
+    const data = await api.get<{ posts: CommunityPost[] }>(`/guild/board?userId=${userId}`);
+    setBoardPosts(data.posts);
   }, [userId]);
 
   const init = useCallback(async () => {
@@ -143,6 +181,13 @@ export default function GuildPage() {
   useEffect(() => {
     if (myGuild) setNoticeDraft(myGuild.notice ?? "");
   }, [myGuild?.id]);
+
+  useEffect(() => {
+    if (tab === "board" && !boardLoaded) {
+      setBoardLoaded(true);
+      void loadBoard();
+    }
+  }, [tab, boardLoaded, loadBoard]);
 
   // busy state(React state)는 비동기로 반영되므로 빠른 연속 클릭엔 늦게 반응할 수 있음 —
   // 실제 중복 요청 방지는 이 동기 ref로 막는다.
@@ -222,6 +267,35 @@ export default function GuildPage() {
   };
   const handleSaveNotice = () => {
     void runAction(() => api.patch("/guild/notice", { userId, notice: noticeDraft }));
+  };
+  const handleUpdateIcon = (iconId: string) => {
+    void runAction(() => api.patch("/guild/icon", { userId, iconId }));
+  };
+
+  const handlePostToBoard = async () => {
+    if (!boardContent.trim()) return;
+    setPostingBoard(true);
+    setError(null);
+    try {
+      await api.post("/guild/board", { userId, content: boardContent.trim() });
+      setBoardContent("");
+      await loadBoard();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPostingBoard(false);
+    }
+  };
+
+  const handleToggleBoardLike = (postId: string) => {
+    setBoardPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 }
+          : p,
+      ),
+    );
+    void api.post(`/community/posts/${postId}/like`, { userId });
   };
 
   if (!userId) return null;
@@ -309,8 +383,8 @@ export default function GuildPage() {
             const full = g.memberCount >= g.maxMembers;
             return (
               <div key={g.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Crown className="w-5 h-5" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <GuildIcon iconId={g.iconId} className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -411,8 +485,8 @@ export default function GuildPage() {
       {/* 길드 헤더 */}
       <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Crown className="w-6 h-6" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <GuildIcon iconId={g.iconId} className="w-6 h-6" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -443,6 +517,7 @@ export default function GuildPage() {
         {([
           ["members", ko ? "길드원" : ja ? "メンバー" : "Members"],
           ["boss", ko ? "보스전" : ja ? "ボス戦" : "Boss"],
+          ["board", ko ? "게시판" : ja ? "掲示板" : "Board"],
           ...(canManage ? [["applications", ko ? "가입 신청" : ja ? "参加申請" : "Applications"] as [Tab, string]] : []),
           ["settings", ko ? "설정" : ja ? "設定" : "Settings"],
         ] as [Tab, string][]).map(([key, label]) => (
@@ -616,6 +691,64 @@ export default function GuildPage() {
         </div>
       )}
 
+      {/* 게시판 탭 */}
+      {tab === "board" && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+            <textarea
+              value={boardContent}
+              onChange={(e) => setBoardContent(e.target.value)}
+              maxLength={1000}
+              rows={3}
+              placeholder={ko ? "길드원들에게 하고 싶은 말을 남겨보세요" : ja ? "ギルドメンバーへのメッセージを残してみましょう" : "Share something with your guild"}
+              className="w-full resize-none rounded-lg border border-border bg-input-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              disabled={!boardContent.trim() || postingBoard}
+              onClick={() => void handlePostToBoard()}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/80 transition-colors disabled:opacity-50 ml-auto"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {ko ? "작성" : ja ? "投稿" : "Post"}
+            </button>
+          </div>
+
+          {!boardLoaded ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : boardPosts.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {ko ? "아직 게시글이 없어요." : ja ? "まだ投稿がありません。" : "No posts yet."}
+            </p>
+          ) : (
+            boardPosts.map((p) => (
+              <div key={p.id} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{p.authorName}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</p>
+                </div>
+                <p className="text-sm text-foreground whitespace-pre-wrap break-words">{p.content}</p>
+                {p.imageUrl && (
+                  <img src={p.imageUrl} alt="" className="max-h-64 w-full rounded-lg object-cover" />
+                )}
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    onClick={() => handleToggleBoardLike(p.id)}
+                    className={`flex items-center gap-1 text-xs transition-colors ${p.isLiked ? "text-destructive" : "text-muted-foreground hover:text-destructive"}`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${p.isLiked ? "fill-current" : ""}`} />
+                    {p.likes}
+                  </button>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {p.commentCount}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* 가입 신청 탭 */}
       {tab === "applications" && canManage && (
         <div className="space-y-1.5">
@@ -652,6 +785,26 @@ export default function GuildPage() {
       {/* 설정 탭 */}
       {tab === "settings" && (
         <div className="space-y-4">
+          {canManage && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">{ko ? "아이콘" : ja ? "アイコン" : "Icon"}</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(GUILD_ICON_MAP).map((iconId) => (
+                  <button
+                    key={iconId}
+                    disabled={busy}
+                    onClick={() => handleUpdateIcon(iconId)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 transition-all disabled:opacity-50 ${
+                      g.iconId === iconId ? "ring-2 ring-primary" : "hover:bg-primary/20"
+                    }`}
+                  >
+                    <GuildIcon iconId={iconId} className="w-5 h-5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {canManage && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">{ko ? "공지" : ja ? "お知らせ" : "Notice"}</p>

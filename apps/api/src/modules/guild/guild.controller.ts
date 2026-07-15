@@ -50,6 +50,11 @@ export class GuildController {
     return this.guildService.updateNotice(body.userId, body.notice);
   }
 
+  @Patch("icon")
+  updateIcon(@Body() body: { userId: string; iconId: string }) {
+    return this.guildService.updateIcon(body.userId, body.iconId);
+  }
+
   // ─── 가입 신청 ──────────────────────────────────────────────────────────────
   @Post("apply")
   applyToGuild(@Body() body: { userId: string; guildId: string; message?: string }) {
@@ -90,5 +95,16 @@ export class GuildController {
   @Post("boss/attack")
   attackBoss(@Body() body: { userId: string }) {
     return this.guildService.attackBoss(body.userId);
+  }
+
+  // ─── 길드 게시판 ────────────────────────────────────────────────────────────
+  @Get("board")
+  listBoardPosts(@Query("userId") userId: string, @Query("page") page?: string) {
+    return this.guildService.listBoardPosts(userId, page ? Number(page) : 1);
+  }
+
+  @Post("board")
+  createBoardPost(@Body() body: { userId: string; content: string; imageUrl?: string }) {
+    return this.guildService.createBoardPost(body.userId, body.content, body.imageUrl);
   }
 }
