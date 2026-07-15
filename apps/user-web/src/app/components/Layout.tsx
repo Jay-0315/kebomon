@@ -250,7 +250,7 @@ export default function Layout() {
             to="/kebomon"
             tab="collection"
             icon={BookOpen}
-            label={t("nav.kebomon_pokedex")}
+            label={t("nav.kebomon_collection")}
             onNav={onNav}
           />
           <NavTabLink

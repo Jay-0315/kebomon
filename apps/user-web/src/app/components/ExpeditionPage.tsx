@@ -729,7 +729,7 @@ export default function ExpeditionPage() {
               ? `도감 완성 보너스 +${Math.round((r.dexBonusMult - 1) * 100)}% 적용됨`
               : ja
               ? `図鑑コンプリートボーナス+${Math.round((r.dexBonusMult - 1) * 100)}%適用`
-              : `Pokédex bonus +${Math.round((r.dexBonusMult - 1) * 100)}% applied`}
+              : `Collection bonus +${Math.round((r.dexBonusMult - 1) * 100)}% applied`}
           </p>
         )}
         <p style={{ fontSize:11, color:C.textDim, maxWidth:280, textAlign:"center", lineHeight:1.6 }}>
@@ -1135,7 +1135,7 @@ export default function ExpeditionPage() {
                       ? `* 도감 완성 보너스 +${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}% 적용 중`
                       : ja
                       ? `* 図鑑コンプリートボーナス+${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}%適用中`
-                      : `* Pokédex bonus +${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}% applied`}
+                      : `* Collection bonus +${Math.round((getDexCompletionBonus(rewardSummary.dexMilestoneBest) - 1) * 100)}% applied`}
                   </p>
                 )}
               </div>

@@ -2993,7 +2993,7 @@ export default function PixelCharacter({ characterId, size = 128, float: doFloat
   );
 }
 
-/** Render a sprite by character ID (used in Pokédex grid / party scene) */
+/** Render a sprite by character ID (used in Collection grid / party scene) */
 export function PixelSprite({
   type, characterId: _characterId, size = 48, float: doFloat = false, rarity = "common",
 }: { type: CharacterType; colors?: { p: string; s: string; a: string }; characterId?: number; size?: number; float?: boolean; rarity?: CharacterRarity }) {

@@ -1019,7 +1019,7 @@ export default function KebomonPage() {
               const labels: Record<Tab, string> = {
                 character: t("kebomon.my_character"),
                 enhance: t("enhance.tab"),
-                collection: t("kebomon.pokedex"),
+                collection: t("kebomon.collection"),
                 achievement: t("kebomon.achievement_tab"),
               };
               return (
@@ -1052,7 +1052,7 @@ export default function KebomonPage() {
                 }}
                 role="button"
                 tabIndex={0}
-                title={t("kebomon.pokedex")}
+                title={t("kebomon.collection")}
                 className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[equippedChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[equippedChar.rarity]} cursor-pointer`}
               >
                 <div className="flex flex-col items-center gap-4">

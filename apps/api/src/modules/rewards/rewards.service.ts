@@ -1372,7 +1372,7 @@ export class RewardsService {
           titleJa: "実績達成！",
           bodyJa: "新しいケボモンを獲得しました。図鑑で確認してみてください。",
           titleEn: "Achievement Unlocked!",
-          bodyEn: "New Kebomon obtained. Check your Pokédex!",
+          bodyEn: "New Kebomon obtained. Check your Collection!",
           link: "/kebomon",
         }).catch(() => undefined);
       }
@@ -1426,8 +1426,8 @@ export class RewardsService {
       bodyKey: "notification.dex_milestone_body",
       titleJa: "図鑑マイルストーン達成！",
       bodyJa: `ケボモンを${newBest}種収集して報酬を獲得しました。図鑑で確認してみてください。`,
-      titleEn: "Pokédex Milestone Reached!",
-      bodyEn: `Collected ${newBest} Kebomon and earned rewards. Check your Pokédex!`,
+      titleEn: "Collection Milestone Reached!",
+      bodyEn: `Collected ${newBest} Kebomon and earned rewards. Check your Collection!`,
       link: "/kebomon?tab=collection",
     }).catch(() => undefined);
 
