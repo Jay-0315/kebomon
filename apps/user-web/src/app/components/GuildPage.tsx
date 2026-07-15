@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Users, Crown, ShieldHalf, Swords, Plus, Search, X, Check,
   UserMinus, LogOut, Loader2, Sparkles, ArrowUpCircle,
@@ -32,15 +32,16 @@ function RoleBadge({ role, ko, ja }: { role: GuildRole; ko: boolean; ja: boolean
   );
 }
 
-function ConfirmModal({ title, onConfirm, onCancel, ko, ja }: {
+function ConfirmModal({ title, onConfirm, onCancel, busy, ko, ja }: {
   title: string;
   onConfirm: () => void;
   onCancel: () => void;
+  busy: boolean;
   ko: boolean;
   ja: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && onCancel()}>
       <div
         className="w-full max-w-xs rounded-xl border border-border bg-card p-4 space-y-3"
         onClick={(e) => e.stopPropagation()}
@@ -48,14 +49,16 @@ function ConfirmModal({ title, onConfirm, onCancel, ko, ja }: {
         <p className="text-sm font-medium text-foreground">{title}</p>
         <div className="flex gap-2">
           <button
+            disabled={busy}
             onClick={onCancel}
-            className="flex-1 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+            className="flex-1 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
           >
             {ko ? "취소" : ja ? "キャンセル" : "Cancel"}
           </button>
           <button
+            disabled={busy}
             onClick={onConfirm}
-            className="flex-1 rounded-lg bg-destructive py-2 text-sm text-destructive-foreground hover:bg-destructive/80 transition-colors"
+            className="flex-1 rounded-lg bg-destructive py-2 text-sm text-destructive-foreground hover:bg-destructive/80 transition-colors disabled:opacity-50"
           >
             {ko ? "확인" : ja ? "確認" : "Confirm"}
           </button>
@@ -141,7 +144,12 @@ export default function GuildPage() {
     if (myGuild) setNoticeDraft(myGuild.notice ?? "");
   }, [myGuild?.id]);
 
+  // busy state(React state)는 비동기로 반영되므로 빠른 연속 클릭엔 늦게 반응할 수 있음 —
+  // 실제 중복 요청 방지는 이 동기 ref로 막는다.
+  const actionLock = useRef(false);
   const runAction = async (fn: () => Promise<unknown>, after?: () => void | Promise<void>) => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -151,6 +159,7 @@ export default function GuildPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   };
@@ -710,6 +719,7 @@ export default function GuildPage() {
           title={confirmAction.label}
           onConfirm={confirmAction.run}
           onCancel={() => setConfirmAction(null)}
+          busy={busy}
           ko={ko}
           ja={ja}
         />
