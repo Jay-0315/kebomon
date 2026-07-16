@@ -20,6 +20,7 @@ import PixelCharacter from "./PixelCharacter";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getCountryByCode } from "../data/currency";
+import { compressImage } from "../lib/image";
 import {
   CHARACTERS,
   RARITY_COLOR,
@@ -137,16 +138,16 @@ export default function MyPage() {
     setEditingName(false);
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result;
-      if (typeof result === "string") updateProfilePhoto(result);
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file);
+      updateProfilePhoto(compressed);
+    } catch {
+      // 압축/읽기 실패 시 조용히 무시 — 사진은 변경되지 않음
+    }
   };
 
   const myPosts = posts.filter((post) => post.authorId === profile.id);
