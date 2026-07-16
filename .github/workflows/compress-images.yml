@@ -30,8 +30,10 @@ jobs:
           echo "모드: ${{ inputs.apply && 'APPLY (실제 반영)' || 'DRY-RUN (조회만)' }}"
           docker run --rm \
             --network host \
+            --user "$(id -u):$(id -g)" \
             -v "$PWD/apps/api:/app" \
             -w /app \
             -e DATABASE_URL="mysql://${MYSQL_USER:-kebo}:${MYSQL_PASSWORD}@127.0.0.1:3306/${MYSQL_DATABASE:-kebo}" \
+            -e HOME=/tmp \
             node:20-alpine \
             sh -c "npm install --no-audit --no-fund && npx prisma generate && npx tsx scripts/compress-existing-images.ts $APPLY_FLAG"
