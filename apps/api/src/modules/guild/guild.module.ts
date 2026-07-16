@@ -2,11 +2,11 @@ import { Module } from "@nestjs/common";
 import { GuildController } from "./guild.controller";
 import { GuildService } from "./guild.service";
 import { NotificationsModule } from "../notifications/notifications.module";
-import { RewardsModule } from "../rewards/rewards.module";
 import { CommunityModule } from "../community/community.module";
+import { ArenaModule } from "../arena/arena.module";
 
 @Module({
-  imports: [NotificationsModule, RewardsModule, CommunityModule],
+  imports: [NotificationsModule, CommunityModule, ArenaModule],
   controllers: [GuildController],
   providers: [GuildService],
   exports: [GuildService],

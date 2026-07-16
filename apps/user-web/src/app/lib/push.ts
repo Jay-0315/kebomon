@@ -12,6 +12,7 @@ function urlBase64ToUint8Array(base64: string) {
 
 export async function registerPush(): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  if (!VAPID_PUBLIC_KEY) return false;
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return false;

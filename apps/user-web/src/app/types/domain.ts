@@ -1,3 +1,5 @@
+import type { BattleEvent, CharInfo } from "../components/BattleReplay";
+
 export type CurrencyCode = "KRW" | "JPY";
 
 export interface CountryOption {
@@ -210,6 +212,10 @@ export interface GuildBossState {
 }
 
 export interface GuildAttackResult {
+  won: boolean;
+  log: BattleEvent[];
+  attackerChars: CharInfo[];
+  defenderChars: CharInfo[];
   hpRemaining: number;
   maxHp: number;
   damageDealt: number;

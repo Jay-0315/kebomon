@@ -370,7 +370,7 @@ const HERO_SKILLS: Record<string, HeroDef> = {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 인터페이스
 // ═══════════════════════════════════════════════════════════════════════════════
-interface CombatUnit {
+export interface CombatUnit {
   slot:          number;
   team:          "attacker" | "defender";
   charId:        number;
@@ -703,7 +703,7 @@ function aiChooseSkill(actor: CombatUnit): SkillDef {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 배틀 시뮬레이션
 // ═══════════════════════════════════════════════════════════════════════════════
-function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: CombatUnit[]) {
+export function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: CombatUnit[]) {
   const all = [...attackerUnits, ...defenderUnits];
   const log: BattleEvent[] = [];
   let safety = 1200;
@@ -899,7 +899,7 @@ function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: CombatUnit[]
 // ═══════════════════════════════════════════════════════════════════════════════
 // 유닛 생성
 // ═══════════════════════════════════════════════════════════════════════════════
-function makeUnit(charId: number, slot: number, team: "attacker" | "defender", enhLevel: number): CombatUnit {
+export function makeUnit(charId: number, slot: number, team: "attacker" | "defender", enhLevel: number): CombatUnit {
   const s       = getCharStat(charId, enhLevel);
   const hero    = HERO_SKILLS[s.archetype] ?? HERO_SKILLS.all;
   const passive = hero.passive;
@@ -1068,13 +1068,21 @@ export class ArenaService {
     };
   }
 
-  async saveDeck(userId: string, deckType: "attack" | "defense", slots: number[]) {
+  async saveDeck(userId: string, deckType: "attack" | "defense" | "guild", slots: number[]) {
     await this.prisma.arenaDeck.upsert({
       where:  { userId_deckType: { userId, deckType } },
       create: { userId, deckType, slots: slots.slice(0, 4) },
       update: { slots: slots.slice(0, 4) },
     });
     return { ok: true };
+  }
+
+  /** 콜로세움 공격덱과 별개인 길드 레이드 전용덱 조회 */
+  async getRaidDeck(userId: string) {
+    const row = await this.prisma.arenaDeck.findUnique({
+      where: { userId_deckType: { userId, deckType: "guild" } },
+    });
+    return { slots: (row?.slots as number[]) ?? [] };
   }
 
   async getDefenseDeck(userId: string) {
@@ -1235,6 +1243,45 @@ export class ArenaService {
       defenderChars: defenderUnits.map(u => this.charInfoFromUnit(u)),
       tickets: ticketState.tickets,
       ticketRegenAt: ticketState.regenAt,
+    };
+  }
+
+  /**
+   * 길드 보스전 등 외부 모듈이 "내 공격덱 vs 임의로 지정한 상대 1체"를 시뮬레이션할 때 쓰는 진입점.
+   * 아레나 티켓은 소모하지 않는다 — 호출 측(GuildService)이 자체 자원(하루 공격 횟수 등)을 관리한다.
+   */
+  async simulateAgainstBoss(attackerId: string, boss: { charId: number; enhLevel: number; hp: number }) {
+    // 콜로세움 공격덱과는 별개인 "길드 레이드 전용덱"을 사용 — 없으면 마지막으로 보유한 케보몬으로 대체
+    const atkRow = await this.prisma.arenaDeck.findUnique({ where: { userId_deckType: { userId: attackerId, deckType: "guild" } } });
+    let atkSlots = (atkRow?.slots as number[]) ?? [];
+    if (!atkSlots.some(id => id > 0)) {
+      const first = await this.prisma.userCharacter.findFirst({ where: { userId: attackerId }, select: { characterId: true }, orderBy: { obtainedAt: "asc" } });
+      if (first) atkSlots = [first.characterId];
+    }
+    if (!atkSlots.some(id => id > 0)) throw new Error("공격 덱이 비어있습니다");
+
+    const atkEnhLvs = await Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0)));
+    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
+
+    const bossUnit = makeUnit(boss.charId, 0, "defender", boss.enhLevel);
+    bossUnit.hp = boss.hp;
+    bossUnit.maxHp = boss.hp;
+    const defenderUnits = [bossUnit];
+
+    const { won, log } = simulateBattle(attackerUnits, defenderUnits);
+
+    // 보스(defender)가 이번 전투에서 실제로 잃은 HP 총합 — 공격자의 직접 피해뿐 아니라
+    // 공격자가 건 도트 디버프로 보스 스스로 깎이는 틱 데미지까지 포함(그 이벤트는 actorTeam이 "defender"로 기록됨)
+    const damageDealt = log
+      .filter(e => e.targetTeam === "defender")
+      .reduce((sum, e) => sum + (e.damage ?? 0), 0);
+
+    return {
+      won,
+      log,
+      attackerChars: attackerUnits.map(u => this.charInfoFromUnit(u)),
+      defenderChars: defenderUnits.map(u => this.charInfoFromUnit(u)),
+      damageDealt,
     };
   }
 

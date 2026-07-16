@@ -893,11 +893,6 @@ export class RewardsService {
   };
   private static readonly ENHANCE_RATES = [1.0, 0.9, 0.8, 0.6, 0.4, 0.2]; // +1 ~ +6
 
-  /** 다른 모듈(길드 등)에서 캐릭터 레어리티가 필요할 때 사용하는 공개 진입점 */
-  getCharacterRarity(characterId: number): string {
-    return this.getCharRarity(characterId);
-  }
-
   private getCharRarity(characterId: number): string {
     const g = GACHA_POOL.find((c) => c.id === characterId);
     if (g) return g.rarity;

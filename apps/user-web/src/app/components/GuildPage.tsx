@@ -3,12 +3,15 @@ import {
   Users, Crown, ShieldHalf, Swords, Plus, Search, X, Check,
   UserMinus, LogOut, Loader2, Sparkles, ArrowUpCircle, Heart,
   Shield, Flame, Star, Trophy, Skull, Leaf, Zap, Moon, Sun, Gem, Ghost,
-  MessageSquare, Send,
+  MessageSquare, Send, Settings2,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
 import { useLang } from "../context/LangContext";
+import { useAppData } from "../context/AppDataContext";
 import PixelCharacter from "./PixelCharacter";
+import BattleReplay from "./BattleReplay";
+import { CHARACTERS } from "../data/characters";
 import type {
   GuildSummary,
   GuildDetail,
@@ -97,6 +100,71 @@ function ConfirmModal({ title, onConfirm, onCancel, busy, ko, ja }: {
   );
 }
 
+function RaidDeckModal({ ownedIds, selected, onToggle, onSave, onClose, saving, ko, ja }: {
+  ownedIds: number[];
+  selected: number[];
+  onToggle: (id: number) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+  ko: boolean;
+  ja: boolean;
+}) {
+  const owned = CHARACTERS.filter((c) => ownedIds.includes(c.id));
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md space-y-3 rounded-xl border border-border bg-card p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-foreground">
+            {ko ? "레이드 전용덱 편집" : ja ? "レイド専用デッキ編集" : "Raid Deck"}
+          </p>
+          <button onClick={onClose}><X className="w-4 h-4 text-muted-foreground" /></button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {ko
+            ? `최대 4마리 선택 (${selected.length}/4) · 콜로세움 공격덱과 별개예요`
+            : ja
+            ? `最大4匹選択（${selected.length}/4）・コロシアムの攻撃デッキとは別です`
+            : `Select up to 4 (${selected.length}/4) · separate from your Colosseum attack deck`}
+        </p>
+        <div className="grid max-h-80 grid-cols-5 gap-2 overflow-y-auto">
+          {owned.map((c) => {
+            const isSelected = selected.includes(c.id);
+            const slotIdx = selected.indexOf(c.id);
+            return (
+              <button
+                key={c.id}
+                onClick={() => onToggle(c.id)}
+                disabled={!isSelected && selected.length >= 4}
+                className={`relative flex flex-col items-center rounded-lg border p-1 transition-colors ${
+                  isSelected ? "border-primary bg-primary/10" : "border-border hover:bg-muted disabled:opacity-30"
+                }`}
+              >
+                {isSelected && (
+                  <span className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {slotIdx + 1}
+                  </span>
+                )}
+                <PixelCharacter characterId={c.id} size={40} />
+              </button>
+            );
+          })}
+        </div>
+        <button
+          disabled={saving}
+          onClick={onSave}
+          className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/80 transition-colors disabled:opacity-50"
+        >
+          {ko ? "저장" : ja ? "保存" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function GuildPage() {
   const { lang } = useLang();
   const ko = lang === "ko";
@@ -116,17 +184,24 @@ export default function GuildPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createNotice, setCreateNotice] = useState("");
+  const [createIconId, setCreateIconId] = useState("default");
   const [applyTarget, setApplyTarget] = useState<GuildSummary | null>(null);
   const [applyMessage, setApplyMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [attacking, setAttacking] = useState(false);
   const [lastAttack, setLastAttack] = useState<GuildAttackResult | null>(null);
+  const [replayResult, setReplayResult] = useState<GuildAttackResult | null>(null);
   const [noticeDraft, setNoticeDraft] = useState("");
   const [confirmAction, setConfirmAction] = useState<{ label: string; run: () => void } | null>(null);
   const [boardPosts, setBoardPosts] = useState<CommunityPost[]>([]);
   const [boardLoaded, setBoardLoaded] = useState(false);
   const [boardContent, setBoardContent] = useState("");
   const [postingBoard, setPostingBoard] = useState(false);
+  const [raidDeck, setRaidDeck] = useState<number[]>([]);
+  const [showDeckEditor, setShowDeckEditor] = useState(false);
+  const [deckDraft, setDeckDraft] = useState<number[]>([]);
+  const [savingDeck, setSavingDeck] = useState(false);
+  const { rewardSummary } = useAppData();
 
   const loadBrowse = useCallback(async (q?: string) => {
     const [list, apps] = await Promise.all([
@@ -154,6 +229,11 @@ export default function GuildPage() {
     setBoardPosts(data.posts);
   }, [userId]);
 
+  const loadRaidDeck = useCallback(async () => {
+    const data = await api.get<{ slots: number[] }>(`/guild/raid-deck?userId=${userId}`);
+    setRaidDeck(data.slots);
+  }, [userId]);
+
   const init = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
@@ -163,6 +243,7 @@ export default function GuildPage() {
       setMyGuild(g);
       if (g) {
         await loadBossState();
+        await loadRaidDeck();
         if (g.myRole === "owner" || g.myRole === "officer") {
           await loadPendingApps(g.id);
         }
@@ -174,7 +255,7 @@ export default function GuildPage() {
     } finally {
       setLoading(false);
     }
-  }, [userId, loadBossState, loadPendingApps, loadBrowse, ko, ja]);
+  }, [userId, loadBossState, loadRaidDeck, loadPendingApps, loadBrowse, ko, ja]);
 
   useEffect(() => { void init(); }, [init]);
 
@@ -212,8 +293,13 @@ export default function GuildPage() {
   const handleCreate = () => {
     if (!createName.trim()) return;
     void runAction(() =>
-      api.post("/guild/create", { userId, name: createName.trim(), notice: createNotice.trim() || undefined }),
-      async () => { setShowCreate(false); setCreateName(""); setCreateNotice(""); await init(); },
+      api.post("/guild/create", {
+        userId,
+        name: createName.trim(),
+        notice: createNotice.trim() || undefined,
+        iconId: createIconId,
+      }),
+      async () => { setShowCreate(false); setCreateName(""); setCreateNotice(""); setCreateIconId("default"); await init(); },
     );
   };
 
@@ -242,11 +328,35 @@ export default function GuildPage() {
     try {
       const res = await api.post<GuildAttackResult>("/guild/boss/attack", { userId });
       setLastAttack(res);
+      setReplayResult(res);
       await loadBossState();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setAttacking(false);
+    }
+  };
+
+  const openDeckEditor = () => {
+    setDeckDraft(raidDeck);
+    setShowDeckEditor(true);
+  };
+  const toggleDeckChar = (id: number) => {
+    setDeckDraft((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 4 ? [...prev, id] : prev,
+    );
+  };
+  const handleSaveDeck = async () => {
+    setSavingDeck(true);
+    setError(null);
+    try {
+      await api.put("/guild/raid-deck", { userId, slots: deckDraft });
+      setRaidDeck(deckDraft);
+      setShowDeckEditor(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingDeck(false);
     }
   };
 
@@ -424,6 +534,23 @@ export default function GuildPage() {
                 placeholder={ko ? "길드명 (최대 20자)" : ja ? "ギルド名（最大20文字）" : "Guild name (max 20)"}
                 className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               />
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">{ko ? "아이콘" : ja ? "アイコン" : "Icon"}</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(GUILD_ICON_MAP).map((iconId) => (
+                    <button
+                      key={iconId}
+                      type="button"
+                      onClick={() => setCreateIconId(iconId)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 transition-all ${
+                        createIconId === iconId ? "ring-2 ring-primary" : "hover:bg-primary/20"
+                      }`}
+                    >
+                      <GuildIcon iconId={iconId} className="w-4 h-4" />
+                    </button>
+                  ))}
+                </div>
+              </div>
               <textarea
                 value={createNotice}
                 onChange={(e) => setCreateNotice(e.target.value)}
@@ -669,6 +796,36 @@ export default function GuildPage() {
                 </p>
               </div>
 
+              <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {ko ? "내 레이드 덱" : ja ? "自分のレイドデッキ" : "My Raid Deck"}
+                  </p>
+                  <button
+                    onClick={openDeckEditor}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                    {ko ? "편집" : ja ? "編集" : "Edit"}
+                  </button>
+                </div>
+                {raidDeck.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {ko ? "덱을 설정하지 않으면 보유 케보몬 중 하나가 자동으로 사용돼요."
+                      : ja ? "デッキを設定しないと、保有ケボモンの中から自動で使われます。"
+                      : "If you don't set a deck, one of your Kebomon is used automatically."}
+                  </p>
+                ) : (
+                  <div className="flex gap-2">
+                    {raidDeck.map((id) => (
+                      <div key={id} className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/40">
+                        <PixelCharacter characterId={id} size={32} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">
                   {ko ? "기여도 랭킹" : ja ? "貢献度ランキング" : "Contribution Ranking"}
@@ -873,6 +1030,30 @@ export default function GuildPage() {
           onConfirm={confirmAction.run}
           onCancel={() => setConfirmAction(null)}
           busy={busy}
+          ko={ko}
+          ja={ja}
+        />
+      )}
+
+      {replayResult && (
+        <BattleReplay
+          result={{
+            log: replayResult.log,
+            attackerChars: replayResult.attackerChars,
+            defenderChars: replayResult.defenderChars,
+          }}
+          onDone={() => setReplayResult(null)}
+        />
+      )}
+
+      {showDeckEditor && (
+        <RaidDeckModal
+          ownedIds={rewardSummary.ownedCharacterIds}
+          selected={deckDraft}
+          onToggle={toggleDeckChar}
+          onSave={() => void handleSaveDeck()}
+          onClose={() => setShowDeckEditor(false)}
+          saving={savingDeck}
           ko={ko}
           ja={ja}
         />

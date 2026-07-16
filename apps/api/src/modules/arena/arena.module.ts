@@ -8,5 +8,6 @@ import { ArenaService } from "./arena.service";
   imports: [PrismaModule, NotificationsModule],
   controllers: [ArenaController],
   providers: [ArenaService],
+  exports: [ArenaService],
 })
 export class ArenaModule {}

@@ -8,8 +8,8 @@ import {
 import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { RewardsService } from "../rewards/rewards.service";
 import { CommunityService } from "../community/community.service";
+import { ArenaService } from "../arena/arena.service";
 import { randomBoss } from "../gateway/raid.gateway";
 import {
   APPLICATION_MESSAGE_MAX_LEN,
@@ -18,8 +18,9 @@ import {
   GUILD_NAME_MAX_LEN,
   GUILD_NOTICE_MAX_LEN,
   applyGuildExp,
-  calcBossDamage,
   calcBossMaxHp,
+  calcEncounterHp,
+  getBossEnhLevel,
   getBossRankReward,
   getGuildLevelInfo,
   getIsoWeekKey,
@@ -38,8 +39,8 @@ export class GuildService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-    private readonly rewards: RewardsService,
     private readonly community: CommunityService,
+    private readonly arena: ArenaService,
   ) {}
 
   private async requireMembership(userId: string) {
@@ -103,10 +104,13 @@ export class GuildService {
   }
 
   // ─── 생성/가입/탈퇴 ──────────────────────────────────────────────────────────
-  async createGuild(userId: string, name: string, notice?: string) {
+  async createGuild(userId: string, name: string, notice?: string, iconId?: string) {
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > GUILD_NAME_MAX_LEN) {
       throw new BadRequestException(`길드명은 1~${GUILD_NAME_MAX_LEN}자여야 합니다.`);
+    }
+    if (iconId && !isValidGuildIconId(iconId)) {
+      throw new BadRequestException("유효하지 않은 아이콘입니다.");
     }
 
     const existingMembership = await this.prisma.guildMember.findUnique({ where: { userId } });
@@ -119,6 +123,7 @@ export class GuildService {
       data: {
         name: trimmed,
         notice: notice?.trim().slice(0, GUILD_NOTICE_MAX_LEN) || null,
+        iconId: iconId ?? "default",
         ownerId: userId,
         members: { create: { userId, role: "owner" } },
       },
@@ -415,6 +420,15 @@ export class GuildService {
     };
   }
 
+  /** 콜로세움 공격덱과 별개인 길드 레이드 전용덱 조회 — 길드 소속 여부와 무관하게 조회 가능 */
+  async getRaidDeck(userId: string) {
+    return this.arena.getRaidDeck(userId);
+  }
+
+  async saveRaidDeck(userId: string, slots: number[]) {
+    return this.arena.saveDeck(userId, "guild", slots);
+  }
+
   async attackBoss(userId: string) {
     const member = await this.prisma.guildMember.findUnique({ where: { userId } });
     if (!member) throw new BadRequestException("소속된 길드가 없습니다.");
@@ -430,14 +444,17 @@ export class GuildService {
       throw new BadRequestException("이번 주 보스는 이미 처치되었습니다.");
     }
 
-    const userReward = await this.prisma.userReward.findUnique({
-      where: { userId },
-      select: { equippedCharacterId: true },
+    const guild = await this.prisma.guild.findUniqueOrThrow({ where: { id: member.guildId } });
+    const memberCount = await this.prisma.guildMember.count({ where: { guildId: member.guildId } });
+    const encounterHp = calcEncounterHp(guild.level, memberCount, run.hpRemaining);
+    const bossEnhLevel = getBossEnhLevel(guild.level);
+
+    const battle = await this.arena.simulateAgainstBoss(userId, {
+      charId: run.bossId,
+      enhLevel: bossEnhLevel,
+      hp: encounterHp,
     });
-    const rarity = userReward?.equippedCharacterId
-      ? this.rewards.getCharacterRarity(userReward.equippedCharacterId)
-      : "common";
-    const dmg = calcBossDamage(rarity);
+    const dmg = Math.min(battle.damageDealt, run.hpRemaining);
     const newHp = Math.max(0, run.hpRemaining - dmg);
     const justCleared = run.hpRemaining > 0 && newHp === 0;
 
@@ -467,6 +484,10 @@ export class GuildService {
     }
 
     return {
+      won: battle.won,
+      log: battle.log,
+      attackerChars: battle.attackerChars,
+      defenderChars: battle.defenderChars,
       hpRemaining: newHp,
       maxHp: run.maxHp,
       damageDealt: dmg,

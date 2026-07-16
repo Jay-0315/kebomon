@@ -49,20 +49,25 @@ export function calcBossMaxHp(level: number, memberCount: number): number {
 /** 하루 공격 가능 횟수 */
 export const DAILY_BOSS_ATTACKS = 3;
 
-/** 공격 1회당 기본 데미지 — 장착 캐릭터 레어리티 배율 적용 */
-export const BOSS_DAMAGE_BASE = 80;
-export const BOSS_DAMAGE_RARITY_MULT: Record<string, number> = {
-  common: 1.0,
-  uncommon: 1.15,
-  rare: 1.35,
-  epic: 1.6,
-  legendary: 2.0,
-  mythic: 2.6,
-};
+/**
+ * 보스 1체를 아레나 전투엔진(ArenaService.simulateAgainstBoss)용 유닛으로 만들 때 쓰는
+ * 인위적인 강화 레벨 — 일반 유저의 강화 레벨(0~6)보다 훨씬 높게 잡아 스탯을 압도적으로 스케일링한다.
+ * 레벨 1 길드: enhLevel 16 / 레벨 10 길드: enhLevel 70.
+ */
+export function getBossEnhLevel(guildLevel: number): number {
+  return 10 + guildLevel * 6;
+}
 
-export function calcBossDamage(rarity: string): number {
-  const mult = BOSS_DAMAGE_RARITY_MULT[rarity] ?? 1.0;
-  return Math.round(BOSS_DAMAGE_BASE * mult);
+/**
+ * 보스 1회 전투(인스턴스)의 체력 — 주간 누적 HP 풀 전체가 아니라, 한 번의 자동전투로
+ * "적당히 도전할 만한" 상한을 잡고 남은 주간 HP와 min()으로 연동한다.
+ * 남은 HP가 이 상한보다 적게 남으면 그 전투에서 보스를 완전히 처치할 수 있다.
+ */
+export const ENCOUNTER_HP_RATIO = 0.12;
+
+export function calcEncounterHp(level: number, memberCount: number, hpRemaining: number): number {
+  const cap = Math.round(calcBossMaxHp(level, memberCount) * ENCOUNTER_HP_RATIO);
+  return Math.max(1, Math.min(hpRemaining, cap));
 }
 
 /** 보스 처치 시 길드에 지급되는 경험치 */

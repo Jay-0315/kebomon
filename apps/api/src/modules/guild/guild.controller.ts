@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import { GuildService } from "./guild.service";
 
 @Controller("guild")
@@ -16,8 +16,8 @@ export class GuildController {
   }
 
   @Post("create")
-  createGuild(@Body() body: { userId: string; name: string; notice?: string }) {
-    return this.guildService.createGuild(body.userId, body.name, body.notice);
+  createGuild(@Body() body: { userId: string; name: string; notice?: string; iconId?: string }) {
+    return this.guildService.createGuild(body.userId, body.name, body.notice, body.iconId);
   }
 
   @Post("leave")
@@ -95,6 +95,16 @@ export class GuildController {
   @Post("boss/attack")
   attackBoss(@Body() body: { userId: string }) {
     return this.guildService.attackBoss(body.userId);
+  }
+
+  @Get("raid-deck")
+  getRaidDeck(@Query("userId") userId: string) {
+    return this.guildService.getRaidDeck(userId);
+  }
+
+  @Put("raid-deck")
+  saveRaidDeck(@Body() body: { userId: string; slots: number[] }) {
+    return this.guildService.saveRaidDeck(body.userId, body.slots);
   }
 
   // ─── 길드 게시판 ────────────────────────────────────────────────────────────
