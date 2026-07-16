@@ -164,6 +164,12 @@ export class GuildService {
           type: "achievement",
           title: "길드 가입 신청",
           body: "새로운 가입 신청이 도착했습니다.",
+          titleKey: "notification.guild_application_title",
+          bodyKey: "notification.guild_application_body",
+          titleJa: "新しい加入申請",
+          bodyJa: "新しい加入申請が届きました。",
+          titleEn: "New Guild Application",
+          bodyEn: "A new guild join application has arrived.",
           link: "/guild?tab=applications",
         })
         .catch(() => undefined);
@@ -231,6 +237,12 @@ export class GuildService {
         type: "achievement",
         title: "길드 가입 승인!",
         body: `'${guild.name}' 길드에 가입되었습니다.`,
+        titleKey: "notification.guild_approved_title",
+        bodyKey: "notification.guild_approved_body",
+        titleJa: "ギルド加入承認！",
+        bodyJa: `『${guild.name}』ギルドに加入しました。`,
+        titleEn: "Guild Application Approved!",
+        bodyEn: `You have joined the '${guild.name}' guild.`,
         link: "/guild",
       })
       .catch(() => undefined);
@@ -480,7 +492,14 @@ export class GuildService {
 
     if (justCleared) {
       await this.addGuildExp(member.guildId, BOSS_CLEAR_GUILD_EXP);
-      await this.notifyGuild(member.guildId, "길드 보스 처치!", "길드원들이 힘을 합쳐 이번 주 보스를 물리쳤습니다!");
+      await this.notifyGuild(member.guildId, "길드 보스 처치!", "길드원들이 힘을 합쳐 이번 주 보스를 물리쳤습니다!", "/guild", {
+        titleKey: "notification.guild_boss_cleared_title",
+        bodyKey: "notification.guild_boss_cleared_body",
+        titleJa: "ギルドボス討伐！",
+        bodyJa: "ギルドメンバーが力を合わせて今週のボスを倒しました！",
+        titleEn: "Guild Boss Defeated!",
+        bodyEn: "Guild members united to defeat this week's boss!",
+      });
     }
 
     return {
@@ -504,10 +523,18 @@ export class GuildService {
     }
   }
 
-  private async notifyGuild(guildId: string, title: string, body: string, link = "/guild") {
+  private async notifyGuild(
+    guildId: string,
+    title: string,
+    body: string,
+    link = "/guild",
+    extra?: { titleKey?: string; bodyKey?: string; titleJa?: string; bodyJa?: string; titleEn?: string; bodyEn?: string },
+  ) {
     const members = await this.prisma.guildMember.findMany({ where: { guildId }, select: { userId: true } });
     for (const m of members) {
-      void this.notifications.create({ userId: m.userId, type: "achievement", title, body, link }).catch(() => undefined);
+      void this.notifications
+        .create({ userId: m.userId, type: "achievement", title, body, link, ...extra })
+        .catch(() => undefined);
     }
   }
 
