@@ -70,15 +70,9 @@ export interface CharInfo {
   slot: number;
   charId: number;
   maxHp: number;
-  atk: number;
-  def: number;
-  spd: number;
-  critRate: number;
-  critDmg: number;
   element: string;
   rarity: string;
   archetype: string;
-  charType: string;
 }
 export interface HitDetail {
   targetTeam: "attacker" | "defender";
@@ -96,7 +90,6 @@ export interface StatusChangeEntry {
   slot: number;
   type: string;
   duration: number;
-  value?: number;
   action: "apply" | "expire";
 }
 export interface CrSnapshot {
@@ -115,7 +108,6 @@ export interface BattleEvent {
   damage: number;
   healed: number;
   targetHpAfter: number;
-  targetMaxHp: number;
   targetAlive: boolean;
   skillType: "s1" | "s2" | "s3" | "passive" | "dot";
   skillName: string;
@@ -143,35 +135,20 @@ export interface BattleResult {
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap');
-@keyframes col-flame{0%,100%{transform:scaleX(1) scaleY(1)}30%{transform:scaleX(1.12) scaleY(0.9)}60%{transform:scaleX(0.9) scaleY(1.1)}}
 @keyframes col-idle-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes col-dmg-up{0%{opacity:1;transform:translateY(0) scale(1.4)}100%{opacity:0;transform:translateY(-52px) scale(0.9)}}
 @keyframes col-hit{0%{transform:translateX(0) scale(1.06);filter:brightness(40) saturate(0)}20%{transform:translateX(-8px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}100%{transform:translateX(0);filter:brightness(1)}}
 @keyframes col-attack{0%{transform:translate(0,0) scale(1)}20%{transform:translate(0,-6px) scale(1.08)}50%{transform:translate(14px,-2px) scale(1.13)}70%{transform:translate(-4px,2px) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
 @keyframes col-attack-rev{0%{transform:translate(0,0) scale(1)}20%{transform:translate(0,-6px) scale(1.08)}50%{transform:translate(-14px,-2px) scale(1.13)}70%{transform:translate(4px,2px) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
-@keyframes col-win-in{0%{letter-spacing:0.6em;opacity:0}100%{letter-spacing:0.12em;opacity:1}}
-@keyframes col-spin{to{transform:rotate(360deg)}}
-@keyframes col-log-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@keyframes col-roll-in{0%{opacity:0;transform:scale(0.5) rotate(-12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes col-active-glow{0%,100%{filter:drop-shadow(0 0 6px #c8a44a)}50%{filter:drop-shadow(0 0 18px #c8a44a)}}
 @keyframes col-dead{to{filter:grayscale(1) brightness(0.3);opacity:0.4}}
-@keyframes slot-pulse{0%,100%{box-shadow:0 0 0 2px #c8a44a,0 0 14px #c8a44a55}50%{box-shadow:0 0 0 3px #ffd700,0 0 22px #ffd70088}}
-@keyframes cr-fill{from{width:0}}
 @keyframes col-hp-flash{0%{opacity:0.7}100%{opacity:0}}
-@keyframes col-stone-glow{0%,100%{opacity:0.55}50%{opacity:0.9}}
 @keyframes col-shine{0%{transform:translateX(-120%) skewX(-20deg)}100%{transform:translateX(220%) skewX(-20deg)}}
-@keyframes col-tier-pulse{0%,100%{filter:drop-shadow(0 0 4px currentColor)}50%{filter:drop-shadow(0 0 16px currentColor)}}
-@keyframes col-border-glow{0%,100%{box-shadow:0 0 12px var(--glow-col,#c8a44a44),inset 0 0 8px var(--glow-col,#c8a44a11)}50%{box-shadow:0 0 28px var(--glow-col,#c8a44a88),inset 0 0 20px var(--glow-col,#c8a44a22)}}
-@keyframes col-float-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-@keyframes col-ticket-appear{0%{opacity:0;transform:scale(0) rotate(-30deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
-@keyframes col-battle-ready{0%,100%{box-shadow:0 6px 0 #5a2d00,0 0 24px #c8a44a33}50%{box-shadow:0 6px 0 #5a2d00,0 0 48px #c8a44a88}}
 .col-btn-shine{overflow:hidden;position:relative}
 .col-btn-shine::after{content:'';position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);animation:col-shine 2.4s ease-in-out 0.8s infinite}
 .col-rank-scroll::-webkit-scrollbar{display:none}
 .col-rank-scroll{-ms-overflow-style:none;scrollbar-width:none}
 @media(min-width:640px){.col-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
-@keyframes ult-bg-in{0%{opacity:0}100%{opacity:1}}
-@keyframes ult-bg-out{0%{opacity:1}100%{opacity:0}}
 @keyframes ult-ring{0%{transform:scale(0.2);opacity:0.9}100%{transform:scale(4);opacity:0}}
 @keyframes ult-slash{0%{opacity:0;transform:translateX(-120%) skewX(-18deg)}55%{opacity:1}100%{opacity:0;transform:translateX(60%) skewX(-18deg)}}
 @keyframes ult-title{0%{opacity:0;transform:scale(0.3) rotate(-4deg)}65%{opacity:1;transform:scale(1.06) rotate(1deg)}100%{opacity:1;transform:scale(1) rotate(0deg)}}
@@ -181,13 +158,7 @@ const CSS = `
 @keyframes ult-line-grow{0%{width:0;opacity:0}60%{opacity:1}100%{opacity:0}}
 @keyframes ult-vignette{0%{opacity:0}30%{opacity:1}80%{opacity:1}100%{opacity:0}}
 @keyframes col-ptf{0%,100%{opacity:0.35;transform:scaleX(0.9)}50%{opacity:0.75;transform:scaleX(1.1)}}
-@keyframes col-vs-beat{0%,100%{transform:scale(1) rotate(-90deg);filter:drop-shadow(0 0 6px #c8a44a)}45%{transform:scale(1.22) rotate(-90deg);filter:drop-shadow(0 0 24px #c8a44a)}}
-@keyframes col-scan{0%{transform:translateY(-100%)}100%{transform:translateY(600%)}}
-@keyframes col-spark{0%{opacity:0;transform:translate(0,0) scale(1.4)}80%{opacity:0.9}100%{opacity:0;transform:translate(var(--sx),var(--sy)) scale(0)}}
-@keyframes col-energy{0%,100%{opacity:0.15}50%{opacity:0.5}}
-@keyframes col-divider-pulse{0%,100%{opacity:0.3;height:60%}50%{opacity:0.9;height:80%}}
 @keyframes col-skill-in{0%{opacity:0;transform:translateX(-24px) skewX(-8deg)}100%{opacity:1;transform:translateX(0) skewX(-8deg)}}
-@keyframes col-skill-out{0%{opacity:1;transform:translateX(0) skewX(-8deg)}100%{opacity:0;transform:translateX(24px) skewX(-8deg)}}
 @keyframes col-corner-glow{0%,100%{opacity:0.4}50%{opacity:1}}
 @keyframes ult-meteor{0%{opacity:0;transform:translate(var(--mx),0) rotate(25deg) scale(0.3)}15%{opacity:1}90%{opacity:0.85}100%{opacity:0;transform:translate(var(--mx),430px) rotate(25deg) scale(1.4)}}
 @keyframes ult-impact{0%{transform:scale(0);opacity:1}100%{transform:scale(4);opacity:0}}
