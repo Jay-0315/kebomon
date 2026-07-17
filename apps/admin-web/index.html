@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KEBO Admin</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-      html, body, #root { height: 100%; margin: 0; }
-      body { background: #0a0a0a; color: #fff; font-family: Arial, sans-serif; }
-    </style>
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("kebo-admin-theme") === "light") {
+            document.documentElement.classList.add("light");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

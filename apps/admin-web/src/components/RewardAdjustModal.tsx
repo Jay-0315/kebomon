@@ -64,40 +64,40 @@ export default function RewardAdjustModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl border border-white/10 bg-[#111] p-6"
+        className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
       >
         <h2 className="mb-1 text-base font-semibold">재화 조정</h2>
-        <p className="mb-4 text-sm text-white/50">{userLabel}</p>
+        <p className="mb-4 text-sm text-[var(--fg-faint)]">{userLabel}</p>
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           {FIELDS.map((f) => (
             <div key={f.key}>
-              <label className="mb-1 block text-xs text-white/60">
-                {f.label} <span className="text-white/30">(현재 {current?.[f.key] ?? 0})</span>
+              <label className="mb-1 block text-xs text-[var(--fg-muted)]">
+                {f.label} <span className="text-[var(--fg-faint)]">(현재 {current?.[f.key] ?? 0})</span>
               </label>
               <input
                 type="number"
                 placeholder="0"
                 value={deltas[f.key] ?? ""}
                 onChange={(e) => setDeltas((d) => ({ ...d, [f.key]: e.target.value }))}
-                className="w-full rounded-md border border-white/15 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
+                className="w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
               />
             </div>
           ))}
         </div>
 
-        <label className="mb-1 block text-xs text-white/60">사유 (선택)</label>
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">사유 (선택)</label>
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="예: 버그 보상, 문의 대응 등"
-          className="mb-4 w-full rounded-md border border-white/15 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
+          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
 
-        <p className="mb-4 text-xs text-white/40">
+        <p className="mb-4 text-xs text-[var(--fg-faint)]">
           양수는 지급, 음수는 차감입니다. 결과값은 0 미만으로 내려가지 않습니다.
         </p>
 
@@ -107,7 +107,7 @@ export default function RewardAdjustModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-white/15 px-3 py-1.5 text-sm hover:bg-white/5"
+            className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]"
           >
             취소
           </button>

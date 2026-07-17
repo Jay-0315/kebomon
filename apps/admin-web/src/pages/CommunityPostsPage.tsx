@@ -68,28 +68,28 @@ export default function CommunityPostsPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="내용 검색"
-          className="rounded-md border border-white/15 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
+          className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="rounded-md border border-white/15 bg-[#0a0a0a] px-2 py-1.5 text-sm"
+          className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
           <option value="">전체 카테고리</option>
           <option value="brag">brag</option>
           <option value="tip">tip</option>
           <option value="chat">chat</option>
         </select>
-        <button type="submit" className="rounded-md border border-white/15 px-3 py-1.5 text-sm hover:bg-white/5">
+        <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
           검색
         </button>
       </form>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
-      <div className="overflow-x-auto rounded-lg border border-white/10">
+      <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white/[0.03] text-white/60">
+          <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
               <th className="px-3 py-2">작성자</th>
               <th className="px-3 py-2">내용</th>
@@ -101,12 +101,12 @@ export default function CommunityPostsPage() {
           </thead>
           <tbody>
             {data?.posts.map((p) => (
-              <tr key={p.id} className="border-t border-white/10">
+              <tr key={p.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2 whitespace-nowrap">{p.author?.name ?? "-"}</td>
-                <td className="max-w-md truncate px-3 py-2 text-white/80">{p.content}</td>
+                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{p.content}</td>
                 <td className="px-3 py-2">{p.category}</td>
                 <td className="px-3 py-2">{p.likesCount}</td>
-                <td className="px-3 py-2 text-white/60 whitespace-nowrap">
+                <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">
                   {new Date(p.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-3 py-2">
@@ -121,7 +121,7 @@ export default function CommunityPostsPage() {
             ))}
             {data?.posts.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-white/40">
+                <td colSpan={6} className="px-3 py-6 text-center text-[var(--fg-faint)]">
                   결과가 없습니다.
                 </td>
               </tr>
@@ -135,17 +135,17 @@ export default function CommunityPostsPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded border border-white/15 px-2 py-1 disabled:opacity-30"
+            className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
             이전
           </button>
-          <span className="text-white/60">
+          <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
           </span>
           <button
             disabled={page >= data.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded border border-white/15 px-2 py-1 disabled:opacity-30"
+            className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
             다음
           </button>

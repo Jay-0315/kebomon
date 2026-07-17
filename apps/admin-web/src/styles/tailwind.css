@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+:root {
+  --bg: #0a0a0a;
+  --bg-elevated: #141414;
+  --bg-soft: rgba(255, 255, 255, 0.03);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.1);
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+  --border: rgba(255, 255, 255, 0.12);
+  --fg: #f5f5f5;
+  --fg-muted: rgba(255, 255, 255, 0.65);
+  --fg-faint: rgba(255, 255, 255, 0.42);
+  --chart-1: #e08fab;
+  --chart-2: #6fb8c9;
+}
+
+:root.light {
+  --bg: #f6f5f7;
+  --bg-elevated: #ffffff;
+  --bg-soft: rgba(0, 0, 0, 0.03);
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  --bg-overlay: rgba(0, 0, 0, 0.3);
+  --border: rgba(0, 0, 0, 0.12);
+  --fg: #18181b;
+  --fg-muted: rgba(0, 0, 0, 0.65);
+  --fg-faint: rgba(0, 0, 0, 0.42);
+  --chart-1: #b7607e;
+  --chart-2: #2f8fa6;
+}
+
 html,
 body,
 #root {
@@ -8,12 +38,15 @@ body,
 }
 
 body {
-  background: #0a0a0a;
-  color: #f5f5f5;
+  background: var(--bg);
+  color: var(--fg);
   font-family:
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     Arial,
     sans-serif;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }

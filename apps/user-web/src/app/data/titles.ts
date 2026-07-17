@@ -105,7 +105,7 @@ export const TITLES: TitleDef[] = [
   { id: 56, name: "전설의 카드마스터",grade: "mythic",   conditionType: "rogue_clears",    conditionValue: 50,  description: "로그라이크 50회 클리어" },
   { id: 57, name: "불굴의 탐험가",   grade: "mythic",    conditionType: "expedition_count",conditionValue: 100, description: "원정 100회 완료" },
   // ── GM 전용 ──
-  { id: 47, name: "GM",              grade: "limited",   conditionType: "raid_count",  conditionValue: 0,     description: "케보 운영진", hidden: true },
+  { id: 47, name: "운영진",           grade: "limited",   conditionType: "raid_count",  conditionValue: 0,     description: "케보 운영진", hidden: true },
 ];
 
 export const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

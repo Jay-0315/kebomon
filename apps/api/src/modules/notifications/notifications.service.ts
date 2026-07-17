@@ -3,7 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { NotificationGateway } from "../gateway/notification.gateway";
 import * as webpush from "web-push";
 
-export type NotificationType = "comment" | "achievement" | "title";
+export type NotificationType = "comment" | "achievement" | "title" | "notice";
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {

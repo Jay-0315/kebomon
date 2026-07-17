@@ -2,10 +2,14 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import AdminLayout from "./components/AdminLayout";
 import { isAdminAuthenticated } from "./lib/auth";
 import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
 import UsersPage from "./pages/UsersPage";
 import CommunityPostsPage from "./pages/CommunityPostsPage";
 import CommunityCommentsPage from "./pages/CommunityCommentsPage";
 import GachaConfigPage from "./pages/GachaConfigPage";
+import BattlesPage from "./pages/BattlesPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import GuildsPage from "./pages/GuildsPage";
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
@@ -27,11 +31,15 @@ export default function App() {
             </AdminRoute>
           }
         >
-          <Route index element={<Navigate to="/users" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/community/posts" element={<CommunityPostsPage />} />
           <Route path="/community/comments" element={<CommunityCommentsPage />} />
           <Route path="/gacha-config" element={<GachaConfigPage />} />
+          <Route path="/battles" element={<BattlesPage />} />
+          <Route path="/guilds" element={<GuildsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

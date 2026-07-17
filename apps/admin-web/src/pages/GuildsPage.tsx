@@ -1,25 +1,36 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 
-type CommentRow = {
+type BossAnomaly = {
+  weekKey: string;
+  topContributorId: string;
+  topDamage: number;
+  totalDamage: number;
+  topShare: number;
+  suspicious: boolean;
+} | null;
+
+type GuildRow = {
   id: string;
-  postId: string;
-  content: string;
+  name: string;
+  level: number;
+  memberCount: number;
+  owner: { id: string; name: string; email: string };
   createdAt: string;
-  author: { id: string; name: string; email: string } | null;
+  bossAnomaly: BossAnomaly;
 };
 
-type CommentsResponse = {
-  comments: CommentRow[];
+type GuildsResponse = {
+  guilds: GuildRow[];
   total: number;
   page: number;
   totalPages: number;
 };
 
-export default function CommunityCommentsPage() {
+export default function GuildsPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<CommentsResponse | null>(null);
+  const [data, setData] = useState<GuildsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -28,7 +39,7 @@ export default function CommunityCommentsPage() {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       params.set("page", String(page));
-      const res = await api.get<CommentsResponse>(`/admin/community/comments?${params.toString()}`);
+      const res = await api.get<GuildsResponse>(`/admin/guilds?${params.toString()}`);
       setData(res);
     } catch {
       setError("목록을 불러오지 못했습니다.");
@@ -46,25 +57,25 @@ export default function CommunityCommentsPage() {
     load();
   }
 
-  async function handleDelete(comment: CommentRow) {
-    if (!window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없습니다.")) return;
+  async function handleDisband(guild: GuildRow) {
+    if (!window.confirm(`"${guild.name}" 길드를 해체할까요? 길드원/게시글/보스전 기록이 모두 삭제되며 되돌릴 수 없습니다.`)) return;
     try {
-      await api.delete(`/admin/community/comments/${comment.id}`);
+      await api.delete(`/admin/guilds/${guild.id}`);
       load();
     } catch {
-      window.alert("삭제에 실패했습니다.");
+      window.alert("해체에 실패했습니다.");
     }
   }
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">댓글 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">길드 관리</h1>
 
       <form onSubmit={handleSearchSubmit} className="mb-4 flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="내용 검색"
+          placeholder="길드명 검색"
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
@@ -78,35 +89,50 @@ export default function CommunityCommentsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">작성자</th>
-              <th className="px-3 py-2">내용</th>
-              <th className="px-3 py-2">게시글 ID</th>
-              <th className="px-3 py-2">작성일</th>
+              <th className="px-3 py-2">길드명</th>
+              <th className="px-3 py-2">레벨</th>
+              <th className="px-3 py-2">인원</th>
+              <th className="px-3 py-2">길드장</th>
+              <th className="px-3 py-2">최근 보스전 기여도</th>
               <th className="px-3 py-2">액션</th>
             </tr>
           </thead>
           <tbody>
-            {data?.comments.map((c) => (
-              <tr key={c.id} className="border-t border-[var(--border)]">
-                <td className="px-3 py-2 whitespace-nowrap">{c.author?.name ?? "-"}</td>
-                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{c.content}</td>
-                <td className="px-3 py-2 text-[var(--fg-faint)]">{c.postId}</td>
-                <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">
-                  {new Date(c.createdAt).toLocaleDateString()}
+            {data?.guilds.map((g) => (
+              <tr key={g.id} className={`border-t border-[var(--border)] ${g.bossAnomaly?.suspicious ? "bg-amber-500/10" : ""}`}>
+                <td className="px-3 py-2">{g.name}</td>
+                <td className="px-3 py-2">{g.level}</td>
+                <td className="px-3 py-2">{g.memberCount}</td>
+                <td className="px-3 py-2 text-[var(--fg-muted)]">
+                  {g.owner.name} ({g.owner.email})
+                </td>
+                <td className="px-3 py-2">
+                  {g.bossAnomaly ? (
+                    <>
+                      최고 기여 {(g.bossAnomaly.topShare * 100).toFixed(0)}%
+                      {g.bossAnomaly.suspicious && (
+                        <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
+                          쏠림 의심
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-[var(--fg-faint)]">기록 없음</span>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <button
-                    onClick={() => handleDelete(c)}
+                    onClick={() => handleDisband(g)}
                     className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
                   >
-                    삭제
+                    해체
                   </button>
                 </td>
               </tr>
             ))}
-            {data?.comments.length === 0 && (
+            {data?.guilds.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-[var(--fg-faint)]">
+                <td colSpan={6} className="px-3 py-6 text-center text-[var(--fg-faint)]">
                   결과가 없습니다.
                 </td>
               </tr>

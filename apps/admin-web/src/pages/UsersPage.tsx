@@ -102,12 +102,12 @@ export default function UsersPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="이름 또는 이메일 검색"
-          className="rounded-md border border-white/15 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
+          className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-md border border-white/15 bg-[#0a0a0a] px-2 py-1.5 text-sm"
+          className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
           <option value="">전체 권한</option>
           <option value="USER">USER</option>
@@ -116,7 +116,7 @@ export default function UsersPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-white/15 bg-[#0a0a0a] px-2 py-1.5 text-sm"
+          className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
           <option value="">전체 상태</option>
           <option value="ACTIVE">ACTIVE</option>
@@ -124,7 +124,7 @@ export default function UsersPage() {
         </select>
         <button
           type="submit"
-          className="rounded-md border border-white/15 px-3 py-1.5 text-sm hover:bg-white/5"
+          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]"
         >
           검색
         </button>
@@ -132,9 +132,9 @@ export default function UsersPage() {
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
-      <div className="overflow-x-auto rounded-lg border border-white/10">
+      <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white/[0.03] text-white/60">
+          <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
               <th className="px-3 py-2">이름</th>
               <th className="px-3 py-2">이메일</th>
@@ -147,39 +147,39 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {data?.users.map((u) => (
-              <tr key={u.id} className="border-t border-white/10">
+              <tr key={u.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2">{u.name}</td>
                 <td className="px-3 py-2">{u.email}</td>
                 <td className="px-3 py-2">{u.role}</td>
                 <td className="px-3 py-2">
                   {u.status}
                   {u.status === "SUSPENDED" && u.suspendedReason && (
-                    <span className="ml-1 text-white/40">({u.suspendedReason})</span>
+                    <span className="ml-1 text-[var(--fg-faint)]">({u.suspendedReason})</span>
                   )}
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap text-white/70">
+                <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
                   {u.reward
                     ? `${u.reward.missionPoints} / ${u.reward.normalEggs} / ${u.reward.bigEggs} / ${u.reward.goldenEggs} / ${u.reward.enhancementStones}`
                     : "-"}
                 </td>
-                <td className="px-3 py-2 text-white/60">{new Date(u.createdAt).toLocaleDateString()}</td>
+                <td className="px-3 py-2 text-[var(--fg-muted)]">{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">
                     <button
                       onClick={() => toggleRole(u)}
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5"
+                      className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
                       {u.role === "ADMIN" ? "관리자 해제" : "관리자 지정"}
                     </button>
                     <button
                       onClick={() => toggleStatus(u)}
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5"
+                      className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
                       {u.status === "SUSPENDED" ? "정지 해제" : "정지"}
                     </button>
                     <button
                       onClick={() => setRewardTarget(u)}
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5"
+                      className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
                       재화 조정
                     </button>
@@ -189,7 +189,7 @@ export default function UsersPage() {
             ))}
             {!loading && data?.users.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-white/40">
+                <td colSpan={7} className="px-3 py-6 text-center text-[var(--fg-faint)]">
                   결과가 없습니다.
                 </td>
               </tr>
@@ -203,17 +203,17 @@ export default function UsersPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded border border-white/15 px-2 py-1 disabled:opacity-30"
+            className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
             이전
           </button>
-          <span className="text-white/60">
+          <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
           </span>
           <button
             disabled={page >= data.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded border border-white/15 px-2 py-1 disabled:opacity-30"
+            className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
             다음
           </button>

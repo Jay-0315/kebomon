@@ -6,6 +6,7 @@ import {
   Trophy,
   Award,
   CalendarCheck,
+  Megaphone,
   Trash2,
 } from "lucide-react";
 import { api } from "../lib/api";
@@ -17,7 +18,7 @@ import { type TranslationKey } from "../lib/i18n";
 
 type Notif = {
   id: string;
-  type: "comment" | "achievement" | "title" | "attendance";
+  type: "comment" | "achievement" | "title" | "attendance" | "notice";
   title: string;
   body: string;
   titleKey?: string | null;
@@ -48,6 +49,7 @@ function NotifIcon({ type }: { type: Notif["type"] }) {
   if (type === "achievement")
     return <Trophy className="h-4 w-4 text-amber-400" />;
   if (type === "title") return <Award className="h-4 w-4 text-purple-400" />;
+  if (type === "notice") return <Megaphone className="h-4 w-4 text-pink-400" />;
   return <CalendarCheck className="h-4 w-4 text-green-400" />;
 }
 

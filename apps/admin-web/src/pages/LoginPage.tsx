@@ -94,26 +94,26 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl border border-white/10 bg-white/[0.03] p-8">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] p-8">
         <p className="mb-1 text-sm text-[#b7607e]">KEBO</p>
         <h1 className="mb-6 text-xl font-semibold">관리자 로그인</h1>
 
-        <label className="mb-1 block text-sm text-white/60">이메일</label>
+        <label className="mb-1 block text-sm text-[var(--fg-muted)]">이메일</label>
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded-md border border-white/15 bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
+          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         />
 
-        <label className="mb-1 block text-sm text-white/60">비밀번호</label>
+        <label className="mb-1 block text-sm text-[var(--fg-muted)]">비밀번호</label>
         <input
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 w-full rounded-md border border-white/15 bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
+          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         />
 
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
@@ -128,10 +128,10 @@ export default function LoginPage() {
 
         {googleClientId && (
           <>
-            <div className="mb-4 flex items-center gap-3 text-xs text-white/30">
-              <div className="h-px flex-1 bg-white/10" />
+            <div className="mb-4 flex items-center gap-3 text-xs text-[var(--fg-faint)]">
+              <div className="h-px flex-1 bg-[var(--border)]" />
               또는
-              <div className="h-px flex-1 bg-white/10" />
+              <div className="h-px flex-1 bg-[var(--border)]" />
             </div>
             <div ref={googleButtonRef} className="flex justify-center" />
           </>
