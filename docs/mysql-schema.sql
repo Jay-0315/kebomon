@@ -6,6 +6,7 @@ CREATE TABLE users (
   role             VARCHAR(20)                    NOT NULL DEFAULT 'USER',
   status           VARCHAR(12)                    NOT NULL DEFAULT 'ACTIVE',
   suspended_reason VARCHAR(255)                   NULL,
+  suspended_until  DATETIME                       NULL,
   base_country_code CHAR(2)                       NOT NULL,
   base_currency    ENUM('KRW','JPY','USD','EUR')  NOT NULL,
   profile_photo    LONGTEXT                       NULL,

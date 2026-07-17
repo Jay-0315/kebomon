@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { NotificationGatewayModule } from "../gateway/notification-gateway.module";
 import { AdminBattlesController } from "./admin-battles.controller";
 import { AdminBattlesService } from "./admin-battles.service";
 import { AdminCharactersController } from "./admin-characters.controller";
@@ -19,7 +20,7 @@ import { AdminUsersController } from "./admin-users.controller";
 import { AdminUsersService } from "./admin-users.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule],
+  imports: [AuthModule, NotificationsModule, NotificationGatewayModule],
   controllers: [
     AdminUsersController,
     AdminCommunityController,

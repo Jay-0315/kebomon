@@ -72,6 +72,15 @@ jobs:
                 'ALTER TABLE users ADD COLUMN suspended_reason VARCHAR(255) NULL AFTER status',
                 'SELECT 1');
               PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+              SET @col_exists = (
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'suspended_until'
+              );
+              SET @sql = IF(@col_exists = 0,
+                'ALTER TABLE users ADD COLUMN suspended_until DATETIME NULL AFTER suspended_reason',
+                'SELECT 1');
+              PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
             "
 
           # api는 mysql이 healthy해야 뜨므로(depends_on), 위 스키마 보정이 끝난 뒤에만 기동됨

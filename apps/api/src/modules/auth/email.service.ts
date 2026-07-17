@@ -36,14 +36,27 @@ export class EmailService {
     await this.send(email, content.subject, this.buildCodeEmail(code, content.title, content.desc, content.validity, content.ignore, content.service));
   }
 
-  async sendSuspensionNotice(email: string, reason: string, lang: "ko" | "ja" | "en" = "ko"): Promise<void> {
+  async sendSuspensionNotice(
+    email: string,
+    reason: string,
+    lang: "ko" | "ja" | "en" = "ko",
+    suspendedUntil?: Date | null,
+  ): Promise<void> {
     const content = {
-      ko: { subject: "[Kebo] 계정이 정지되었습니다", title: "계정 정지 안내", desc: "회원님의 계정이 아래 사유로 정지되었습니다.", footer: "정지 조치에 이의가 있으시면 고객센터로 문의해주세요.", service: "커뮤니티 서비스", reasonLabel: "정지 사유" },
-      ja: { subject: "[Kebo] アカウントが停止されました", title: "アカウント停止のお知らせ", desc: "会員様のアカウントが以下の理由により停止されました。", footer: "停止措置に異議がある場合はカスタマーセンターまでお問い合わせください。", service: "コミュニティサービス", reasonLabel: "停止理由" },
-      en: { subject: "[Kebo] Your account has been suspended", title: "Account Suspended", desc: "Your account has been suspended for the following reason.", footer: "If you believe this is a mistake, please contact support.", service: "Community Service", reasonLabel: "Reason" },
+      ko: { subject: "[Kebo] 계정이 정지되었습니다", title: "계정 정지 안내", desc: "회원님의 계정이 아래 사유로 정지되었습니다.", footer: "정지 조치에 이의가 있으시면 고객센터로 문의해주세요.", service: "커뮤니티 서비스", reasonLabel: "정지 사유", periodLabel: "정지 기간", permanent: "영구 정지", until: "까지 (한국시간 기준)" },
+      ja: { subject: "[Kebo] アカウントが停止されました", title: "アカウント停止のお知らせ", desc: "会員様のアカウントが以下の理由により停止されました。", footer: "停止措置に異議がある場合はカスタマーセンターまでお問い合わせください。", service: "コミュニティサービス", reasonLabel: "停止理由", periodLabel: "停止期間", permanent: "永久停止", until: "まで（韓国時間基準）" },
+      en: { subject: "[Kebo] Your account has been suspended", title: "Account Suspended", desc: "Your account has been suspended for the following reason.", footer: "If you believe this is a mistake, please contact support.", service: "Community Service", reasonLabel: "Reason", periodLabel: "Suspension Period", permanent: "Permanent suspension", until: " (KST)" },
     }[lang];
 
-    await this.send(email, content.subject, this.buildNoticeEmail(content.title, content.desc, content.reasonLabel, reason, content.footer, content.service));
+    const periodText = suspendedUntil
+      ? `${suspendedUntil.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}${content.until}`
+      : content.permanent;
+
+    await this.send(
+      email,
+      content.subject,
+      this.buildNoticeEmail(content.title, content.desc, content.reasonLabel, reason, content.footer, content.service, content.periodLabel, periodText),
+    );
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
@@ -143,7 +156,24 @@ export class EmailService {
       .replace(/'/g, "&#39;");
   }
 
-  private buildNoticeEmail(title: string, desc: string, reasonLabel: string, reason: string, footer: string, service: string): string {
+  private buildNoticeEmail(
+    title: string,
+    desc: string,
+    reasonLabel: string,
+    reason: string,
+    footer: string,
+    service: string,
+    periodLabel?: string,
+    periodText?: string,
+  ): string {
+    const periodBlock =
+      periodLabel && periodText
+        ? `
+            <div style="background:#0f0f0f;border:1px solid #333;border-radius:8px;padding:20px;margin-top:12px;">
+              <div style="font-size:12px;color:#888;margin-bottom:6px;">${periodLabel}</div>
+              <div style="font-size:15px;color:#f5f5f5;line-height:1.6;">${this.escapeHtml(periodText)}</div>
+            </div>`
+        : "";
     return `
 <!DOCTYPE html>
 <html>
@@ -165,7 +195,7 @@ export class EmailService {
             <div style="background:#0f0f0f;border:1px solid #333;border-radius:8px;padding:20px;">
               <div style="font-size:12px;color:#888;margin-bottom:6px;">${reasonLabel}</div>
               <div style="font-size:15px;color:#f5f5f5;line-height:1.6;">${this.escapeHtml(reason)}</div>
-            </div>
+            </div>${periodBlock}
           </td>
         </tr>
         <tr>

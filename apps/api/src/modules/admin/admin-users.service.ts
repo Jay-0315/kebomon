@@ -1,7 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { isSuspensionExpired, reactivateIfExpired } from "../auth/suspension.util";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationGateway } from "../gateway/notification.gateway";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
@@ -30,6 +32,7 @@ export class AdminUsersService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly emailService: EmailService,
+    private readonly notificationGateway: NotificationGateway,
   ) {}
 
   async findAll(q?: string, role?: string, status?: string, page = 1) {
@@ -50,6 +53,7 @@ export class AdminUsersService {
           role: true,
           status: true,
           suspendedReason: true,
+          suspendedUntil: true,
           createdAt: true,
           lastLoginAt: true,
           reward: { select: rewardSelect },
@@ -60,6 +64,18 @@ export class AdminUsersService {
       }),
       this.prisma.user.count({ where }),
     ]);
+
+    // 목록 조회 시점에 기간 정지가 만료된 계정은 화면에도 실제 상태(ACTIVE)로 보이도록 정리
+    await Promise.all(
+      users
+        .filter((u) => isSuspensionExpired(u))
+        .map(async (u) => {
+          await reactivateIfExpired(this.prisma, u);
+          u.status = "ACTIVE";
+          u.suspendedReason = null;
+          u.suspendedUntil = null;
+        }),
+    );
 
     return {
       users,
@@ -79,12 +95,18 @@ export class AdminUsersService {
         role: true,
         status: true,
         suspendedReason: true,
+        suspendedUntil: true,
         createdAt: true,
         lastLoginAt: true,
         _count: { select: { posts: true, comments: true } },
       },
     });
     if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
+    if (await reactivateIfExpired(this.prisma, user)) {
+      user.status = "ACTIVE";
+      user.suspendedReason = null;
+      user.suspendedUntil = null;
+    }
     return user;
   }
 
@@ -110,6 +132,15 @@ export class AdminUsersService {
     if (dto.status === "SUSPENDED" && !dto.reason) {
       throw new BadRequestException("정지 사유를 입력해주세요.");
     }
+
+    let suspendedUntil: Date | null = null;
+    if (dto.status === "SUSPENDED" && dto.suspendedUntil) {
+      suspendedUntil = new Date(dto.suspendedUntil);
+      if (suspendedUntil.getTime() <= Date.now()) {
+        throw new BadRequestException("정지 종료 시각은 현재보다 미래여야 합니다.");
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: targetId },
       include: { settings: { select: { language: true } } },
@@ -121,14 +152,21 @@ export class AdminUsersService {
       data: {
         status: dto.status,
         suspendedReason: dto.status === "SUSPENDED" ? dto.reason : null,
+        suspendedUntil: dto.status === "SUSPENDED" ? suspendedUntil : null,
       },
-      select: { id: true, name: true, email: true, role: true, status: true, suspendedReason: true },
+      select: { id: true, name: true, email: true, role: true, status: true, suspendedReason: true, suspendedUntil: true },
     });
 
     // 정지된 계정은 로그인이 막혀 인앱 알림을 볼 수 없으므로, 사유는 이메일로만 전달 가능
     if (dto.status === "SUSPENDED" && dto.reason) {
       const lang = (user.settings?.language as "ko" | "ja" | "en" | undefined) ?? "ko";
-      void this.emailService.sendSuspensionNotice(user.email, dto.reason, lang).catch(() => undefined);
+      void this.emailService.sendSuspensionNotice(user.email, dto.reason, lang, suspendedUntil).catch(() => undefined);
+    }
+
+    // 이미 로그인된 세션도 즉시 튕겨내도록 강제 로그아웃 이벤트 전송 후 소켓 연결 강제 종료
+    if (dto.status === "SUSPENDED") {
+      this.notificationGateway.emitToUser(targetId, "force-logout", { reason: dto.reason ?? null, suspendedUntil });
+      this.notificationGateway.server.in(`user:${targetId}`).disconnectSockets(true);
     }
 
     return updated;

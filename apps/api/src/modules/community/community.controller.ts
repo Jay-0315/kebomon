@@ -1,5 +1,7 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { PostCategory } from "@prisma/client";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt.guard";
 import { CreateCommentDto } from "./dto/create-comment.dto";
 import { CreateCommunityPostDto } from "./dto/create-community-post.dto";
 import { UpdateCommentDto } from "./dto/update-comment.dto";
@@ -32,24 +34,33 @@ export class CommunityController {
     return this.communityService.findById(id, userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() dto: CreateCommunityPostDto) {
+  create(@CurrentUser() user: { sub: string }, @Body() dto: CreateCommunityPostDto) {
+    dto.userId = user.sub;
     return this.communityService.create(dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(":id")
-  update(@Param("id") id: string, @Body() dto: UpdateCommunityPostDto) {
-    return this.communityService.update(id, dto);
+  update(
+    @CurrentUser() user: { sub: string },
+    @Param("id") id: string,
+    @Body() dto: UpdateCommunityPostDto,
+  ) {
+    return this.communityService.update(id, user.sub, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(":id/like")
-  toggleLike(@Param("id") id: string, @Body("userId") userId: string) {
-    return this.communityService.toggleLike(id, userId);
+  toggleLike(@CurrentUser() user: { sub: string }, @Param("id") id: string) {
+    return this.communityService.toggleLike(id, user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(":id")
-  remove(@Param("id") id: string) {
-    return this.communityService.remove(id);
+  remove(@CurrentUser() user: { sub: string }, @Param("id") id: string) {
+    return this.communityService.remove(id, user.sub);
   }
 
   //댓글
@@ -59,25 +70,33 @@ export class CommunityController {
     return this.communityService.getComments(id, page ? Number(page) : 1);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(":id/comments")
-  createComment(@Param("id") id: string, @Body() dto: CreateCommentDto) {
+  createComment(
+    @CurrentUser() user: { sub: string },
+    @Param("id") id: string,
+    @Body() dto: CreateCommentDto,
+  ) {
+    dto.userId = user.sub;
     return this.communityService.createComment(id, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(":id/comments/:commentId")
   updateComment(
+    @CurrentUser() user: { sub: string },
     @Param("commentId", ParseIntPipe) commentId: number,
-    @Query("userId") userId: string,
     @Body() dto: UpdateCommentDto,
   ) {
-    return this.communityService.updateComment(BigInt(commentId), userId, dto);
+    return this.communityService.updateComment(BigInt(commentId), user.sub, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(":id/comments/:commentId")
   deleteComment(
+    @CurrentUser() user: { sub: string },
     @Param("commentId", ParseIntPipe) commentId: number,
-    @Query("userId") userId: string,
   ) {
-    return this.communityService.deleteComment(BigInt(commentId), userId);
+    return this.communityService.deleteComment(BigInt(commentId), user.sub);
   }
 }

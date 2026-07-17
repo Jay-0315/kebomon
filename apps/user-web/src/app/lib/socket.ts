@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { getAuthToken } from "./auth";
 
 let _socket: Socket | null = null;
 
@@ -8,9 +9,15 @@ export function getSocket(): Socket {
       path: "/socket.io",
       transports: ["polling", "websocket"],
       autoConnect: true,
+      auth: { token: getAuthToken() },
     });
   }
   return _socket;
+}
+
+export function disconnectSocket() {
+  _socket?.disconnect();
+  _socket = null;
 }
 
 let _chatSocket: Socket | null = null;
@@ -24,6 +31,7 @@ export function getChatSocket(): Socket {
       path: "/socket.io",
       transports: ["polling", "websocket"],
       autoConnect: true,
+      auth: { token: getAuthToken() },
     });
   }
   return _chatSocket;
@@ -42,6 +50,7 @@ export function getRaidSocket(): Socket {
       path: "/socket.io",
       transports: ["polling", "websocket"],
       autoConnect: true,
+      auth: { token: getAuthToken() },
     });
   }
   return _raidSocket;
@@ -60,6 +69,7 @@ export function getDuelSocket(): Socket {
       path: "/socket.io",
       transports: ["polling", "websocket"],
       autoConnect: true,
+      auth: { token: getAuthToken() },
     });
   }
   return _duelSocket;

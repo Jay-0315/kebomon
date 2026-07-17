@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt.guard";
 import { RewardsService } from "./rewards.service";
 
 @Controller("rewards")
@@ -16,69 +18,85 @@ export class RewardsController {
     return this.rewardsService.getCharacterMasterPublic();
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("starter")
-  selectStarter(@Body() body: { userId: string; characterId: number }) {
-    return this.rewardsService.selectStarter(body.userId, body.characterId);
+  selectStarter(@CurrentUser() user: { sub: string }, @Body() body: { characterId: number }) {
+    return this.rewardsService.selectStarter(user.sub, body.characterId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch("equip")
-  equipCharacter(@Body() body: { userId: string; characterId: number }) {
-    return this.rewardsService.equipCharacter(body.userId, body.characterId);
+  equipCharacter(@CurrentUser() user: { sub: string }, @Body() body: { characterId: number }) {
+    return this.rewardsService.equipCharacter(user.sub, body.characterId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("gacha")
-  performGacha(@Body() body: { userId: string; count: 1 | 10 }) {
-    return this.rewardsService.performGacha(body.userId, body.count);
+  performGacha(@CurrentUser() user: { sub: string }, @Body() body: { count: 1 | 10 }) {
+    return this.rewardsService.performGacha(user.sub, body.count);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("egg/open")
-  openEgg(@Body() body: { userId: string; eggType: "normal" | "big" | "golden" }) {
-    return this.rewardsService.openEgg(body.userId, body.eggType);
+  openEgg(@CurrentUser() user: { sub: string }, @Body() body: { eggType: "normal" | "big" | "golden" }) {
+    return this.rewardsService.openEgg(user.sub, body.eggType);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("egg/open-batch")
-  openEggBatch(@Body() body: { userId: string; eggType: "normal" | "big" | "golden"; count: number }) {
-    return this.rewardsService.openEggBatch(body.userId, body.eggType, body.count);
+  openEggBatch(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { eggType: "normal" | "big" | "golden"; count: number },
+  ) {
+    return this.rewardsService.openEggBatch(user.sub, body.eggType, body.count);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("achievements/check")
-  checkAchievements(@Body() body: { userId: string }) {
-    return this.rewardsService.checkAndGrantAchievements(body.userId);
+  checkAchievements(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.checkAndGrantAchievements(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("titles/equip")
-  equipTitle(@Body() body: { userId: string; titleId: number }) {
-    return this.rewardsService.equipTitle(body.userId, body.titleId);
+  equipTitle(@CurrentUser() user: { sub: string }, @Body() body: { titleId: number }) {
+    return this.rewardsService.equipTitle(user.sub, body.titleId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("titles/unequip")
-  unequipTitle(@Body() body: { userId: string }) {
-    return this.rewardsService.unequipTitle(body.userId);
+  unequipTitle(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.unequipTitle(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("titles/check")
-  checkTitles(@Body() body: { userId: string }) {
-    return this.rewardsService.checkAndGrantTitles(body.userId);
+  checkTitles(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.checkAndGrantTitles(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("borders/equip")
-  equipBorder(@Body() body: { userId: string; borderId: string }) {
-    return this.rewardsService.equipBorder(body.userId, body.borderId);
+  equipBorder(@CurrentUser() user: { sub: string }, @Body() body: { borderId: string }) {
+    return this.rewardsService.equipBorder(user.sub, body.borderId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("borders/unequip")
-  unequipBorder(@Body() body: { userId: string }) {
-    return this.rewardsService.unequipBorder(body.userId);
+  unequipBorder(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.unequipBorder(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("ping")
-  ping(@Body() body: { userId: string }) {
-    return this.rewardsService.recordAttendance(body.userId);
+  ping(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.recordAttendance(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("attendance/claim")
-  claimAttendance(@Body() body: { userId: string }) {
-    return this.rewardsService.claimAttendance(body.userId);
+  claimAttendance(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.claimAttendance(user.sub);
   }
 
   @Get("colosseum-rankings")
@@ -91,14 +109,19 @@ export class RewardsController {
     return this.rewardsService.getBattleStats(userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("shop/buy")
-  buyShopItem(@Body() body: { userId: string; itemId: string; quantity?: number }) {
-    return this.rewardsService.buyShopItem(body.userId, body.itemId, body.quantity ?? 1);
+  buyShopItem(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { itemId: string; quantity?: number },
+  ) {
+    return this.rewardsService.buyShopItem(user.sub, body.itemId, body.quantity ?? 1);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("enhance")
-  enhanceCharacter(@Body() body: { userId: string; characterId: number }) {
-    return this.rewardsService.enhanceCharacter(body.userId, body.characterId);
+  enhanceCharacter(@CurrentUser() user: { sub: string }, @Body() body: { characterId: number }) {
+    return this.rewardsService.enhanceCharacter(user.sub, body.characterId);
   }
 
   @Get("colosseum-stats")
@@ -106,9 +129,13 @@ export class RewardsController {
     return this.rewardsService.getBattleStats(userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("expedition/start")
-  startExpedition(@Body() body: { userId: string; regionId: string; partyIds: number[]; durationHours: number }) {
-    return this.rewardsService.startExpedition(body.userId, body.regionId, body.partyIds, body.durationHours);
+  startExpedition(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { regionId: string; partyIds: number[]; durationHours: number },
+  ) {
+    return this.rewardsService.startExpedition(user.sub, body.regionId, body.partyIds, body.durationHours);
   }
 
   @Get("expedition/state")
@@ -116,30 +143,35 @@ export class RewardsController {
     return this.rewardsService.getExpeditionState(userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("expedition/event")
-  resolveExpeditionEvent(@Body() body: { userId: string; risky: boolean }) {
-    return this.rewardsService.resolveExpeditionEvent(body.userId, body.risky);
+  resolveExpeditionEvent(@CurrentUser() user: { sub: string }, @Body() body: { risky: boolean }) {
+    return this.rewardsService.resolveExpeditionEvent(user.sub, body.risky);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("expedition/complete")
-  completeExpedition(@Body() body: { userId: string }) {
-    return this.rewardsService.completeExpedition(body.userId);
+  completeExpedition(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.completeExpedition(user.sub);
   }
 
   /** 로그라이크/도전 모드 런 시작 기록 — complete/submit 시 실제 플레이 시간 검증에 사용 */
+  @UseGuards(JwtAuthGuard)
   @Post("run/start")
-  startRun(@Body() body: { userId: string }) {
-    return this.rewardsService.startRun(body.userId);
+  startRun(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.startRun(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("rogue/complete")
-  completeRogue(@Body() body: { userId: string; difficulty?: string }) {
-    return this.rewardsService.completeRogue(body.userId, body.difficulty);
+  completeRogue(@CurrentUser() user: { sub: string }, @Body() body: { difficulty?: string }) {
+    return this.rewardsService.completeRogue(user.sub, body.difficulty);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("challenge/submit")
-  submitChallenge(@Body() body: { userId: string; stage: number }) {
-    return this.rewardsService.submitChallenge(body.userId, body.stage);
+  submitChallenge(@CurrentUser() user: { sub: string }, @Body() body: { stage: number }) {
+    return this.rewardsService.submitChallenge(user.sub, body.stage);
   }
 
   @Get("challenge-rankings")

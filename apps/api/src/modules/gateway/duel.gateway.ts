@@ -4,10 +4,12 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayConnection,
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { PrismaService } from "../prisma/prisma.service";
+import { JwtStrategy } from "../auth/jwt.strategy";
 
 /**
  * 1:1 카드 배틀 (PvP) — 로그라이크 전투 로직을 그대로 사용하되 유저 vs 유저.
@@ -151,11 +153,25 @@ function newPlayer(socketId: string, userId: string | null, nickname: string, ch
 }
 
 @WebSocketGateway({ namespace: "/duel", cors: { origin: true, credentials: true }, path: "/socket.io" })
-export class DuelGateway implements OnGatewayDisconnect {
+export class DuelGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private rooms = new Map<string, DuelRoom>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtStrategy: JwtStrategy,
+  ) {}
+
+  handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token as string | undefined;
+    try {
+      if (!token) throw new Error("no token");
+      const payload = this.jwtStrategy.verify(token);
+      client.data.userId = payload.sub;
+    } catch {
+      client.disconnect(true);
+    }
+  }
 
   // ── 로비 ──
   @SubscribeMessage("duel:list")
@@ -174,7 +190,7 @@ export class DuelGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage("duel:create")
   create(
-    @MessageBody() data: { title?: string; password?: string; nickname?: string; userId?: string; characterId?: number },
+    @MessageBody() data: { title?: string; password?: string; nickname?: string; characterId?: number },
     @ConnectedSocket() client: Socket,
   ) {
     this.removeFromAnyRoom(client); // 중복 방지
@@ -183,7 +199,7 @@ export class DuelGateway implements OnGatewayDisconnect {
     const password = String(data?.password ?? "").trim().slice(0, 20) || null;
     const room: DuelRoom = {
       id, title, password, hostId: client.id, phase: "waiting",
-      players: [newPlayer(client.id, data?.userId ?? null, this.nick(data?.nickname), Number(data?.characterId) || 1)],
+      players: [newPlayer(client.id, client.data.userId as string, this.nick(data?.nickname), Number(data?.characterId) || 1)],
       turnSocketId: null, turnEndsAt: 0, winnerSocketId: null, log: [], timer: null,
     };
     this.rooms.set(id, room);
@@ -195,7 +211,7 @@ export class DuelGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage("duel:join")
   join(
-    @MessageBody() data: { roomId: string; password?: string; nickname?: string; userId?: string; characterId?: number },
+    @MessageBody() data: { roomId: string; password?: string; nickname?: string; characterId?: number },
     @ConnectedSocket() client: Socket,
   ) {
     const room = this.rooms.get(String(data?.roomId));
@@ -205,7 +221,7 @@ export class DuelGateway implements OnGatewayDisconnect {
       client.emit("duel:error", { msg: "비밀번호가 틀려요" }); return;
     }
     this.removeFromAnyRoom(client);
-    room.players.push(newPlayer(client.id, data?.userId ?? null, this.nick(data?.nickname), Number(data?.characterId) || 1));
+    room.players.push(newPlayer(client.id, client.data.userId as string, this.nick(data?.nickname), Number(data?.characterId) || 1));
     client.join(this.ch(room.id));
     client.emit("duel:self", { socketId: client.id });
     this.broadcastRoom(room);

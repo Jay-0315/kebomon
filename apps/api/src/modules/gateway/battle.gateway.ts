@@ -4,12 +4,14 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayConnection,
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharacterMasterRow, loadCharacterMasterMap } from "../rewards/character-master.util";
+import { JwtStrategy } from "../auth/jwt.strategy";
 
 /** 레어리티 → 주사위 설정 (faces, count) */
 const RARITY_DICE: Record<string, { faces: number; count: number }> = {
@@ -77,14 +79,26 @@ const battles = new Map<string, BattleRoom>(); // socketId → room
   cors: { origin: true, credentials: true },
   path: "/socket.io",
 })
-export class BattleGateway implements OnGatewayDisconnect {
+export class BattleGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
   constructor(
     private readonly rewards: RewardsService,
     private readonly prisma: PrismaService,
+    private readonly jwtStrategy: JwtStrategy,
   ) {}
+
+  handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token as string | undefined;
+    try {
+      if (!token) throw new Error("no token");
+      const payload = this.jwtStrategy.verify(token);
+      client.data.userId = payload.sub;
+    } catch {
+      client.disconnect(true);
+    }
+  }
 
   handleDisconnect(client: Socket) {
     battles.delete(client.id);
@@ -93,7 +107,7 @@ export class BattleGateway implements OnGatewayDisconnect {
   /** 배틀 시작: 코인 던져 선공 결정, 클론 매칭 */
   @SubscribeMessage("battle:start")
   async onStart(
-    @MessageBody() data: { userId: string; characterId: number; nickname: string },
+    @MessageBody() data: { characterId: number; nickname: string },
     @ConnectedSocket() client: Socket,
   ) {
     // 이미 배틀 중이면 기존 방 반환
@@ -102,7 +116,8 @@ export class BattleGateway implements OnGatewayDisconnect {
       return client.emit("battle:state", roomToState(r, client.id));
     }
 
-    const { userId, characterId, nickname } = data;
+    const userId = client.data.userId as string;
+    const { characterId, nickname } = data;
     const masterMap = await loadCharacterMasterMap(this.prisma);
     const rarity = masterMap.get(characterId)?.rarity ?? "common";
 

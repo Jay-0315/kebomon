@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
+import SuspendUserModal from "../components/SuspendUserModal";
 
 type AdminUserRow = {
   id: string;
@@ -9,6 +10,7 @@ type AdminUserRow = {
   role: string;
   status: string;
   suspendedReason: string | null;
+  suspendedUntil: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   reward: RewardSummary;
@@ -30,6 +32,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rewardTarget, setRewardTarget] = useState<AdminUserRow | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<AdminUserRow | null>(null);
 
   async function load() {
     setLoading(true);
@@ -71,25 +74,13 @@ export default function UsersPage() {
     }
   }
 
-  async function toggleStatus(user: AdminUserRow) {
-    if (user.status === "SUSPENDED") {
-      if (!window.confirm(`${user.email}의 정지를 해제할까요?`)) return;
-      try {
-        await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
-        load();
-      } catch {
-        window.alert("정지 해제에 실패했습니다.");
-      }
-      return;
-    }
-
-    const reason = window.prompt(`${user.email}을(를) 정지할 사유를 입력하세요.`);
-    if (!reason) return;
+  async function unsuspend(user: AdminUserRow) {
+    if (!window.confirm(`${user.email}의 정지를 해제할까요?`)) return;
     try {
-      await api.patch(`/admin/users/${user.id}/status`, { status: "SUSPENDED", reason });
+      await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
       load();
     } catch {
-      window.alert("정지 처리에 실패했습니다.");
+      window.alert("정지 해제에 실패했습니다.");
     }
   }
 
@@ -153,8 +144,15 @@ export default function UsersPage() {
                 <td className="px-3 py-2">{u.role}</td>
                 <td className="px-3 py-2">
                   {u.status}
-                  {u.status === "SUSPENDED" && u.suspendedReason && (
-                    <span className="ml-1 text-[var(--fg-faint)]">({u.suspendedReason})</span>
+                  {u.status === "SUSPENDED" && (
+                    <span className="ml-1 text-[var(--fg-faint)]">
+                      (
+                      {u.suspendedUntil
+                        ? `~${new Date(u.suspendedUntil).toLocaleString("ko-KR")}`
+                        : "영구 정지"}
+                      {u.suspendedReason ? ` · ${u.suspendedReason}` : ""}
+                      )
+                    </span>
                   )}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
@@ -172,7 +170,7 @@ export default function UsersPage() {
                       {u.role === "ADMIN" ? "관리자 해제" : "관리자 지정"}
                     </button>
                     <button
-                      onClick={() => toggleStatus(u)}
+                      onClick={() => (u.status === "SUSPENDED" ? unsuspend(u) : setSuspendTarget(u))}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
                       {u.status === "SUSPENDED" ? "정지 해제" : "정지"}
@@ -226,6 +224,15 @@ export default function UsersPage() {
           userLabel={`${rewardTarget.name} (${rewardTarget.email})`}
           current={rewardTarget.reward}
           onClose={() => setRewardTarget(null)}
+          onSaved={load}
+        />
+      )}
+
+      {suspendTarget && (
+        <SuspendUserModal
+          userId={suspendTarget.id}
+          userLabel={`${suspendTarget.name} (${suspendTarget.email})`}
+          onClose={() => setSuspendTarget(null)}
           onSaved={load}
         />
       )}

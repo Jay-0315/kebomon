@@ -182,9 +182,10 @@ export class CommunityService {
     return this.formatPost(post, false);
   }
 
-  async update(id: string, dto: UpdateCommunityPostDto) {
+  async update(id: string, requesterId: string, dto: UpdateCommunityPostDto) {
     const post = await this.prisma.communityPost.findUnique({ where: { id } });
     if (!post) throw new NotFoundException("게시글을 찾을 수 없습니다.");
+    if (post.userId !== requesterId) throw new ForbiddenException("본인 글만 수정할 수 있습니다.");
 
     const updated = await this.prisma.communityPost.update({
       where: { id },
@@ -196,7 +197,7 @@ export class CommunityService {
       include: postInclude as any,
     });
 
-    const likedSet = await this.batchLiked(dto.userId, [id]);
+    const likedSet = await this.batchLiked(requesterId, [id]);
     return this.formatPost(updated, likedSet.has(id));
   }
 
@@ -226,9 +227,10 @@ export class CommunityService {
     return { isLiked: true };
   }
 
-  async remove(id: string) {
+  async remove(id: string, requesterId: string) {
     const post = await this.prisma.communityPost.findUnique({ where: { id } });
     if (!post) throw new NotFoundException("게시글을 찾을 수 없습니다.");
+    if (post.userId !== requesterId) throw new ForbiddenException("본인 글만 삭제할 수 있습니다.");
     await this.prisma.communityPost.delete({ where: { id } });
     return { id };
   }

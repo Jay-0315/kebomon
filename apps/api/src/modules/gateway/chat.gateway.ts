@@ -4,10 +4,12 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayConnection,
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
+import { JwtStrategy } from "../auth/jwt.strategy";
 
 export const CHANNEL_IDS = [1, 2, 3, 4] as const;
 
@@ -69,17 +71,31 @@ const room = (channelId: number) => `chat:${channelId}`;
   cors: { origin: true, credentials: true },
   path: "/socket.io",
 })
-export class ChatGateway implements OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly rewards: RewardsService) {}
+  constructor(
+    private readonly rewards: RewardsService,
+    private readonly jwtStrategy: JwtStrategy,
+  ) {}
 
   private participants = new Map<string, Participant>();
 
+  handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token as string | undefined;
+    try {
+      if (!token) throw new Error("no token");
+      const payload = this.jwtStrategy.verify(token);
+      client.data.userId = payload.sub;
+    } catch {
+      client.disconnect(true);
+    }
+  }
+
   @SubscribeMessage("chat:join")
   handleJoin(
-    @MessageBody() data: { channelId: number; characterId: number; userId?: string; lang?: string },
+    @MessageBody() data: { channelId: number; characterId: number; lang?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const channelId = CHANNEL_IDS.includes(data?.channelId as 1 | 2 | 3 | 4)
@@ -87,8 +103,9 @@ export class ChatGateway implements OnGatewayDisconnect {
       : 1;
     const characterId = Number(data?.characterId) || 1;
 
-    if (data?.userId) {
-      this.rewards.incrementLiveCount(data.userId).catch(() => undefined);
+    const userId = client.data.userId as string | undefined;
+    if (userId) {
+      this.rewards.incrementLiveCount(userId).catch(() => undefined);
     }
 
     // leave previous channel if switching

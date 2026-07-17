@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt.guard";
 import { GuildService } from "./guild.service";
 
 @Controller("guild")
@@ -10,101 +12,129 @@ export class GuildController {
     return this.guildService.listGuilds(search);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get("mine")
-  getMyGuild(@Query("userId") userId: string) {
-    return this.guildService.getMyGuild(userId);
+  getMyGuild(@CurrentUser() user: { sub: string }) {
+    return this.guildService.getMyGuild(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("create")
-  createGuild(@Body() body: { userId: string; name: string; notice?: string; iconId?: string }) {
-    return this.guildService.createGuild(body.userId, body.name, body.notice, body.iconId);
+  createGuild(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { name: string; notice?: string; iconId?: string },
+  ) {
+    return this.guildService.createGuild(user.sub, body.name, body.notice, body.iconId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("leave")
-  leaveGuild(@Body() body: { userId: string }) {
-    return this.guildService.leaveGuild(body.userId);
+  leaveGuild(@CurrentUser() user: { sub: string }) {
+    return this.guildService.leaveGuild(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("disband")
-  disbandGuild(@Body() body: { userId: string }) {
-    return this.guildService.disbandGuild(body.userId);
+  disbandGuild(@CurrentUser() user: { sub: string }) {
+    return this.guildService.disbandGuild(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("transfer-ownership")
-  transferOwnership(@Body() body: { userId: string; targetUserId: string }) {
-    return this.guildService.transferOwnership(body.userId, body.targetUserId);
+  transferOwnership(@CurrentUser() user: { sub: string }, @Body() body: { targetUserId: string }) {
+    return this.guildService.transferOwnership(user.sub, body.targetUserId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("kick")
-  kickMember(@Body() body: { userId: string; targetUserId: string }) {
-    return this.guildService.kickMember(body.userId, body.targetUserId);
+  kickMember(@CurrentUser() user: { sub: string }, @Body() body: { targetUserId: string }) {
+    return this.guildService.kickMember(user.sub, body.targetUserId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch("member-role")
-  setMemberRole(@Body() body: { userId: string; targetUserId: string; role: "officer" | "member" }) {
-    return this.guildService.setMemberRole(body.userId, body.targetUserId, body.role);
+  setMemberRole(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { targetUserId: string; role: "officer" | "member" },
+  ) {
+    return this.guildService.setMemberRole(user.sub, body.targetUserId, body.role);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch("notice")
-  updateNotice(@Body() body: { userId: string; notice: string }) {
-    return this.guildService.updateNotice(body.userId, body.notice);
+  updateNotice(@CurrentUser() user: { sub: string }, @Body() body: { notice: string }) {
+    return this.guildService.updateNotice(user.sub, body.notice);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch("icon")
-  updateIcon(@Body() body: { userId: string; iconId: string }) {
-    return this.guildService.updateIcon(body.userId, body.iconId);
+  updateIcon(@CurrentUser() user: { sub: string }, @Body() body: { iconId: string }) {
+    return this.guildService.updateIcon(user.sub, body.iconId);
   }
 
   // ─── 가입 신청 ──────────────────────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
   @Post("apply")
-  applyToGuild(@Body() body: { userId: string; guildId: string; message?: string }) {
-    return this.guildService.applyToGuild(body.userId, body.guildId, body.message);
+  applyToGuild(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { guildId: string; message?: string },
+  ) {
+    return this.guildService.applyToGuild(user.sub, body.guildId, body.message);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get("applications/mine")
-  listMyApplications(@Query("userId") userId: string) {
-    return this.guildService.listMyApplications(userId);
+  listMyApplications(@CurrentUser() user: { sub: string }) {
+    return this.guildService.listMyApplications(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get("applications")
-  listApplications(@Query("userId") userId: string, @Query("guildId") guildId: string) {
-    return this.guildService.listApplications(userId, guildId);
+  listApplications(@CurrentUser() user: { sub: string }, @Query("guildId") guildId: string) {
+    return this.guildService.listApplications(user.sub, guildId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("applications/:id/approve")
-  approveApplication(@Param("id") id: string, @Body() body: { userId: string }) {
-    return this.guildService.approveApplication(body.userId, id);
+  approveApplication(@CurrentUser() user: { sub: string }, @Param("id") id: string) {
+    return this.guildService.approveApplication(user.sub, id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("applications/:id/reject")
-  rejectApplication(@Param("id") id: string, @Body() body: { userId: string }) {
-    return this.guildService.rejectApplication(body.userId, id);
+  rejectApplication(@CurrentUser() user: { sub: string }, @Param("id") id: string) {
+    return this.guildService.rejectApplication(user.sub, id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete("applications/:id")
-  cancelApplication(@Param("id") id: string, @Query("userId") userId: string) {
-    return this.guildService.cancelApplication(userId, id);
+  cancelApplication(@CurrentUser() user: { sub: string }, @Param("id") id: string) {
+    return this.guildService.cancelApplication(user.sub, id);
   }
 
   // ─── 길드 주간 보스전 ────────────────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
   @Get("boss/state")
-  getBossState(@Query("userId") userId: string) {
-    return this.guildService.getBossState(userId);
+  getBossState(@CurrentUser() user: { sub: string }) {
+    return this.guildService.getBossState(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("boss/attack")
-  attackBoss(@Body() body: { userId: string }) {
-    return this.guildService.attackBoss(body.userId);
+  attackBoss(@CurrentUser() user: { sub: string }) {
+    return this.guildService.attackBoss(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get("raid-deck")
-  getRaidDeck(@Query("userId") userId: string) {
-    return this.guildService.getRaidDeck(userId);
+  getRaidDeck(@CurrentUser() user: { sub: string }) {
+    return this.guildService.getRaidDeck(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put("raid-deck")
-  saveRaidDeck(@Body() body: { userId: string; slots: number[] }) {
-    return this.guildService.saveRaidDeck(body.userId, body.slots);
+  saveRaidDeck(@CurrentUser() user: { sub: string }, @Body() body: { slots: number[] }) {
+    return this.guildService.saveRaidDeck(user.sub, body.slots);
   }
 
   // ─── 길드 게시판 ────────────────────────────────────────────────────────────
@@ -113,8 +143,12 @@ export class GuildController {
     return this.guildService.listBoardPosts(userId, page ? Number(page) : 1);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("board")
-  createBoardPost(@Body() body: { userId: string; content: string; imageUrl?: string }) {
-    return this.guildService.createBoardPost(body.userId, body.content, body.imageUrl);
+  createBoardPost(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { content: string; imageUrl?: string },
+  ) {
+    return this.guildService.createBoardPost(user.sub, body.content, body.imageUrl);
   }
 }

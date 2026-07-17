@@ -16,6 +16,7 @@ import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { SendVerificationDto } from "./dto/send-verification.dto";
 import { SocialLoginDto, SocialProvider } from "./dto/social-login.dto";
 import { SignupDto } from "./dto/signup.dto";
+import { isSuspensionExpired, reactivateIfExpired } from "./suspension.util";
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10분
 
@@ -435,6 +436,7 @@ export class AuthService {
       email: string;
       role: string;
       status?: string;
+      suspendedUntil?: Date | null;
       baseCountryCode: string;
       baseCurrency: string;
       hasPassword?: boolean;
@@ -442,7 +444,16 @@ export class AuthService {
     needsStarterOverride?: boolean,
   ) {
     if (user.status === "SUSPENDED") {
-      throw new UnauthorizedException("정지된 계정입니다. 고객센터로 문의해주세요.");
+      const suspendedUntil = user.suspendedUntil ?? null;
+      if (isSuspensionExpired({ status: user.status, suspendedUntil })) {
+        await reactivateIfExpired(this.prisma, { id: user.id, status: user.status, suspendedUntil });
+      } else if (suspendedUntil) {
+        throw new UnauthorizedException(
+          `정지된 계정입니다. (${suspendedUntil.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}까지 정지)`,
+        );
+      } else {
+        throw new UnauthorizedException("정지된 계정입니다. 고객센터로 문의해주세요.");
+      }
     }
 
     const needsStarter =

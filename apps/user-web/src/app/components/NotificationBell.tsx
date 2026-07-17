@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
-import { getSocket } from "../lib/socket";
+import { getSocket, disconnectSocket, disconnectChatSocket, disconnectRaidSocket, disconnectDuelSocket } from "../lib/socket";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { type TranslationKey } from "../lib/i18n";
@@ -116,8 +116,18 @@ export default function NotificationBell({
       setUnread((c) => c + 1);
     };
     s.on("notification", onNotif);
+    // 관리자가 계정을 정지하면 서버가 이 이벤트를 보냄 — 이미 로그인된 세션도 즉시 로그아웃 처리
+    const onForceLogout = () => {
+      disconnectChatSocket();
+      disconnectRaidSocket();
+      disconnectDuelSocket();
+      disconnectSocket();
+      window.dispatchEvent(new CustomEvent("kebo:auth-expired"));
+    };
+    s.on("force-logout", onForceLogout);
     return () => {
       s.off("notification", onNotif);
+      s.off("force-logout", onForceLogout);
     };
   }, []);
 

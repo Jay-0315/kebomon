@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 import { NotificationGateway } from "./notification.gateway";
+import { AuthModule } from "../auth/auth.module";
 
-/** 의존성 없는 독립 게이트웨이 모듈 (순환 의존 방지용) */
+/** 순환 의존 방지를 위해 AuthModule만 의존 */
 @Module({
+  imports: [AuthModule],
   providers: [NotificationGateway],
   exports: [NotificationGateway],
 })

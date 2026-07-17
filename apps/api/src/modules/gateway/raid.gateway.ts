@@ -4,6 +4,7 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayConnection,
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { OnModuleInit } from "@nestjs/common";
@@ -11,6 +12,7 @@ import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { loadCharacterMasterMap } from "../rewards/character-master.util";
+import { JwtStrategy } from "../auth/jwt.strategy";
 
 export const RAID_TYPES = [1, 5] as const;
 export const MAX_PLAYERS = 5;
@@ -119,14 +121,26 @@ function newRoom(type: number): RaidRoom {
   cors: { origin: true, credentials: true },
   path: "/socket.io",
 })
-export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
+export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   @WebSocketServer()
   server: Server;
 
   constructor(
     private readonly rewards: RewardsService,
     private readonly prisma: PrismaService,
+    private readonly jwtStrategy: JwtStrategy,
   ) {}
+
+  handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token as string | undefined;
+    try {
+      if (!token) throw new Error("no token");
+      const payload = this.jwtStrategy.verify(token);
+      client.data.userId = payload.sub;
+    } catch {
+      client.disconnect(true);
+    }
+  }
 
   private rooms = new Map<number, RaidRoom>();
   private cooldowns = new Map<number, number>();
@@ -147,11 +161,11 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
 
   @SubscribeMessage("raid:join")
   async join(
-    @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string },
+    @MessageBody() data: { raidType: number; characterId: number; nickname?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const type = RAID_TYPES.includes(data?.raidType as 1 | 5) ? data.raidType : 1;
-    const userId = data?.userId ?? null;
+    const userId = client.data.userId as string;
 
     // 쿨다운 체크
     const until = this.cooldowns.get(type) ?? 0;

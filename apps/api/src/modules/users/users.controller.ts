@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { UpdateUserProfileDto } from "./dto/update-user-profile.dto";
@@ -20,24 +20,42 @@ export class UsersController {
     return this.usersService.getPublicProfile(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(":id/profile")
-  updateProfile(@Param("id") id: string, @Body() dto: UpdateUserProfileDto) {
+  updateProfile(
+    @CurrentUser() user: { sub: string },
+    @Param("id") id: string,
+    @Body() dto: UpdateUserProfileDto,
+  ) {
+    if (id !== user.sub) throw new ForbiddenException("본인 계정만 수정할 수 있습니다.");
     return this.usersService.updateProfile(id, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(":id/settings")
-  updateSettings(@Param("id") id: string, @Body() dto: UpdateUserSettingsDto) {
+  updateSettings(
+    @CurrentUser() user: { sub: string },
+    @Param("id") id: string,
+    @Body() dto: UpdateUserSettingsDto,
+  ) {
+    if (id !== user.sub) throw new ForbiddenException("본인 계정만 수정할 수 있습니다.");
     return this.usersService.updateSettings(id, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(":id/photo")
-  updateProfilePhoto(@Param("id") id: string, @Body() body: { photo: string | null }) {
+  updateProfilePhoto(
+    @CurrentUser() user: { sub: string },
+    @Param("id") id: string,
+    @Body() body: { photo: string | null },
+  ) {
+    if (id !== user.sub) throw new ForbiddenException("본인 계정만 수정할 수 있습니다.");
     return this.usersService.updateProfilePhoto(id, body.photo);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
-  deleteUser(@CurrentUser() user: any, @Param("id") id: string) {
+  deleteUser(@CurrentUser() user: { sub: string }, @Param("id") id: string) {
     return this.usersService.deleteUser(user.sub, id);
   }
 }
