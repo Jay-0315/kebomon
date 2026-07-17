@@ -4,6 +4,25 @@ import UserPickerModal, { type PickedUser } from "../components/UserPickerModal"
 
 type SendResult = { sent: number; failed: number; total: number };
 
+const LINK_OPTIONS: { label: string; value: string }[] = [
+  { label: "홈", value: "/" },
+  { label: "커뮤니티", value: "/community" },
+  { label: "출석체크", value: "/attendance" },
+  { label: "마이페이지", value: "/mypage" },
+  { label: "케보몬 도감", value: "/kebomon" },
+  { label: "가챠", value: "/gacha" },
+  { label: "라이브 채팅", value: "/live" },
+  { label: "미션", value: "/mission" },
+  { label: "레이드", value: "/raid" },
+  { label: "콜로세움", value: "/colosseum" },
+  { label: "로그라이크", value: "/rogue" },
+  { label: "듀얼", value: "/duel" },
+  { label: "원정", value: "/expedition" },
+  { label: "길드", value: "/guild" },
+  { label: "상점", value: "/shop" },
+  { label: "설정", value: "/settings" },
+];
+
 export default function NotificationsPage() {
   const [target, setTarget] = useState<"all" | "user">("user");
   const [selectedUsers, setSelectedUsers] = useState<PickedUser[]>([]);
@@ -111,12 +130,18 @@ export default function NotificationsPage() {
         />
 
         <label className="mb-1 block text-xs text-[var(--fg-muted)]">링크 (선택)</label>
-        <input
+        <select
           value={link}
           onChange={(e) => setLink(e.target.value)}
-          placeholder="/community"
-          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
-        />
+          className="mb-4 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
+        >
+          <option value="">링크 없음</option>
+          {LINK_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
 
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
         {result && (
