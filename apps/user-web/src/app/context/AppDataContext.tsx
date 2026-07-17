@@ -59,6 +59,7 @@ interface AppDataContextValue {
   settings: AppSettings;
   posts: CommunityPost[];
   rewardSummary: RewardSummary;
+  characterMasterMap: Record<number, { rarity: string; rogueArchetype: string }>;
   createPost: (draft: CommunityPostDraft) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   togglePostLike: (postId: string) => Promise<void>;
@@ -195,6 +196,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [rewardSummary, setRewardSummary] = useState<RewardSummary>(
     normalizeRewardSummary(undefined),
   );
+  const [characterMasterMap, setCharacterMasterMap] = useState<
+    Record<number, { rarity: string; rogueArchetype: string }>
+  >({});
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     const userId = getStoredUser()?.id;
     return userId ? localStorage.getItem(profilePhotoKey(userId)) : null;
@@ -236,7 +240,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
-    const [profileResult, postsResult, rewardsResult] =
+    const [profileResult, postsResult, rewardsResult, characterMasterResult] =
       await Promise.allSettled([
         api.get<{
           id: string;
@@ -250,6 +254,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }>(`/users/${currentUser.id}/profile`),
         api.get<{ posts: Record<string, unknown>[] }>(`/community/posts?userId=${currentUser.id}`),
         api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`),
+        api.get<Record<number, { rarity: string; rogueArchetype: string }>>("/rewards/character-master"),
       ]);
 
     if (profileResult.status === "rejected") {
@@ -299,6 +304,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setRewardsFailed(false);
     } else {
       setRewardsFailed(true);
+    }
+    if (characterMasterResult.status === "fulfilled") {
+      setCharacterMasterMap(characterMasterResult.value);
     }
     setIsLoading(false);
     setHasInitialized(true);
@@ -690,6 +698,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     settings,
     posts,
     rewardSummary,
+    characterMasterMap,
     createPost,
     deletePost,
     togglePostLike,

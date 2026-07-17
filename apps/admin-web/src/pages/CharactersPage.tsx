@@ -44,8 +44,8 @@ export default function CharactersPage() {
     <div>
       <h1 className="mb-1 text-lg font-semibold">케보몬 관리</h1>
       <p className="mb-4 text-sm text-[var(--fg-faint)]">
-        등급/역할/스탯 배율은 콜로세움·아레나·레이드·가챠에 즉시 반영됩니다.{" "}
-        <span className="text-amber-400">⚠ 로그라이크 역할은 아직 프론트 정적 데이터를 사용해 여기서 바꿔도 실제 게임에는 반영되지 않습니다.</span>
+        등급/역할/스탯 배율은 콜로세움·아레나·레이드·가챠·로그라이크에 즉시 반영됩니다.{" "}
+        <span className="text-amber-400">⚠ 단, 로그라이크 시작 덱(카드 구성)은 캐릭터 타입의 정적 데이터를 그대로 사용해 여기서 타입을 바꿔도 덱 구성에는 반영되지 않습니다.</span>
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -82,7 +82,7 @@ export default function CharactersPage() {
 
       <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-[var(--border)]">
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 bg-[var(--bg-soft)] text-[var(--fg-muted)]">
+          <thead className="sticky top-0 z-10 bg-[var(--bg-elevated)] text-[var(--fg-muted)]">
             <tr>
               <th className="px-3 py-2">ID</th>
               <th className="px-3 py-2">이름</th>

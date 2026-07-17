@@ -96,8 +96,8 @@ const TYPE_ARENA_ARCHETYPE: Record<string, string> = {
   fox:"cursed",   monkey:"cursed", raven:"cursed", snake:"cursed", demon:"cursed",
 };
 
-/** 로그라이크 역할 (type 단위 30→3) — ⚠ 로그라이크는 프론트 정적 데이터를 그대로 쓰므로
- *  이 기본값/DB 값이 실제 게임에는 아직 반영되지 않는다 (admin 화면에 경고 표시) */
+/** 로그라이크 역할 (type 단위 30→3) — 로그라이크 전투는 클라이언트에서 계산하므로
+ *  프론트가 GET /rewards/character-master로 이 값(캐릭터별 override 포함)을 받아서 사용한다. */
 const TYPE_ROGUE_ARCHETYPE: Record<string, string> = {
   cat:"energy", fox:"energy", rabbit:"energy", monkey:"energy", raven:"energy",
   deer:"energy", robot:"energy", slime:"energy", fish:"energy", unicorn:"energy",

@@ -111,7 +111,7 @@ export default function CharacterEditModal({
           </div>
           <div>
             <label className="mb-1 block text-xs text-[var(--fg-muted)]">
-              로그라이크 역할 <span className="text-amber-400">⚠</span>
+              로그라이크 역할
             </label>
             <select
               value={form.rogueArchetype}

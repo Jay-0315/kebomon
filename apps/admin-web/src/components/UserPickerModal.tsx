@@ -82,7 +82,7 @@ export default function UserPickerModal({
 
         <div className="flex-1 overflow-y-auto rounded-lg border border-[var(--border)]">
           <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-[var(--bg-soft)] text-[var(--fg-muted)]">
+            <thead className="sticky top-0 z-10 bg-[var(--bg-elevated)] text-[var(--fg-muted)]">
               <tr>
                 <th className="w-10 px-3 py-2"></th>
                 <th className="px-3 py-2">이름</th>

@@ -10,6 +10,12 @@ export class RewardsController {
     return this.rewardsService.getSummary(userId);
   }
 
+  /** 캐릭터별 등급/로그라이크 역할 (관리자 조정값) — 로그인 불필요 */
+  @Get("character-master")
+  getCharacterMasterPublic() {
+    return this.rewardsService.getCharacterMasterPublic();
+  }
+
   @Post("starter")
   selectStarter(@Body() body: { userId: string; characterId: number }) {
     return this.rewardsService.selectStarter(body.userId, body.characterId);

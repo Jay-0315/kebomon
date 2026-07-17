@@ -1610,4 +1610,19 @@ export class RewardsService {
       this.logger.error(`시즌 ${seasonId} 종료 처리 실패`, err);
     }
   }
+
+  /**
+   * 캐릭터별 등급/로그라이크 역할 (관리자 페이지에서 조정 가능한 값 중 클라이언트가
+   * 필요로 하는 것만 공개) — 로그라이크는 서버 검증 없이 클라이언트가 직접 스탯을
+   * 계산하므로, admin 조정이 실제 게임에 반영되려면 프론트가 정적 데이터 대신
+   * 이 값을 써야 한다. 로그인 불필요, 게임 밸런스 정보라 공개해도 무방.
+   */
+  async getCharacterMasterPublic() {
+    const masterMap = await loadCharacterMasterMap(this.prisma);
+    const result: Record<number, { rarity: string; rogueArchetype: string }> = {};
+    for (const [id, row] of masterMap) {
+      result[id] = { rarity: row.rarity, rogueArchetype: row.rogueArchetype };
+    }
+    return result;
+  }
 }

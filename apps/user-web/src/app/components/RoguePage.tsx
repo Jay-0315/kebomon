@@ -3369,6 +3369,7 @@ function NodeIcon({ type, size = 20 }: { type: NodeType; size?: number }) {
 export default function RoguePage() {
   const {
     rewardSummary,
+    characterMasterMap,
     startGameRun,
     completeRogue,
     submitChallenge,
@@ -3384,6 +3385,11 @@ export default function RoguePage() {
   const equippedId = rewardSummary.equippedCharacterId ?? CHARACTERS[0].id;
   const myChar = CHARACTERS.find((c) => c.id === equippedId) ?? CHARACTERS[0];
   const arch = ARCHETYPE_MAP[myChar.type] ?? "all";
+  // 관리자 페이지에서 조정 가능한 값 — 로드 전이거나 값이 없으면 프론트 정적 데이터로 폴백
+  const myCharRarity: CharacterRarity =
+    (characterMasterMap[myChar.id]?.rarity as CharacterRarity | undefined) ?? myChar.rarity;
+  const myRogueArchetype =
+    characterMasterMap[myChar.id]?.rogueArchetype ?? ROGUE_TYPE_MAP[myChar.type] ?? "energy";
 
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [gs, setGs] = useState<GameState | null>(null);
@@ -3610,10 +3616,9 @@ export default function RoguePage() {
   const startRun = useCallback(
     (mode: RunMode = "story") => {
       void startGameRun(); // 서버에 런 시작 시각 기록 — complete/submit 시 실제 플레이 시간 검증용
-      const maxHp = RARITY_HP[myChar.rarity] ?? 75;
+      const maxHp = RARITY_HP[myCharRarity] ?? 75;
       const deck = makeStarterDeck(myChar.type);
-      const rogueType = ROGUE_TYPE_MAP[myChar.type] ?? "energy";
-      const startEnergy = rogueType === "energy" ? 4 : 3;
+      const startEnergy = myRogueArchetype === "energy" ? 4 : 3;
       const startStrength = 0; // attack type: +1 per battle (applied at each battle start)
       const startShield = 0; // defense type: +5 shield applied at each battle start
       const diff: Difficulty = mode === "challenge" ? "challenge" : difficulty;
@@ -3656,7 +3661,7 @@ export default function RoguePage() {
       setSelIdx(null);
       immortalHeartUsedRef.current = false;
     },
-    [myChar, difficulty, startGameRun],
+    [myChar, myCharRarity, myRogueArchetype, difficulty, startGameRun],
   );
 
   // ── Enter a map node ─────────────────────────────────────────────────────
@@ -3690,9 +3695,9 @@ export default function RoguePage() {
               : null;
           // 전투 시작 패시브
           const attackStrBonus =
-            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+            myRogueArchetype === "attack" ? 1 : 0;
           const isDefenseType =
-            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
+            myRogueArchetype === "defense";
           const battleStartShield =
             (isDefenseType ? prev.shield : 0) +
             (hasRelic(getEffectiveRelics(prev), "iron_flask") ? 5 : 0) +
@@ -3765,9 +3770,9 @@ export default function RoguePage() {
               (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
             const drawn = drawN([], drawPile, [], 5 + extraDraw);
             const attackStrBonus =
-              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+              myRogueArchetype === "attack" ? 1 : 0;
             const isDefenseTypeA =
-              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
+              myRogueArchetype === "defense";
             const battleStartShieldA =
               (isDefenseTypeA ? prev.shield : 0) +
               (hasRelic(getEffectiveRelics(prev), "iron_flask") ? 5 : 0) +
@@ -3849,7 +3854,7 @@ export default function RoguePage() {
       });
       setSelIdx(null);
     },
-    [ko, ja, arch],
+    [ko, ja, arch, myRogueArchetype],
   );
 
   // ── Play a card ──────────────────────────────────────────────────────────
@@ -4165,9 +4170,9 @@ export default function RoguePage() {
               (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
             const chainDrawn = drawN([], chainDrawPile, [], 5 + extraDraw);
             const chainStrBonus =
-              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+              myRogueArchetype === "attack" ? 1 : 0;
             const chainIsDefense =
-              (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
+              myRogueArchetype === "defense";
             return {
               ...prev,
               playerHp: hpAfterKill,
@@ -4285,7 +4290,7 @@ export default function RoguePage() {
       });
       setSelIdx(null);
     },
-    [ko, ja, arch],
+    [ko, ja, arch, myRogueArchetype],
   );
 
   // ── End turn ─────────────────────────────────────────────────────────────
@@ -4379,9 +4384,9 @@ export default function RoguePage() {
             (hasRelic(getEffectiveRelics(prev), "hourglass") ? 2 : 0);
           const chainDrawn = drawN([], chainDrawPile, [], 5 + extraDraw);
           const chainStrBonus =
-            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "attack" ? 1 : 0;
+            myRogueArchetype === "attack" ? 1 : 0;
           const chainIsDefense2 =
-            (ROGUE_TYPE_MAP[myChar.type] ?? "energy") === "defense";
+            myRogueArchetype === "defense";
           return {
             ...prev,
             playerHp: hpAfterKill,
@@ -4669,7 +4674,7 @@ export default function RoguePage() {
       };
     });
     setSelIdx(null);
-  }, [ko, ja, arch]);
+  }, [ko, ja, arch, myRogueArchetype]);
 
   // ── Pick reward ──────────────────────────────────────────────────────────
   const pickReward = useCallback((card: CardDef) => {
@@ -5873,10 +5878,10 @@ export default function RoguePage() {
       mythic: "Mythic",
     };
     const rarityLabel = ko
-      ? RARITY_KO[myChar.rarity]
+      ? RARITY_KO[myCharRarity]
       : ja
-        ? RARITY_JA[myChar.rarity]
-        : RARITY_EN_L[myChar.rarity];
+        ? RARITY_JA[myCharRarity]
+        : RARITY_EN_L[myCharRarity];
     return (
       <>
         <div
@@ -6202,7 +6207,7 @@ export default function RoguePage() {
                             fontWeight: 700,
                           }}
                         >
-                          {RARITY_HP[myChar.rarity] ?? 75}
+                          {RARITY_HP[myCharRarity] ?? 75}
                         </span>
                       </div>
                       <div
@@ -6227,7 +6232,7 @@ export default function RoguePage() {
                         </span>
                       </div>
                       {(() => {
-                        const rt = ROGUE_TYPE_MAP[myChar.type] ?? "energy";
+                        const rt = myRogueArchetype;
                         const tColor =
                           rt === "energy"
                             ? "#38bdf8"
@@ -6324,7 +6329,7 @@ export default function RoguePage() {
                         type={myChar.type}
                         colors={myChar.colors}
                         characterId={myChar.id}
-                        rarity={myChar.rarity}
+                        rarity={myCharRarity}
                         size={72}
                       />
                     </div>
