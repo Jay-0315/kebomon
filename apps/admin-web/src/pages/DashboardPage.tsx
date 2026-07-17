@@ -35,7 +35,8 @@ function formatDate(date: string) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function TrendChart({ title, data, color }: { title: string; data: TrendPoint[]; color: string }) {
+function TrendChart({ id, title, data, color }: { id: string; title: string; data: TrendPoint[]; color: string }) {
+  const gradientId = `fill-${id}`;
   return (
     <div className="rounded-lg border border-[var(--border)] p-4">
       <h3 className="mb-3 text-sm font-semibold">{title}</h3>
@@ -43,7 +44,7 @@ function TrendChart({ title, data, color }: { title: string; data: TrendPoint[];
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
             <defs>
-              <linearGradient id={`fill-${title}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={color} stopOpacity={0.28} />
                 <stop offset="100%" stopColor={color} stopOpacity={0} />
               </linearGradient>
@@ -78,7 +79,7 @@ function TrendChart({ title, data, color }: { title: string; data: TrendPoint[];
               dataKey="count"
               stroke={color}
               strokeWidth={2}
-              fill={`url(#fill-${title})`}
+              fill={`url(#${gradientId})`}
               dot={false}
               activeDot={{ r: 4 }}
             />
@@ -115,8 +116,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TrendChart title="최근 14일 가입 추이" data={data.signupTrend} color="var(--chart-1)" />
-        <TrendChart title="최근 14일 게시글 추이" data={data.postTrend} color="var(--chart-2)" />
+        <TrendChart id="signup" title="최근 14일 가입 추이" data={data.signupTrend} color="var(--chart-1)" />
+        <TrendChart id="posts" title="최근 14일 게시글 추이" data={data.postTrend} color="var(--chart-2)" />
       </div>
     </div>
   );

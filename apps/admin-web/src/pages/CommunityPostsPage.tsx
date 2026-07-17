@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import PostDetailModal, { type PostDetail } from "../components/PostDetailModal";
 
-type PostRow = {
-  id: string;
-  content: string;
-  category: string;
-  likesCount: number;
-  createdAt: string;
-  author: { id: string; name: string; email: string } | null;
-};
+type PostRow = PostDetail;
 
 type PostsResponse = {
   posts: PostRow[];
@@ -23,6 +17,7 @@ export default function CommunityPostsPage() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PostsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<PostRow | null>(null);
 
   async function load() {
     setError(null);
@@ -110,12 +105,20 @@ export default function CommunityPostsPage() {
                   {new Date(p.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-3 py-2">
-                  <button
-                    onClick={() => handleDelete(p)}
-                    className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
-                  >
-                    삭제
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setViewing(p)}
+                      className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
+                    >
+                      상세보기
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p)}
+                      className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -151,6 +154,8 @@ export default function CommunityPostsPage() {
           </button>
         </div>
       )}
+
+      {viewing && <PostDetailModal post={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }

@@ -31,6 +31,7 @@ export class AdminCommunityService {
         id: p.id,
         content: p.content,
         category: p.category,
+        imageUrl: p.imageUrl,
         likesCount: p.likesCount,
         createdAt: p.createdAt,
         author: p.user,
