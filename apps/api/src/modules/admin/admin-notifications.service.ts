@@ -14,9 +14,12 @@ export class AdminNotificationsService {
     let userIds: string[];
 
     if (dto.target === "user") {
-      const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-      if (!user) throw new BadRequestException("해당 이메일의 사용자를 찾을 수 없습니다.");
-      userIds = [user.id];
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: dto.userIds } },
+        select: { id: true },
+      });
+      if (users.length === 0) throw new BadRequestException("선택된 사용자를 찾을 수 없습니다.");
+      userIds = users.map((u) => u.id);
     } else {
       userIds = (await this.prisma.user.findMany({ select: { id: true } })).map((u) => u.id);
     }

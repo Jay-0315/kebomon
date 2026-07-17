@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import UserPickerModal, { type PickedUser } from "../components/UserPickerModal";
 
 type SendResult = { sent: number; failed: number; total: number };
 
 export default function NotificationsPage() {
   const [target, setTarget] = useState<"all" | "user">("user");
-  const [email, setEmail] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState<PickedUser[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [link, setLink] = useState("");
@@ -18,6 +20,10 @@ export default function NotificationsPage() {
     setError(null);
     setResult(null);
 
+    if (target === "user" && selectedUsers.length === 0) {
+      setError("유저를 한 명 이상 선택하세요.");
+      return;
+    }
     if (target === "all" && !window.confirm("전체 회원에게 발송합니다. 계속할까요?")) {
       return;
     }
@@ -26,7 +32,7 @@ export default function NotificationsPage() {
     try {
       const res = await api.post<SendResult>("/admin/notifications", {
         target,
-        email: target === "user" ? email : undefined,
+        userIds: target === "user" ? selectedUsers.map((u) => u.id) : undefined,
         title,
         body,
         link: link || undefined,
@@ -68,15 +74,20 @@ export default function NotificationsPage() {
 
         {target === "user" && (
           <>
-            <label className="mb-1 block text-xs text-[var(--fg-muted)]">유저 이메일</label>
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
-            />
+            <label className="mb-1 block text-xs text-[var(--fg-muted)]">받는 사람</label>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-left text-sm hover:bg-[var(--bg-hover)]"
+            >
+              {selectedUsers.length === 0 ? (
+                <span className="text-[var(--fg-faint)]">클릭해서 유저 선택...</span>
+              ) : selectedUsers.length <= 3 ? (
+                selectedUsers.map((u) => u.name).join(", ")
+              ) : (
+                `${selectedUsers.slice(0, 3).map((u) => u.name).join(", ")} 외 ${selectedUsers.length - 3}명`
+              )}
+            </button>
           </>
         )}
 
@@ -96,7 +107,7 @@ export default function NotificationsPage() {
           rows={4}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
+          className="mb-4 w-full resize-none rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         />
 
         <label className="mb-1 block text-xs text-[var(--fg-muted)]">링크 (선택)</label>
@@ -122,6 +133,17 @@ export default function NotificationsPage() {
           {sending ? "발송 중..." : "발송"}
         </button>
       </form>
+
+      {pickerOpen && (
+        <UserPickerModal
+          initialSelected={selectedUsers}
+          onClose={() => setPickerOpen(false)}
+          onApply={(users) => {
+            setSelectedUsers(users);
+            setPickerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

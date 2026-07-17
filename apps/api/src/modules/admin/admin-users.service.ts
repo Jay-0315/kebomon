@@ -1,5 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { EmailService } from "../auth/email.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
@@ -14,9 +16,21 @@ const rewardSelect = {
   enhancementStones: true,
 } as const;
 
+const REWARD_FIELD_LABELS: Record<keyof typeof rewardSelect, string> = {
+  missionPoints: "KP",
+  normalEggs: "일반 알",
+  bigEggs: "왕알",
+  goldenEggs: "황금 알",
+  enhancementStones: "강화석",
+};
+
 @Injectable()
 export class AdminUsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async findAll(q?: string, role?: string, status?: string, page = 1) {
     const skip = (page - 1) * PAGE_SIZE;
@@ -96,7 +110,10 @@ export class AdminUsersService {
     if (dto.status === "SUSPENDED" && !dto.reason) {
       throw new BadRequestException("정지 사유를 입력해주세요.");
     }
-    const user = await this.prisma.user.findUnique({ where: { id: targetId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      include: { settings: { select: { language: true } } },
+    });
     if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
 
     const updated = await this.prisma.user.update({
@@ -107,6 +124,13 @@ export class AdminUsersService {
       },
       select: { id: true, name: true, email: true, role: true, status: true, suspendedReason: true },
     });
+
+    // 정지된 계정은 로그인이 막혀 인앱 알림을 볼 수 없으므로, 사유는 이메일로만 전달 가능
+    if (dto.status === "SUSPENDED" && dto.reason) {
+      const lang = (user.settings?.language as "ko" | "ja" | "en" | undefined) ?? "ko";
+      void this.emailService.sendSuspensionNotice(user.email, dto.reason, lang).catch(() => undefined);
+    }
+
     return updated;
   }
 
@@ -136,6 +160,24 @@ export class AdminUsersService {
       `[admin] ${requesterId} adjusted reward for ${targetId}${dto.reason ? ` (${dto.reason})` : ""}:`,
       dto,
     );
+
+    const changes = (Object.keys(REWARD_FIELD_LABELS) as (keyof typeof rewardSelect)[])
+      .map((key) => {
+        const delta = next[key] - (current?.[key] ?? 0);
+        return delta !== 0 ? `${REWARD_FIELD_LABELS[key]} ${delta > 0 ? "+" : ""}${delta}` : null;
+      })
+      .filter((s): s is string => s !== null);
+
+    if (changes.length > 0) {
+      void this.notifications
+        .create({
+          userId: targetId,
+          type: "notice",
+          title: "재화 지급/차감 안내",
+          body: changes.join(", ") + (dto.reason ? ` (사유: ${dto.reason})` : ""),
+        })
+        .catch(() => undefined);
+    }
 
     return updated;
   }

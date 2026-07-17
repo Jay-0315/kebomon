@@ -10,6 +10,7 @@ import { OnModuleInit } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { loadCharacterMasterMap } from "../rewards/character-master.util";
 
 export const RAID_TYPES = [1, 5] as const;
 export const MAX_PLAYERS = 5;
@@ -17,50 +18,11 @@ export const RAID_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
 type EggType = "normal" | "big" | "golden";
 
-/** 캐릭터 ID → 레어리티 맵 (가챠+업적+스타터 전체) */
-const CHAR_RARITY: Record<number, string> = {
-  4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
-  11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
-  17:"uncommon",18:"uncommon",19:"uncommon",20:"uncommon",21:"uncommon",
-  22:"uncommon",26:"rare",28:"rare",29:"rare",30:"rare",31:"rare",
-  32:"rare",33:"rare",34:"rare",35:"rare",36:"rare",37:"epic",38:"epic",
-  39:"epic",40:"epic",41:"epic",42:"epic",43:"epic",44:"epic",
-  51:"legendary",52:"legendary",53:"legendary",54:"legendary",55:"legendary",
-  56:"legendary",57:"legendary",58:"legendary",59:"legendary",60:"legendary",
-  61:"legendary",64:"mythic",65:"mythic",66:"mythic",67:"mythic",69:"mythic",
-  71:"mythic",72:"mythic",73:"mythic",74:"common",75:"common",76:"common",
-  83:"mythic",84:"uncommon",90:"uncommon",91:"uncommon",96:"rare",99:"epic",
-  104:"rare",105:"uncommon",116:"common",117:"rare",120:"epic",121:"epic",
-  125:"common",127:"common",128:"uncommon",129:"rare",131:"epic",132:"uncommon",
-  135:"legendary",136:"epic",137:"legendary",139:"common",140:"common",
-  141:"common",144:"uncommon",150:"mythic",152:"common",153:"uncommon",
-  154:"legendary",155:"common",156:"common",158:"mythic",159:"common",
-  160:"uncommon",161:"uncommon",163:"rare",169:"rare",172:"mythic",
-  173:"rare",174:"common",176:"common",177:"uncommon",178:"rare",179:"rare",
-  180:"epic",191:"legendary",193:"mythic",194:"rare",204:"mythic",205:"common",
-  206:"epic",208:"mythic",216:"legendary",220:"epic",221:"uncommon",
-  232:"legendary",233:"legendary",235:"mythic",238:"epic",239:"mythic",
-  240:"rare",241:"epic",242:"legendary",243:"mythic",252:"epic",
-  253:"legendary",254:"epic",255:"mythic",258:"common",259:"uncommon",
-  260:"rare",267:"legendary",268:"mythic",271:"rare",272:"epic",
-  273:"legendary",274:"mythic",275:"common",276:"uncommon",277:"rare",
-  278:"epic",287:"rare",288:"epic",290:"legendary",291:"mythic",292:"common",
-  293:"epic",294:"uncommon",304:"uncommon",305:"rare",306:"epic",
-  307:"legendary",308:"legendary",309:"mythic",313:"epic",322:"uncommon",
-  323:"rare",324:"epic",331:"legendary",332:"mythic",333:"common",335:"rare",
-  336:"mythic",337:"epic",338:"legendary",339:"mythic",344:"mythic",
-  349:"legendary",350:"mythic",351:"common",352:"uncommon",355:"uncommon",
-  372:"epic",373:"legendary",375:"mythic",377:"uncommon",378:"rare",
-  388:"epic",389:"legendary",390:"mythic",391:"common",392:"uncommon",
-  393:"rare",
-};
-
-/** 레어리티 → 레이드 데미지 */
-function rarityDamage(charId: number): number {
-  const r = CHAR_RARITY[charId] ?? "common";
-  if (r === "mythic") return 4;
-  if (r === "legendary") return 3;
-  if (r === "rare" || r === "epic") return 2;
+/** 레어리티 → 레이드 데미지 (rarity는 join 시 캐릭터 마스터에서 한 번 조회해 캐싱한 값) */
+function rarityDamage(rarity: string): number {
+  if (rarity === "mythic") return 4;
+  if (rarity === "legendary") return 3;
+  if (rarity === "rare" || rarity === "epic") return 2;
   return 1; // common, uncommon
 }
 
@@ -112,6 +74,7 @@ const nick = () => `${ADJ[(Math.random() * ADJ.length) | 0]} ${ANI[(Math.random(
 interface Player {
   socketId: string;
   characterId: number;
+  rarity: string;
   nickname: string;
   raidType: number;
   userId: string | null;
@@ -183,7 +146,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
   }
 
   @SubscribeMessage("raid:join")
-  join(
+  async join(
     @MessageBody() data: { raidType: number; characterId: number; userId?: string; nickname?: string },
     @ConnectedSocket() client: Socket,
   ) {
@@ -219,9 +182,12 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (userId) this.getBans(type).add(userId);
 
     const nickname = (data?.nickname ?? "").trim() || nick();
+    const characterId = Number(data?.characterId) || 1;
+    const masterMap = await loadCharacterMasterMap(this.prisma);
     r.players.set(client.id, {
       socketId: client.id,
-      characterId: Number(data?.characterId) || 1,
+      characterId,
+      rarity: masterMap.get(characterId)?.rarity ?? "common",
       nickname,
       raidType: type,
       userId,
@@ -255,7 +221,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (!player || player.raidType !== 5) return;
     const r = this.getRoom(5);
     if (r.cleared) return;
-    const dmg = rarityDamage(player.characterId);
+    const dmg = rarityDamage(player.rarity);
     r.progress += dmg;
     player.damage += dmg;
     this.applyProgress(r, 5, player.nickname, dmg);
@@ -267,7 +233,7 @@ export class RaidGateway implements OnGatewayDisconnect, OnModuleInit {
     if (!player || player.raidType !== 1) return;
     const r = this.getRoom(1);
     if (r.cleared) return;
-    const dmg = rarityDamage(player.characterId);
+    const dmg = rarityDamage(player.rarity);
     r.progress += dmg;
     player.damage += dmg;
     this.applyProgress(r, 1, player.nickname, dmg);

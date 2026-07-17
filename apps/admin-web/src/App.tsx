@@ -10,6 +10,7 @@ import GachaConfigPage from "./pages/GachaConfigPage";
 import BattlesPage from "./pages/BattlesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import GuildsPage from "./pages/GuildsPage";
+import CharactersPage from "./pages/CharactersPage";
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/battles" element={<BattlesPage />} />
           <Route path="/guilds" element={<GuildsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/characters" element={<CharactersPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

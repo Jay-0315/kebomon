@@ -3,6 +3,8 @@ import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { AdminBattlesController } from "./admin-battles.controller";
 import { AdminBattlesService } from "./admin-battles.service";
+import { AdminCharactersController } from "./admin-characters.controller";
+import { AdminCharactersService } from "./admin-characters.service";
 import { AdminCommunityController } from "./admin-community.controller";
 import { AdminCommunityService } from "./admin-community.service";
 import { AdminDashboardController } from "./admin-dashboard.controller";
@@ -26,6 +28,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminNotificationsController,
     AdminGuildsController,
     AdminDashboardController,
+    AdminCharactersController,
   ],
   providers: [
     AdminUsersService,
@@ -35,6 +38,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminNotificationsService,
     AdminGuildsService,
     AdminDashboardService,
+    AdminCharactersService,
   ],
 })
 export class AdminModule {}

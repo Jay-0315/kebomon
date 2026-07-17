@@ -1,12 +1,15 @@
-import { IsEmail, IsIn, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
+import { ArrayMinSize, ArrayNotEmpty, IsArray, IsIn, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
 
 export class SendNotificationDto {
   @IsIn(["all", "user"])
   target!: "all" | "user";
 
   @ValidateIf((o) => o.target === "user")
-  @IsEmail()
-  email?: string;
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  userIds?: string[];
 
   @IsString()
   @MaxLength(120)

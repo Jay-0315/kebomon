@@ -217,3 +217,18 @@ CREATE TABLE IF NOT EXISTS gacha_config (
   pity_legendary_threshold INT      NOT NULL DEFAULT 79,
   updated_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- 캐릭터(케보몬) 마스터 데이터 — 관리자 페이지에서 편집. id는 기존 characterId 값 그대로 사용.
+-- 행이 없는 캐릭터는 서비스 코드가 기존 하드코딩 기본값으로 폴백한다.
+CREATE TABLE IF NOT EXISTS character_master (
+  id               INT      NOT NULL PRIMARY KEY,
+  type             VARCHAR(20) NOT NULL,
+  rarity           VARCHAR(12) NOT NULL,
+  arena_archetype  VARCHAR(12) NOT NULL,
+  rogue_archetype  VARCHAR(12) NOT NULL,
+  hp_mult          FLOAT    NOT NULL DEFAULT 1,
+  atk_mult         FLOAT    NOT NULL DEFAULT 1,
+  def_mult         FLOAT    NOT NULL DEFAULT 1,
+  spd_mult         FLOAT    NOT NULL DEFAULT 1,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

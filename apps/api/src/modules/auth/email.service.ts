@@ -36,6 +36,16 @@ export class EmailService {
     await this.send(email, content.subject, this.buildCodeEmail(code, content.title, content.desc, content.validity, content.ignore, content.service));
   }
 
+  async sendSuspensionNotice(email: string, reason: string, lang: "ko" | "ja" | "en" = "ko"): Promise<void> {
+    const content = {
+      ko: { subject: "[Kebo] 계정이 정지되었습니다", title: "계정 정지 안내", desc: "회원님의 계정이 아래 사유로 정지되었습니다.", footer: "정지 조치에 이의가 있으시면 고객센터로 문의해주세요.", service: "커뮤니티 서비스", reasonLabel: "정지 사유" },
+      ja: { subject: "[Kebo] アカウントが停止されました", title: "アカウント停止のお知らせ", desc: "会員様のアカウントが以下の理由により停止されました。", footer: "停止措置に異議がある場合はカスタマーセンターまでお問い合わせください。", service: "コミュニティサービス", reasonLabel: "停止理由" },
+      en: { subject: "[Kebo] Your account has been suspended", title: "Account Suspended", desc: "Your account has been suspended for the following reason.", footer: "If you believe this is a mistake, please contact support.", service: "Community Service", reasonLabel: "Reason" },
+    }[lang];
+
+    await this.send(email, content.subject, this.buildNoticeEmail(content.title, content.desc, content.reasonLabel, reason, content.footer, content.service));
+  }
+
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY 미설정 — 메일 발송 스킵 (to: ${to})`);
@@ -115,6 +125,52 @@ export class EmailService {
         <tr>
           <td style="padding:20px 40px;border-top:1px solid #2a2a2a;text-align:center;">
             <p style="margin:0;font-size:12px;color:#555;">${ignore}</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
+
+  private escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  private buildNoticeEmail(title: string, desc: string, reasonLabel: string, reason: string, footer: string, service: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 0;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:12px;border:1px solid #2a2a2a;overflow:hidden;">
+        <tr>
+          <td style="padding:32px 40px 24px;border-bottom:1px solid #2a2a2a;">
+            <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Kebo</div>
+            <div style="font-size:13px;color:#888;margin-top:4px;">${service}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;">
+            <h2 style="margin:0 0 8px;font-size:18px;color:#ffffff;">${title}</h2>
+            <p style="margin:0 0 20px;font-size:14px;color:#aaa;line-height:1.6;">${desc}</p>
+            <div style="background:#0f0f0f;border:1px solid #333;border-radius:8px;padding:20px;">
+              <div style="font-size:12px;color:#888;margin-bottom:6px;">${reasonLabel}</div>
+              <div style="font-size:15px;color:#f5f5f5;line-height:1.6;">${this.escapeHtml(reason)}</div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;border-top:1px solid #2a2a2a;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#555;">${footer}</p>
           </td>
         </tr>
       </table>

@@ -188,3 +188,20 @@ VALUES (
   79
 )
 ON DUPLICATE KEY UPDATE id = id;
+
+-- ============================================================
+-- Migration: Add character_master (관리자 페이지 - 케보몬 스탯/역할 관리)
+-- Applied: 2026-07-17
+-- ============================================================
+CREATE TABLE IF NOT EXISTS character_master (
+  id               INT      NOT NULL PRIMARY KEY,
+  type             VARCHAR(20) NOT NULL,
+  rarity           VARCHAR(12) NOT NULL,
+  arena_archetype  VARCHAR(12) NOT NULL,
+  rogue_archetype  VARCHAR(12) NOT NULL,
+  hp_mult          FLOAT    NOT NULL DEFAULT 1,
+  atk_mult         FLOAT    NOT NULL DEFAULT 1,
+  def_mult         FLOAT    NOT NULL DEFAULT 1,
+  spd_mult         FLOAT    NOT NULL DEFAULT 1,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

@@ -9,6 +9,7 @@ import {
 import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { CharacterMasterRow, loadCharacterMasterMap } from "../rewards/character-master.util";
 
 /** 레어리티 → 주사위 설정 (faces, count) */
 const RARITY_DICE: Record<string, { faces: number; count: number }> = {
@@ -18,43 +19,6 @@ const RARITY_DICE: Record<string, { faces: number; count: number }> = {
   epic:       { faces: 12, count: 1 },
   legendary:  { faces: 6,  count: 2 },
   mythic:     { faces: 8,  count: 2 },
-};
-
-const CHAR_RARITY: Record<number, string> = {
-  4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
-  11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
-  17:"uncommon",18:"uncommon",19:"uncommon",20:"uncommon",21:"uncommon",
-  22:"uncommon",26:"rare",28:"rare",29:"rare",30:"rare",31:"rare",
-  32:"rare",33:"rare",34:"rare",35:"rare",36:"rare",37:"epic",38:"epic",
-  39:"epic",40:"epic",41:"epic",42:"epic",43:"epic",44:"epic",
-  51:"legendary",52:"legendary",53:"legendary",54:"legendary",55:"legendary",
-  56:"legendary",57:"legendary",58:"legendary",59:"legendary",60:"legendary",
-  61:"legendary",64:"mythic",65:"mythic",66:"mythic",67:"mythic",69:"mythic",
-  71:"mythic",72:"mythic",73:"mythic",74:"common",75:"common",76:"common",
-  83:"mythic",84:"uncommon",90:"uncommon",91:"uncommon",96:"rare",99:"epic",
-  104:"rare",105:"uncommon",116:"common",117:"rare",120:"epic",121:"epic",
-  125:"common",127:"common",128:"uncommon",129:"rare",131:"epic",132:"uncommon",
-  135:"legendary",136:"epic",137:"legendary",139:"common",140:"common",
-  141:"common",144:"uncommon",150:"mythic",152:"common",153:"uncommon",
-  154:"legendary",155:"common",156:"common",158:"mythic",159:"common",
-  160:"uncommon",161:"uncommon",163:"rare",169:"rare",172:"mythic",
-  173:"rare",174:"common",176:"common",177:"uncommon",178:"rare",179:"rare",
-  180:"epic",191:"legendary",193:"mythic",194:"rare",204:"mythic",205:"common",
-  206:"epic",208:"mythic",216:"legendary",220:"epic",221:"uncommon",
-  232:"legendary",233:"legendary",235:"mythic",238:"epic",239:"mythic",
-  240:"rare",241:"epic",242:"legendary",243:"mythic",252:"epic",
-  253:"legendary",254:"epic",255:"mythic",258:"common",259:"uncommon",
-  260:"rare",267:"legendary",268:"mythic",271:"rare",272:"epic",
-  273:"legendary",274:"mythic",275:"common",276:"uncommon",277:"rare",
-  278:"epic",287:"rare",288:"epic",290:"legendary",291:"mythic",292:"common",
-  293:"epic",294:"uncommon",304:"uncommon",305:"rare",306:"epic",
-  307:"legendary",308:"legendary",309:"mythic",313:"epic",322:"uncommon",
-  323:"rare",324:"epic",331:"legendary",332:"mythic",333:"common",335:"rare",
-  336:"mythic",337:"epic",338:"legendary",339:"mythic",344:"mythic",
-  349:"legendary",350:"mythic",351:"common",352:"uncommon",355:"uncommon",
-  372:"epic",373:"legendary",375:"mythic",377:"uncommon",378:"rare",
-  388:"epic",389:"legendary",390:"mythic",391:"common",392:"uncommon",
-  393:"rare",
 };
 
 /** 강화 레벨 → 최소 주사위 값 */
@@ -139,7 +103,8 @@ export class BattleGateway implements OnGatewayDisconnect {
     }
 
     const { userId, characterId, nickname } = data;
-    const rarity = CHAR_RARITY[characterId] ?? "common";
+    const masterMap = await loadCharacterMasterMap(this.prisma);
+    const rarity = masterMap.get(characterId)?.rarity ?? "common";
 
     // 플레이어 강화 레벨 조회
     let enhancementLevel = 0;
@@ -152,7 +117,7 @@ export class BattleGateway implements OnGatewayDisconnect {
     } catch { /* silent */ }
 
     // 랜덤 클론 상대 선택
-    const opponent = await this.pickOpponent(userId);
+    const opponent = await this.pickOpponent(userId, masterMap);
 
     // 동전 던지기: true = player 선공
     const playerGoesFirst = Math.random() < 0.5;
@@ -275,7 +240,7 @@ export class BattleGateway implements OnGatewayDisconnect {
   }
 
   /** 유저 클론 상대 선택: 0~2999점은 전체 유저 랜덤, 3000점 이상은 유사 점수대 */
-  private async pickOpponent(excludeUserId: string): Promise<Fighter> {
+  private async pickOpponent(excludeUserId: string, masterMap: Map<number, CharacterMasterRow>): Promise<Fighter> {
     const playerStats = await this.prisma.battleStats.findUnique({
       where: { userId: excludeUserId },
       select: { tierPoints: true },
@@ -314,7 +279,7 @@ export class BattleGateway implements OnGatewayDisconnect {
           userId: picked.id,
           nickname: `${picked.name ?? "유저"} (클론)`,
           characterId: charId,
-          rarity: CHAR_RARITY[charId] ?? "common",
+          rarity: masterMap.get(charId)?.rarity ?? "common",
           hp: MAX_HP,
           isPlayer: false,
           enhancementLevel,
@@ -322,13 +287,13 @@ export class BattleGateway implements OnGatewayDisconnect {
       }
 
       // 장착 캐릭터가 있는 유저 없으면 폴백
-      const allCharIds = Object.keys(CHAR_RARITY).map(Number);
+      const allCharIds = Array.from(masterMap.keys());
       const fallbackCharId = allCharIds[Math.floor(Math.random() * allCharIds.length)];
       return {
         userId: "clone",
         nickname: "케보몬 클론",
         characterId: fallbackCharId,
-        rarity: CHAR_RARITY[fallbackCharId] ?? "common",
+        rarity: masterMap.get(fallbackCharId)?.rarity ?? "common",
         hp: MAX_HP,
         isPlayer: false,
         enhancementLevel: 0,
@@ -365,13 +330,13 @@ export class BattleGateway implements OnGatewayDisconnect {
 
     // 매칭 유저 없으면 도감 캐릭터 클론으로 폴백
     if (rows.length === 0) {
-      const allCharIds = Object.keys(CHAR_RARITY).map(Number);
+      const allCharIds = Array.from(masterMap.keys());
       const fallbackCharId = allCharIds[Math.floor(Math.random() * allCharIds.length)];
       return {
         userId: "clone",
         nickname: "케보몬 클론",
         characterId: fallbackCharId,
-        rarity: CHAR_RARITY[fallbackCharId] ?? "common",
+        rarity: masterMap.get(fallbackCharId)?.rarity ?? "common",
         hp: MAX_HP,
         isPlayer: false,
         enhancementLevel: 0,
@@ -394,7 +359,7 @@ export class BattleGateway implements OnGatewayDisconnect {
       userId: row.userId,
       nickname: `${row.user.name ?? "유저"} (클론)`,
       characterId: charId,
-      rarity: CHAR_RARITY[charId] ?? "common",
+      rarity: masterMap.get(charId)?.rarity ?? "common",
       hp: MAX_HP,
       isPlayer: false,
       enhancementLevel,

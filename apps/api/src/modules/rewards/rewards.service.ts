@@ -15,6 +15,7 @@ import {
   rollExpeditionRiskyMult,
 } from "./expedition.constants";
 import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
+import { CharacterMasterRow, loadCharacterMasterMap } from "./character-master.util";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   // 기존 칭호
@@ -80,62 +81,21 @@ const RARITY_DUPLICATE_POINTS: Record<string, number> = {
   mythic: 120,
 };
 
-// Gacha pool: characterId → rarity (140 gacha characters, synced with client characters.ts)
-const GACHA_POOL: { id: number; rarity: string }[] = [
+// 가챠로 뽑힐 수 있는 캐릭터 ID 목록(140종, 스타터/업적 전용 40종 제외) — 등급 정보는
+// character-master.util의 마스터 맵에서 조회한다 (예전엔 여기 rarity를 직접 들고 있었음)
+const GACHA_POOL_IDS: number[] = [
   // Common (20)
-  { id: 75, rarity: "common" }, { id: 76, rarity: "common" }, { id: 116, rarity: "common" },
-  { id: 125, rarity: "common" }, { id: 127, rarity: "common" }, { id: 139, rarity: "common" },
-  { id: 140, rarity: "common" }, { id: 152, rarity: "common" }, { id: 155, rarity: "common" },
-  { id: 156, rarity: "common" }, { id: 159, rarity: "common" }, { id: 174, rarity: "common" },
-  { id: 176, rarity: "common" }, { id: 205, rarity: "common" }, { id: 258, rarity: "common" },
-  { id: 275, rarity: "common" }, { id: 292, rarity: "common" }, { id: 333, rarity: "common" },
-  { id: 351, rarity: "common" }, { id: 391, rarity: "common" },
+  75, 76, 116, 125, 127, 139, 140, 152, 155, 156, 159, 174, 176, 205, 258, 275, 292, 333, 351, 391,
   // Uncommon (23)
-  { id: 13, rarity: "uncommon" }, { id: 14, rarity: "uncommon" }, { id: 84, rarity: "uncommon" },
-  { id: 90, rarity: "uncommon" }, { id: 91, rarity: "uncommon" }, { id: 105, rarity: "uncommon" },
-  { id: 128, rarity: "uncommon" }, { id: 132, rarity: "uncommon" }, { id: 144, rarity: "uncommon" },
-  { id: 153, rarity: "uncommon" }, { id: 160, rarity: "uncommon" }, { id: 161, rarity: "uncommon" },
-  { id: 177, rarity: "uncommon" }, { id: 221, rarity: "uncommon" }, { id: 259, rarity: "uncommon" },
-  { id: 276, rarity: "uncommon" }, { id: 294, rarity: "uncommon" }, { id: 304, rarity: "uncommon" },
-  { id: 322, rarity: "uncommon" }, { id: 352, rarity: "uncommon" }, { id: 355, rarity: "uncommon" },
-  { id: 377, rarity: "uncommon" }, { id: 392, rarity: "uncommon" },
+  13, 14, 84, 90, 91, 105, 128, 132, 144, 153, 160, 161, 177, 221, 259, 276, 294, 304, 322, 352, 355, 377, 392,
   // Rare (24)
-  { id: 26, rarity: "rare" }, { id: 28, rarity: "rare" }, { id: 29, rarity: "rare" },
-  { id: 30, rarity: "rare" }, { id: 96, rarity: "rare" }, { id: 104, rarity: "rare" },
-  { id: 117, rarity: "rare" }, { id: 129, rarity: "rare" }, { id: 163, rarity: "rare" },
-  { id: 169, rarity: "rare" }, { id: 173, rarity: "rare" }, { id: 178, rarity: "rare" },
-  { id: 179, rarity: "rare" }, { id: 194, rarity: "rare" }, { id: 240, rarity: "rare" },
-  { id: 260, rarity: "rare" }, { id: 271, rarity: "rare" }, { id: 277, rarity: "rare" },
-  { id: 287, rarity: "rare" }, { id: 305, rarity: "rare" }, { id: 323, rarity: "rare" },
-  { id: 335, rarity: "rare" }, { id: 378, rarity: "rare" }, { id: 393, rarity: "rare" },
+  26, 28, 29, 30, 96, 104, 117, 129, 163, 169, 173, 178, 179, 194, 240, 260, 271, 277, 287, 305, 323, 335, 378, 393,
   // Epic (26)
-  { id: 41, rarity: "epic" }, { id: 42, rarity: "epic" }, { id: 43, rarity: "epic" },
-  { id: 44, rarity: "epic" }, { id: 99, rarity: "epic" }, { id: 120, rarity: "epic" },
-  { id: 121, rarity: "epic" }, { id: 131, rarity: "epic" }, { id: 136, rarity: "epic" },
-  { id: 180, rarity: "epic" }, { id: 206, rarity: "epic" }, { id: 220, rarity: "epic" },
-  { id: 238, rarity: "epic" }, { id: 241, rarity: "epic" }, { id: 252, rarity: "epic" },
-  { id: 254, rarity: "epic" }, { id: 272, rarity: "epic" }, { id: 278, rarity: "epic" },
-  { id: 288, rarity: "epic" }, { id: 293, rarity: "epic" }, { id: 306, rarity: "epic" },
-  { id: 313, rarity: "epic" }, { id: 324, rarity: "epic" }, { id: 337, rarity: "epic" },
-  { id: 372, rarity: "epic" }, { id: 388, rarity: "epic" },
+  41, 42, 43, 44, 99, 120, 121, 131, 136, 180, 206, 220, 238, 241, 252, 254, 272, 278, 288, 293, 306, 313, 324, 337, 372, 388,
   // Legendary (20)
-  { id: 61, rarity: "legendary" }, { id: 135, rarity: "legendary" }, { id: 137, rarity: "legendary" },
-  { id: 154, rarity: "legendary" }, { id: 191, rarity: "legendary" }, { id: 216, rarity: "legendary" },
-  { id: 232, rarity: "legendary" }, { id: 233, rarity: "legendary" }, { id: 242, rarity: "legendary" },
-  { id: 253, rarity: "legendary" }, { id: 267, rarity: "legendary" }, { id: 273, rarity: "legendary" },
-  { id: 290, rarity: "legendary" }, { id: 307, rarity: "legendary" }, { id: 308, rarity: "legendary" },
-  { id: 331, rarity: "legendary" }, { id: 338, rarity: "legendary" }, { id: 349, rarity: "legendary" },
-  { id: 373, rarity: "legendary" }, { id: 389, rarity: "legendary" },
+  61, 135, 137, 154, 191, 216, 232, 233, 242, 253, 267, 273, 290, 307, 308, 331, 338, 349, 373, 389,
   // Mythic (27)
-  { id: 64, rarity: "mythic" }, { id: 65, rarity: "mythic" }, { id: 66, rarity: "mythic" },
-  { id: 67, rarity: "mythic" }, { id: 69, rarity: "mythic" }, { id: 83, rarity: "mythic" },
-  { id: 150, rarity: "mythic" }, { id: 158, rarity: "mythic" }, { id: 172, rarity: "mythic" },
-  { id: 193, rarity: "mythic" }, { id: 204, rarity: "mythic" }, { id: 208, rarity: "mythic" },
-  { id: 235, rarity: "mythic" }, { id: 239, rarity: "mythic" }, { id: 243, rarity: "mythic" },
-  { id: 255, rarity: "mythic" }, { id: 268, rarity: "mythic" }, { id: 274, rarity: "mythic" },
-  { id: 291, rarity: "mythic" }, { id: 309, rarity: "mythic" }, { id: 332, rarity: "mythic" },
-  { id: 336, rarity: "mythic" }, { id: 339, rarity: "mythic" }, { id: 344, rarity: "mythic" },
-  { id: 350, rarity: "mythic" }, { id: 375, rarity: "mythic" }, { id: 390, rarity: "mythic" },
+  64, 65, 66, 67, 69, 83, 150, 158, 172, 193, 204, 208, 235, 239, 243, 255, 268, 274, 291, 309, 332, 336, 339, 344, 350, 375, 390,
 ];
 
 const GACHA_COST_SINGLE = 120;
@@ -316,9 +276,10 @@ function weightedRandom(weights: Record<string, number>): string {
   return Object.keys(weights)[Object.keys(weights).length - 1];
 }
 
-function pickFromPool(rarity: string): { id: number; rarity: string } {
-  const pool = GACHA_POOL.filter((c) => c.rarity === rarity);
-  return pool[Math.floor(Math.random() * pool.length)];
+function pickFromPool(rarity: string, masterMap: Map<number, CharacterMasterRow>): { id: number; rarity: string } {
+  const pool = GACHA_POOL_IDS.filter((id) => (masterMap.get(id)?.rarity ?? "common") === rarity);
+  const id = pool[Math.floor(Math.random() * pool.length)];
+  return { id, rarity };
 }
 
 function eggDelta(eggType: EggType, delta: number) {
@@ -486,8 +447,9 @@ export class RewardsService {
     if (owned.length !== uniqueParty.length) {
       throw new BadRequestException("보유하지 않은 케보몬이 포함되어 있습니다.");
     }
+    const masterMap = await loadCharacterMasterMap(this.prisma);
     for (const id of uniqueParty) {
-      if (!rarityAtLeast(this.getCharRarity(id), region.minRarity)) {
+      if (!rarityAtLeast(masterMap.get(id)?.rarity ?? "common", region.minRarity)) {
         throw new BadRequestException("등급 조건을 만족하지 않는 케보몬이 있습니다.");
       }
     }
@@ -878,23 +840,6 @@ export class RewardsService {
   };
   private static readonly ENHANCE_RATES = [1.0, 0.9, 0.8, 0.6, 0.4, 0.2]; // +1 ~ +6
 
-  private getCharRarity(characterId: number): string {
-    const g = GACHA_POOL.find((c) => c.id === characterId);
-    if (g) return g.rarity;
-    // 스타터 + 업적 캐릭터 최소 커버
-    const special: Record<number, string> = {
-      4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
-      11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
-      17:"uncommon",18:"uncommon",19:"uncommon",20:"uncommon",21:"uncommon",
-      22:"uncommon",26:"rare",28:"rare",29:"rare",30:"rare",31:"rare",
-      32:"rare",33:"rare",34:"rare",35:"rare",36:"rare",37:"epic",38:"epic",
-      39:"epic",40:"epic",51:"legendary",52:"legendary",53:"legendary",
-      54:"legendary",55:"legendary",56:"legendary",57:"legendary",58:"legendary",
-      59:"legendary",60:"legendary",61:"legendary",141:"common",
-    };
-    return special[characterId] ?? "common";
-  }
-
   async enhanceCharacter(userId: string, characterId: number) {
     const reward = await this.getOrCreateReward(userId);
     const charRecord = await this.prisma.userCharacter.findUnique({
@@ -902,7 +847,8 @@ export class RewardsService {
     });
     if (!charRecord) throw new BadRequestException("해당 캐릭터를 보유하고 있지 않습니다.");
 
-    const rarity   = this.getCharRarity(characterId);
+    const masterMap = await loadCharacterMasterMap(this.prisma);
+    const rarity   = masterMap.get(characterId)?.rarity ?? "common";
     const maxLevel = RewardsService.MAX_ENHANCE[rarity] ?? 3;
     if (charRecord.enhancementLevel >= maxLevel) throw new BadRequestException("최대 강화 단계입니다.");
 
@@ -1029,8 +975,9 @@ export class RewardsService {
     }
 
     const config = await resolveGachaConfig(this.prisma);
+    const masterMap = await loadCharacterMasterMap(this.prisma);
     const rarity = weightedRandom(eggRatesFor(config, eggType));
-    const pick = pickFromPool(rarity);
+    const pick = pickFromPool(rarity, masterMap);
 
     const owned = await this.prisma.userCharacter.findUnique({
       where: { userId_characterId: { userId, characterId: pick.id } },
@@ -1076,6 +1023,7 @@ export class RewardsService {
     });
     const ownedSet = new Set(owned.map((c) => c.characterId));
     const config = await resolveGachaConfig(this.prisma);
+    const masterMap = await loadCharacterMasterMap(this.prisma);
     const eggRates = eggRatesFor(config, eggType);
 
     const results: { eggType: EggType; characterId: number; rarity: string; isDuplicate: boolean; points: number }[] = [];
@@ -1084,7 +1032,7 @@ export class RewardsService {
 
     for (let i = 0; i < count; i++) {
       const rarity = weightedRandom(eggRates);
-      const pick = pickFromPool(rarity);
+      const pick = pickFromPool(rarity, masterMap);
       const isDuplicate = ownedSet.has(pick.id);
       const dupPoints = isDuplicate ? (RARITY_DUPLICATE_POINTS[pick.rarity] ?? 0) : 0;
 
@@ -1126,6 +1074,7 @@ export class RewardsService {
     });
     const ownedSet = new Set(owned.map((c) => c.characterId));
     const config = await resolveGachaConfig(this.prisma);
+    const masterMap = await loadCharacterMasterMap(this.prisma);
 
     const results: {
       characterId: number;
@@ -1149,7 +1098,7 @@ export class RewardsService {
       const forceLegendary = legendaryPity >= config.pityLegendaryThreshold;
 
       const rarity = pickGachaRarity(config.gachaRates, forceRare, forceLegendary);
-      const char = pickFromPool(rarity);
+      const char = pickFromPool(rarity, masterMap);
       const isDuplicate = ownedSet.has(char.id);
       const bonusPoints = isDuplicate
         ? (RARITY_DUPLICATE_POINTS[rarity] ?? 0)

@@ -2,85 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { CharacterMasterRow, loadCharacterMasterMap } from "../rewards/character-master.util";
 import { ARENA_POINTS, getArenaNpc } from "./arena.constants";
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 캐릭터 ID → 타입 매핑
-// ═══════════════════════════════════════════════════════════════════════════════
-const CHAR_TYPE: Record<number, string> = {
-  4:"ghost",5:"plant",6:"fish",7:"owl",8:"bear",9:"turtle",11:"wolf",12:"robot",
-  13:"slime",14:"cat",16:"ghost",17:"plant",18:"fish",19:"owl",20:"bear",21:"turtle",
-  22:"fox",26:"cat",28:"ghost",29:"plant",30:"fish",31:"owl",32:"bear",33:"turtle",
-  34:"fox",35:"wolf",36:"robot",37:"slime",38:"cat",39:"rabbit",40:"ghost",41:"plant",
-  42:"fish",43:"owl",44:"bear",51:"cat",52:"rabbit",53:"ghost",54:"plant",55:"fish",
-  56:"owl",57:"bear",58:"turtle",59:"fox",60:"wolf",61:"robot",64:"rabbit",65:"ghost",
-  66:"plant",67:"fish",69:"bear",71:"fox",72:"wolf",73:"robot",74:"slime",75:"cat",
-  76:"rabbit",83:"turtle",84:"dragon",90:"phoenix",91:"rabbit",96:"dragon",99:"dragon",
-  104:"rabbit",105:"wolf",116:"demon",117:"slime",120:"wolf",121:"fox",125:"tiger",
-  127:"lion",128:"lion",129:"lion",131:"lion",132:"tiger",135:"lion",136:"phoenix",
-  137:"phoenix",139:"snake",140:"horse",141:"deer",144:"horse",150:"phoenix",152:"boar",
-  153:"deer",154:"dragon",155:"whale",156:"eagle",158:"lion",159:"crocodile",160:"snake",
-  161:"whale",163:"snake",169:"horse",172:"dragon",173:"whale",174:"dragon",176:"phoenix",
-  177:"boar",178:"boar",179:"unicorn",180:"horse",191:"whale",193:"whale",194:"phoenix",
-  204:"owl",205:"fox",206:"whale",208:"cat",216:"horse",220:"boar",221:"robot",232:"boar",
-  233:"slime",235:"boar",238:"turtle",239:"slime",240:"deer",241:"deer",242:"deer",
-  243:"deer",252:"monkey",253:"monkey",254:"robot",255:"monkey",258:"monkey",259:"monkey",
-  260:"monkey",267:"tiger",268:"tiger",271:"tiger",272:"tiger",273:"raven",274:"raven",
-  275:"raven",276:"raven",277:"raven",278:"raven",287:"beetle",288:"beetle",290:"beetle",
-  291:"beetle",292:"beetle",293:"snake",294:"beetle",304:"crocodile",305:"crocodile",
-  306:"crocodile",307:"crocodile",308:"snake",309:"crocodile",313:"unicorn",322:"elephant",
-  323:"elephant",324:"elephant",331:"elephant",332:"elephant",333:"elephant",335:"eagle",
-  336:"snake",337:"eagle",338:"eagle",339:"eagle",344:"horse",349:"unicorn",350:"unicorn",
-  351:"unicorn",352:"unicorn",355:"eagle",372:"demon",373:"demon",375:"demon",377:"demon",
-  378:"demon",388:"angel",389:"angel",390:"angel",391:"angel",392:"angel",393:"angel",
-};
-
-const TYPE_ARCHETYPE: Record<string, string> = {
-  wolf:"warrior", tiger:"warrior", lion:"warrior", bear:"warrior",
-  cat:"rogue",    rabbit:"rogue",  deer:"rogue",   eagle:"rogue",
-  ghost:"mage",   owl:"mage",      dragon:"mage",  angel:"mage",  phoenix:"mage",
-  turtle:"tank",  elephant:"tank", whale:"tank",   crocodile:"tank", boar:"tank",
-  plant:"nature", fish:"nature",   unicorn:"nature", horse:"nature",
-  robot:"meka",   slime:"meka",    beetle:"meka",
-  fox:"cursed",   monkey:"cursed", raven:"cursed", snake:"cursed", demon:"cursed",
-};
-
-const CHAR_RARITY: Record<number, string> = {
-  4:"common",5:"common",6:"common",7:"common",8:"common",9:"common",
-  11:"common",12:"common",13:"uncommon",14:"uncommon",16:"uncommon",
-  17:"uncommon",18:"uncommon",19:"uncommon",20:"uncommon",21:"uncommon",
-  22:"uncommon",26:"rare",28:"rare",29:"rare",30:"rare",31:"rare",
-  32:"rare",33:"rare",34:"rare",35:"rare",36:"rare",37:"epic",38:"epic",
-  39:"epic",40:"epic",41:"epic",42:"epic",43:"epic",44:"epic",
-  51:"legendary",52:"legendary",53:"legendary",54:"legendary",55:"legendary",
-  56:"legendary",57:"legendary",58:"legendary",59:"legendary",60:"legendary",
-  61:"legendary",64:"mythic",65:"mythic",66:"mythic",67:"mythic",69:"mythic",
-  71:"mythic",72:"mythic",73:"mythic",74:"common",75:"common",76:"common",
-  83:"mythic",84:"uncommon",90:"uncommon",91:"uncommon",96:"rare",99:"epic",
-  104:"rare",105:"uncommon",116:"common",117:"rare",120:"epic",121:"epic",
-  125:"common",127:"common",128:"uncommon",129:"rare",131:"epic",132:"uncommon",
-  135:"legendary",136:"epic",137:"legendary",139:"common",140:"common",
-  141:"common",144:"uncommon",150:"mythic",152:"common",153:"uncommon",
-  154:"legendary",155:"common",156:"common",158:"mythic",159:"common",
-  160:"uncommon",161:"uncommon",163:"rare",169:"rare",172:"mythic",
-  173:"rare",174:"common",176:"common",177:"uncommon",178:"rare",179:"rare",
-  180:"epic",191:"legendary",193:"mythic",194:"rare",204:"mythic",205:"common",
-  206:"epic",208:"mythic",216:"legendary",220:"epic",221:"uncommon",
-  232:"legendary",233:"legendary",235:"mythic",238:"epic",239:"mythic",
-  240:"rare",241:"epic",242:"legendary",243:"mythic",252:"epic",
-  253:"legendary",254:"epic",255:"mythic",258:"common",259:"uncommon",
-  260:"rare",267:"legendary",268:"mythic",271:"rare",272:"epic",
-  273:"legendary",274:"mythic",275:"common",276:"uncommon",277:"rare",
-  278:"epic",287:"rare",288:"epic",290:"legendary",291:"mythic",292:"common",
-  293:"epic",294:"uncommon",304:"uncommon",305:"rare",306:"epic",
-  307:"legendary",308:"legendary",309:"mythic",313:"epic",322:"uncommon",
-  323:"rare",324:"epic",331:"legendary",332:"mythic",333:"common",335:"rare",
-  336:"mythic",337:"epic",338:"legendary",339:"mythic",344:"mythic",
-  349:"legendary",350:"mythic",351:"common",352:"uncommon",355:"uncommon",
-  372:"epic",373:"legendary",375:"mythic",377:"uncommon",378:"rare",
-  388:"epic",389:"legendary",390:"mythic",391:"common",392:"uncommon",
-  393:"rare",
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 속성 시스템
@@ -143,19 +66,20 @@ const ENHANCE_PER_LEVEL: Record<string, { hp: number; atk: number; def: number; 
   all:     { hp:3, atk:3, def:3, spd:3 },
 };
 
-export function getCharStat(charId: number, enhLevel = 0) {
-  const charType = CHAR_TYPE[charId] ?? "unknown";
-  const arch     = TYPE_ARCHETYPE[charType] ?? "all";
-  const rarity   = CHAR_RARITY[charId] ?? "common";
+export function getCharStat(charId: number, enhLevel: number, masterMap: Map<number, CharacterMasterRow>) {
+  const master   = masterMap.get(charId);
+  const charType = master?.type ?? "unknown";
+  const arch     = master?.arenaArchetype ?? "all";
+  const rarity   = master?.rarity ?? "common";
   const base     = RARITY_BASE[rarity] ?? RARITY_BASE.common;
   const mult     = ARCHETYPE_MULT[arch] ?? ARCHETYPE_MULT.all;
   const enh      = ENHANCE_PER_LEVEL[arch] ?? ENHANCE_PER_LEVEL.all;
   const enhBonus = (stat: number, pct: number) => Math.round(stat * (1 + enhLevel * pct / 100));
   return {
-    hp:            enhBonus(Math.round(base.hp  * mult.hp),  enh.hp),
-    atk:           enhBonus(Math.round(base.atk * mult.atk), enh.atk),
-    def:           enhBonus(Math.round(base.def * mult.def), enh.def),
-    spd:           enhBonus(Math.round(base.spd * mult.spd), enh.spd),
+    hp:            enhBonus(Math.round(base.hp  * mult.hp  * (master?.hpMult  ?? 1)), enh.hp),
+    atk:           enhBonus(Math.round(base.atk * mult.atk * (master?.atkMult ?? 1)), enh.atk),
+    def:           enhBonus(Math.round(base.def * mult.def * (master?.defMult ?? 1)), enh.def),
+    spd:           enhBonus(Math.round(base.spd * mult.spd * (master?.spdMult ?? 1)), enh.spd),
     critRate:      Math.min(1.0, base.critRate + mult.critRate),
     critDmg:       base.critDmg + mult.critDmg,
     effectiveness: base.effectiveness + mult.effectiveness,
@@ -899,8 +823,14 @@ export function simulateBattle(attackerUnits: CombatUnit[], defenderUnits: Comba
 // ═══════════════════════════════════════════════════════════════════════════════
 // 유닛 생성
 // ═══════════════════════════════════════════════════════════════════════════════
-export function makeUnit(charId: number, slot: number, team: "attacker" | "defender", enhLevel: number): CombatUnit {
-  const s       = getCharStat(charId, enhLevel);
+export function makeUnit(
+  charId: number,
+  slot: number,
+  team: "attacker" | "defender",
+  enhLevel: number,
+  masterMap: Map<number, CharacterMasterRow>,
+): CombatUnit {
+  const s       = getCharStat(charId, enhLevel, masterMap);
   const hero    = HERO_SKILLS[s.archetype] ?? HERO_SKILLS.all;
   const passive = hero.passive;
 
@@ -1137,14 +1067,15 @@ export class ArenaService {
     // 덱 검증을 통과한 뒤에만 티켓 차감 — 무효 요청으로 티켓만 날아가는 것을 방지
     const ticketState = await this.consumeTicket(attackerId);
 
-    const [atkEnhLvs, defEnhLvs] = await Promise.all([
+    const [atkEnhLvs, defEnhLvs, masterMap] = await Promise.all([
       Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0))),
       Promise.all(defSlots.map(id => id > 0 ? this.getEnhLevel(defenderId, id) : Promise.resolve(0))),
+      loadCharacterMasterMap(this.prisma),
     ]);
 
     // slot 인덱스(i)를 그대로 사용해 전열/후열 보너스 보존, 빈 슬롯(id=0) 제외
-    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
-    const defenderUnits = defSlots.map((id, i) => id > 0 ? makeUnit(id, i, "defender", defEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
+    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i], masterMap) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
+    const defenderUnits = defSlots.map((id, i) => id > 0 ? makeUnit(id, i, "defender", defEnhLvs[i], masterMap) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
     const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
     const attackerChars = attackerUnits.map(u => this.charInfoFromUnit(u));
     const defenderChars = defenderUnits.map(u => this.charInfoFromUnit(u));
@@ -1216,9 +1147,12 @@ export class ArenaService {
     // 덱 검증을 통과한 뒤에만 티켓 차감 — 무효 요청으로 티켓만 날아가는 것을 방지
     const ticketState = await this.consumeTicket(attackerId);
 
-    const atkEnhLvs = await Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0)));
-    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
-    const defenderUnits = npc.slots.map((id, i) => makeUnit(id, i, "defender", npc.enhLvs[i] ?? 0));
+    const [atkEnhLvs, masterMap] = await Promise.all([
+      Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0))),
+      loadCharacterMasterMap(this.prisma),
+    ]);
+    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i], masterMap) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
+    const defenderUnits = npc.slots.map((id, i) => makeUnit(id, i, "defender", npc.enhLvs[i] ?? 0, masterMap));
     const { won, log }  = simulateBattle(attackerUnits, defenderUnits);
 
     const pointsDelta = won ? npc.winPts : npc.lossPts;
@@ -1260,10 +1194,13 @@ export class ArenaService {
     }
     if (!atkSlots.some(id => id > 0)) throw new Error("공격 덱이 비어있습니다");
 
-    const atkEnhLvs = await Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0)));
-    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i]) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
+    const [atkEnhLvs, masterMap] = await Promise.all([
+      Promise.all(atkSlots.map(id => id > 0 ? this.getEnhLevel(attackerId, id) : Promise.resolve(0))),
+      loadCharacterMasterMap(this.prisma),
+    ]);
+    const attackerUnits = atkSlots.map((id, i) => id > 0 ? makeUnit(id, i, "attacker", atkEnhLvs[i], masterMap) : null).filter((u): u is ReturnType<typeof makeUnit> => u !== null);
 
-    const bossUnit = makeUnit(boss.charId, 0, "defender", boss.enhLevel);
+    const bossUnit = makeUnit(boss.charId, 0, "defender", boss.enhLevel, masterMap);
     bossUnit.hp = boss.hp;
     bossUnit.maxHp = boss.hp;
     const defenderUnits = [bossUnit];
