@@ -434,12 +434,17 @@ export class AuthService {
       name: string;
       email: string;
       role: string;
+      status?: string;
       baseCountryCode: string;
       baseCurrency: string;
       hasPassword?: boolean;
     },
     needsStarterOverride?: boolean,
   ) {
+    if (user.status === "SUSPENDED") {
+      throw new UnauthorizedException("정지된 계정입니다. 고객센터로 문의해주세요.");
+    }
+
     const needsStarter =
       needsStarterOverride ?? (await this.resolveNeedsStarter(user.id));
 

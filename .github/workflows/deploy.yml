@@ -36,8 +36,29 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
         run: |
+          # 관리자 페이지 Basic Auth 자격증명 파일 생성 (git에는 올리지 않고 배포 때마다 시크릿에서 생성)
+          printf '%s:%s\n' \
+            "${{ secrets.ADMIN_BASIC_AUTH_USER }}" \
+            "$(openssl passwd -apr1 '${{ secrets.ADMIN_BASIC_AUTH_PASSWORD }}')" \
+            > deploy/admin.htpasswd
+
           docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
-          docker rm -f kebo-mysql kebo-api kebo-web 2>/dev/null || true
+          docker rm -f kebo-mysql kebo-api kebo-web kebo-admin 2>/dev/null || true
+
+          # mysql부터 띄우고 healthy될 때까지 대기 (schema.sql은 볼륨이 새로 생성될 때만 실행되므로,
+          # 이미 떠 있던 DB에는 아래 ALTER문으로 누락된 컬럼을 보정 — IF NOT EXISTS라 매번 실행해도 안전)
+          docker compose -f docker-compose.prod.yml up -d --build --wait mysql
+
+          docker run --rm --network host \
+            -e MYSQL_PWD="${MYSQL_PASSWORD}" \
+            mysql:8.4 \
+            mysql -h127.0.0.1 -P3306 -u"${MYSQL_USER:-kebo}" "${MYSQL_DATABASE:-kebo}" -e "
+              ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS status VARCHAR(12) NOT NULL DEFAULT 'ACTIVE' AFTER role,
+                ADD COLUMN IF NOT EXISTS suspended_reason VARCHAR(255) NULL AFTER status;
+            "
+
+          # api는 mysql이 healthy해야 뜨므로(depends_on), 위 스키마 보정이 끝난 뒤에만 기동됨
           docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
           docker image prune -f
 
@@ -45,3 +66,6 @@ jobs:
         run: |
           sleep 8
           curl -fsS http://localhost:8080/api/health || (docker compose -f docker-compose.prod.yml logs --tail=50 api; exit 1)
+          # /admin/은 web이 admin 컨테이너로 프록시 + Basic Auth라 401이 정상 응답 (전체 체인이 붙어있다는 뜻)
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/admin/)
+          [ "$code" = "401" ] || (docker compose -f docker-compose.prod.yml logs --tail=50 web admin; exit 1)

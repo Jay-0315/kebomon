@@ -5,11 +5,12 @@ import { AuthService } from "./auth.service";
 import { EmailService } from "./email.service";
 import { JwtAuthGuard } from "./jwt.guard";
 import { JwtStrategy } from "./jwt.strategy";
+import { RolesGuard } from "./roles.guard";
 
 @Module({
   imports: [RewardsModule],
   controllers: [AuthController],
-  providers: [AuthService, EmailService, JwtStrategy, JwtAuthGuard],
-  exports: [JwtStrategy, JwtAuthGuard],
+  providers: [AuthService, EmailService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  exports: [JwtStrategy, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

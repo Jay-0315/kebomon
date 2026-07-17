@@ -4,6 +4,8 @@ CREATE TABLE users (
   email            VARCHAR(190)                   NOT NULL UNIQUE,
   password_hash    VARCHAR(255)                   NULL,
   role             VARCHAR(20)                    NOT NULL DEFAULT 'USER',
+  status           VARCHAR(12)                    NOT NULL DEFAULT 'ACTIVE',
+  suspended_reason VARCHAR(255)                   NULL,
   base_country_code CHAR(2)                       NOT NULL,
   base_currency    ENUM('KRW','JPY','USD','EUR')  NOT NULL,
   profile_photo    LONGTEXT                       NULL,
@@ -202,4 +204,16 @@ CREATE TABLE IF NOT EXISTS arena_decks (
   updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id, deck_type),
   CONSTRAINT fk_arena_decks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 가챠/알까기 확률·천장 설정 (싱글턴, id는 항상 1) — 관리자 페이지에서 편집
+CREATE TABLE IF NOT EXISTS gacha_config (
+  id                       INT      NOT NULL PRIMARY KEY DEFAULT 1,
+  gacha_rates              JSON     NOT NULL,
+  normal_egg_rates         JSON     NOT NULL,
+  big_egg_rates            JSON     NOT NULL,
+  golden_egg_rates         JSON     NOT NULL,
+  pity_rare_threshold      INT      NOT NULL DEFAULT 9,
+  pity_legendary_threshold INT      NOT NULL DEFAULT 79,
+  updated_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

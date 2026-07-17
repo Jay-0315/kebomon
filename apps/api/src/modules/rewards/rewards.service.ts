@@ -14,6 +14,7 @@ import {
   rarityAtLeast,
   rollExpeditionRiskyMult,
 } from "./expedition.constants";
+import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   // 기존 칭호
@@ -136,16 +137,6 @@ const GACHA_POOL: { id: number; rarity: string }[] = [
   { id: 336, rarity: "mythic" }, { id: 339, rarity: "mythic" }, { id: 344, rarity: "mythic" },
   { id: 350, rarity: "mythic" }, { id: 375, rarity: "mythic" }, { id: 390, rarity: "mythic" },
 ];
-
-// Gacha rates (sum = 100)
-const GACHA_RATES: Record<string, number> = {
-  common: 45.84,
-  uncommon: 30.56,
-  rare: 15,
-  epic: 6,
-  legendary: 2,
-  mythic: 0.6,
-};
 
 const GACHA_COST_SINGLE = 120;
 const GACHA_COST_TEN = 1200;
@@ -302,6 +293,7 @@ const ACHIEVEMENTS: { characterId: number; type: string; value: number }[] = [
 ];
 
 function pickGachaRarity(
+  gachaRates: Record<string, number>,
   forceRareOrAbove = false,
   forceLegendaryOrAbove = false,
 ): string {
@@ -311,7 +303,7 @@ function pickGachaRarity(
   if (forceRareOrAbove) {
     return weightedRandom({ rare: 70, epic: 30 });
   }
-  return weightedRandom(GACHA_RATES);
+  return weightedRandom(gachaRates);
 }
 
 function weightedRandom(weights: Record<string, number>): string {
@@ -329,13 +321,6 @@ function pickFromPool(rarity: string): { id: number; rarity: string } {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// 등급별 알: 일반(커먼~레어) / 큰(커먼~에픽) / 황금(커먼~레전더리)
-export type EggType = "normal" | "big" | "golden";
-const EGG_RATES: Record<EggType, Record<string, number>> = {
-  normal: { common: 55, uncommon: 30, rare: 15 },
-  big: { common: 42, uncommon: 28, rare: 20, epic: 10 },
-  golden: { common: 35, uncommon: 26, rare: 22, epic: 12, legendary: 5 },
-};
 function eggDelta(eggType: EggType, delta: number) {
   if (eggType === "normal") return { normalEggs: { increment: delta } };
   if (eggType === "big") return { bigEggs: { increment: delta } };
@@ -1043,7 +1028,8 @@ export class RewardsService {
       throw new BadRequestException("보유한 알이 없습니다.");
     }
 
-    const rarity = weightedRandom(EGG_RATES[eggType]);
+    const config = await resolveGachaConfig(this.prisma);
+    const rarity = weightedRandom(eggRatesFor(config, eggType));
     const pick = pickFromPool(rarity);
 
     const owned = await this.prisma.userCharacter.findUnique({
@@ -1089,13 +1075,15 @@ export class RewardsService {
       select: { characterId: true },
     });
     const ownedSet = new Set(owned.map((c) => c.characterId));
+    const config = await resolveGachaConfig(this.prisma);
+    const eggRates = eggRatesFor(config, eggType);
 
     const results: { eggType: EggType; characterId: number; rarity: string; isDuplicate: boolean; points: number }[] = [];
     const newCharIds: number[] = [];
     let totalDupPoints = 0;
 
     for (let i = 0; i < count; i++) {
-      const rarity = weightedRandom(EGG_RATES[eggType]);
+      const rarity = weightedRandom(eggRates);
       const pick = pickFromPool(rarity);
       const isDuplicate = ownedSet.has(pick.id);
       const dupPoints = isDuplicate ? (RARITY_DUPLICATE_POINTS[pick.rarity] ?? 0) : 0;
@@ -1137,6 +1125,7 @@ export class RewardsService {
       select: { characterId: true },
     });
     const ownedSet = new Set(owned.map((c) => c.characterId));
+    const config = await resolveGachaConfig(this.prisma);
 
     const results: {
       characterId: number;
@@ -1146,20 +1135,20 @@ export class RewardsService {
     }[] = [];
     let totalBonusPoints = 0;
     let pity = reward.gachaPityCount; // rare+ 보장 카운터 (consecutive non-rare)
-    let legendaryPity = reward.legendaryPityCount; // 천장 카운터 (80연 레전더리+ 보장)
+    let legendaryPity = reward.legendaryPityCount; // 천장 카운터 (관리자 설정 회차 후 레전더리+ 보장)
 
     for (let i = 0; i < count; i++) {
       const isLastInTen = count === 10 && i === 9;
       const hasRarePlus = results.some((r) =>
         ["rare", "epic", "legendary", "mythic"].includes(r.rarity),
       );
-      // 10연: 마지막 자리에서 레어+ 없으면 강제 / 단일: 누적 pity 9 이상이면 다음 뽑기에서 강제
+      // 10연: 마지막 자리에서 레어+ 없으면 강제 / 단일: 누적 pity가 설정 임계값 이상이면 다음 뽑기에서 강제
       const forceRare =
-        (isLastInTen && !hasRarePlus) || (count === 1 && pity >= 9);
-      // 천장: 79회 누적 시 다음(80번째) 레전더리+ 확정
-      const forceLegendary = legendaryPity >= 79;
+        (isLastInTen && !hasRarePlus) || (count === 1 && pity >= config.pityRareThreshold);
+      // 천장: 설정 회차 누적 시 다음 뽑기에서 레전더리+ 확정
+      const forceLegendary = legendaryPity >= config.pityLegendaryThreshold;
 
-      const rarity = pickGachaRarity(forceRare, forceLegendary);
+      const rarity = pickGachaRarity(config.gachaRates, forceRare, forceLegendary);
       const char = pickFromPool(rarity);
       const isDuplicate = ownedSet.has(char.id);
       const bonusPoints = isDuplicate

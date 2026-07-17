@@ -9,3 +9,4 @@ apps/**/node_modules/
 .vscode/settings.json
 Dockerfile
 Dockerfile.api
+deploy/admin.htpasswd

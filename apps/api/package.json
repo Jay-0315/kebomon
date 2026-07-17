@@ -43,6 +43,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
-    "migrate:compress-images": "tsx scripts/compress-existing-images.ts"
+    "migrate:compress-images": "tsx scripts/compress-existing-images.ts",
+    "admin:promote": "tsx scripts/promote-admin.ts"
   }
 }

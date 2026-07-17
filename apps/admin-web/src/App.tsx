@@ -1,0 +1,40 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import AdminLayout from "./components/AdminLayout";
+import { isAdminAuthenticated } from "./lib/auth";
+import LoginPage from "./pages/LoginPage";
+import UsersPage from "./pages/UsersPage";
+import CommunityPostsPage from "./pages/CommunityPostsPage";
+import CommunityCommentsPage from "./pages/CommunityCommentsPage";
+import GachaConfigPage from "./pages/GachaConfigPage";
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+// 프로덕션에서는 web 컨테이너가 /admin/ 하위 경로로 프록시하므로 라우터도 그 경로를 기준으로 매칭.
+// 로컬 dev 서버는 프록시 없이 루트에서 뜨므로 basename 없이 그대로 사용.
+const basename = import.meta.env.PROD ? "/admin" : undefined;
+
+export default function App() {
+  return (
+    <BrowserRouter basename={basename}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<Navigate to="/users" replace />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/community/posts" element={<CommunityPostsPage />} />
+          <Route path="/community/comments" element={<CommunityCommentsPage />} />
+          <Route path="/gacha-config" element={<GachaConfigPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

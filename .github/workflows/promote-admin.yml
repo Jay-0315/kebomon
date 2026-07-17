@@ -1,0 +1,43 @@
+name: Promote Admin (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "관리자로 지정(또는 해제)할 계정 이메일"
+        required: true
+        type: string
+      revoke:
+        description: "체크하면 관리자 권한 해제 (USER로 되돌림)"
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  promote-admin:
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run promote-admin script
+        env:
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          EMAIL: ${{ inputs.email }}
+          REVOKE_FLAG: ${{ inputs.revoke && '--revoke' || '' }}
+        run: |
+          docker run --rm \
+            --network host \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD/apps/api:/app" \
+            -w /app \
+            -e DATABASE_URL="mysql://${MYSQL_USER:-kebo}:${MYSQL_PASSWORD}@127.0.0.1:3306/${MYSQL_DATABASE:-kebo}" \
+            -e HOME=/tmp \
+            node:20-alpine \
+            sh -c "npm install --no-audit --no-fund && npx prisma generate && npx tsx scripts/promote-admin.ts \"$EMAIL\" $REVOKE_FLAG"

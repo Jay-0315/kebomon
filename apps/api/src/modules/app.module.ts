@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { CommunityModule } from "./community/community.module";
 import { HealthModule } from "./health/health.module";
@@ -28,6 +29,7 @@ import { GuildModule } from "./guild/guild.module";
     GatewayModule,
     ArenaModule,
     GuildModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

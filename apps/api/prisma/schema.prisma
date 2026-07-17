@@ -16,12 +16,31 @@ enum AuthProvider {
   GOOGLE
 }
 
+/**
+ * 가챠/알까기 확률·천장 설정 (싱글턴, id는 항상 1) — 관리자 페이지에서 편집.
+ * 없거나 마이그레이션 전이면 서비스 코드가 하드코딩된 기본값으로 폴백한다.
+ */
+model GachaConfig {
+  id                     Int      @id @default(1)
+  gachaRates             Json     @map("gacha_rates")
+  normalEggRates         Json     @map("normal_egg_rates")
+  bigEggRates            Json     @map("big_egg_rates")
+  goldenEggRates         Json     @map("golden_egg_rates")
+  pityRareThreshold      Int      @default(9) @map("pity_rare_threshold")
+  pityLegendaryThreshold Int      @default(79) @map("pity_legendary_threshold")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@map("gacha_config")
+}
+
 model User {
   id                     String                  @id @default(uuid())
   name                   String
   email                  String                  @unique
   passwordHash           String?                 @map("password_hash")
   role                   String                  @default("USER")
+  status                 String                  @default("ACTIVE") @db.VarChar(12)
+  suspendedReason        String?                 @map("suspended_reason") @db.VarChar(255)
   baseCountryCode        String                  @map("base_country_code") @db.Char(2)
   baseCurrency           CurrencyCode            @map("base_currency")
   profilePhoto           String?                 @map("profile_photo") @db.LongText

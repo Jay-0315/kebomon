@@ -153,3 +153,38 @@ CREATE TABLE IF NOT EXISTS expeditions (
 -- ============================================================
 ALTER TABLE user_rewards
   ADD COLUMN active_run_started_at DATETIME NULL AFTER arena_ticket_date;
+
+-- ============================================================
+-- Migration: Add status/suspended_reason to users (관리자 페이지 - 계정 정지 기능)
+-- Applied: 2026-07-17
+-- ============================================================
+ALTER TABLE users
+  ADD COLUMN status           VARCHAR(12)  NOT NULL DEFAULT 'ACTIVE' AFTER role,
+  ADD COLUMN suspended_reason VARCHAR(255) NULL     AFTER status;
+
+-- ============================================================
+-- Migration: Add gacha_config (관리자 페이지 - 가챠/알까기 확률·천장 설정)
+-- Applied: 2026-07-17
+-- ============================================================
+CREATE TABLE IF NOT EXISTS gacha_config (
+  id                       INT      NOT NULL PRIMARY KEY DEFAULT 1,
+  gacha_rates              JSON     NOT NULL,
+  normal_egg_rates         JSON     NOT NULL,
+  big_egg_rates            JSON     NOT NULL,
+  golden_egg_rates         JSON     NOT NULL,
+  pity_rare_threshold      INT      NOT NULL DEFAULT 9,
+  pity_legendary_threshold INT      NOT NULL DEFAULT 79,
+  updated_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO gacha_config (id, gacha_rates, normal_egg_rates, big_egg_rates, golden_egg_rates, pity_rare_threshold, pity_legendary_threshold)
+VALUES (
+  1,
+  JSON_OBJECT('common', 45.84, 'uncommon', 30.56, 'rare', 15, 'epic', 6, 'legendary', 2, 'mythic', 0.6),
+  JSON_OBJECT('common', 55, 'uncommon', 30, 'rare', 15),
+  JSON_OBJECT('common', 42, 'uncommon', 28, 'rare', 20, 'epic', 10),
+  JSON_OBJECT('common', 35, 'uncommon', 26, 'rare', 22, 'epic', 12, 'legendary', 5),
+  9,
+  79
+)
+ON DUPLICATE KEY UPDATE id = id;
