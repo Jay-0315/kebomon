@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../lib/api";
-import { setAuthSession, type AdminUser } from "../lib/auth";
+import { clearAuthSession, setAuthSession, type AdminUser } from "../lib/auth";
 
 type LoginResponse = {
   accessToken: string;
@@ -10,10 +10,73 @@ type LoginResponse = {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  function finishLogin(res: LoginResponse) {
+    if (res.user.role !== "ADMIN") {
+      clearAuthSession();
+      setError("관리자 계정이 아닙니다.");
+      return;
+    }
+    setAuthSession(res.accessToken, res.user);
+    navigate("/users", { replace: true });
+  }
+
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    const initGoogle = () => {
+      if (!googleButtonRef.current || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          if (!response.credential) {
+            setError("Google 로그인 토큰을 받지 못했습니다.");
+            return;
+          }
+          setLoading(true);
+          setError(null);
+          try {
+            const res = await api.post<LoginResponse>("/auth/social", {
+              provider: "GOOGLE",
+              identityToken: response.credential,
+            });
+            finishLogin(res);
+          } catch {
+            setError("Google 로그인에 실패했습니다.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        shape: "pill",
+        width: 320,
+        text: "signin_with",
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+    } else {
+      const script = document.querySelector<HTMLScriptElement>(
+        'script[src*="accounts.google.com/gsi/client"]',
+      );
+      if (script) {
+        script.addEventListener("load", initGoogle);
+        return () => script.removeEventListener("load", initGoogle);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,12 +84,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post<LoginResponse>("/auth/login", { email, password });
-      if (res.user.role !== "ADMIN") {
-        setError("관리자 계정이 아닙니다.");
-        return;
-      }
-      setAuthSession(res.accessToken, res.user);
-      navigate("/users", { replace: true });
+      finishLogin(res);
     } catch {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
     } finally {
@@ -63,10 +121,21 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-[#b7607e] px-3 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
+          className="mb-4 w-full rounded-md bg-[#b7607e] px-3 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
         >
           {loading ? "로그인 중..." : "로그인"}
         </button>
+
+        {googleClientId && (
+          <>
+            <div className="mb-4 flex items-center gap-3 text-xs text-white/30">
+              <div className="h-px flex-1 bg-white/10" />
+              또는
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+            <div ref={googleButtonRef} className="flex justify-center" />
+          </>
+        )}
       </form>
     </div>
   );

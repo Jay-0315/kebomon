@@ -21,6 +21,7 @@ services:
       dockerfile: Dockerfile.admin.prod
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
     container_name: kebo-admin
     # 퍼블릭 포트 없음 — web 컨테이너 nginx가 내부 도커 네트워크(admin:80)로만 프록시해서 접근
     volumes:
