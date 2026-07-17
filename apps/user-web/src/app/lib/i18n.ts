@@ -430,6 +430,8 @@ const dict = {
     "notification.title": "알림",
     "notification.empty": "알림이 없어요",
     "notification.clear_all": "전체 삭제",
+    "notification.go_to": "이동하기",
+    "notification.exit": "나가기",
     "notification.attendance_reminder": "출석 체크 미완료",
     "notification.attendance_reminder_body":
       "오늘 출석 체크를 아직 하지 않았어요!",
@@ -1169,6 +1171,8 @@ const dict = {
     "notification.title": "通知",
     "notification.empty": "通知がありません",
     "notification.clear_all": "全て削除",
+    "notification.go_to": "移動する",
+    "notification.exit": "閉じる",
     "notification.attendance_reminder": "出席チェック未完了",
     "notification.attendance_reminder_body":
       "今日の出席チェックがまだ済んでいません！",
@@ -1909,6 +1913,8 @@ const dict = {
     "notification.title": "Notifications",
     "notification.empty": "No notifications",
     "notification.clear_all": "Clear all",
+    "notification.go_to": "Go",
+    "notification.exit": "Close",
     "notification.attendance_reminder": "Attendance Not Checked",
     "notification.attendance_reminder_body": "You haven't checked in today!",
     "notification.achievement_title": "Achievement Unlocked!",

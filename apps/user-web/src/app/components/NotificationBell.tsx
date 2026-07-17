@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   Megaphone,
   Trash2,
+  X,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
@@ -65,6 +66,7 @@ export default function NotificationBell({
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notif[]>([]);
   const [unread, setUnread] = useState(0);
+  const [detail, setDetail] = useState<Notif | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -186,18 +188,33 @@ export default function NotificationBell({
         : n.body,
   });
 
-  const onClickItem = (n: Notif) => {
-    if (!n.isLocal) {
-      const u = getStoredUser();
-      setItems((p) => p.filter((item) => item.id !== n.id));
-      if (u) {
-        api
-          .delete(`/notifications/${n.id}?userId=${u.id}`)
-          .catch(() => undefined);
-      }
+  const consumeNotif = (n: Notif) => {
+    if (n.isLocal) return;
+    const u = getStoredUser();
+    setItems((p) => p.filter((item) => item.id !== n.id));
+    if (u) {
+      api
+        .delete(`/notifications/${n.id}?userId=${u.id}`)
+        .catch(() => undefined);
     }
+  };
+
+  const onClickItem = (n: Notif) => {
     setOpen(false);
-    if (n.link) navigate(n.link);
+    setDetail(n);
+  };
+
+  const closeDetail = () => {
+    if (detail) consumeNotif(detail);
+    setDetail(null);
+  };
+
+  const goToLink = () => {
+    if (!detail) return;
+    const link = detail.link;
+    consumeNotif(detail);
+    setDetail(null);
+    if (link) navigate(link);
   };
 
   const Dropdown = ({ posClass }: { posClass: string }) => (
@@ -264,6 +281,57 @@ export default function NotificationBell({
     </div>
   );
 
+  const DetailModal = () => {
+    if (!detail) return null;
+    const text = getNotifText(detail);
+    return (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+        onClick={closeDetail}
+      >
+        <div
+          className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <NotifIcon type={detail.type} />
+              <span className="text-sm font-bold">{text.title}</span>
+            </span>
+            <button
+              onClick={closeDetail}
+              className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
+            {text.body}
+          </p>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            {timeAgo(detail.createdAt, t)}
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            {detail.link && (
+              <button
+                onClick={goToLink}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {t("notification.go_to")}
+              </button>
+            )}
+            <button
+              onClick={closeDetail}
+              className="rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              {t("notification.exit")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (floating) {
     return (
       <div ref={ref}>
@@ -280,6 +348,7 @@ export default function NotificationBell({
           )}
         </button>
         {open && <Dropdown posClass="fixed bottom-24 right-6" />}
+        {detail && <DetailModal />}
       </div>
     );
   }
@@ -300,6 +369,7 @@ export default function NotificationBell({
           )}
         </button>
         {open && <Dropdown posClass="absolute left-[calc(100%+1rem)] top-0" />}
+        {detail && <DetailModal />}
       </div>
     );
   }
@@ -319,6 +389,7 @@ export default function NotificationBell({
         )}
       </button>
       {open && <Dropdown posClass="absolute right-0 top-full mt-2" />}
+      {detail && <DetailModal />}
     </div>
   );
 }
