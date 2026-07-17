@@ -46,16 +46,32 @@ jobs:
           docker rm -f kebo-mysql kebo-api kebo-web kebo-admin 2>/dev/null || true
 
           # mysql부터 띄우고 healthy될 때까지 대기 (schema.sql은 볼륨이 새로 생성될 때만 실행되므로,
-          # 이미 떠 있던 DB에는 아래 ALTER문으로 누락된 컬럼을 보정 — IF NOT EXISTS라 매번 실행해도 안전)
+          # 이미 떠 있던 DB에는 아래로 누락된 컬럼을 보정. MySQL(오라클)은 MariaDB와 달리
+          # ADD COLUMN에 IF NOT EXISTS를 못 쓰므로 information_schema로 존재 여부를 먼저 확인하고
+          # 동적 SQL(PREPARE/EXECUTE)로 없을 때만 추가 — 매번 실행해도 안전
           docker compose -f docker-compose.prod.yml up -d --build --wait mysql
 
           docker run --rm --network host \
             -e MYSQL_PWD="${MYSQL_PASSWORD}" \
             mysql:8.4 \
             mysql -h127.0.0.1 -P3306 -u"${MYSQL_USER:-kebo}" "${MYSQL_DATABASE:-kebo}" -e "
-              ALTER TABLE users
-                ADD COLUMN IF NOT EXISTS status VARCHAR(12) NOT NULL DEFAULT 'ACTIVE' AFTER role,
-                ADD COLUMN IF NOT EXISTS suspended_reason VARCHAR(255) NULL AFTER status;
+              SET @col_exists = (
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'status'
+              );
+              SET @sql = IF(@col_exists = 0,
+                'ALTER TABLE users ADD COLUMN status VARCHAR(12) NOT NULL DEFAULT ''ACTIVE'' AFTER role',
+                'SELECT 1');
+              PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+              SET @col_exists = (
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'suspended_reason'
+              );
+              SET @sql = IF(@col_exists = 0,
+                'ALTER TABLE users ADD COLUMN suspended_reason VARCHAR(255) NULL AFTER status',
+                'SELECT 1');
+              PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
             "
 
           # api는 mysql이 healthy해야 뜨므로(depends_on), 위 스키마 보정이 끝난 뒤에만 기동됨
