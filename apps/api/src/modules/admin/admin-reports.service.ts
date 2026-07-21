@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { UpdateReportStatusDto } from "./dto/update-report-status.dto";
 
 const PAGE_SIZE = 20;
@@ -8,7 +9,10 @@ type Preview = { deleted: true } | Record<string, unknown>;
 
 @Injectable()
 export class AdminReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async findAll(status?: string, page = 1) {
     const skip = (page - 1) * PAGE_SIZE;
@@ -43,10 +47,25 @@ export class AdminReportsService {
     const report = await this.prisma.report.findUnique({ where: { id } });
     if (!report) throw new NotFoundException("신고 내역을 찾을 수 없습니다.");
 
-    return this.prisma.report.update({
+    const updated = await this.prisma.report.update({
       where: { id },
       data: { status: dto.status, resolvedAt: new Date(), resolvedBy: requesterId },
     });
+
+    const note = dto.resolutionNote?.trim();
+    const body =
+      dto.status === "RESOLVED"
+        ? note
+          ? `신고하신 내용이 처리되었습니다. (${note})`
+          : "신고하신 내용이 처리되었습니다."
+        : note
+          ? `신고하신 내용을 검토했으나 조치 대상이 아니라고 판단되어 종료되었습니다. (${note})`
+          : "신고하신 내용을 검토했으나 조치 대상이 아니라고 판단되어 종료되었습니다.";
+    void this.notifications
+      .create({ userId: report.reporterId, type: "notice", title: "신고 처리 결과", body })
+      .catch(() => undefined);
+
+    return updated;
   }
 
   /** targetType별로 묶어서 최대 3번의 배치 쿼리로 미리보기를 조회 (신고 건수만큼 N+1 쿼리 방지) */

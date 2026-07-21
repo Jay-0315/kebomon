@@ -84,12 +84,25 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter]);
 
-  async function resolve(id: string, status: "RESOLVED" | "DISMISSED") {
+  const [resolving, setResolving] = useState<{ id: string; status: "RESOLVED" | "DISMISSED" } | null>(null);
+  const [resolutionNote, setResolutionNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function confirmResolve() {
+    if (!resolving) return;
+    setSubmitting(true);
     try {
-      await api.patch(`/admin/reports/${id}`, { status });
+      await api.patch(`/admin/reports/${resolving.id}`, {
+        status: resolving.status,
+        resolutionNote: resolutionNote.trim() || undefined,
+      });
+      setResolving(null);
+      setResolutionNote("");
       load();
     } catch {
       window.alert("처리에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -150,13 +163,13 @@ export default function ReportsPage() {
                   {r.status === "PENDING" ? (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => resolve(r.id, "RESOLVED")}
+                        onClick={() => setResolving({ id: r.id, status: "RESOLVED" })}
                         className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                       >
                         처리완료
                       </button>
                       <button
-                        onClick={() => resolve(r.id, "DISMISSED")}
+                        onClick={() => setResolving({ id: r.id, status: "DISMISSED" })}
                         className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                       >
                         기각
@@ -198,6 +211,51 @@ export default function ReportsPage() {
           >
             다음
           </button>
+        </div>
+      )}
+
+      {resolving && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4"
+          onClick={() => !submitting && setResolving(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-1 text-sm font-semibold">
+              {resolving.status === "RESOLVED" ? "신고 처리완료" : "신고 기각"}
+            </h2>
+            <p className="mb-3 text-xs text-[var(--fg-faint)]">
+              신고자에게 알림으로 발송됩니다. 처리 내용을 입력하면 함께 전달돼요. (선택)
+            </p>
+            <textarea
+              value={resolutionNote}
+              onChange={(e) => setResolutionNote(e.target.value)}
+              rows={3}
+              maxLength={255}
+              placeholder="예: 해당 게시글을 삭제 조치했습니다."
+              className="mb-4 w-full resize-none rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setResolving(null)}
+                disabled={submitting}
+                className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={confirmResolve}
+                disabled={submitting}
+                className="rounded-md bg-[#b7607e] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
+              >
+                {submitting ? "처리 중..." : "확인"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
