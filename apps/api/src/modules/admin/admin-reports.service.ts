@@ -61,8 +61,33 @@ export class AdminReportsService {
         : note
           ? `신고하신 내용을 검토했으나 조치 대상이 아니라고 판단되어 종료되었습니다. (${note})`
           : "신고하신 내용을 검토했으나 조치 대상이 아니라고 판단되어 종료되었습니다.";
+    const bodyJa =
+      dto.status === "RESOLVED"
+        ? note
+          ? `ご報告いただいた内容が処理されました。（${note}）`
+          : "ご報告いただいた内容が処理されました。"
+        : note
+          ? `ご報告いただいた内容を確認しましたが、対応対象ではないと判断され終了しました。（${note}）`
+          : "ご報告いただいた内容を確認しましたが、対応対象ではないと判断され終了しました。";
+    const bodyEn =
+      dto.status === "RESOLVED"
+        ? note
+          ? `Your report has been resolved. (${note})`
+          : "Your report has been resolved."
+        : note
+          ? `Your report was reviewed but no action was needed. (${note})`
+          : "Your report was reviewed but no action was needed.";
     void this.notifications
-      .create({ userId: report.reporterId, type: "notice", title: "신고 처리 결과", body })
+      .create({
+        userId: report.reporterId,
+        type: "notice",
+        title: "신고 처리 결과",
+        body,
+        titleJa: "報告処理結果",
+        bodyJa,
+        titleEn: "Report Resolution",
+        bodyEn,
+      })
       .catch(() => undefined);
 
     return updated;

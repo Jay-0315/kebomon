@@ -207,7 +207,7 @@ export default function AttendancePage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              3초 후 자동으로 닫힙니다
+              {t("attendance.auto_close")}
             </p>
           </div>
         </div>
