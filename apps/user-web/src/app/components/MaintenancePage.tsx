@@ -73,10 +73,16 @@ export default function MaintenancePage({
           <h1 className="text-lg font-semibold">
             {ko ? "점검 중입니다" : ja ? "メンテナンス中です" : "Under Maintenance"}
           </h1>
-          {message && (
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{message}</p>
-          )}
         </div>
+
+        {message && (
+          <div className="rounded-xl border border-border bg-card p-4 space-y-1.5 text-left">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {ko ? "점검 내용" : ja ? "メンテナンス内容" : "Maintenance Details"}
+            </p>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{message}</p>
+          </div>
+        )}
 
         {endsAt && (
           <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
