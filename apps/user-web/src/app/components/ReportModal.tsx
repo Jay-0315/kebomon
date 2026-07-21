@@ -59,9 +59,11 @@ export default function ReportModal({
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">{t("report.title")}</h2>
-          <button onClick={onClose} className="rounded p-1 hover:bg-accent/30">
-            <X className="h-4 w-4" />
-          </button>
+          {!done && (
+            <button onClick={onClose} className="rounded p-1 hover:bg-accent/30">
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {done ? (
