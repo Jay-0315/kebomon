@@ -21,6 +21,10 @@ function emitAuthExpired() {
   window.dispatchEvent(new CustomEvent("kebo:auth-expired"));
 }
 
+function emitMaintenance(detail: { message: string | null; endsAt: string | null }) {
+  window.dispatchEvent(new CustomEvent("kebo:maintenance", { detail }));
+}
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -46,6 +50,16 @@ async function request<T>(
       // 로그인/회원가입 자체의 실패(토큰 없음)와 구분하기 위해 기존 토큰 존재 여부로 판단
       if (response.status === 401 && token) {
         emitAuthExpired();
+      }
+      if (response.status === 503) {
+        try {
+          const body = await response.json();
+          if (body?.maintenance) {
+            emitMaintenance({ message: body.message ?? null, endsAt: body.endsAt ?? null });
+          }
+        } catch {
+          /* 바디 파싱 실패는 무시 — 폴링이 폴백 */
+        }
       }
       const error = new Error(`HTTP ${response.status}`) as Error & {
         status: number;

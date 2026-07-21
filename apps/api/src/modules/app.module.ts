@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { AdminModule } from "./admin/admin.module";
@@ -12,6 +12,9 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { ArenaModule } from "./arena/arena.module";
 import { GuildModule } from "./guild/guild.module";
+import { ReportsModule } from "./reports/reports.module";
+import { MaintenanceModule } from "./maintenance/maintenance.module";
+import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
 
 @Module({
   imports: [
@@ -29,7 +32,21 @@ import { GuildModule } from "./guild/guild.module";
     GatewayModule,
     ArenaModule,
     GuildModule,
+    ReportsModule,
+    MaintenanceModule,
     AdminModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(MaintenanceMiddleware)
+      .exclude(
+        { path: "admin/(.*)", method: RequestMethod.ALL },
+        { path: "auth/(.*)", method: RequestMethod.ALL },
+        { path: "health", method: RequestMethod.ALL },
+        { path: "maintenance/(.*)", method: RequestMethod.ALL },
+      )
+      .forRoutes("*");
+  }
+}

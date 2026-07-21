@@ -233,3 +233,28 @@ CREATE TABLE IF NOT EXISTS character_master (
   spd_mult         FLOAT    NOT NULL DEFAULT 1,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- 유저 신고(게시글/댓글/유저)
+CREATE TABLE IF NOT EXISTS reports (
+  id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+  reporter_id VARCHAR(36)  NOT NULL,
+  target_type VARCHAR(20)  NOT NULL,
+  target_id   VARCHAR(36)  NOT NULL,
+  reason      VARCHAR(500) NOT NULL,
+  status      VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at DATETIME     NULL,
+  resolved_by VARCHAR(36)  NULL,
+  CONSTRAINT uq_reports_reporter_target UNIQUE (reporter_id, target_type, target_id),
+  INDEX idx_reports_status (status),
+  CONSTRAINT fk_reports_reporter FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 점검 모드 설정 (싱글턴, id는 항상 1) — 관리자 페이지에서 편집
+CREATE TABLE IF NOT EXISTS maintenance_config (
+  id         INT          NOT NULL PRIMARY KEY DEFAULT 1,
+  enabled    TINYINT(1)   NOT NULL DEFAULT 0,
+  message    VARCHAR(500) NULL,
+  ends_at    DATETIME     NULL,
+  updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

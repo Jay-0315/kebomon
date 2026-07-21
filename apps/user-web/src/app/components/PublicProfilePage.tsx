@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Trophy, Swords, Shield } from "lucide-react";
+import { ArrowLeft, Flag, Trophy, Swords, Shield } from "lucide-react";
 import { api } from "../lib/api";
+import { getStoredUser } from "../lib/auth";
 import { useLang } from "../context/LangContext";
 import { CHARACTERS } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
+import ReportModal from "./ReportModal";
 import TitleBadge from "./TitleBadge";
 import { BORDER_STYLES } from "./ColosseumPage";
 
@@ -28,6 +30,8 @@ export default function PublicProfilePage() {
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const currentUser = getStoredUser();
 
   useEffect(() => {
     if (!userId) return;
@@ -74,13 +78,24 @@ export default function PublicProfilePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        {ko ? "뒤로가기" : ja ? "戻る" : "Back"}
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {ko ? "뒤로가기" : ja ? "戻る" : "Back"}
+        </button>
+        {currentUser && currentUser.id !== profile.id && (
+          <button
+            onClick={() => setShowReport(true)}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-destructive"
+          >
+            <Flag className="w-4 h-4" />
+            {ko ? "신고" : ja ? "報告" : "Report"}
+          </button>
+        )}
+      </div>
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-4">
@@ -151,6 +166,10 @@ export default function PublicProfilePage() {
           </div>
         </div>
       </div>
+
+      {showReport && (
+        <ReportModal targetType="USER" targetId={profile.id} onClose={() => setShowReport(false)} />
+      )}
     </div>
   );
 }

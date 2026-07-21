@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { api } from "../lib/api";
 import CharacterEditModal, { type CharacterRow } from "../components/CharacterEditModal";
 
@@ -45,7 +46,10 @@ export default function CharactersPage() {
       <h1 className="mb-1 text-lg font-semibold">케보몬 관리</h1>
       <p className="mb-4 text-sm text-[var(--fg-faint)]">
         등급/역할/스탯 배율은 콜로세움·아레나·레이드·가챠·로그라이크에 즉시 반영됩니다.{" "}
-        <span className="text-amber-400">⚠ 단, 로그라이크 시작 덱(카드 구성)은 캐릭터 타입의 정적 데이터를 그대로 사용해 여기서 타입을 바꿔도 덱 구성에는 반영되지 않습니다.</span>
+        <span className="inline-flex items-center gap-1 text-amber-400">
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+          단, 로그라이크 시작 덱(카드 구성)은 캐릭터 타입의 정적 데이터를 그대로 사용해 여기서 타입을 바꿔도 덱 구성에는 반영되지 않습니다.
+        </span>
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">

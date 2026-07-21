@@ -20,6 +20,14 @@ import {
   Plus,
   SkipForward,
   Ticket,
+  Flower2,
+  Sparkle,
+  Sparkles,
+  Snowflake,
+  Diamond,
+  Heart,
+  Square,
+  type LucideIcon,
 } from "lucide-react";
 import { getStoredUser } from "../lib/auth";
 import { useAppData } from "../context/AppDataContext";
@@ -238,6 +246,29 @@ const C = {
   enemyBorder: "#4f0e0e",
 };
 const FONT = "'Noto Sans KR','Noto Sans JP',sans-serif";
+
+// 전투 연출용 파티클/아이콘 기호 → 루시드 아이콘 매핑
+const LEAF_ICONS = [Flower2, Sparkle, Sparkles, Snowflake] as const;
+const CURSE_ICONS = [Sparkle, X, Star, Sparkle, X, Diamond, Sparkle, Sparkles] as const;
+const LOG_ICONS: Record<string, LucideIcon> = {
+  s3: Sparkle,
+  s2: Diamond,
+  dot: Skull,
+};
+
+/** floatNums의 prefix 문자열에 아이콘이 포함된 경우 아이콘+텍스트로, 아니면 순수 텍스트로 렌더링 */
+function renderFloatContent(prefix: string, val: number, color: string): React.ReactNode {
+  if (prefix === "HEAL_ICON") return <Heart size={13} color={color} fill={color} />;
+  if (prefix === "SKILL_ICON") return <Square size={11} color={color} fill={color} />;
+  if (prefix === "◆-") {
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+        <Diamond size={11} color={color} fill={color} />-{val}
+      </span>
+    );
+  }
+  return val > 0 ? `${prefix}${val}` : prefix;
+}
 
 const RARITY_THEME: Record<
   CharacterRarity,
@@ -1577,17 +1608,12 @@ function UnitCard({
               borderRadius: 8,
             }}
           >
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: 20,
-                fontWeight: 900,
-                color: "#f87171",
-                textShadow: "0 0 12px #ef4444",
-              }}
-            >
-              ✕
-            </span>
+            <X
+              size={28}
+              strokeWidth={3}
+              color="#f87171"
+              style={{ filter: "drop-shadow(0 0 8px #ef4444)" }}
+            />
           </div>
         )}
         {/* 원소 뱃지 (우하단) */}
@@ -2751,11 +2777,11 @@ function UltimateAnim({
     lx: `${-138 + i * 25}px`,
     lrot: `${(i % 2 === 0 ? 1 : -1) * (120 + (i % 4) * 60)}deg`,
     delay: `${(i * 0.06).toFixed(2)}s`,
-    sym: (["✿", "✦", "✶", "❋"] as string[])[i % 4],
+    Icon: LEAF_ICONS[i % 4],
     size: 12 + (i % 4) * 5,
   }));
   const curseDrops = Array.from({ length: 8 }, (_, i) => ({
-    sym: (["✦", "✖", "✧", "✦", "✖", "◆", "✦", "✶"] as string[])[i],
+    Icon: CURSE_ICONS[i],
     lx: -154 + i * 44,
     crot: `${(i % 2 === 0 ? -1 : 1) * (8 + (i % 4) * 12)}deg`,
     delay: `${(i * 0.07).toFixed(2)}s`,
@@ -2962,9 +2988,6 @@ function UltimateAnim({
                   position: "absolute",
                   bottom: 0,
                   left: "50%",
-                  fontSize: l.size,
-                  color: col,
-                  textShadow: `0 0 10px ${col},0 0 20px ${col}88`,
                   opacity: 0,
                   animation: `ult-leaf 1.1s ease-out ${l.delay} forwards`,
                   "--lx": l.lx,
@@ -2973,7 +2996,11 @@ function UltimateAnim({
                 } as React.CSSProperties
               }
             >
-              {l.sym}
+              <l.Icon
+                size={l.size}
+                color={col}
+                style={{ filter: `drop-shadow(0 0 10px ${col}) drop-shadow(0 0 20px ${col}88)` }}
+              />
             </div>
           ))}
           {[0, 260, 520].map((ms, i) => (
@@ -3079,9 +3106,6 @@ function UltimateAnim({
                   position: "absolute",
                   top: 0,
                   left: `calc(50% + ${c.lx}px)`,
-                  fontSize: c.size,
-                  color: col,
-                  textShadow: `0 0 12px ${col},0 0 24px ${col}88`,
                   opacity: 0,
                   animation: `ult-curse-drop 1.0s ease-in ${c.delay} forwards`,
                   "--crot": c.crot,
@@ -3089,7 +3113,11 @@ function UltimateAnim({
                 } as React.CSSProperties
               }
             >
-              {c.sym}
+              <c.Icon
+                size={c.size}
+                color={col}
+                style={{ filter: `drop-shadow(0 0 12px ${col}) drop-shadow(0 0 24px ${col}88)` }}
+              />
             </div>
           ))}
           {[0, 250].map((ms, i) => (
@@ -4144,7 +4172,7 @@ function BattleReplay({
           team: ev.actorTeam,
           slot: ev.actorSlot,
           color: isHealSkill ? "#4ade80" : "#60a5fa",
-          prefix: isHealSkill ? "♥" : "◼",
+          prefix: isHealSkill ? "HEAL_ICON" : "SKILL_ICON",
         });
       }
     }
@@ -4189,11 +4217,11 @@ function BattleReplay({
             : "#e2e8f0";
     const logIcon =
       ev.skillType === "s3"
-        ? "✦"
+        ? "s3"
         : ev.skillType === "s2"
-          ? "◆"
+          ? "s2"
           : ev.skillType === "dot"
-            ? "☠"
+            ? "dot"
             : "·";
     setEventLog((p) => [
       ...p.slice(-29),
@@ -4405,7 +4433,7 @@ function BattleReplay({
                 whiteSpace: "nowrap",
               }}
             >
-              {d.val > 0 ? `${d.prefix}${d.val}` : d.prefix}
+              {renderFloatContent(d.prefix, d.val, d.color)}
             </div>
           ))}
         {statusFloats
@@ -5118,9 +5146,13 @@ function BattleReplay({
                         color: e.color,
                         flexShrink: 0,
                         fontWeight: 900,
+                        display: "inline-flex",
+                        alignItems: "center",
                       }}
                     >
-                      {e.icon}
+                      {LOG_ICONS[e.icon]
+                        ? React.createElement(LOG_ICONS[e.icon], { size: 10, color: e.color })
+                        : e.icon}
                     </span>
                     <span
                       style={{

@@ -14,8 +14,12 @@ import { AdminGachaController } from "./admin-gacha.controller";
 import { AdminGachaService } from "./admin-gacha.service";
 import { AdminGuildsController } from "./admin-guilds.controller";
 import { AdminGuildsService } from "./admin-guilds.service";
+import { AdminMaintenanceController } from "./admin-maintenance.controller";
+import { AdminMaintenanceService } from "./admin-maintenance.service";
 import { AdminNotificationsController } from "./admin-notifications.controller";
 import { AdminNotificationsService } from "./admin-notifications.service";
+import { AdminReportsController } from "./admin-reports.controller";
+import { AdminReportsService } from "./admin-reports.service";
 import { AdminUsersController } from "./admin-users.controller";
 import { AdminUsersService } from "./admin-users.service";
 
@@ -30,6 +34,8 @@ import { AdminUsersService } from "./admin-users.service";
     AdminGuildsController,
     AdminDashboardController,
     AdminCharactersController,
+    AdminReportsController,
+    AdminMaintenanceController,
   ],
   providers: [
     AdminUsersService,
@@ -40,6 +46,8 @@ import { AdminUsersService } from "./admin-users.service";
     AdminGuildsService,
     AdminDashboardService,
     AdminCharactersService,
+    AdminReportsService,
+    AdminMaintenanceService,
   ],
 })
 export class AdminModule {}

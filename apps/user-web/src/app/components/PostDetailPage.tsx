@@ -9,6 +9,7 @@ import {
   Pencil,
   Trash2,
   CornerDownRight,
+  Flag,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
@@ -17,6 +18,7 @@ import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { formatRelativeTime } from "../lib/date-utils";
 import RichTextEditor from "./RichTextEditor";
+import ReportModal from "./ReportModal";
 import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
 import type {
@@ -64,6 +66,7 @@ interface CommentCardProps {
   onReply: (parentId: string, parentAuthor: string) => void;
   onDelete: (id: string) => void;
   onEdit: (comment: Comment) => void;
+  onReport: (commentId: string) => void;
   isReply?: boolean;
 }
 
@@ -73,6 +76,7 @@ function CommentCard({
   onReply,
   onDelete,
   onEdit,
+  onReport,
   isReply,
 }: CommentCardProps) {
   const { t, lang } = useLang();
@@ -112,7 +116,7 @@ function CommentCard({
                 {t("comment.reply")}
               </button>
             )}
-            {comment.authorId === currentUserId && (
+            {comment.authorId === currentUserId ? (
               <>
                 <button
                   onClick={() => onEdit(comment)}
@@ -127,7 +131,14 @@ function CommentCard({
                   <Trash2 className="w-3 h-3" />
                 </button>
               </>
-            )}
+            ) : currentUserId ? (
+              <button
+                onClick={() => onReport(comment.id)}
+                className="p-1 rounded text-muted-foreground hover:bg-accent/30 transition-colors"
+              >
+                <Flag className="w-3 h-3" />
+              </button>
+            ) : null}
           </div>
         </div>
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -148,6 +159,7 @@ function CommentCard({
             onReply={onReply}
             onDelete={onDelete}
             onEdit={onEdit}
+            onReport={onReport}
             isReply
           />
         ))}
@@ -169,6 +181,7 @@ export default function PostDetailPage() {
   const [commentsData, setCommentsData] = useState<CommentsPage | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [reportTarget, setReportTarget] = useState<{ type: "POST" | "COMMENT"; id: string } | null>(null);
 
   // 게시글 수정 폼
   const [showPostEdit, setShowPostEdit] = useState(false);
@@ -402,7 +415,7 @@ export default function PostDetailPage() {
             >
               {catLabel(post.category)}
             </span>
-            {post.authorId === currentUser?.id && (
+            {post.authorId === currentUser?.id ? (
               <div className="flex gap-1.5">
                 <button
                   onClick={openPostEdit}
@@ -417,7 +430,14 @@ export default function PostDetailPage() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-            )}
+            ) : currentUser ? (
+              <button
+                onClick={() => setReportTarget({ type: "POST", id: post.id })}
+                className="p-1.5 rounded bg-muted text-muted-foreground hover:bg-accent/20 transition-colors"
+              >
+                <Flag className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -460,6 +480,7 @@ export default function PostDetailPage() {
                 onReply={startReply}
                 onDelete={handleDeleteComment}
                 onEdit={startEdit}
+                onReport={(commentId) => setReportTarget({ type: "COMMENT", id: commentId })}
               />
             ))}
           </div>
@@ -618,6 +639,14 @@ export default function PostDetailPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {reportTarget && (
+        <ReportModal
+          targetType={reportTarget.type}
+          targetId={reportTarget.id}
+          onClose={() => setReportTarget(null)}
+        />
       )}
     </div>
   );

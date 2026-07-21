@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy, Zap, Star, Skull, Check, ChevronRight } from "lucide-react";
+import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy, Zap, Star, Skull, Check, ChevronRight, Sparkle, X } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getStoredUser } from "../lib/auth";
@@ -223,7 +223,7 @@ function TavernBanner({ title, desc }: { title: string; desc: string }) {
       {/* Separator */}
       <div style={{ position:"relative", zIndex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:4 }}>
         <div style={{ height:1, width:40, background:"linear-gradient(90deg,transparent,#92400e88)" }}/>
-        <span style={{ fontSize:11, color:"#b45309", opacity:0.7 }}>✦</span>
+        <Sparkle size={11} color="#b45309" style={{ opacity:0.7 }} />
         <div style={{ height:1, width:40, background:"linear-gradient(90deg,#92400e88,transparent)" }}/>
       </div>
       {/* Desc */}
@@ -418,7 +418,7 @@ export default function DuelPage() {
                   <h3 className="flex items-center gap-1.5 text-sm font-bold text-amber-200">
                     <Crown className="h-4 w-4" />{t("duel.ranking_title")}
                   </h3>
-                  <button onClick={() => setShowRanking(false)} className="text-xs text-amber-400/70 hover:text-amber-200">✕</button>
+                  <button onClick={() => setShowRanking(false)} className="text-amber-400/70 hover:text-amber-200"><X size={14} /></button>
                 </div>
                 {ranking === null ? (
                   <p className="py-8 text-center text-xs text-amber-200/40">{t("duel.loading")}</p>

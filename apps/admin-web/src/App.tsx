@@ -11,6 +11,9 @@ import BattlesPage from "./pages/BattlesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import GuildsPage from "./pages/GuildsPage";
 import CharactersPage from "./pages/CharactersPage";
+import ReportsPage from "./pages/ReportsPage";
+import MaintenancePage from "./pages/MaintenancePage";
+import UserDetailPage from "./pages/UserDetailPage";
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
@@ -35,6 +38,7 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/users/:id" element={<UserDetailPage />} />
           <Route path="/community/posts" element={<CommunityPostsPage />} />
           <Route path="/community/comments" element={<CommunityCommentsPage />} />
           <Route path="/gacha-config" element={<GachaConfigPage />} />
@@ -42,6 +46,8 @@ export default function App() {
           <Route path="/guilds" element={<GuildsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/characters" element={<CharactersPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

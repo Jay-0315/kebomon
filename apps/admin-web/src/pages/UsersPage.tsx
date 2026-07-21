@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { api } from "../lib/api";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
@@ -139,7 +140,11 @@ export default function UsersPage() {
           <tbody>
             {data?.users.map((u) => (
               <tr key={u.id} className="border-t border-[var(--border)]">
-                <td className="px-3 py-2">{u.name}</td>
+                <td className="px-3 py-2">
+                  <Link to={`/users/${u.id}`} className="text-[#b7607e] hover:underline">
+                    {u.name}
+                  </Link>
+                </td>
                 <td className="px-3 py-2">{u.email}</td>
                 <td className="px-3 py-2">{u.role}</td>
                 <td className="px-3 py-2">

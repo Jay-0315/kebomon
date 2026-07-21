@@ -9,6 +9,7 @@ import {
   Clock,
   Heart,
   Medal,
+  TriangleAlert,
 } from "lucide-react";
 import {
   useAppData,
@@ -1663,8 +1664,8 @@ function ShootingGame({
         {t("raid.bullet_hint")}
       </div>
       {bossAlert && (
-        <div className="pointer-events-none absolute left-1/2 top-10 z-20 -translate-x-1/2 animate-pulse rounded-full bg-red-600/85 px-4 py-1.5 text-sm font-extrabold text-white shadow-lg">
-          ⚠ {t("raid.boss_incoming")}
+        <div className="pointer-events-none absolute left-1/2 top-10 z-20 -translate-x-1/2 animate-pulse rounded-full bg-red-600/85 px-4 py-1.5 text-sm font-extrabold text-white shadow-lg flex items-center gap-1.5">
+          <TriangleAlert className="h-4 w-4" /> {t("raid.boss_incoming")}
         </div>
       )}
       {isDead && (

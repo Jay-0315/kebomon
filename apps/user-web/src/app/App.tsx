@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import NetworkErrorToast from "./components/NetworkErrorToast";
 import AuthExpiredToast from "./components/AuthExpiredToast";
+import MaintenanceGate from "./components/MaintenanceGate";
 import Layout from "./components/Layout";
 import HomePage from "./components/HomePage";
 import LoginPage from "./components/LoginPage";
@@ -84,6 +85,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <LangProvider>
+      <MaintenanceGate>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -127,6 +129,7 @@ export default function App() {
           <Route path="mypage/character" element={<Navigate to="/kebomon" replace />} />
         </Route>
       </Routes>
+      </MaintenanceGate>
       <NetworkErrorToast />
       <AuthExpiredToast />
       </LangProvider>

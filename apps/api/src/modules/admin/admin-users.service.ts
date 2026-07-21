@@ -86,28 +86,41 @@ export class AdminUsersService {
   }
 
   async findById(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        suspendedReason: true,
-        suspendedUntil: true,
-        createdAt: true,
-        lastLoginAt: true,
-        _count: { select: { posts: true, comments: true } },
-      },
-    });
+    const [user, reportsAgainst] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          suspendedReason: true,
+          suspendedUntil: true,
+          createdAt: true,
+          lastLoginAt: true,
+          reward: { select: rewardSelect },
+          battleStats: { select: { tierPoints: true, wins: true, losses: true, winStreak: true, bestStreak: true } },
+          duelStats: { select: { wins: true, losses: true, winStreak: true, bestStreak: true } },
+          guildMembership: { select: { role: true, guild: { select: { id: true, name: true } } } },
+          posts: {
+            take: 5,
+            orderBy: { createdAt: "desc" },
+            select: { id: true, content: true, category: true, createdAt: true },
+          },
+          _count: { select: { posts: true, comments: true, characters: true } },
+        },
+      }),
+      this.prisma.report.count({ where: { targetType: "USER", targetId: id } }),
+    ]);
     if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
     if (await reactivateIfExpired(this.prisma, user)) {
       user.status = "ACTIVE";
       user.suspendedReason = null;
       user.suspendedUntil = null;
     }
-    return user;
+
+    return { ...user, reportsAgainstCount: reportsAgainst };
   }
 
   async updateRole(requesterId: string, targetId: string, dto: UpdateUserRoleDto) {
