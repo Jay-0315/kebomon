@@ -92,9 +92,13 @@ export class CommunityService {
   // guildId를 생략하면 전체 공개 게시판(guildId가 null인 글만) — 길드 게시글은 여기 섞이지 않는다.
   // 특정 길드의 글을 보려면 guildId를 명시해야 하며, 이 값은 호출자(GuildService)가
   // 멤버십을 확인한 뒤 서버에서 결정한 것이어야 한다 (클라이언트가 임의로 지정하면 안 됨).
-  async findAll(userId?: string, page = 1, category?: PostCategory, sort?: "latest" | "likes", guildId?: string) {
+  async findAll(userId?: string, page = 1, category?: PostCategory, sort?: "latest" | "likes", guildId?: string, q?: string) {
     const skip = (page - 1) * PAGE_SIZE;
-    const where = { ...(category ? { category } : {}), guildId: guildId ?? null };
+    const where = {
+      ...(category ? { category } : {}),
+      guildId: guildId ?? null,
+      ...(q ? { content: { contains: q } } : {}),
+    };
     const orderBy =
       sort === "likes"
         ? [{ likesCount: "desc" as const }, { createdAt: "desc" as const }]
@@ -178,6 +182,7 @@ export class CommunityService {
       this.rewards.checkAndGrantAchievements(dto.userId),
       this.rewards.checkAndGrantTitles(dto.userId),
     ]);
+    void this.rewards.markQuestDone(dto.userId, "community").catch(() => undefined);
 
     return this.formatPost(post, false);
   }
@@ -299,6 +304,7 @@ export class CommunityService {
         link: `/community/${postId}`,
       }).catch(() => undefined);
     }
+    void this.rewards.markQuestDone(dto.userId, "community").catch(() => undefined);
 
     return this.formatComment(comment);
   }

@@ -28,18 +28,22 @@ export class UsersService {
       baseCurrency: user.baseCurrency,
       profilePhoto: user.profilePhoto ?? null,
       hasPassword: user.hasPassword,
+      bio: user.bio ?? null,
+      favoriteCharacterIds: (user.favoriteCharacterIds as number[] | null) ?? [],
       settings: user.settings
         ? {
             notifications: user.settings.notifications,
             darkMode: user.settings.darkMode,
             themeColor: user.settings.themeColor,
             language: user.settings.language,
+            hasSeenTutorial: user.settings.hasSeenTutorial,
           }
         : {
             notifications: true,
             darkMode: true,
             themeColor: "emerald",
             language: "ko",
+            hasSeenTutorial: false,
           },
     };
   }
@@ -52,6 +56,8 @@ export class UsersService {
         id: true,
         name: true,
         profilePhoto: true,
+        bio: true,
+        favoriteCharacterIds: true,
         reward: {
           select: { equippedCharacterId: true, equippedTitleId: true, equippedBorderId: true },
         },
@@ -69,6 +75,8 @@ export class UsersService {
       id: user.id,
       name: user.name,
       profilePhoto: user.profilePhoto ?? null,
+      bio: user.bio ?? null,
+      favoriteCharacterIds: (user.favoriteCharacterIds as number[] | null) ?? [],
       equippedCharacterId: user.reward?.equippedCharacterId ?? null,
       equippedTitleId: user.reward?.equippedTitleId ?? null,
       equippedBorderId: user.reward?.equippedBorderId ?? null,
@@ -84,6 +92,31 @@ export class UsersService {
         bestStreak: user.duelStats?.bestStreak ?? 0,
       },
     };
+  }
+
+  /** 유저 이름 검색 (공개 프로필 진입용) — 이메일 등 비공개 필드는 제외 */
+  async searchUsers(q: string) {
+    const query = q.trim();
+    if (!query) return [];
+
+    const users = await this.prisma.user.findMany({
+      where: { name: { contains: query } },
+      select: {
+        id: true,
+        name: true,
+        profilePhoto: true,
+        reward: { select: { equippedTitleId: true, equippedBorderId: true } },
+      },
+      take: 20,
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      profilePhoto: u.profilePhoto ?? null,
+      equippedTitleId: u.reward?.equippedTitleId ?? null,
+      equippedBorderId: u.reward?.equippedBorderId ?? null,
+    }));
   }
 
   async updateProfilePhoto(userId: string, photo: string | null) {
@@ -105,12 +138,25 @@ export class UsersService {
       throw new NotFoundException("사용자를 찾을 수 없습니다.");
     }
 
+    let favoriteCharacterIds: number[] | undefined;
+    if (dto.favoriteCharacterIds !== undefined) {
+      // 실제 보유한 캐릭터만 진열 가능하도록 서버측 검증
+      const owned = await this.prisma.userCharacter.findMany({
+        where: { userId, characterId: { in: dto.favoriteCharacterIds } },
+        select: { characterId: true },
+      });
+      const ownedSet = new Set(owned.map((c) => c.characterId));
+      favoriteCharacterIds = dto.favoriteCharacterIds.filter((id) => ownedSet.has(id));
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(dto.name ? { name: dto.name } : {}),
         ...(dto.baseCountryCode ? { baseCountryCode: dto.baseCountryCode } : {}),
         ...(dto.baseCurrency ? { baseCurrency: dto.baseCurrency } : {}),
+        ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
+        ...(favoriteCharacterIds !== undefined ? { favoriteCharacterIds } : {}),
       },
     });
 
@@ -121,6 +167,8 @@ export class UsersService {
       role: user.role,
       baseCountryCode: user.baseCountryCode,
       baseCurrency: user.baseCurrency,
+      bio: user.bio ?? null,
+      favoriteCharacterIds: (user.favoriteCharacterIds as number[] | null) ?? [],
     };
   }
 
@@ -151,12 +199,14 @@ export class UsersService {
         darkMode: dto.darkMode ?? true,
         themeColor: dto.themeColor ?? "emerald",
         language: dto.language ?? "ko",
+        hasSeenTutorial: dto.hasSeenTutorial ?? false,
       },
       update: {
         ...(dto.notifications !== undefined ? { notifications: dto.notifications } : {}),
         ...(dto.darkMode !== undefined ? { darkMode: dto.darkMode } : {}),
         ...(dto.themeColor !== undefined ? { themeColor: dto.themeColor } : {}),
         ...(dto.language !== undefined ? { language: dto.language } : {}),
+        ...(dto.hasSeenTutorial !== undefined ? { hasSeenTutorial: dto.hasSeenTutorial } : {}),
       },
     });
   }

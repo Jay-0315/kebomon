@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
+import TutorialOverlay from "./TutorialOverlay";
 import { useState, useEffect, useRef } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -80,6 +81,9 @@ export default function Layout() {
     profilePhoto,
     pendingAchievements,
     clearPendingAchievements,
+    hasInitialized,
+    settings,
+    updateSettings,
   } = useAppData();
   const { t } = useLang();
 
@@ -335,6 +339,9 @@ export default function Layout() {
           onClose={clearPendingAchievements}
           t={t}
         />
+      )}
+      {hasInitialized && !settings.hasSeenTutorial && (
+        <TutorialOverlay onClose={() => updateSettings({ hasSeenTutorial: true })} />
       )}
       <div className="min-h-screen bg-background flex">
         {isSidebarCollapsed && (

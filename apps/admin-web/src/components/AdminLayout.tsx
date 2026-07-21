@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
-import { PanelLeft, PanelLeftClose } from "lucide-react";
+import { Menu, PanelLeft, PanelLeftClose, X } from "lucide-react";
 import { clearAuthSession, getStoredUser } from "../lib/auth";
 import { getTheme, toggleTheme } from "../lib/theme";
 
@@ -17,6 +17,29 @@ const navItems = [
   { to: "/notifications", label: "공지 발송" },
   { to: "/maintenance", label: "점검 모드" },
 ];
+
+function NavList({ onNav }: { onNav?: () => void }) {
+  return (
+    <nav className="flex flex-col gap-1">
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          onClick={onNav}
+          className={({ isActive }) =>
+            `rounded-md px-3 py-2 text-sm ${
+              isActive
+                ? "bg-[var(--bg-active)] text-[var(--fg)]"
+                : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
+            }`
+          }
+        >
+          {item.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
 
 function ThemeToggleButton() {
   const [theme, setTheme] = useState(getTheme);
@@ -48,6 +71,7 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("adminSidebarCollapsed") === "1",
   );
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -64,55 +88,85 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
+      {/* Desktop sidebar */}
       <aside
-        className={`shrink-0 overflow-hidden border-r border-[var(--border)] transition-all duration-200 ${
+        className={`hidden shrink-0 overflow-hidden border-r border-[var(--border)] transition-all duration-200 lg:block ${
           collapsed ? "w-0 border-r-0" : "w-56"
         }`}
       >
         <div className="w-56 p-4">
           <p className="mb-6 px-2 text-sm font-semibold text-[#b7607e]">KEBO Admin</p>
-          <nav className="flex flex-col gap-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `rounded-md px-3 py-2 text-sm ${
-                    isActive
-                      ? "bg-[var(--bg-active)] text-[var(--fg)]"
-                      : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          <NavList />
         </div>
       </aside>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        >
+          <aside
+            className="flex h-full w-64 max-w-[80vw] flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--bg)] p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-6 flex items-center justify-between px-2">
+              <p className="text-sm font-semibold text-[#b7607e]">KEBO Admin</p>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="text-[var(--fg-muted)] hover:text-[var(--fg)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <NavList onNav={() => setMobileOpen(false)} />
+            <div className="mt-6 space-y-2 border-t border-[var(--border)] pt-4">
+              <p className="truncate px-2 text-xs text-[var(--fg-muted)]">
+                {user?.name} ({user?.email})
+              </p>
+              <button
+                onClick={handleLogout}
+                className="w-full rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
+              >
+                로그아웃
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] px-6 py-3">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setMobileOpen(true)}
+              title="메뉴 열기"
+              className="rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
             <button
               onClick={toggleCollapsed}
               title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-              className="rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
+              className="hidden rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] lg:flex"
             >
               {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </button>
-            <span className="text-sm text-[var(--fg-muted)]">{user?.name} ({user?.email})</span>
+            <span className="hidden truncate text-sm text-[var(--fg-muted)] sm:inline">
+              {user?.name} ({user?.email})
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <ThemeToggleButton />
             <button
               onClick={handleLogout}
-              className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
+              className="hidden rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] sm:inline-flex"
             >
               로그아웃
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

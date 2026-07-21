@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Query, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { UpdateUserProfileDto } from "./dto/update-user-profile.dto";
@@ -12,6 +12,12 @@ export class UsersController {
   @Get(":id/profile")
   getProfile(@Param("id") id: string) {
     return this.usersService.getProfile(id);
+  }
+
+  /** 이름으로 유저 검색 (공개, 이메일 등 비공개 필드 제외) */
+  @Get("search")
+  searchUsers(@Query("q") q?: string) {
+    return this.usersService.searchUsers(q ?? "");
   }
 
   /** 랭킹 등에서 다른 유저를 조회할 때 쓰는 공개 프로필 (이메일/설정 등 비공개 필드 제외) */

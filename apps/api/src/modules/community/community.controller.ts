@@ -20,8 +20,9 @@ export class CommunityController {
     @Query("page") page?: string,
     @Query("category") category?: PostCategory,
     @Query("sort") sort?: "latest" | "likes",
+    @Query("q") q?: string,
   ) {
-    return this.communityService.findAll(userId, page ? Number(page) : 1, category, sort);
+    return this.communityService.findAll(userId, page ? Number(page) : 1, category, sort, undefined, q);
   }
 
   @Get("my")

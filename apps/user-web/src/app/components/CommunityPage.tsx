@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Heart, Plus, X, ChevronRight, Clock, Flame } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Heart, Plus, X, ChevronRight, Clock, Flame, Search, UserSearch } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
 import { useNavigate } from "react-router";
 import { useAppData } from "../context/AppDataContext";
@@ -8,6 +8,7 @@ import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
 import { formatRelativeTime } from "../lib/date-utils";
 import { extractFirstImage } from "../lib/image-utils";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
 import type { CommunityPost, PostCategory, Comment } from "../types/domain";
@@ -85,6 +86,9 @@ export default function CommunityPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const requestIdRef = useRef(0);
 
   const [showForm, setShowForm] = useState(false);
   const [content, setContent] = useState("");
@@ -104,21 +108,25 @@ export default function CommunityPage() {
       .trim();
 
   const fetchPosts = useCallback(
-    async (p: number, cat: PostCategory | "all", sortMode: "latest" | "likes") => {
+    async (p: number, cat: PostCategory | "all", sortMode: "latest" | "likes", q?: string) => {
+      // 응답이 늦게 온 이전 요청이 최신 검색 결과를 덮어쓰지 않도록 요청마다 ID를 부여
+      const requestId = ++requestIdRef.current;
       setLoading(true);
       try {
         const qs = new URLSearchParams({ page: String(p) });
         if (currentUser) qs.set("userId", currentUser.id);
         if (cat !== "all") qs.set("category", cat);
         if (sortMode === "likes") qs.set("sort", "likes");
+        if (q) qs.set("q", q);
         const data = await api.get<{
           posts: Record<string, unknown>[];
           totalPages: number;
         }>(`/community/posts?${qs.toString()}`);
+        if (requestId !== requestIdRef.current) return; // 더 최신 요청이 이미 진행 중 — 이 응답은 폐기
         setPosts(data.posts.map(mapPost));
         setTotalPages(data.totalPages);
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) setLoading(false);
       }
     },
     [currentUser?.id],
@@ -126,12 +134,12 @@ export default function CommunityPage() {
 
   useEffect(() => {
     setPage(1);
-    void fetchPosts(1, activeTab, sort);
-  }, [activeTab, sort]);
+    void fetchPosts(1, activeTab, sort, debouncedSearch);
+  }, [activeTab, sort, debouncedSearch]);
 
   const handlePageChange = (p: number) => {
     setPage(p);
-    void fetchPosts(p, activeTab, sort);
+    void fetchPosts(p, activeTab, sort, debouncedSearch);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -158,7 +166,7 @@ export default function CommunityPage() {
       });
       closeForm();
       setPage(1);
-      await fetchPosts(1, activeTab, sort);
+      await fetchPosts(1, activeTab, sort, debouncedSearch);
     } finally {
       setSubmitting(false);
     }
@@ -189,12 +197,32 @@ export default function CommunityPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h2>{t("nav.community")}</h2>
-        <button
-          onClick={openCreate}
-          className="bg-primary/80 text-primary-foreground rounded-md w-10 h-10 flex items-center justify-center shadow-sm hover:shadow-md active:scale-95 transition-all"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/search/users")}
+            title={t("search.users_title")}
+            className="w-10 h-10 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <UserSearch className="w-5 h-5" />
+          </button>
+          <button
+            onClick={openCreate}
+            className="bg-primary/80 text-primary-foreground rounded-md w-10 h-10 flex items-center justify-center shadow-sm hover:shadow-md active:scale-95 transition-all"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 게시글 검색 */}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("search.placeholder")}
+          className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary/40"
+        />
       </div>
 
       {/* 탭 */}

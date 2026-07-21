@@ -16,6 +16,7 @@ import {
 } from "./expedition.constants";
 import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
 import { CharacterMasterRow, loadCharacterMasterMap } from "./character-master.util";
+import { getTodayKTC, getYesterdayKTC } from "./date.util";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   // 기존 칭호
@@ -403,6 +404,7 @@ export class RewardsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return;
     await this.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+    void this.markQuestDone(userId, "login").catch(() => undefined);
   }
 
   // ─── 원정 (서버 권위 상태 — 보상은 클라이언트가 아닌 서버가 계산) ──────────────────
@@ -592,6 +594,7 @@ export class RewardsService {
       this.checkAndGrantAchievements(userId),
       this.checkAndGrantTitles(userId),
     ]).catch(() => undefined);
+    void this.markQuestDone(userId, "battle").catch(() => undefined);
 
     return { rogueClears: newClears, milestones };
   }
@@ -691,8 +694,7 @@ export class RewardsService {
     monthWeekRewards: number;
     eggReward: "big" | "golden" | null;
   }> {
-    const nowKTC = new Date(Date.now() + 9 * 3_600_000);
-    const todayKTC = nowKTC.toISOString().slice(0, 10);
+    const todayKTC = getTodayKTC();
     const currentMonthKey = todayKTC.slice(0, 7); // "YYYY-MM"
 
     const reward = await this.getOrCreateReward(userId);
@@ -706,7 +708,7 @@ export class RewardsService {
     const prevMonthDays = monthReset ? 0 : reward.monthDays;
     const prevWeekRewards = monthReset ? 0 : reward.monthWeekRewards;
 
-    const yesterdayKTC = new Date(Date.now() + 9 * 3_600_000 - 86_400_000).toISOString().slice(0, 10);
+    const yesterdayKTC = getYesterdayKTC();
     const isConsecutive = !monthReset && reward.lastAttendanceDate === yesterdayKTC;
     const newStreak = isConsecutive ? reward.streakDays + 1 : 1;
 
@@ -772,8 +774,8 @@ export class RewardsService {
       select: { borderId: true },
     });
 
-    const todayKTC = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
-    const yesterdayKTC = new Date(Date.now() + 9 * 3_600_000 - 86_400_000).toISOString().slice(0, 10);
+    const todayKTC = getTodayKTC();
+    const yesterdayKTC = getYesterdayKTC();
     // 오늘 또는 어제 출석한 경우에만 연속 기록 유효 — 그 외엔 0
     const effectiveStreak =
       reward.lastAttendanceDate === todayKTC || reward.lastAttendanceDate === yesterdayKTC
@@ -806,6 +808,95 @@ export class RewardsService {
       monthWeekRewards: reward.monthKey === todayKTC.slice(0, 7) ? reward.monthWeekRewards : 0,
       characterEnhancements: Object.fromEntries(ownedChars.map((c) => [c.characterId, c.enhancementLevel])),
     };
+  }
+
+  // ─── 일일 퀘스트 (하루 4개 체크리스트 — achievements/titles처럼 하드코딩, 관리자 편집 불가) ──
+  private static readonly DAILY_QUEST_KEYS = ["login", "gacha", "battle", "community"] as const;
+  private static readonly DAILY_QUEST_BONUS_POINTS = 80;
+  private static readonly DAILY_QUEST_COLUMN = {
+    login: "loginDone",
+    gacha: "gachaDone",
+    battle: "battleDone",
+    community: "communityDone",
+  } as const;
+
+  /** 오늘자 행을 조회하고 없으면 생성 — upsert라 동시에 여러 요청이 첫 행을 만들려 해도 안전 */
+  private async getOrCreateTodayQuestRow(userId: string) {
+    const dateKey = getTodayKTC();
+    return this.prisma.dailyQuestProgress.upsert({
+      where: { userId_dateKey: { userId, dateKey } },
+      create: { userId, dateKey },
+      update: {},
+    });
+  }
+
+  private toQuestProgress(row: {
+    loginDone: boolean;
+    gachaDone: boolean;
+    battleDone: boolean;
+    communityDone: boolean;
+  }) {
+    return { login: row.loginDone, gacha: row.gachaDone, battle: row.battleDone, community: row.communityDone };
+  }
+
+  async getTodayQuests(userId: string) {
+    const row = await this.getOrCreateTodayQuestRow(userId);
+    const progress = this.toQuestProgress(row);
+    const allDone = RewardsService.DAILY_QUEST_KEYS.every((k) => progress[k]);
+    return { progress, allDone, bonusClaimed: row.bonusClaimed };
+  }
+
+  /**
+   * 퀘스트 항목 완료 처리(idempotent) — 액션 발생 지점에서 fire-and-forget으로 호출.
+   * 컬럼 하나만 직접 SET하는 upsert라 다른 퀘스트가 거의 동시에 완료돼도 서로의 값을
+   * 덮어쓰지 않는다 (JSON 컬럼을 읽어서 통째로 다시 쓰는 방식의 레이스를 피함).
+   */
+  async markQuestDone(userId: string, questKey: (typeof RewardsService.DAILY_QUEST_KEYS)[number]) {
+    const dateKey = getTodayKTC();
+    const column = RewardsService.DAILY_QUEST_COLUMN[questKey];
+    await this.prisma.dailyQuestProgress.upsert({
+      where: { userId_dateKey: { userId, dateKey } },
+      create: { userId, dateKey, [column]: true },
+      update: { [column]: true },
+    });
+  }
+
+  async claimQuestBonus(userId: string) {
+    const row = await this.getOrCreateTodayQuestRow(userId);
+    const progress = this.toQuestProgress(row);
+    const allDone = RewardsService.DAILY_QUEST_KEYS.every((k) => progress[k]);
+    if (!allDone) throw new BadRequestException("아직 모든 퀘스트를 완료하지 않았습니다.");
+    if (row.bonusClaimed) throw new BadRequestException("이미 보상을 받았습니다.");
+
+    // bonusClaimed=false 조건을 WHERE에 걸어 원자적으로 선점 — 동시에 두 번 호출돼도
+    // 딱 한 요청만 count=1을 받아 포인트를 지급하고, 나머지는 0을 받아 거부됨(중복 지급 방지)
+    await this.getOrCreateReward(userId);
+    const claimed = await this.prisma.dailyQuestProgress.updateMany({
+      where: { id: row.id, bonusClaimed: false },
+      data: { bonusClaimed: true },
+    });
+    if (claimed.count === 0) {
+      throw new BadRequestException("이미 보상을 받았습니다.");
+    }
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: { missionPoints: { increment: RewardsService.DAILY_QUEST_BONUS_POINTS } },
+    });
+
+    void this.notifications
+      .create({
+        userId,
+        type: "quest",
+        title: "일일 퀘스트 완료!",
+        body: `모든 일일 퀘스트를 완료해 ${RewardsService.DAILY_QUEST_BONUS_POINTS}P를 받았습니다.`,
+        titleJa: "デイリークエスト達成！",
+        bodyJa: `すべてのデイリークエストを達成し、${RewardsService.DAILY_QUEST_BONUS_POINTS}Pを獲得しました。`,
+        titleEn: "Daily Quests Complete!",
+        bodyEn: `You completed all daily quests and earned ${RewardsService.DAILY_QUEST_BONUS_POINTS}P.`,
+      })
+      .catch(() => undefined);
+
+    return { points: RewardsService.DAILY_QUEST_BONUS_POINTS };
   }
 
   // ─── 포인트 상점 ─────────────────────────────────────────────────────────────
@@ -942,6 +1033,7 @@ export class RewardsService {
       this.checkAndGrantAchievements(userId),
       this.checkAndGrantTitles(userId),
     ]).catch(() => undefined);
+    void this.markQuestDone(userId, "battle").catch(() => undefined);
   }
 
   /** 레이드 랭킹 보상 지급 (알 여러 개 또는 포인트) */
@@ -1139,6 +1231,8 @@ export class RewardsService {
         }),
       ),
     ]);
+
+    void this.markQuestDone(userId, "gacha").catch(() => undefined);
 
     return {
       results,

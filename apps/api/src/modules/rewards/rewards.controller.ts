@@ -105,6 +105,18 @@ export class RewardsController {
     return this.rewardsService.claimAttendance(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("quests/today")
+  getTodayQuests(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.getTodayQuests(user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("quests/claim")
+  claimQuestBonus(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.claimQuestBonus(user.sub);
+  }
+
   @Get("colosseum-rankings")
   getColosseumRankings() {
     return this.rewardsService.getColosseumRankings();

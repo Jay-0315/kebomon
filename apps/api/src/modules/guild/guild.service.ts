@@ -10,6 +10,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { CommunityService } from "../community/community.service";
 import { ArenaService } from "../arena/arena.service";
+import { RewardsService } from "../rewards/rewards.service";
 import { randomBoss } from "../gateway/raid.gateway";
 import {
   APPLICATION_MESSAGE_MAX_LEN,
@@ -41,6 +42,7 @@ export class GuildService {
     private readonly notifications: NotificationsService,
     private readonly community: CommunityService,
     private readonly arena: ArenaService,
+    private readonly rewards: RewardsService,
   ) {}
 
   private async requireMembership(userId: string) {
@@ -489,6 +491,7 @@ export class GuildService {
         },
       }),
     ]);
+    void this.rewards.markQuestDone(userId, "battle").catch(() => undefined);
 
     if (justCleared) {
       await this.addGuildExp(member.guildId, BOSS_CLEAR_GUILD_EXP);

@@ -17,4 +17,8 @@ export class UpdateUserSettingsDto {
   @IsOptional()
   @IsIn(["ko", "ja", "en"])
   language?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  hasSeenTutorial?: boolean;
 }

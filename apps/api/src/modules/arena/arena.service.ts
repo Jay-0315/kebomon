@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { RewardsService } from "../rewards/rewards.service";
 import { CharacterMasterRow, loadCharacterMasterMap } from "../rewards/character-master.util";
 import { ARENA_POINTS, getArenaNpc } from "./arena.constants";
 
@@ -873,6 +874,7 @@ export class ArenaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly rewards: RewardsService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1115,6 +1117,7 @@ export class ArenaService {
         : `Your defense deck fended off ${attackerName}. (+${defenderPointsDelta}pts)`,
       link: `/colosseum?battleId=${battleLog.id.toString()}`,
     }).catch(() => undefined);
+    void this.rewards.markQuestDone(attackerId, "battle").catch(() => undefined);
 
     return {
       won,
@@ -1168,6 +1171,7 @@ export class ArenaService {
       bestStreak: Math.max(prev.bestStreak, newWinStreak),
     };
     await this.prisma.battleStats.upsert({ where: { userId: attackerId }, create: { userId: attackerId, ...data }, update: data });
+    void this.rewards.markQuestDone(attackerId, "battle").catch(() => undefined);
 
     return {
       won, pointsDelta, tierPoints: newPoints,

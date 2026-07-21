@@ -4,10 +4,11 @@ import { GuildService } from "./guild.service";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { CommunityModule } from "../community/community.module";
 import { ArenaModule } from "../arena/arena.module";
+import { RewardsModule } from "../rewards/rewards.module";
 import { JwtAuthModule } from "../auth/jwt-auth.module";
 
 @Module({
-  imports: [NotificationsModule, CommunityModule, ArenaModule, JwtAuthModule],
+  imports: [NotificationsModule, CommunityModule, ArenaModule, RewardsModule, JwtAuthModule],
   controllers: [GuildController],
   providers: [GuildService],
   exports: [GuildService],

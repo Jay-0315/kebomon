@@ -26,6 +26,7 @@ import AttendancePage from "./components/AttendancePage";
 import MissionPage from "./components/MissionPage";
 import GachaPage from "./components/GachaPage";
 import PublicProfilePage from "./components/PublicProfilePage";
+import UserSearchPage from "./components/UserSearchPage";
 import { useAppData } from "./context/AppDataContext";
 import { isAuthenticated, getStoredUser } from "./lib/auth";
 import { api } from "./lib/api";
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="mypage" element={<MyPage />} />
           <Route path="profile/:userId" element={<PublicProfilePage />} />
+          <Route path="search/users" element={<UserSearchPage />} />
           <Route path="kebomon" element={<KebomonPage />} />
           <Route path="gacha" element={<GachaPage />} />
           <Route path="live" element={<LiveChatPage />} />

@@ -77,6 +77,8 @@ model User {
   baseCurrency           CurrencyCode            @map("base_currency")
   profilePhoto           String?                 @map("profile_photo") @db.LongText
   hasPassword            Boolean                 @default(false) @map("has_password")
+  bio                    String?                 @db.VarChar(200)
+  favoriteCharacterIds   Json?                   @map("favorite_character_ids")
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt @map("updated_at")
   lastLoginAt            DateTime?               @map("last_login_at")
@@ -103,6 +105,7 @@ model User {
   guildApplications      GuildApplication[]
   guildBossContributions GuildBossContribution[]
   reports                Report[]
+  dailyQuestProgress     DailyQuestProgress[]
 
   @@map("users")
 }
@@ -413,15 +416,16 @@ model GuildBossContribution {
 }
 
 model AppSetting {
-  id            String   @id @default(uuid())
-  userId        String   @unique @map("user_id")
-  notifications Boolean  @default(true)
-  darkMode      Boolean  @default(true) @map("dark_mode")
-  themeColor    String   @default("emerald") @map("theme_color") @db.VarChar(20)
-  language      String   @default("ko") @db.VarChar(5)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  notifications   Boolean  @default(true)
+  darkMode        Boolean  @default(true) @map("dark_mode")
+  themeColor      String   @default("emerald") @map("theme_color") @db.VarChar(20)
+  language        String   @default("ko") @db.VarChar(5)
+  hasSeenTutorial Boolean  @default(false) @map("has_seen_tutorial")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("app_settings")
 }
@@ -500,6 +504,27 @@ model Report {
   @@unique([reporterId, targetType, targetId])
   @@index([status])
   @@map("reports")
+}
+
+// 진행 상황을 JSON 하나로 뭉치지 않고 컬럼별로 분리 — 동시에 서로 다른 퀘스트가 완료돼도
+// (예: 전투 완료와 커뮤니티 활동이 거의 동시에 들어옴) read-modify-write 없이 각자 원자적으로
+// UPDATE 되어 서로의 값을 덮어쓰지 않는다.
+model DailyQuestProgress {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  dateKey       String   @map("date_key") @db.VarChar(10) // "YYYY-MM-DD" (KTC)
+  loginDone     Boolean  @default(false) @map("login_done")
+  gachaDone     Boolean  @default(false) @map("gacha_done")
+  battleDone    Boolean  @default(false) @map("battle_done")
+  communityDone Boolean  @default(false) @map("community_done")
+  bonusClaimed  Boolean  @default(false) @map("bonus_claimed")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dateKey])
+  @@index([userId])
+  @@map("daily_quest_progress")
 }
 
 model PasswordChangeHistory {

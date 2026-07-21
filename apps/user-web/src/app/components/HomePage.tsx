@@ -28,6 +28,7 @@ import { CHARACTERS } from "../data/characters";
 import TitleBadge from "./TitleBadge";
 import StatusPanel from "./StatusPanel";
 import UserAvatar from "./UserAvatar";
+import DailyQuestCard from "./DailyQuestCard";
 
 const CHANNEL_DATA = [
   { id: 1, nameKey: "live.channel.1" as TranslationKey, desktop: "/bg-ruins.png",  mobile: "/bg-ruins.v.png",  fill: "#1f2a14", border: "#57534e", icon: <Castle   size={16} color="#a8a29e" /> },
@@ -166,6 +167,9 @@ export default function HomePage() {
           </button>
         </div>
       </div>
+
+      {/* ── 일일 퀘스트 ── */}
+      <DailyQuestCard />
 
       {/* ── Quick links ── */}
       <div className="grid grid-cols-2 gap-3">

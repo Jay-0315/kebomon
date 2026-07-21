@@ -63,6 +63,12 @@ export interface GachaConfig {
   pityLegendaryThreshold: number;
 }
 
+export interface DailyQuests {
+  progress: Record<string, boolean>;
+  allDone: boolean;
+  bonusClaimed: boolean;
+}
+
 interface AppDataContextValue {
   hasInitialized: boolean;
   rewardsFailed: boolean;
@@ -73,6 +79,9 @@ interface AppDataContextValue {
   rewardSummary: RewardSummary;
   characterMasterMap: Record<number, { rarity: string; rogueArchetype: string }>;
   gachaConfig: GachaConfig;
+  dailyQuests: DailyQuests | null;
+  fetchDailyQuests: () => Promise<void>;
+  claimDailyQuestBonus: () => Promise<{ points: number } | null>;
   createPost: (draft: CommunityPostDraft) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   togglePostLike: (postId: string) => Promise<void>;
@@ -107,6 +116,8 @@ interface AppDataContextValue {
   profilePhoto: string | null;
   updateProfilePhoto: (photo: string | null) => void;
   updateProfileName: (name: string) => Promise<void>;
+  updateBio: (bio: string) => Promise<void>;
+  updateFavoriteCharacters: (favoriteCharacterIds: number[]) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -217,6 +228,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     pityRareThreshold: DEFAULT_PITY_RARE_THRESHOLD,
     pityLegendaryThreshold: DEFAULT_PITY_LEGENDARY_THRESHOLD,
   });
+  const [dailyQuests, setDailyQuests] = useState<DailyQuests | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     const userId = getStoredUser()?.id;
     return userId ? localStorage.getItem(profilePhotoKey(userId)) : null;
@@ -258,7 +270,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
-    const [profileResult, postsResult, rewardsResult, characterMasterResult, gachaConfigResult] =
+    const [profileResult, postsResult, rewardsResult, characterMasterResult, gachaConfigResult, dailyQuestsResult] =
       await Promise.allSettled([
         api.get<{
           id: string;
@@ -268,12 +280,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           baseCurrency: string;
           profilePhoto?: string | null;
           hasPassword?: boolean;
+          bio?: string | null;
+          favoriteCharacterIds?: number[];
           settings?: AppSettings;
         }>(`/users/${currentUser.id}/profile`),
         api.get<{ posts: Record<string, unknown>[] }>(`/community/posts?userId=${currentUser.id}`),
         api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`),
         api.get<Record<number, { rarity: string; rogueArchetype: string }>>("/rewards/character-master"),
         api.get<GachaConfig>("/rewards/gacha-config"),
+        api.get<DailyQuests>("/rewards/quests/today"),
       ]);
 
     if (profileResult.status === "rejected") {
@@ -294,6 +309,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         baseCountryCode: p.baseCountryCode,
         baseCurrency: p.baseCurrency as UserProfile["baseCurrency"],
         hasPassword: p.hasPassword ?? false,
+        bio: p.bio ?? null,
+        favoriteCharacterIds: p.favoriteCharacterIds ?? [],
       });
       if (p.settings) {
         const srv = p.settings as AppSettings;
@@ -329,6 +346,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     if (gachaConfigResult.status === "fulfilled") {
       setGachaConfig(gachaConfigResult.value);
+    }
+    if (dailyQuestsResult.status === "fulfilled") {
+      setDailyQuests(dailyQuestsResult.value);
     }
     setIsLoading(false);
     setHasInitialized(true);
@@ -383,6 +403,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateBio = async (bio: string) => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    setProfile((prev) => ({ ...prev, bio }));
+    try {
+      await api.patch(`/users/${currentUser.id}/profile`, { bio });
+    } catch {
+      // optimistic update already applied
+    }
+  };
+
+  const updateFavoriteCharacters = async (favoriteCharacterIds: number[]) => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    setProfile((prev) => ({ ...prev, favoriteCharacterIds }));
+    try {
+      await api.patch(`/users/${currentUser.id}/profile`, { favoriteCharacterIds });
+    } catch {
+      // optimistic update already applied
+    }
+  };
+
   const equipCharacter = async (characterId: number) => {
     const currentUser = getStoredUser();
     if (!currentUser) return;
@@ -418,6 +460,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...result.results.filter((r) => !r.isDuplicate).map((r) => r.characterId),
       ],
     }));
+    void fetchDailyQuests();
     return result;
   };
 
@@ -557,8 +600,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         bigEggs: result.eggReward === "big" ? prev.bigEggs + 1 : prev.bigEggs,
         goldenEggs: result.eggReward === "golden" ? prev.goldenEggs + 1 : prev.goldenEggs,
       }));
+      void fetchDailyQuests();
     }
     return { alreadyClaimed: result.alreadyClaimed, points: result.points };
+  };
+
+  const fetchDailyQuests = async () => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    try {
+      setDailyQuests(await api.get<DailyQuests>("/rewards/quests/today"));
+    } catch {
+      // 실패해도 위젯이 조용히 숨겨지므로 별도 처리 불필요
+    }
+  };
+
+  const claimDailyQuestBonus = async (): Promise<{ points: number } | null> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return null;
+    try {
+      const result = await api.post<{ points: number }>("/rewards/quests/claim");
+      setDailyQuests((prev) => (prev ? { ...prev, bonusClaimed: true } : prev));
+      setRewardSummary((prev) => ({ ...prev, missionPoints: prev.missionPoints + result.points }));
+      return result;
+    } catch {
+      return null;
+    }
   };
 
   const checkAchievements = async (): Promise<{ newlyUnlocked: number[]; dexMilestones: number[] }> => {
@@ -722,6 +789,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     rewardSummary,
     characterMasterMap,
     gachaConfig,
+    dailyQuests,
+    fetchDailyQuests,
+    claimDailyQuestBonus,
     createPost,
     deletePost,
     togglePostLike,
@@ -756,6 +826,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     profilePhoto,
     updateProfilePhoto,
     updateProfileName,
+    updateBio,
+    updateFavoriteCharacters,
   };
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

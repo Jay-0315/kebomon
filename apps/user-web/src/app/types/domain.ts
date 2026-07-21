@@ -139,6 +139,8 @@ export interface UserProfile {
   baseCountryCode: string;
   baseCurrency: CurrencyCode;
   hasPassword?: boolean;
+  bio?: string | null;
+  favoriteCharacterIds?: number[];
 }
 
 export interface AppSettings {
@@ -146,6 +148,7 @@ export interface AppSettings {
   darkMode: boolean;
 themeColor: string;
   language?: "ko" | "ja" | "en";
+  hasSeenTutorial?: boolean;
 }
 
 // ─── 길드 ────────────────────────────────────────────────────────────────────

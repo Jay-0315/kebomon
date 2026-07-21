@@ -14,6 +14,8 @@ interface PublicProfile {
   id: string;
   name: string;
   profilePhoto: string | null;
+  bio: string | null;
+  favoriteCharacterIds: number[];
   equippedCharacterId: number | null;
   equippedTitleId: number | null;
   equippedBorderId: string | null;
@@ -24,7 +26,7 @@ interface PublicProfile {
 export default function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const ko = lang === "ko";
   const ja = lang === "ja";
 
@@ -133,6 +135,10 @@ export default function PublicProfilePage() {
           </div>
         </div>
 
+        {profile.bio && (
+          <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{profile.bio}</p>
+        )}
+
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-border bg-muted/30 p-3">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
@@ -165,6 +171,28 @@ export default function PublicProfilePage() {
             )}
           </div>
         </div>
+
+        {profile.favoriteCharacterIds.length > 0 && (
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
+              {t("mypage.favorites_section")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {profile.favoriteCharacterIds.map((id) => {
+                const fc = CHARACTERS.find((c) => c.id === id);
+                if (!fc) return null;
+                return (
+                  <div
+                    key={id}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/30"
+                  >
+                    <PixelSprite type={fc.type} colors={fc.colors} characterId={fc.id} rarity={fc.rarity} size={36} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {showReport && (

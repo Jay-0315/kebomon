@@ -11,6 +11,8 @@ CREATE TABLE users (
   base_currency    ENUM('KRW','JPY','USD','EUR')  NOT NULL,
   profile_photo    LONGTEXT                       NULL,
   has_password     TINYINT(1)                     NOT NULL DEFAULT 0,
+  bio              VARCHAR(200)                   NULL,
+  favorite_character_ids JSON                     NULL,
   last_login_at    DATETIME                       NULL,
   created_at       DATETIME                       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       DATETIME                       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -36,6 +38,7 @@ CREATE TABLE app_settings (
   dark_mode     TINYINT(1)    NOT NULL DEFAULT 1,
   theme_color   VARCHAR(20)   NOT NULL DEFAULT 'emerald',
   language      VARCHAR(5)    NOT NULL DEFAULT 'ko',
+  has_seen_tutorial TINYINT(1) NOT NULL DEFAULT 0,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_settings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -183,6 +186,22 @@ CREATE TABLE password_change_history (
   user_id    VARCHAR(36)  NOT NULL UNIQUE,
   changed_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pwhistory_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS daily_quest_progress (
+  id             VARCHAR(36)  NOT NULL PRIMARY KEY,
+  user_id        VARCHAR(36)  NOT NULL,
+  date_key       VARCHAR(10)  NOT NULL,
+  login_done     TINYINT(1)   NOT NULL DEFAULT 0,
+  gacha_done     TINYINT(1)   NOT NULL DEFAULT 0,
+  battle_done    TINYINT(1)   NOT NULL DEFAULT 0,
+  community_done TINYINT(1)   NOT NULL DEFAULT 0,
+  bonus_claimed  TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT uq_daily_quest_progress UNIQUE (user_id, date_key),
+  INDEX idx_daily_quest_progress_user_id (user_id),
+  CONSTRAINT fk_daily_quest_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS battle_stats (

@@ -14,6 +14,7 @@ import {
   CalendarCheck,
   Zap,
   Layers,
+  Star,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 import PixelCharacter from "./PixelCharacter";
@@ -41,6 +42,8 @@ export default function MyPage() {
     profilePhoto,
     updateProfilePhoto,
     updateProfileName,
+    updateBio,
+    updateFavoriteCharacters,
     equipTitle,
     unequipTitle,
     equipBorder,
@@ -136,6 +139,30 @@ export default function MyPage() {
     }
     await updateProfileName(trimmed);
     setEditingName(false);
+  };
+
+  const [editingBio, setEditingBio] = useState(false);
+  const [draftBio, setDraftBio] = useState(profile.bio ?? "");
+
+  const handleSaveBio = async () => {
+    const trimmed = draftBio.trim();
+    if (trimmed !== (profile.bio ?? "")) {
+      await updateBio(trimmed);
+    }
+    setEditingBio(false);
+  };
+
+  const [showFavoriteSelector, setShowFavoriteSelector] = useState(false);
+  const MAX_FAVORITES = 6;
+  const favoriteIds = profile.favoriteCharacterIds ?? [];
+
+  const toggleFavorite = (characterId: number) => {
+    const isFav = favoriteIds.includes(characterId);
+    if (!isFav && favoriteIds.length >= MAX_FAVORITES) return;
+    const next = isFav
+      ? favoriteIds.filter((id) => id !== characterId)
+      : [...favoriteIds, characterId];
+    void updateFavoriteCharacters(next);
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,6 +318,49 @@ export default function MyPage() {
           <p className="text-xs text-muted-foreground mt-0.5">
             {country.flag} {country.name}
           </p>
+          {editingBio ? (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <input
+                value={draftBio}
+                onChange={(e) => setDraftBio(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSaveBio();
+                  if (e.key === "Escape") setEditingBio(false);
+                }}
+                autoFocus
+                maxLength={200}
+                placeholder={t("mypage.bio_placeholder")}
+                className="text-xs px-2 py-1 rounded border border-border bg-input-background focus:outline-none focus:ring-1 focus:ring-ring flex-1 min-w-0"
+              />
+              <button
+                onClick={() => void handleSaveBio()}
+                className="text-primary hover:text-primary/70 transition-colors shrink-0"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setEditingBio(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <p className="text-xs text-muted-foreground truncate">
+                {profile.bio || t("mypage.bio_placeholder")}
+              </p>
+              <button
+                onClick={() => {
+                  setDraftBio(profile.bio ?? "");
+                  setEditingBio(true);
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -447,6 +517,73 @@ export default function MyPage() {
                   );
                 })}
               </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── 즐겨찾기 캐릭터 ── */}
+      <div className="bg-card rounded-md p-4 shadow-sm border border-border">
+        <button
+          onClick={() => setShowFavoriteSelector((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">{t("mypage.favorites_section")}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span>{favoriteIds.length}/{MAX_FAVORITES}</span>
+            <ChevronRight
+              className={`w-4 h-4 transition-transform ${showFavoriteSelector ? "rotate-90" : ""}`}
+            />
+          </div>
+        </button>
+        {!showFavoriteSelector && favoriteIds.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {favoriteIds.map((id) => (
+              <PixelCharacter key={id} characterId={id} size={40} />
+            ))}
+          </div>
+        )}
+        {showFavoriteSelector && (
+          <div className="mt-3 pt-3 border-t border-border">
+            {rewardSummary.ownedCharacterIds.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                {t("mypage.favorites_empty")}
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {t("mypage.favorites_hint")}
+                </p>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {rewardSummary.ownedCharacterIds.map((id) => {
+                    const isFav = favoriteIds.includes(id);
+                    const char = CHARACTERS.find((c) => c.id === id);
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => toggleFavorite(id)}
+                        className={`flex flex-col items-center gap-1 p-2 rounded border-2 transition-colors ${
+                          isFav
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <PixelCharacter characterId={id} size={36} />
+                        {char && (
+                          <span
+                            className={`text-[10px] font-medium truncate w-full text-center ${RARITY_COLOR[char.rarity]}`}
+                          >
+                            {getCharName(char, lang)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}
