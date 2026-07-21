@@ -31,10 +31,10 @@ export default function MaintenancePage({
         )}
         <p className="text-xs text-muted-foreground">
           {ko
-            ? "잠시 후 자동으로 다시 확인합니다."
+            ? "점검이 끝나면 자동으로 화면이 전환됩니다."
             : ja
-              ? "しばらくすると自動的に再確認します。"
-              : "We'll automatically check again shortly."}
+              ? "メンテナンスが終了すると自動的に画面が切り替わります。"
+              : "This page will switch automatically once maintenance ends."}
         </p>
       </div>
     </div>
