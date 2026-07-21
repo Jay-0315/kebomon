@@ -110,7 +110,7 @@ export default function AttendancePage() {
         setTimeout(() => {
           setLastPoints(null);
           setEggPopup(null);
-        }, 3000);
+        }, 1500);
       }
     } finally {
       setClaiming(false);

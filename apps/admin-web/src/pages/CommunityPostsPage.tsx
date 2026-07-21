@@ -70,10 +70,10 @@ export default function CommunityPostsPage() {
           onChange={(e) => setCategory(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="">전체 카테고리</option>
-          <option value="brag">brag</option>
-          <option value="tip">tip</option>
-          <option value="chat">chat</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 카테고리</option>
+          <option value="brag" className="bg-[var(--bg-elevated)] text-[var(--fg)]">brag</option>
+          <option value="tip" className="bg-[var(--bg-elevated)] text-[var(--fg)]">tip</option>
+          <option value="chat" className="bg-[var(--bg-elevated)] text-[var(--fg)]">chat</option>
         </select>
         <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
           검색

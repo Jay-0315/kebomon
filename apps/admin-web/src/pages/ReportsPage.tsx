@@ -106,10 +106,10 @@ export default function ReportsPage() {
           }}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="">전체 상태</option>
-          <option value="PENDING">대기</option>
-          <option value="RESOLVED">처리완료</option>
-          <option value="DISMISSED">기각</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 상태</option>
+          <option value="PENDING" className="bg-[var(--bg-elevated)] text-[var(--fg)]">대기</option>
+          <option value="RESOLVED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">처리완료</option>
+          <option value="DISMISSED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">기각</option>
         </select>
       </div>
 

@@ -101,18 +101,18 @@ export default function UsersPage() {
           onChange={(e) => setRoleFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="">전체 권한</option>
-          <option value="USER">USER</option>
-          <option value="ADMIN">ADMIN</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 권한</option>
+          <option value="USER" className="bg-[var(--bg-elevated)] text-[var(--fg)]">USER</option>
+          <option value="ADMIN" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ADMIN</option>
         </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="">전체 상태</option>
-          <option value="ACTIVE">ACTIVE</option>
-          <option value="SUSPENDED">SUSPENDED</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 상태</option>
+          <option value="ACTIVE" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ACTIVE</option>
+          <option value="SUSPENDED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">SUSPENDED</option>
         </select>
         <button
           type="submit"

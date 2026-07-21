@@ -64,9 +64,9 @@ export default function CharactersPage() {
           onChange={(e) => setRarityFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="">전체 등급</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 등급</option>
           {RARITIES.map((r) => (
-            <option key={r} value={r}>{r}</option>
+            <option key={r} value={r} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{r}</option>
           ))}
         </select>
         <select
@@ -74,9 +74,9 @@ export default function CharactersPage() {
           onChange={(e) => setArchFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="">전체 아레나 역할</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 아레나 역할</option>
           {ARENA_ARCHETYPES.map((a) => (
-            <option key={a} value={a}>{a}</option>
+            <option key={a} value={a} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{a}</option>
           ))}
         </select>
         <span className="self-center text-xs text-[var(--fg-faint)]">{filtered.length}종</span>

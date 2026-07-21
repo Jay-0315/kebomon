@@ -81,7 +81,7 @@ export default function CharacterEditModal({
               className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
             >
               {CHAR_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t}</option>
               ))}
             </select>
           </div>
@@ -93,7 +93,7 @@ export default function CharacterEditModal({
               className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
             >
               {RARITIES.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{r}</option>
               ))}
             </select>
           </div>
@@ -105,7 +105,7 @@ export default function CharacterEditModal({
               className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
             >
               {ARENA_ARCHETYPES.map((a) => (
-                <option key={a} value={a}>{a}</option>
+                <option key={a} value={a} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{a}</option>
               ))}
             </select>
           </div>
@@ -119,7 +119,7 @@ export default function CharacterEditModal({
               className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
             >
               {ROGUE_ARCHETYPES.map((a) => (
-                <option key={a} value={a}>{a}</option>
+                <option key={a} value={a} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{a}</option>
               ))}
             </select>
           </div>

@@ -69,9 +69,9 @@ export default function BattlesPage() {
           onChange={(e) => setSort(e.target.value as typeof sort)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="winrate">승률순</option>
-          {mode === "colosseum" && <option value="tierpoints">티어포인트순</option>}
-          <option value="streak">최고연승순</option>
+          <option value="winrate" className="bg-[var(--bg-elevated)] text-[var(--fg)]">승률순</option>
+          {mode === "colosseum" && <option value="tierpoints" className="bg-[var(--bg-elevated)] text-[var(--fg)]">티어포인트순</option>}
+          <option value="streak" className="bg-[var(--bg-elevated)] text-[var(--fg)]">최고연승순</option>
         </select>
       </div>
 

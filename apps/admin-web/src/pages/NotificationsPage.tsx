@@ -135,9 +135,9 @@ export default function NotificationsPage() {
           onChange={(e) => setLink(e.target.value)}
           className="mb-4 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         >
-          <option value="">링크 없음</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">링크 없음</option>
           {LINK_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} className="bg-[var(--bg-elevated)] text-[var(--fg)]">
               {o.label}
             </option>
           ))}

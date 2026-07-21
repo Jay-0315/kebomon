@@ -39,6 +39,7 @@ export default function ReportModal({
     try {
       await api.post("/reports", { targetType, targetId, reason });
       setDone(true);
+      setTimeout(onClose, 1500);
     } catch (err) {
       const status = (err as { status?: number } | undefined)?.status;
       setError(status === 400 ? t("report.already") : t("report.error"));
@@ -74,13 +75,13 @@ export default function ReportModal({
               required
               value={reasonKey}
               onChange={(e) => setReasonKey(e.target.value)}
-              className="mb-3 w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm outline-none"
+              className="mb-3 w-full rounded-md border border-border bg-card text-foreground px-2 py-1.5 text-sm outline-none"
             >
-              <option value="" disabled>
+              <option value="" disabled className="bg-card text-foreground">
                 {t("report.reason_placeholder")}
               </option>
               {REASON_KEYS.map((k) => (
-                <option key={k} value={k}>
+                <option key={k} value={k} className="bg-card text-foreground">
                   {t(k)}
                 </option>
               ))}
