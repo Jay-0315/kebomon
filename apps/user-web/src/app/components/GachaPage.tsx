@@ -6,7 +6,7 @@ import { GACHA_COST_SINGLE, GACHA_COST_TEN } from "../data/characters";
 import { GachaTab, GachaCapsuleModal } from "./KebomonPage";
 
 export default function GachaPage() {
-  const { rewardSummary, performGacha } = useAppData();
+  const { rewardSummary, performGacha, gachaConfig } = useAppData();
   const { t } = useLang();
   const [pulling, setPulling] = useState(false);
   const [gachaResult, setGachaResult] = useState<GachaResult | null>(null);
@@ -42,6 +42,9 @@ export default function GachaPage() {
           canAffordTen={canAffordTen}
           pulling={pulling}
           onPull={(count) => void handlePull(count)}
+          gachaRates={gachaConfig.gachaRates}
+          pityRareThreshold={gachaConfig.pityRareThreshold}
+          pityLegendaryThreshold={gachaConfig.pityLegendaryThreshold}
           t={t}
         />
       </div>

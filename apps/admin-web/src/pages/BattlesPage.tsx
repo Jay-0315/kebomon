@@ -47,7 +47,9 @@ export default function BattlesPage() {
     <div>
       <h1 className="mb-1 text-lg font-semibold">전적 모니터링</h1>
       <p className="mb-4 text-sm text-[var(--fg-faint)]">
-        표본이 어느 정도 쌓였는데 승률이 비정상적으로 높은 계정을 노란색으로 표시합니다 (어뷰징 참고용, 자동 제재 아님).
+        {mode === "colosseum"
+          ? "같은 상대를 반복 공격해서 포인트를 파밍한 정황이 있는 계정을 노란색으로 표시합니다 (어뷰징 참고용, 자동 제재 아님)."
+          : "표본이 어느 정도 쌓였는데 승률이 비정상적으로 높은 계정을 노란색으로 표시합니다 (어뷰징 참고용, 자동 제재 아님)."}
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">

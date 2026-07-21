@@ -23,7 +23,13 @@ export interface EggOpenResult {
   isDuplicate: boolean;
   points: number;
 }
-import { CHARACTERS as _CHARS, ACHIEVEMENTS as _ACHIEVEMENTS } from "../data/characters";
+import {
+  CHARACTERS as _CHARS,
+  ACHIEVEMENTS as _ACHIEVEMENTS,
+  GACHA_RATES,
+  DEFAULT_PITY_RARE_THRESHOLD,
+  DEFAULT_PITY_LEGENDARY_THRESHOLD,
+} from "../data/characters";
 const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
 const _ACHIEVEMENT_CHAR_IDS = new Set(_ACHIEVEMENTS.map((a) => a.characterId));
 const initialAppData = {
@@ -51,6 +57,12 @@ const SETTINGS_STORAGE_KEY = "kebo-local-settings";
 const LANG_OVERRIDE_KEY = "kebo-lang-pending";
 const profilePhotoKey = (userId: string) => `kebo-profile-photo-${userId}`;
 
+export interface GachaConfig {
+  gachaRates: Record<string, number>;
+  pityRareThreshold: number;
+  pityLegendaryThreshold: number;
+}
+
 interface AppDataContextValue {
   hasInitialized: boolean;
   rewardsFailed: boolean;
@@ -60,6 +72,7 @@ interface AppDataContextValue {
   posts: CommunityPost[];
   rewardSummary: RewardSummary;
   characterMasterMap: Record<number, { rarity: string; rogueArchetype: string }>;
+  gachaConfig: GachaConfig;
   createPost: (draft: CommunityPostDraft) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   togglePostLike: (postId: string) => Promise<void>;
@@ -199,6 +212,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [characterMasterMap, setCharacterMasterMap] = useState<
     Record<number, { rarity: string; rogueArchetype: string }>
   >({});
+  const [gachaConfig, setGachaConfig] = useState<GachaConfig>({
+    gachaRates: GACHA_RATES,
+    pityRareThreshold: DEFAULT_PITY_RARE_THRESHOLD,
+    pityLegendaryThreshold: DEFAULT_PITY_LEGENDARY_THRESHOLD,
+  });
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     const userId = getStoredUser()?.id;
     return userId ? localStorage.getItem(profilePhotoKey(userId)) : null;
@@ -240,7 +258,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
-    const [profileResult, postsResult, rewardsResult, characterMasterResult] =
+    const [profileResult, postsResult, rewardsResult, characterMasterResult, gachaConfigResult] =
       await Promise.allSettled([
         api.get<{
           id: string;
@@ -255,6 +273,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         api.get<{ posts: Record<string, unknown>[] }>(`/community/posts?userId=${currentUser.id}`),
         api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`),
         api.get<Record<number, { rarity: string; rogueArchetype: string }>>("/rewards/character-master"),
+        api.get<GachaConfig>("/rewards/gacha-config"),
       ]);
 
     if (profileResult.status === "rejected") {
@@ -307,6 +326,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     if (characterMasterResult.status === "fulfilled") {
       setCharacterMasterMap(characterMasterResult.value);
+    }
+    if (gachaConfigResult.status === "fulfilled") {
+      setGachaConfig(gachaConfigResult.value);
     }
     setIsLoading(false);
     setHasInitialized(true);
@@ -699,6 +721,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     posts,
     rewardSummary,
     characterMasterMap,
+    gachaConfig,
     createPost,
     deletePost,
     togglePostLike,

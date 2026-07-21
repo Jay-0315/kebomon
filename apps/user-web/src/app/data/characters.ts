@@ -128,7 +128,8 @@ export const RARITY_DUPLICATE_POINTS: Record<CharacterRarity, number> = {
   mythic: 120,
 };
 
-// Gacha pull rates (sum = 100)
+// Gacha pull rates (sum = 100) — 서버 기본값과 동일한 폴백. 실제 확률은
+// 관리자 페이지에서 조정 가능하며, /rewards/gacha-config로 받아온 값이 이 값을 덮어씀.
 export const GACHA_RATES: Record<CharacterRarity, number> = {
   common: 45.84,
   uncommon: 30.56,
@@ -137,6 +138,10 @@ export const GACHA_RATES: Record<CharacterRarity, number> = {
   legendary: 2,
   mythic: 0.6,
 };
+
+// 천장 폴백값 — 서버 기본값(gacha-config.util.ts)과 동일
+export const DEFAULT_PITY_RARE_THRESHOLD = 9;
+export const DEFAULT_PITY_LEGENDARY_THRESHOLD = 79;
 
 export const GACHA_COST_SINGLE = 120;
 export const GACHA_COST_TEN = 1200;

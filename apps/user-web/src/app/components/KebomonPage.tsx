@@ -38,7 +38,6 @@ import {
   GACHA_COST_SINGLE,
   GACHA_COST_TEN,
   RARITY_DUPLICATE_POINTS,
-  GACHA_RATES,
   RARITY_COLOR,
   RARITY_BORDER,
   ROGUE_TYPE_MAP,
@@ -1811,6 +1810,9 @@ export function GachaTab({
   canAffordTen,
   pulling,
   onPull,
+  gachaRates,
+  pityRareThreshold,
+  pityLegendaryThreshold,
   t,
 }: {
   missionPoints: number;
@@ -1820,11 +1822,16 @@ export function GachaTab({
   canAffordTen: boolean;
   pulling: boolean;
   onPull: (count: 1 | 10) => void;
+  gachaRates: Record<string, number>;
+  pityRareThreshold: number;
+  pityLegendaryThreshold: number;
   t: TFunc;
 }) {
   const { lang } = useLang();
-  const pityLeft = Math.max(0, 10 - (gachaPityCount % 10));
-  const ceilingLeft = Math.max(0, 80 - legendaryPityCount);
+  const pityCycle = pityRareThreshold + 1;
+  const ceilingCycle = pityLegendaryThreshold + 1;
+  const pityLeft = Math.max(0, pityCycle - (gachaPityCount % pityCycle));
+  const ceilingLeft = Math.max(0, ceilingCycle - legendaryPityCount);
 
   return (
     <div className="space-y-4">
@@ -1865,16 +1872,16 @@ export function GachaTab({
             {t("kebomon.gacha_ceiling_desc")})
           </p>
           <p className="text-xs font-bold text-amber-500">
-            {legendaryPityCount}/80
+            {legendaryPityCount}/{ceilingCycle}
           </p>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all"
             style={{
-              width: `${(legendaryPityCount / 80) * 100}%`,
+              width: `${(legendaryPityCount / ceilingCycle) * 100}%`,
               background:
-                legendaryPityCount >= 70
+                legendaryPityCount >= ceilingCycle - 10
                   ? "linear-gradient(90deg, #f97316, #eab308)"
                   : "linear-gradient(90deg, #7c3aed, #4f46e5)",
             }}
@@ -1954,13 +1961,13 @@ export function GachaTab({
                 <div
                   className="h-full rounded-full"
                   style={{
-                    width: `${GACHA_RATES[r]}%`,
+                    width: `${gachaRates[r] ?? 0}%`,
                     backgroundColor: RARITY_HEX[r],
                   }}
                 />
               </div>
               <span className="text-xs text-muted-foreground w-8 text-right">
-                {GACHA_RATES[r]}%
+                {gachaRates[r] ?? 0}%
               </span>
             </div>
           ))}

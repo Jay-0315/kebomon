@@ -18,6 +18,12 @@ export class RewardsController {
     return this.rewardsService.getCharacterMasterPublic();
   }
 
+  /** 뽑기 확률/천장 (관리자 조정값) — 로그인 불필요 */
+  @Get("gacha-config")
+  getGachaConfigPublic() {
+    return this.rewardsService.getGachaConfigPublic();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post("starter")
   selectStarter(@CurrentUser() user: { sub: string }, @Body() body: { characterId: number }) {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
+import { PanelLeft, PanelLeftClose } from "lucide-react";
 import { clearAuthSession, getStoredUser } from "../lib/auth";
 import { getTheme, toggleTheme } from "../lib/theme";
 
@@ -44,6 +45,17 @@ function ThemeToggleButton() {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const user = getStoredUser();
+  const [collapsed, setCollapsed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("adminSidebarCollapsed") === "1",
+  );
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("adminSidebarCollapsed", next ? "1" : "0");
+      return next;
+    });
+  }
 
   function handleLogout() {
     clearAuthSession();
@@ -52,29 +64,44 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-[var(--border)] p-4">
-        <p className="mb-6 px-2 text-sm font-semibold text-[#b7607e]">KEBO Admin</p>
-        <nav className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `rounded-md px-3 py-2 text-sm ${
-                  isActive
-                    ? "bg-[var(--bg-active)] text-[var(--fg)]"
-                    : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+      <aside
+        className={`shrink-0 overflow-hidden border-r border-[var(--border)] transition-all duration-200 ${
+          collapsed ? "w-0 border-r-0" : "w-56"
+        }`}
+      >
+        <div className="w-56 p-4">
+          <p className="mb-6 px-2 text-sm font-semibold text-[#b7607e]">KEBO Admin</p>
+          <nav className="flex flex-col gap-1">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `rounded-md px-3 py-2 text-sm ${
+                    isActive
+                      ? "bg-[var(--bg-active)] text-[var(--fg)]"
+                      : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-[var(--border)] px-6 py-3">
-          <span className="text-sm text-[var(--fg-muted)]">{user?.name} ({user?.email})</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleCollapsed}
+              title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+              className="rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
+            >
+              {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </button>
+            <span className="text-sm text-[var(--fg-muted)]">{user?.name} ({user?.email})</span>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggleButton />
             <button

@@ -1625,4 +1625,12 @@ export class RewardsService {
     }
     return result;
   }
+
+  /**
+   * 뽑기 확률/천장 (관리자 페이지에서 조정 가능한 값) — 유저웹 확률 표시용.
+   * 로그인 불필요, 게임 밸런스 정보라 공개해도 무방.
+   */
+  async getGachaConfigPublic() {
+    return resolveGachaConfig(this.prisma);
+  }
 }
