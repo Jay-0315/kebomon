@@ -59,12 +59,12 @@ export default function MaintenancePage({
           <img
             src="/logo(light).png"
             alt="Kebo"
-            className="mx-auto h-9 w-auto object-contain dark:hidden"
+            className="mx-auto h-16 w-auto object-contain dark:hidden"
           />
           <img
             src="/logo(dark).png"
             alt="Kebo"
-            className="mx-auto h-9 w-auto object-contain hidden dark:block"
+            className="mx-auto h-16 w-auto object-contain hidden dark:block"
           />
         </div>
 
