@@ -123,14 +123,258 @@ export default function PrivacyModal({ onClose }: Props) {
                 <p className="text-muted-foreground">
                   ディスコード:{" "}
                   <a
-                    href="https://discord.com/invite/BkD5qKG8Z"
+                    href="https://discord.com/invite/GQvxJetjbf"
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary underline"
                   >
-                    discord.com/invite/BkD5qKG8Z
+                    discord.com/invite/GQvxJetjbf
                   </a>
                 </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  9. 権利侵害の救済方法
+                </h4>
+                <p className="text-muted-foreground">
+                  個人情報の侵害による救済を受けるため、以下の機関に紛争解決や相談などを申請することができます。
+                </p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                  <li>
+                    個人情報紛争調整委員会:{" "}
+                    <a
+                      href="https://www.kopico.go.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      www.kopico.go.kr
+                    </a>{" "}
+                    / 1833-6972
+                  </li>
+                  <li>
+                    個人情報侵害申告センター:{" "}
+                    <a
+                      href="https://privacy.kisa.or.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      privacy.kisa.or.kr
+                    </a>{" "}
+                    / 118
+                  </li>
+                  <li>
+                    大検察庁サイバー捜査課:{" "}
+                    <a
+                      href="https://www.spo.go.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      www.spo.go.kr
+                    </a>{" "}
+                    / 1301
+                  </li>
+                  <li>
+                    警察庁サイバー安全局:{" "}
+                    <a
+                      href="https://ecrm.cyber.go.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      ecrm.cyber.go.kr
+                    </a>{" "}
+                    / 182
+                  </li>
+                </ul>
+              </section>
+            </>
+          ) : lang === "en" ? (
+            <>
+              <p className="text-muted-foreground text-xs">
+                Last updated: June 18, 2026
+              </p>
+              <p className="text-muted-foreground">
+                KEBO (the "Service") establishes and discloses this Privacy
+                Policy in accordance with applicable personal data protection
+                laws in order to protect users' personal information and
+                promptly handle related grievances.
+              </p>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  1. Personal Information Collected and Purpose of Use
+                </h4>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                  <li>
+                    Email address / password (stored as a hash) — member
+                    identification and authentication
+                  </li>
+                  <li>
+                    Nickname / profile picture — displayed within the Service
+                  </li>
+                  <li>
+                    Google account information (ID, email) — social login
+                    integration
+                  </li>
+                  <li>
+                    Posts, comments, and Kebomon reward data — community and
+                    game features
+                  </li>
+                  <li>
+                    Access logs and connection environment data — fraud
+                    prevention and service improvement
+                  </li>
+                </ul>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  2. Processing and Retention Period
+                </h4>
+                <p className="text-muted-foreground">
+                  Personal information is destroyed without delay upon
+                  account withdrawal. Where retention is required under
+                  applicable law, it is kept for the required period.
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  3. Procedures and Methods for Destroying Personal
+                  Information
+                </h4>
+                <p className="text-muted-foreground">
+                  Upon account withdrawal, personal information (posts,
+                  comments, rewards, etc.) is immediately deleted (CASCADE)
+                  from the database. Electronic files are permanently deleted
+                  using methods that prevent recovery.
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  4. Provision of Personal Information to Third Parties
+                </h4>
+                <p className="text-muted-foreground">
+                  In principle, users' personal information is not provided
+                  to third parties. When using Google OAuth integration,
+                  Google's{" "}
+                  <a
+                    href="https://policies.google.com/privacy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline"
+                  >
+                    Privacy Policy
+                  </a>{" "}
+                  applies.
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  5. Outsourcing of Personal Information Processing
+                </h4>
+                <p className="text-muted-foreground">
+                  Personal information processing is not currently
+                  outsourced to any external party.
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  6. Rights of Data Subjects and How to Exercise Them
+                </h4>
+                <p className="text-muted-foreground">
+                  Users may request access to, correction of, deletion of, or
+                  suspension of processing of their personal information. All
+                  data can be deleted immediately via Account Deletion in
+                  Settings. For other requests, please contact us using the
+                  information below.
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  7. Measures to Ensure the Security of Personal Information
+                </h4>
+                <p className="text-muted-foreground">
+                  Passwords are hashed and stored using bcrypt.
+                  Communications are encrypted via HTTPS (TLS). JWT-based
+                  access control is applied.
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  8. Data Protection Officer / Contact
+                </h4>
+                <p className="text-muted-foreground">
+                  Discord:{" "}
+                  <a
+                    href="https://discord.com/invite/GQvxJetjbf"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline"
+                  >
+                    discord.com/invite/GQvxJetjbf
+                  </a>
+                </p>
+              </section>
+              <section className="space-y-1.5">
+                <h4 className="font-semibold text-foreground">
+                  9. Remedies for Infringement of Rights
+                </h4>
+                <p className="text-muted-foreground">
+                  To seek remedies for infringement of personal information,
+                  you may request dispute resolution or consultation from the
+                  following organizations:
+                </p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                  <li>
+                    Personal Information Dispute Mediation Committee:{" "}
+                    <a
+                      href="https://www.kopico.go.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      www.kopico.go.kr
+                    </a>{" "}
+                    / 1833-6972
+                  </li>
+                  <li>
+                    Privacy Infringement Report Center (KISA):{" "}
+                    <a
+                      href="https://privacy.kisa.or.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      privacy.kisa.or.kr
+                    </a>{" "}
+                    / 118
+                  </li>
+                  <li>
+                    Supreme Prosecutors' Office Cyber Investigation Division:{" "}
+                    <a
+                      href="https://www.spo.go.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      www.spo.go.kr
+                    </a>{" "}
+                    / 1301
+                  </li>
+                  <li>
+                    Korean National Police Agency Cyber Bureau:{" "}
+                    <a
+                      href="https://ecrm.cyber.go.kr"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      ecrm.cyber.go.kr
+                    </a>{" "}
+                    / 182
+                  </li>
+                </ul>
               </section>
             </>
           ) : (
@@ -230,12 +474,12 @@ export default function PrivacyModal({ onClose }: Props) {
                 <p className="text-muted-foreground">
                   디스코드:{" "}
                   <a
-                    href="https://discord.com/invite/BkD5qKG8Z"
+                    href="https://discord.com/invite/GQvxJetjbf"
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary underline"
                   >
-                    discord.com/invite/BkD5qKG8Z
+                    discord.com/invite/GQvxJetjbf
                   </a>
                 </p>
               </section>
