@@ -37,13 +37,24 @@ export class AdminUsersService {
     private readonly notificationGateway: NotificationGateway,
   ) {}
 
-  async findAll(q?: string, role?: string, status?: string, page = 1) {
+  async findAll(q?: string, role?: string, status?: string, page = 1, sortBy?: string, sortDir?: string) {
     const skip = (page - 1) * PAGE_SIZE;
     const where = {
       ...(q ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] } : {}),
       ...(role ? { role } : {}),
       ...(status ? { status } : {}),
     };
+    const dir = sortDir === "asc" ? "asc" : "desc";
+    const orderByMap: Record<string, object> = {
+      name: { name: dir },
+      email: { email: dir },
+      role: { role: dir },
+      status: { status: dir },
+      reward: { reward: { missionPoints: dir } },
+      createdAt: { createdAt: dir },
+      lastLoginAt: { lastLoginAt: dir },
+    };
+    const orderBy = orderByMap[sortBy ?? ""] ?? { createdAt: "desc" };
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -60,7 +71,7 @@ export class AdminUsersService {
           lastLoginAt: true,
           reward: { select: rewardSelect },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: PAGE_SIZE,
       }),

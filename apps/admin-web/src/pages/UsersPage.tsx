@@ -1,9 +1,41 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { api } from "../lib/api";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+
+type SortKey = "name" | "email" | "role" | "status" | "reward" | "createdAt" | "lastLoginAt";
+type SortDir = "asc" | "desc";
+
+function SortHeader({
+  sortKey,
+  label,
+  activeKey,
+  dir,
+  onToggle,
+}: {
+  sortKey: SortKey;
+  label: string;
+  activeKey: SortKey;
+  dir: SortDir;
+  onToggle: (key: SortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className="px-3 py-2">
+      <button
+        onClick={() => onToggle(sortKey)}
+        className={`flex items-center gap-1 hover:text-[var(--fg)] ${active ? "text-[var(--fg)]" : ""}`}
+      >
+        {label}
+        <Icon size={12} />
+      </button>
+    </th>
+  );
+}
 
 type AdminUserRow = {
   id: string;
@@ -30,6 +62,8 @@ export default function UsersPage() {
   const debouncedQ = useDebouncedValue(q, 300);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("createdAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,6 +79,8 @@ export default function UsersPage() {
       if (debouncedQ) params.set("q", debouncedQ);
       if (roleFilter) params.set("role", roleFilter);
       if (statusFilter) params.set("status", statusFilter);
+      params.set("sortBy", sortBy);
+      params.set("sortDir", sortDir);
       params.set("page", String(p));
       const res = await api.get<UsersResponse>(`/admin/users?${params.toString()}`);
       setData(res);
@@ -55,16 +91,25 @@ export default function UsersPage() {
     }
   }
 
-  // 검색어/필터가 바뀌면 1페이지부터 즉시 재검색
+  // 검색어/필터/정렬이 바뀌면 1페이지부터 즉시 재검색
   useEffect(() => {
     setPage(1);
     void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, roleFilter, statusFilter]);
+  }, [debouncedQ, roleFilter, statusFilter, sortBy, sortDir]);
 
   function handlePageChange(p: number) {
     setPage(p);
     void load(p);
+  }
+
+  function toggleSort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
   }
 
   async function toggleRole(user: AdminUserRow) {
@@ -125,13 +170,19 @@ export default function UsersPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">이름</th>
-              <th className="px-3 py-2">이메일</th>
-              <th className="px-3 py-2">권한</th>
-              <th className="px-3 py-2">상태</th>
-              <th className="px-3 py-2">재화 (KP/일반알/왕알/황금알/강화석)</th>
-              <th className="px-3 py-2">가입일</th>
-              <th className="px-3 py-2">최근 접속</th>
+              <SortHeader sortKey="name" label="이름" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="email" label="이메일" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="role" label="권한" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="status" label="상태" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader
+                sortKey="reward"
+                label="재화 (KP/일반알/왕알/황금알/강화석)"
+                activeKey={sortBy}
+                dir={sortDir}
+                onToggle={toggleSort}
+              />
+              <SortHeader sortKey="createdAt" label="가입일" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="lastLoginAt" label="최근 접속" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <th className="px-3 py-2">액션</th>
             </tr>
           </thead>

@@ -20,8 +20,10 @@ export class AdminUsersController {
     @Query("role") role?: string,
     @Query("status") status?: string,
     @Query("page") page?: string,
+    @Query("sortBy") sortBy?: string,
+    @Query("sortDir") sortDir?: string,
   ) {
-    return this.adminUsersService.findAll(q, role, status, page ? Number(page) : 1);
+    return this.adminUsersService.findAll(q, role, status, page ? Number(page) : 1, sortBy, sortDir);
   }
 
   @Get(":id")
