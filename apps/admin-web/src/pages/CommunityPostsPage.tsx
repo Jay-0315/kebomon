@@ -11,6 +11,12 @@ type PostsResponse = {
   totalPages: number;
 };
 
+const stripHtml = (html: string) =>
+  html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 export default function CommunityPostsPage() {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
@@ -98,7 +104,7 @@ export default function CommunityPostsPage() {
             {data?.posts.map((p) => (
               <tr key={p.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2 whitespace-nowrap">{p.author?.name ?? "-"}</td>
-                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{p.content}</td>
+                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(p.content) || "(내용 없음)"}</td>
                 <td className="px-3 py-2">{p.category}</td>
                 <td className="px-3 py-2">{p.likesCount}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">

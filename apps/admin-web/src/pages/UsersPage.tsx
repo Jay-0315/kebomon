@@ -131,6 +131,7 @@ export default function UsersPage() {
               <th className="px-3 py-2">상태</th>
               <th className="px-3 py-2">재화 (KP/일반알/왕알/황금알/강화석)</th>
               <th className="px-3 py-2">가입일</th>
+              <th className="px-3 py-2">최근 접속</th>
               <th className="px-3 py-2">액션</th>
             </tr>
           </thead>
@@ -163,6 +164,9 @@ export default function UsersPage() {
                     : "-"}
                 </td>
                 <td className="px-3 py-2 text-[var(--fg-muted)]">{new Date(u.createdAt).toLocaleDateString()}</td>
+                <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
+                  {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "-"}
+                </td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">
                     <button
@@ -189,7 +193,7 @@ export default function UsersPage() {
             ))}
             {!loading && data?.users.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-[var(--fg-faint)]">
+                <td colSpan={8} className="px-3 py-6 text-center text-[var(--fg-faint)]">
                   결과가 없습니다.
                 </td>
               </tr>

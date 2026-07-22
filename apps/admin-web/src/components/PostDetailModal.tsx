@@ -45,9 +45,10 @@ export default function PostDetailModal({
           </button>
         </div>
 
-        <p className="mb-4 whitespace-pre-wrap break-words text-sm text-[var(--fg)]">
-          {post.content}
-        </p>
+        <div
+          className="mb-4 break-words text-sm leading-relaxed text-[var(--fg)] [&_a]:underline [&_p]:mb-2"
+          dangerouslySetInnerHTML={{ __html: post.content }}
+        />
 
         {post.imageUrl && (
           <img

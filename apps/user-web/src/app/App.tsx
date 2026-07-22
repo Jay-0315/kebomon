@@ -80,7 +80,13 @@ export default function App() {
 
     const onVisibility = () => { if (document.visibilityState === "visible") ping(); };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    // 탭을 계속 켜놓은 채 날짜가 바뀌면(visibilitychange가 한 번도 안 걸리는 경우) 핑이
+    // 영영 다시 안 나가서 최근 로그인이 며칠씩 밀릴 수 있음 — 주기적으로 재시도해 보정
+    const interval = setInterval(ping, 15 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearInterval(interval);
+    };
   }, []);
 
   return (

@@ -16,6 +16,12 @@ type CommentsResponse = {
   totalPages: number;
 };
 
+const stripHtml = (html: string) =>
+  html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 export default function CommunityCommentsPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -89,7 +95,7 @@ export default function CommunityCommentsPage() {
             {data?.comments.map((c) => (
               <tr key={c.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2 whitespace-nowrap">{c.author?.name ?? "-"}</td>
-                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{c.content}</td>
+                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(c.content) || "(내용 없음)"}</td>
                 <td className="px-3 py-2 text-[var(--fg-faint)]">{c.postId}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">
                   {new Date(c.createdAt).toLocaleDateString()}
