@@ -10,6 +10,7 @@ import { compare, hash } from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaService } from "../prisma/prisma.service";
 import { RewardsService } from "../rewards/rewards.service";
+import { logPointsChange } from "../rewards/points-ledger.util";
 import { EmailService } from "./email.service";
 import { LoginDto } from "./dto/login.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -180,6 +181,7 @@ export class AuthService {
         },
       },
     });
+    void logPointsChange(this.prisma, user.id, WELCOME_GIFT_POINTS, "신규 가입 축하 선물");
 
     return this.buildAuthResponse(user, true);
   }
@@ -277,6 +279,7 @@ export class AuthService {
         },
       },
     });
+    void logPointsChange(this.prisma, user.id, WELCOME_GIFT_POINTS, "신규 가입 축하 선물");
 
     return this.buildAuthResponse(user, true);
   }

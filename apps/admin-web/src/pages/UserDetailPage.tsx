@@ -23,6 +23,11 @@ type UserDetail = {
   reportsAgainstCount: number;
 };
 
+type ActivityLog = {
+  points: { id: string; delta: number; reason: string; createdAt: string }[];
+  characters: { characterId: number; name: string; obtainedAt: string }[];
+};
+
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-lg border border-[var(--border)] p-3">
@@ -36,6 +41,7 @@ export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserDetail | null>(null);
+  const [activityLog, setActivityLog] = useState<ActivityLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReward, setShowReward] = useState(false);
@@ -46,8 +52,12 @@ export default function UserDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get<UserDetail>(`/admin/users/${id}`);
-      setUser(res);
+      const [userRes, logRes] = await Promise.all([
+        api.get<UserDetail>(`/admin/users/${id}`),
+        api.get<ActivityLog>(`/admin/users/${id}/activity-log`),
+      ]);
+      setUser(userRes);
+      setActivityLog(logRes);
     } catch {
       setError("유저 정보를 불러오지 못했습니다.");
     } finally {
@@ -175,6 +185,44 @@ export default function UserDetailPage() {
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-[var(--border)] p-4">
+          <h2 className="mb-3 text-sm font-semibold">KP 내역</h2>
+          {!activityLog || activityLog.points.length === 0 ? (
+            <p className="text-sm text-[var(--fg-faint)]">내역이 없습니다.</p>
+          ) : (
+            <ul className="max-h-64 space-y-2 overflow-y-auto">
+              {activityLog.points.map((p) => (
+                <li key={p.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                  <span className={p.delta > 0 ? "text-emerald-400" : "text-red-400"}>
+                    {p.delta > 0 ? "+" : ""}
+                    {p.delta}P
+                  </span>{" "}
+                  · {p.reason}
+                  <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(p.createdAt).toLocaleString()}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-[var(--border)] p-4">
+          <h2 className="mb-3 text-sm font-semibold">케릭터 획득 내역</h2>
+          {!activityLog || activityLog.characters.length === 0 ? (
+            <p className="text-sm text-[var(--fg-faint)]">내역이 없습니다.</p>
+          ) : (
+            <ul className="max-h-64 space-y-2 overflow-y-auto">
+              {activityLog.characters.map((c, i) => (
+                <li key={`${c.characterId}-${i}`} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                  {c.name} 획득
+                  <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(c.obtainedAt).toLocaleString()}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {showReward && (

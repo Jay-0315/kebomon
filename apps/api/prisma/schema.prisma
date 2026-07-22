@@ -106,6 +106,7 @@ model User {
   guildBossContributions GuildBossContribution[]
   reports                Report[]
   dailyQuestProgress     DailyQuestProgress[]
+  pointsLedger           PointsLedger[]
 
   @@map("users")
 }
@@ -527,6 +528,19 @@ model DailyQuestProgress {
   @@unique([userId, dateKey])
   @@index([userId])
   @@map("daily_quest_progress")
+}
+
+/** KP(missionPoints) 변동 원장 — 관리자페이지 유저 상세 "활동 로그"용 */
+model PointsLedger {
+  id        BigInt   @id @default(autoincrement())
+  userId    String   @map("user_id")
+  delta     Int
+  reason    String   @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("points_ledger")
 }
 
 model PasswordChangeHistory {

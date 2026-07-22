@@ -7,6 +7,8 @@ import { NotificationGateway } from "../gateway/notification.gateway";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
+import { logPointsChange } from "../rewards/points-ledger.util";
+import { CHARACTER_NAMES } from "./character-names.constant";
 
 const PAGE_SIZE = 20;
 
@@ -123,6 +125,37 @@ export class AdminUsersService {
     return { ...user, reportsAgainstCount: reportsAgainst };
   }
 
+  /** 활동 로그 — KP 변동 내역 + 케릭터 획득 내역 (최근 50건씩) */
+  async getActivityLog(userId: string) {
+    const [points, characters] = await Promise.all([
+      this.prisma.pointsLedger.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      }),
+      this.prisma.userCharacter.findMany({
+        where: { userId },
+        orderBy: { obtainedAt: "desc" },
+        take: 50,
+        select: { characterId: true, obtainedAt: true },
+      }),
+    ]);
+
+    return {
+      points: points.map((p) => ({
+        id: p.id.toString(),
+        delta: p.delta,
+        reason: p.reason,
+        createdAt: p.createdAt,
+      })),
+      characters: characters.map((c) => ({
+        characterId: c.characterId,
+        name: CHARACTER_NAMES[c.characterId]?.korName ?? `케릭터 #${c.characterId}`,
+        obtainedAt: c.obtainedAt,
+      })),
+    };
+  }
+
   async updateRole(requesterId: string, targetId: string, dto: UpdateUserRoleDto) {
     if (requesterId === targetId) {
       throw new ForbiddenException("본인 계정의 권한은 변경할 수 없습니다.");
@@ -211,6 +244,9 @@ export class AdminUsersService {
       `[admin] ${requesterId} adjusted reward for ${targetId}${dto.reason ? ` (${dto.reason})` : ""}:`,
       dto,
     );
+
+    const pointsDelta = next.missionPoints - (current?.missionPoints ?? 0);
+    void logPointsChange(this.prisma, targetId, pointsDelta, `관리자 조정${dto.reason ? `: ${dto.reason}` : ""}`);
 
     const changes = (Object.keys(REWARD_FIELD_LABELS) as (keyof typeof rewardSelect)[])
       .map((key) => {

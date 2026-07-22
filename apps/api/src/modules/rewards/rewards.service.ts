@@ -17,6 +17,7 @@ import {
 import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
 import { CharacterMasterRow, loadCharacterMasterMap } from "./character-master.util";
 import { getTodayKTC, getYesterdayKTC } from "./date.util";
+import { logPointsChange } from "./points-ledger.util";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
   // 기존 칭호
@@ -528,6 +529,7 @@ export class RewardsService {
       }),
       this.prisma.expedition.delete({ where: { userId } }),
     ]);
+    void logPointsChange(this.prisma, userId, rewards.points, "원정 완료 보상");
 
     await Promise.all([
       this.checkAndGrantAchievements(userId),
@@ -588,6 +590,7 @@ export class RewardsService {
           goldenEggs:        { increment: golds },
         },
       });
+      void logPointsChange(this.prisma, userId, pts, "로그라이크 마일스톤 보상");
     }
 
     await Promise.all([
@@ -638,6 +641,7 @@ export class RewardsService {
             goldenEggs:        { increment: golds },
           },
         });
+        void logPointsChange(this.prisma, userId, pts, "도전 모드 마일스톤 보상");
       }
     } else {
       await this.prisma.userReward.update({
@@ -744,6 +748,7 @@ export class RewardsService {
         ...eggUpdate,
       },
     });
+    void logPointsChange(this.prisma, userId, points, "출석 체크 보상");
 
     return {
       alreadyClaimed: false,
@@ -882,6 +887,7 @@ export class RewardsService {
       where: { userId },
       data: { missionPoints: { increment: RewardsService.DAILY_QUEST_BONUS_POINTS } },
     });
+    void logPointsChange(this.prisma, userId, RewardsService.DAILY_QUEST_BONUS_POINTS, "일일 퀘스트 보너스");
 
     void this.notifications
       .create({
@@ -921,6 +927,7 @@ export class RewardsService {
         enhancementStones: { increment: quantity },
       },
     });
+    void logPointsChange(this.prisma, userId, -totalCost, `상점 구매 (${item.label} x${quantity})`);
 
     return { success: true, enhancementStones: updated.enhancementStones, remainingPoints: updated.missionPoints };
   }
@@ -1023,6 +1030,7 @@ export class RewardsService {
         where: { userId },
         data: { missionPoints: { increment: Math.max(0, reward.points) }, raidCount: { increment: 1 } },
       });
+      void logPointsChange(this.prisma, userId, Math.max(0, reward.points), "레이드 클리어 보상");
     } else {
       await this.prisma.userReward.update({
         where: { userId },
@@ -1047,6 +1055,7 @@ export class RewardsService {
         where: { userId },
         data: { missionPoints: { increment: Math.max(0, reward.points) }, raidCount: { increment: 1 } },
       });
+      void logPointsChange(this.prisma, userId, Math.max(0, reward.points), "레이드 랭킹 보상");
     } else {
       await this.prisma.userReward.update({
         where: { userId },
@@ -1082,6 +1091,7 @@ export class RewardsService {
         where: { userId },
         data: { ...eggDelta(eggType, -1), missionPoints: { increment: dupPoints } },
       });
+      void logPointsChange(this.prisma, userId, dupPoints, "알 까기 중복 환급");
     } else {
       await this.prisma.$transaction([
         this.prisma.userReward.update({
@@ -1145,6 +1155,7 @@ export class RewardsService {
         this.prisma.userCharacter.create({ data: { userId, characterId } }),
       ),
     ]);
+    void logPointsChange(this.prisma, userId, totalDupPoints, "알 일괄 까기 중복 환급");
 
     return results;
   }
@@ -1231,6 +1242,7 @@ export class RewardsService {
         }),
       ),
     ]);
+    void logPointsChange(this.prisma, userId, -cost + totalBonusPoints, "가챠 뽑기");
 
     void this.markQuestDone(userId, "gacha").catch(() => undefined);
 
@@ -1343,6 +1355,7 @@ export class RewardsService {
       where: { userId },
       data: { missionPoints: { increment: 50 } },
     });
+    void logPointsChange(this.prisma, userId, 50, "게시글 작성 보상");
   }
 
   async checkAndGrantAchievements(userId: string) {
@@ -1443,6 +1456,7 @@ export class RewardsService {
         dexMilestoneBest:  newBest,
       },
     });
+    void logPointsChange(this.prisma, userId, totals.kp, "도감 마일스톤 보상");
 
     void this.notifications.create({
       userId,
@@ -1664,6 +1678,7 @@ export class RewardsService {
     );
 
     for (const { userId, tier } of grants) {
+      void logPointsChange(this.prisma, userId, tier.kpBonus, `시즌 ${seasonId} 티어 보상`);
       void this.notifications.create({
         userId,
         type: "achievement",

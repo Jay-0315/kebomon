@@ -29,6 +29,11 @@ export class AdminUsersController {
     return this.adminUsersService.findById(id);
   }
 
+  @Get(":id/activity-log")
+  getActivityLog(@Param("id") id: string) {
+    return this.adminUsersService.getActivityLog(id);
+  }
+
   @Patch(":id/role")
   updateRole(
     @CurrentUser() requester: { sub: string },

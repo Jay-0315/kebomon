@@ -5,11 +5,18 @@ import { useLang } from "../context/LangContext";
 
 type TargetType = "POST" | "COMMENT" | "USER";
 
-const REASON_KEYS = [
+const CONTENT_REASON_KEYS = [
   "report.reason_spam",
   "report.reason_abuse",
   "report.reason_sexual",
   "report.reason_scam",
+  "report.reason_etc",
+] as const;
+
+const USER_REASON_KEYS = [
+  "report.reason_user_profile",
+  "report.reason_user_impersonation",
+  "report.reason_user_abuse",
   "report.reason_etc",
 ] as const;
 
@@ -23,6 +30,7 @@ export default function ReportModal({
   onClose: () => void;
 }) {
   const { t } = useLang();
+  const REASON_KEYS = targetType === "USER" ? USER_REASON_KEYS : CONTENT_REASON_KEYS;
   const [reasonKey, setReasonKey] = useState("");
   const [detail, setDetail] = useState("");
   const [submitting, setSubmitting] = useState(false);

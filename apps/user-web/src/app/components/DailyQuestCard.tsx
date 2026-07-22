@@ -39,6 +39,11 @@ export default function DailyQuestCard() {
         <div className="flex items-center gap-2">
           <Gift className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("quest.title")}</h3>
+          {!dailyQuests.bonusClaimed && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              +80P
+            </span>
+          )}
         </div>
         {dailyQuests.allDone && !dailyQuests.bonusClaimed && (
           <button

@@ -11,6 +11,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { CommunityService } from "../community/community.service";
 import { ArenaService } from "../arena/arena.service";
 import { RewardsService } from "../rewards/rewards.service";
+import { logPointsChange } from "../rewards/points-ledger.util";
 import { randomBoss } from "../gateway/raid.gateway";
 import {
   APPLICATION_MESSAGE_MAX_LEN,
@@ -558,6 +559,7 @@ export class GuildService {
         goldenEggs: { increment: reward.goldEgg ?? 0 },
       },
     });
+    void logPointsChange(this.prisma, userId, reward.points, "길드 보스 랭킹 보상");
   }
 
   /** 지난 주 보스전 중 아직 정산 안 된 것들을 랭킹 보상 지급 후 정산 완료 처리 */

@@ -189,6 +189,16 @@ CREATE TABLE password_change_history (
   CONSTRAINT fk_pwhistory_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS points_ledger (
+  id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
+  user_id    VARCHAR(36)  NOT NULL,
+  delta      INT          NOT NULL,
+  reason     VARCHAR(120) NOT NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_points_ledger_user_created (user_id, created_at DESC),
+  CONSTRAINT fk_points_ledger_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS daily_quest_progress (
   id             VARCHAR(36)  NOT NULL PRIMARY KEY,
   user_id        VARCHAR(36)  NOT NULL,
