@@ -38,6 +38,12 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post("refresh")
+  refreshToken(@CurrentUser() user: { sub: string }) {
+    return this.authService.refreshToken(user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get("providers")
   getLinkedProviders(
     @CurrentUser() user: { sub: string },

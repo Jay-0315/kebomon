@@ -20,6 +20,9 @@ import { SignupDto } from "./dto/signup.dto";
 import { isSuspensionExpired, reactivateIfExpired } from "./suspension.util";
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10분
+// 로그인 유지 시간 — 짧게 잡는 대신 프론트가 활동 중(ping)일 때마다 /auth/refresh로
+// 슬라이딩 갱신해서, 계속 접속 중인 유저는 로그인이 끊기지 않고 방치된 세션만 만료됨
+const JWT_EXPIRES_IN = "4h";
 
 // 신규 가입 축하 선물 — 프론트 welcome_gift.* i18n 문구와 값이 동일해야 함
 const WELCOME_GIFT_POINTS = 2400;
@@ -442,6 +445,32 @@ export class AuthService {
     };
   }
 
+  private signToken(user: { id: string; email: string; role: string }): string {
+    return jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET || "kebo-dev-secret",
+      {
+        expiresIn: JWT_EXPIRES_IN,
+      },
+    );
+  }
+
+  /** 활동 중인 유저가 주기적으로 호출 — 만료 직전이어도 새 토큰을 받아 로그인이 끊기지 않게 함 */
+  async refreshToken(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException("사용자를 찾을 수 없습니다.");
+
+    if (user.status === "SUSPENDED" && !isSuspensionExpired({ status: user.status, suspendedUntil: user.suspendedUntil })) {
+      throw new UnauthorizedException("정지된 계정입니다.");
+    }
+
+    return { accessToken: this.signToken(user) };
+  }
+
   private async buildAuthResponse(
     user: {
       id: string;
@@ -474,17 +503,7 @@ export class AuthService {
 
     void this.rewardsService.recordAttendance(user.id).catch(() => undefined);
 
-    const token = jwt.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET || "kebo-dev-secret",
-      {
-        expiresIn: "7d",
-      },
-    );
+    const token = this.signToken(user);
 
     return {
       accessToken: token,

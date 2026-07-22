@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import AdminLayout from "./components/AdminLayout";
-import { isAdminAuthenticated } from "./lib/auth";
+import { isAdminAuthenticated, setAuthToken } from "./lib/auth";
+import { api } from "./lib/api";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import UsersPage from "./pages/UsersPage";
@@ -24,6 +26,26 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 const basename = import.meta.env.PROD ? "/admin" : undefined;
 
 export default function App() {
+  useEffect(() => {
+    // 로그인 세션(4시간) 슬라이딩 갱신 — 관리자가 계속 접속 중이면 로그인이 끊기지 않게 함
+    const refreshSession = () => {
+      if (!isAdminAuthenticated()) return;
+      api
+        .post<{ accessToken: string }>("/auth/refresh")
+        .then((res) => setAuthToken(res.accessToken))
+        .catch(() => {});
+    };
+
+    refreshSession();
+    const onVisibility = () => { if (document.visibilityState === "visible") refreshSession(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    const interval = setInterval(refreshSession, 15 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <BrowserRouter basename={basename}>
       <Routes>

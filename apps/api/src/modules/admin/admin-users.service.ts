@@ -150,7 +150,7 @@ export class AdminUsersService {
       })),
       characters: characters.map((c) => ({
         characterId: c.characterId,
-        name: CHARACTER_NAMES[c.characterId]?.korName ?? `케릭터 #${c.characterId}`,
+        name: CHARACTER_NAMES[c.characterId]?.korName ?? `케릭터 #${c.characterId} (삭제된 캐릭터)`,
         obtainedAt: c.obtainedAt,
       })),
     };

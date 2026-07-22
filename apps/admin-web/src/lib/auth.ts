@@ -17,6 +17,11 @@ export function setAuthSession(token: string, user: AdminUser) {
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
 
+/** 로그인 세션 슬라이딩 갱신용 — 유저 정보는 그대로 두고 토큰만 교체 */
+export function setAuthToken(token: string) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
 export function clearAuthSession() {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_USER_KEY);

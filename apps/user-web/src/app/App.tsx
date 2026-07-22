@@ -28,7 +28,7 @@ import GachaPage from "./components/GachaPage";
 import PublicProfilePage from "./components/PublicProfilePage";
 import UserSearchPage from "./components/UserSearchPage";
 import { useAppData } from "./context/AppDataContext";
-import { isAuthenticated, getStoredUser } from "./lib/auth";
+import { isAuthenticated, getStoredUser, setAuthToken } from "./lib/auth";
 import { api } from "./lib/api";
 import { LangProvider } from "./context/LangContext";
 
@@ -76,13 +76,28 @@ export default function App() {
       api.post("/rewards/ping", { userId: user.id }).catch(() => {});
     };
 
-    ping();
+    // 로그인 세션(4시간) 슬라이딩 갱신 — ping과 달리 하루 1회 제한 없이, 활동 중일 때마다
+    // 새 토큰을 받아 저장해서 계속 접속 중인 유저는 로그인이 끊기지 않게 함
+    const refreshSession = () => {
+      if (!isAuthenticated()) return;
+      api
+        .post<{ accessToken: string }>("/auth/refresh")
+        .then((res) => setAuthToken(res.accessToken))
+        .catch(() => {});
+    };
 
-    const onVisibility = () => { if (document.visibilityState === "visible") ping(); };
+    const tick = () => {
+      ping();
+      refreshSession();
+    };
+
+    tick();
+
+    const onVisibility = () => { if (document.visibilityState === "visible") tick(); };
     document.addEventListener("visibilitychange", onVisibility);
-    // 탭을 계속 켜놓은 채 날짜가 바뀌면(visibilitychange가 한 번도 안 걸리는 경우) 핑이
-    // 영영 다시 안 나가서 최근 로그인이 며칠씩 밀릴 수 있음 — 주기적으로 재시도해 보정
-    const interval = setInterval(ping, 15 * 60 * 1000);
+    // 탭을 계속 켜놓은 채 시간이 흐르면(visibilitychange가 한 번도 안 걸리는 경우) 세션 갱신도
+    // 안 되고 최근 로그인도 며칠씩 밀릴 수 있음 — 주기적으로 재시도해 보정
+    const interval = setInterval(tick, 15 * 60 * 1000);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       clearInterval(interval);
