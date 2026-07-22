@@ -37,6 +37,7 @@ export class UsersService {
             themeColor: user.settings.themeColor,
             language: user.settings.language,
             hasSeenTutorial: user.settings.hasSeenTutorial,
+            welcomeGiftSeen: user.settings.welcomeGiftSeen,
           }
         : {
             notifications: true,
@@ -44,6 +45,7 @@ export class UsersService {
             themeColor: "emerald",
             language: "ko",
             hasSeenTutorial: false,
+            welcomeGiftSeen: false,
           },
     };
   }
@@ -200,6 +202,7 @@ export class UsersService {
         themeColor: dto.themeColor ?? "emerald",
         language: dto.language ?? "ko",
         hasSeenTutorial: dto.hasSeenTutorial ?? false,
+        welcomeGiftSeen: dto.welcomeGiftSeen ?? false,
       },
       update: {
         ...(dto.notifications !== undefined ? { notifications: dto.notifications } : {}),
@@ -207,6 +210,7 @@ export class UsersService {
         ...(dto.themeColor !== undefined ? { themeColor: dto.themeColor } : {}),
         ...(dto.language !== undefined ? { language: dto.language } : {}),
         ...(dto.hasSeenTutorial !== undefined ? { hasSeenTutorial: dto.hasSeenTutorial } : {}),
+        ...(dto.welcomeGiftSeen !== undefined ? { welcomeGiftSeen: dto.welcomeGiftSeen } : {}),
       },
     });
   }

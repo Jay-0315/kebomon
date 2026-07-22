@@ -27,6 +27,7 @@ import {
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
 import TutorialOverlay from "./TutorialOverlay";
+import WelcomeGiftModal from "./WelcomeGiftModal";
 import { useState, useEffect, useRef } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -340,8 +341,13 @@ export default function Layout() {
           t={t}
         />
       )}
-      {hasInitialized && !settings.hasSeenTutorial && (
-        <TutorialOverlay onClose={() => updateSettings({ hasSeenTutorial: true })} />
+      {hasInitialized && !settings.welcomeGiftSeen ? (
+        <WelcomeGiftModal onClose={() => updateSettings({ welcomeGiftSeen: true })} />
+      ) : (
+        hasInitialized &&
+        !settings.hasSeenTutorial && (
+          <TutorialOverlay onClose={() => updateSettings({ hasSeenTutorial: true })} />
+        )
       )}
       <div className="min-h-screen bg-background flex">
         {isSidebarCollapsed && (

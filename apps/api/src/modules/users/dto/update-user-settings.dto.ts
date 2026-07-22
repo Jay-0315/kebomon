@@ -21,4 +21,8 @@ export class UpdateUserSettingsDto {
   @IsOptional()
   @IsBoolean()
   hasSeenTutorial?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  welcomeGiftSeen?: boolean;
 }

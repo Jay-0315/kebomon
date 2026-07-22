@@ -20,6 +20,10 @@ import { isSuspensionExpired, reactivateIfExpired } from "./suspension.util";
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10분
 
+// 신규 가입 축하 선물 — 프론트 welcome_gift.* i18n 문구와 값이 동일해야 함
+const WELCOME_GIFT_POINTS = 2400;
+const WELCOME_GIFT_NORMAL_EGGS = 10;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -169,7 +173,10 @@ export class AuthService {
         baseCountryCode: "KR",
         baseCurrency: "KRW",
         settings: {
-          create: {},
+          create: { welcomeGiftSeen: false },
+        },
+        reward: {
+          create: { missionPoints: WELCOME_GIFT_POINTS, normalEggs: WELCOME_GIFT_NORMAL_EGGS },
         },
       },
     });
@@ -256,7 +263,10 @@ export class AuthService {
         baseCountryCode: "KR",
         baseCurrency: "KRW",
         settings: {
-          create: {},
+          create: { welcomeGiftSeen: false },
+        },
+        reward: {
+          create: { missionPoints: WELCOME_GIFT_POINTS, normalEggs: WELCOME_GIFT_NORMAL_EGGS },
         },
         identities: {
           create: {

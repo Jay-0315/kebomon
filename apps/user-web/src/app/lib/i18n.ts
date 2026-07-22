@@ -82,6 +82,9 @@ const dict = {
     "kebomon.equip": "장착하기",
     "kebomon.equipped": "장착 중",
     // Footer
+    "welcome_gift.title": "신규 가입 축하 선물",
+    "welcome_gift.body": "가입을 축하드려요! {points}KP와 일반 알 {eggs}개를 즉시 지급해드렸어요.",
+    "welcome_gift.confirm": "받기",
     "tutorial.slide1_title": "매일 출석하고 포인트 받자",
     "tutorial.slide1_body": "매일 출석체크로 포인트와 알을 받고, 7일마다 특별 보상도 챙기세요.",
     "tutorial.slide2_title": "케보몬을 모아보세요",
@@ -896,6 +899,9 @@ const dict = {
     "kebomon.equip": "装備する",
     "kebomon.equipped": "装備中",
     // Footer
+    "welcome_gift.title": "新規登録記念ギフト",
+    "welcome_gift.body": "ご登録ありがとうございます！{points}KPと普通の卵{eggs}個をすぐに獲得しました。",
+    "welcome_gift.confirm": "受け取る",
     "tutorial.slide1_title": "毎日出席してポイントをもらおう",
     "tutorial.slide1_body": "毎日出席チェックでポイントと卵を受け取り、7日ごとに特別報酬も獲得しましょう。",
     "tutorial.slide2_title": "ケボモンを集めよう",
@@ -1648,6 +1654,9 @@ const dict = {
     "kebomon.equip": "Equip",
     "kebomon.equipped": "Equipped",
     // Footer
+    "welcome_gift.title": "Welcome Gift",
+    "welcome_gift.body": "Thanks for joining! You've received {points}KP and {eggs} Normal Eggs.",
+    "welcome_gift.confirm": "Claim",
     "tutorial.slide1_title": "Check in daily for points",
     "tutorial.slide1_body": "Check in every day to earn points and eggs, plus special rewards every 7 days.",
     "tutorial.slide2_title": "Collect your Kebomon",

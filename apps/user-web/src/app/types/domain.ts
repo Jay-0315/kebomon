@@ -149,6 +149,7 @@ export interface AppSettings {
 themeColor: string;
   language?: "ko" | "ja" | "en";
   hasSeenTutorial?: boolean;
+  welcomeGiftSeen?: boolean;
 }
 
 // ─── 길드 ────────────────────────────────────────────────────────────────────

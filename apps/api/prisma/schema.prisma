@@ -423,6 +423,8 @@ model AppSetting {
   themeColor      String   @default("emerald") @map("theme_color") @db.VarChar(20)
   language        String   @default("ko") @db.VarChar(5)
   hasSeenTutorial Boolean  @default(false) @map("has_seen_tutorial")
+  // 이번 패치로 추가된 선물이라 기존 유저도 최초 1회 지급 대상 — 기본값 false로 전체 유저에게 팝업 노출
+  welcomeGiftSeen Boolean  @default(false) @map("welcome_gift_seen")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)

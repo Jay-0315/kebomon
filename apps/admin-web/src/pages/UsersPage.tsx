@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { api } from "../lib/api";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 type AdminUserRow = {
   id: string;
@@ -26,6 +27,7 @@ type UsersResponse = {
 
 export default function UsersPage() {
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 300);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -35,15 +37,15 @@ export default function UsersPage() {
   const [rewardTarget, setRewardTarget] = useState<AdminUserRow | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<AdminUserRow | null>(null);
 
-  async function load() {
+  async function load(p: number) {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (q) params.set("q", q);
+      if (debouncedQ) params.set("q", debouncedQ);
       if (roleFilter) params.set("role", roleFilter);
       if (statusFilter) params.set("status", statusFilter);
-      params.set("page", String(page));
+      params.set("page", String(p));
       const res = await api.get<UsersResponse>(`/admin/users?${params.toString()}`);
       setData(res);
     } catch {
@@ -53,15 +55,16 @@ export default function UsersPage() {
     }
   }
 
+  // 검색어/필터가 바뀌면 1페이지부터 즉시 재검색
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
     setPage(1);
-    load();
+    void load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ, roleFilter, statusFilter]);
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    void load(p);
   }
 
   async function toggleRole(user: AdminUserRow) {
@@ -69,7 +72,7 @@ export default function UsersPage() {
     if (!window.confirm(`${user.email}의 권한을 ${nextRole}로 변경할까요?`)) return;
     try {
       await api.patch(`/admin/users/${user.id}/role`, { role: nextRole });
-      load();
+      void load(page);
     } catch {
       window.alert("권한 변경에 실패했습니다.");
     }
@@ -79,7 +82,7 @@ export default function UsersPage() {
     if (!window.confirm(`${user.email}의 정지를 해제할까요?`)) return;
     try {
       await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
-      load();
+      void load(page);
     } catch {
       window.alert("정지 해제에 실패했습니다.");
     }
@@ -89,7 +92,7 @@ export default function UsersPage() {
     <div>
       <h1 className="mb-4 text-lg font-semibold">회원 관리</h1>
 
-      <form onSubmit={handleSearchSubmit} className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -114,13 +117,7 @@ export default function UsersPage() {
           <option value="ACTIVE" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ACTIVE</option>
           <option value="SUSPENDED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">SUSPENDED</option>
         </select>
-        <button
-          type="submit"
-          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]"
-        >
-          검색
-        </button>
-      </form>
+      </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
@@ -205,7 +202,7 @@ export default function UsersPage() {
         <div className="mt-4 flex items-center gap-2 text-sm">
           <button
             disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
+            onClick={() => handlePageChange(page - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
             이전
@@ -215,7 +212,7 @@ export default function UsersPage() {
           </span>
           <button
             disabled={page >= data.totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => handlePageChange(page + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
             다음
@@ -229,7 +226,7 @@ export default function UsersPage() {
           userLabel={`${rewardTarget.name} (${rewardTarget.email})`}
           current={rewardTarget.reward}
           onClose={() => setRewardTarget(null)}
-          onSaved={load}
+          onSaved={() => load(page)}
         />
       )}
 
@@ -238,7 +235,7 @@ export default function UsersPage() {
           userId={suspendTarget.id}
           userLabel={`${suspendTarget.name} (${suspendTarget.email})`}
           onClose={() => setSuspendTarget(null)}
-          onSaved={load}
+          onSaved={() => load(page)}
         />
       )}
     </div>

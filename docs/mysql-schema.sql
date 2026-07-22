@@ -39,6 +39,7 @@ CREATE TABLE app_settings (
   theme_color   VARCHAR(20)   NOT NULL DEFAULT 'emerald',
   language      VARCHAR(5)    NOT NULL DEFAULT 'ko',
   has_seen_tutorial TINYINT(1) NOT NULL DEFAULT 0,
+  welcome_gift_seen TINYINT(1) NOT NULL DEFAULT 0,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_settings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
