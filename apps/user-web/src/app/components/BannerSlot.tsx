@@ -72,9 +72,15 @@ export default function BannerSlot() {
     return (
       <div
         onClick={handleClick}
-        className={`relative overflow-hidden rounded border border-border ${banner.linkUrl ? "cursor-pointer" : ""}`}
+        className={`relative overflow-hidden rounded ${banner.linkUrl ? "cursor-pointer" : ""}`}
       >
         <img src={banner.imageUrl} alt={title} className="aspect-[21/6] w-full object-cover" />
+        {title && (
+          <div className="absolute inset-0 flex flex-col justify-center gap-1 bg-gradient-to-r from-black/60 via-black/10 to-transparent p-4 sm:p-6">
+            <p className="max-w-[70%] text-base font-bold text-white drop-shadow-md sm:text-xl">{title}</p>
+            {body && <p className="max-w-[70%] text-xs text-white/90 drop-shadow-md sm:text-sm">{body}</p>}
+          </div>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();

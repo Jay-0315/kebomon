@@ -128,6 +128,9 @@ export default function HomePage() {
     <div className="mx-auto max-w-4xl space-y-5">
       {showPointGuide && <PointGuideModal onClose={() => setShowPointGuide(false)} />}
 
+      {/* ── 공지/이벤트 배너 ── */}
+      <BannerSlot />
+
       {/* ── Profile banner ── */}
       <div className="bg-card rounded border border-border p-5 flex items-center gap-4">
         <div onClick={() => navigate("/mypage")} className="shrink-0 cursor-pointer">
@@ -168,9 +171,6 @@ export default function HomePage() {
           </button>
         </div>
       </div>
-
-      {/* ── 공지/이벤트 배너 ── */}
-      <BannerSlot />
 
       {/* ── 일일 퀘스트 ── */}
       <DailyQuestCard />
