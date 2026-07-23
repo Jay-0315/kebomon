@@ -32,6 +32,10 @@ export class UpsertBannerDto {
 
   @IsOptional()
   @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(300)
   linkUrl?: string;
 

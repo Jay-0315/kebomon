@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { compressImage } from "../lib/image";
 
 export type BannerRow = {
   id: string;
@@ -9,6 +10,7 @@ export type BannerRow = {
   body: string | null;
   bodyJa: string | null;
   bodyEn: string | null;
+  imageUrl: string | null;
   linkUrl: string | null;
   active: boolean;
   startsAt: string | null;
@@ -38,13 +40,27 @@ export default function BannerFormModal({
   const [body, setBody] = useState(banner?.body ?? "");
   const [bodyJa, setBodyJa] = useState(banner?.bodyJa ?? "");
   const [bodyEn, setBodyEn] = useState(banner?.bodyEn ?? "");
+  const [imageUrl, setImageUrl] = useState(banner?.imageUrl ?? "");
   const [linkUrl, setLinkUrl] = useState(banner?.linkUrl ?? "");
   const [active, setActive] = useState(banner?.active ?? true);
   const [startsAt, setStartsAt] = useState(toDatetimeLocal(banner?.startsAt ?? null));
   const [endsAt, setEndsAt] = useState(toDatetimeLocal(banner?.endsAt ?? null));
   const [sortOrder, setSortOrder] = useState(String(banner?.sortOrder ?? 0));
   const [saving, setSaving] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImageError(null);
+    try {
+      setImageUrl(await compressImage(file));
+    } catch {
+      setImageError("이미지를 불러오지 못했습니다.");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +77,7 @@ export default function BannerFormModal({
       body: body.trim() || undefined,
       bodyJa: bodyJa.trim() || undefined,
       bodyEn: bodyEn.trim() || undefined,
+      imageUrl: imageUrl || null,
       linkUrl: linkUrl.trim() || undefined,
       active,
       startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
@@ -89,6 +106,35 @@ export default function BannerFormModal({
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
       >
         <h2 className="mb-4 text-base font-semibold">{banner ? "배너 수정" : "새 배너"}</h2>
+
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">
+          배너 이미지 (권장: 가로로 긴 이미지, 예 1200×300)
+        </label>
+        {imageUrl ? (
+          <div className="mb-1 overflow-hidden rounded-md border border-[var(--border)]">
+            <img src={imageUrl} alt="배너 미리보기" className="max-h-40 w-full object-cover" />
+          </div>
+        ) : (
+          <div className="mb-1 flex h-24 items-center justify-center rounded-md border border-dashed border-[var(--border)] text-xs text-[var(--fg-faint)]">
+            이미지 없음 — 아래 텍스트만으로 표시됩니다
+          </div>
+        )}
+        <div className="mb-4 flex items-center gap-2">
+          <label className="cursor-pointer rounded-md border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]">
+            이미지 선택
+            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+          </label>
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={() => setImageUrl("")}
+              className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10"
+            >
+              이미지 제거
+            </button>
+          )}
+          {imageError && <span className="text-xs text-red-400">{imageError}</span>}
+        </div>
 
         <div className="mb-4 grid grid-cols-3 gap-2">
           <div>

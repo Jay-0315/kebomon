@@ -12,6 +12,7 @@ type BannerRow = {
   body: string | null;
   bodyJa: string | null;
   bodyEn: string | null;
+  imageUrl: string | null;
   linkUrl: string | null;
 };
 
@@ -66,6 +67,37 @@ export default function BannerSlot() {
 
   const title = (lang === "ja" ? banner.titleJa : lang === "en" ? banner.titleEn : null) ?? banner.title;
   const body = (lang === "ja" ? banner.bodyJa : lang === "en" ? banner.bodyEn : null) ?? banner.body;
+
+  if (banner.imageUrl) {
+    return (
+      <div
+        onClick={handleClick}
+        className={`relative overflow-hidden rounded border border-border ${banner.linkUrl ? "cursor-pointer" : ""}`}
+      >
+        <img src={banner.imageUrl} alt={title} className="aspect-[21/6] w-full object-cover" />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            dismiss(banner.id);
+          }}
+          className="absolute top-2 right-2 rounded-full bg-black/40 p-1 text-white hover:bg-black/60"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        {visible.length > 1 && (
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+            {visible.map((b, i) => (
+              <div
+                key={b.id}
+                className={`h-1.5 rounded-full transition-all duration-300 ${i === idx % visible.length ? "bg-white" : "bg-white/40"}`}
+                style={{ width: i === idx % visible.length ? 24 : 6 }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

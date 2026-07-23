@@ -31,11 +31,12 @@ export default function BannersPage() {
     }
   }
 
-  function isRunning(b: BannerRow): boolean {
+  function statusOf(b: BannerRow): "inactive" | "expired" | "pending" | "running" {
+    if (!b.active) return "inactive";
     const now = Date.now();
-    if (b.startsAt && new Date(b.startsAt).getTime() > now) return false;
-    if (b.endsAt && new Date(b.endsAt).getTime() < now) return false;
-    return b.active;
+    if (b.endsAt && new Date(b.endsAt).getTime() < now) return "expired";
+    if (b.startsAt && new Date(b.startsAt).getTime() > now) return "pending";
+    return "running";
   }
 
   return (
@@ -56,6 +57,7 @@ export default function BannersPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
+              <th className="px-3 py-2">이미지</th>
               <th className="px-3 py-2">제목</th>
               <th className="px-3 py-2">상태</th>
               <th className="px-3 py-2">기간</th>
@@ -66,15 +68,19 @@ export default function BannersPage() {
           <tbody>
             {banners?.map((b) => (
               <tr key={b.id} className="border-t border-[var(--border)]">
+                <td className="px-3 py-2">
+                  {b.imageUrl ? (
+                    <img src={b.imageUrl} alt="" className="h-10 w-20 rounded object-cover" />
+                  ) : (
+                    <span className="text-[var(--fg-faint)]">-</span>
+                  )}
+                </td>
                 <td className="px-3 py-2">{b.title}</td>
                 <td className="px-3 py-2">
-                  {!b.active ? (
-                    <span className="text-[var(--fg-faint)]">비활성</span>
-                  ) : isRunning(b) ? (
-                    <span className="text-emerald-400">노출중</span>
-                  ) : (
-                    <span className="text-amber-400">대기중</span>
-                  )}
+                  {statusOf(b) === "inactive" && <span className="text-[var(--fg-faint)]">비활성</span>}
+                  {statusOf(b) === "expired" && <span className="text-red-400">기간 만료</span>}
+                  {statusOf(b) === "pending" && <span className="text-amber-400">대기중</span>}
+                  {statusOf(b) === "running" && <span className="text-emerald-400">노출중</span>}
                 </td>
                 <td className="px-3 py-2 text-[var(--fg-muted)]">
                   {b.startsAt ? new Date(b.startsAt).toLocaleString() : "제한없음"} ~{" "}
@@ -101,7 +107,7 @@ export default function BannersPage() {
             ))}
             {banners?.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-[var(--fg-faint)]">
+                <td colSpan={6} className="px-3 py-6 text-center text-[var(--fg-faint)]">
                   등록된 배너가 없습니다.
                 </td>
               </tr>

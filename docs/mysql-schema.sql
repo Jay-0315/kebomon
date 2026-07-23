@@ -207,6 +207,7 @@ CREATE TABLE IF NOT EXISTS banners (
   body       VARCHAR(200) NULL,
   body_ja    VARCHAR(200) NULL,
   body_en    VARCHAR(200) NULL,
+  image_url  LONGTEXT     NULL,
   link_url   VARCHAR(300) NULL,
   active     TINYINT(1)   NOT NULL DEFAULT 1,
   starts_at  DATETIME     NULL,

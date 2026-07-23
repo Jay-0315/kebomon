@@ -1,0 +1,31 @@
+const MAX_WIDTH = 1280;
+const QUALITY = 0.75;
+
+/** 업로드 이미지를 리사이즈 + JPEG 재인코딩해서 base64 데이터 URL로 반환 */
+export function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      const scale = Math.min(1, MAX_WIDTH / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("canvas error")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+
+      resolve(canvas.toDataURL("image/jpeg", QUALITY));
+    };
+
+    img.onerror = reject;
+    img.src = url;
+  });
+}
