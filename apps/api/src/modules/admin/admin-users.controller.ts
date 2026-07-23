@@ -36,6 +36,11 @@ export class AdminUsersController {
     return this.adminUsersService.getActivityLog(id);
   }
 
+  @Get(":id/suspension-history")
+  getSuspensionHistory(@Param("id") id: string) {
+    return this.adminUsersService.getSuspensionHistory(id);
+  }
+
   @Patch(":id/role")
   updateRole(
     @CurrentUser() requester: { sub: string },

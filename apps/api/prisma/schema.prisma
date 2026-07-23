@@ -107,6 +107,8 @@ model User {
   reports                Report[]
   dailyQuestProgress     DailyQuestProgress[]
   pointsLedger           PointsLedger[]
+  suspensionHistory      SuspensionHistory[]
+  inquiries              Inquiry[]
 
   @@map("users")
 }
@@ -541,6 +543,56 @@ model PointsLedger {
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("points_ledger")
+}
+
+model SuspensionHistory {
+  id             BigInt    @id @default(autoincrement())
+  userId         String    @map("user_id")
+  action         String    @db.VarChar(20) // "SUSPENDED" | "UNSUSPENDED" | "AUTO_EXPIRED"
+  reason         String?   @db.VarChar(255)
+  suspendedUntil DateTime? @map("suspended_until")
+  actedBy        String?   @map("acted_by") // 관리자 userId, AUTO_EXPIRED는 null
+  createdAt      DateTime  @default(now()) @map("created_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("suspension_history")
+}
+
+model Banner {
+  id        String    @id @default(uuid())
+  title     String    @db.VarChar(60)
+  titleJa   String?   @map("title_ja") @db.VarChar(60)
+  titleEn   String?   @map("title_en") @db.VarChar(60)
+  body      String?   @db.VarChar(200)
+  bodyJa    String?   @map("body_ja") @db.VarChar(200)
+  bodyEn    String?   @map("body_en") @db.VarChar(200)
+  linkUrl   String?   @map("link_url") @db.VarChar(300)
+  active    Boolean   @default(true)
+  startsAt  DateTime? @map("starts_at")
+  endsAt    DateTime? @map("ends_at")
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("banners")
+}
+
+model Inquiry {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  category   String    @db.VarChar(20) // "bug" | "account" | "suggestion" | "etc"
+  content    String    @db.VarChar(1000)
+  status     String    @default("PENDING") @db.VarChar(20) // "PENDING" | "ANSWERED"
+  adminReply String?   @map("admin_reply") @db.VarChar(1000)
+  repliedBy  String?   @map("replied_by")
+  repliedAt  DateTime? @map("replied_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("inquiries")
 }
 
 model PasswordChangeHistory {

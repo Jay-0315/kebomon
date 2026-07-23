@@ -15,6 +15,11 @@ export class AdminGuildsController {
     return this.adminGuildsService.findAll(q, page ? Number(page) : 1);
   }
 
+  @Get(":id")
+  findById(@Param("id") id: string) {
+    return this.adminGuildsService.findById(id);
+  }
+
   @Delete(":id")
   disband(@Param("id") id: string) {
     return this.adminGuildsService.disband(id);

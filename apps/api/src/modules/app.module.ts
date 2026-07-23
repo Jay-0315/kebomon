@@ -13,6 +13,8 @@ import { GatewayModule } from "./gateway/gateway.module";
 import { ArenaModule } from "./arena/arena.module";
 import { GuildModule } from "./guild/guild.module";
 import { ReportsModule } from "./reports/reports.module";
+import { BannersModule } from "./banners/banners.module";
+import { InquiriesModule } from "./inquiries/inquiries.module";
 import { MaintenanceModule } from "./maintenance/maintenance.module";
 import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
 
@@ -33,6 +35,8 @@ import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
     ArenaModule,
     GuildModule,
     ReportsModule,
+    BannersModule,
+    InquiriesModule,
     MaintenanceModule,
     AdminModule,
   ],

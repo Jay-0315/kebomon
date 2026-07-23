@@ -8,6 +8,7 @@ import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { logPointsChange } from "../rewards/points-ledger.util";
+import { logSuspensionChange } from "./suspension-history.util";
 import { CHARACTER_NAMES } from "./character-names.constant";
 
 const PAGE_SIZE = 20;
@@ -167,6 +168,23 @@ export class AdminUsersService {
     };
   }
 
+  /** 정지 이력 — 수동 정지/해제 + 자동 만료 전부 (최근 50건) */
+  async getSuspensionHistory(userId: string) {
+    const rows = await this.prisma.suspensionHistory.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return rows.map((r) => ({
+      id: r.id.toString(),
+      action: r.action,
+      reason: r.reason,
+      suspendedUntil: r.suspendedUntil,
+      actedBy: r.actedBy,
+      createdAt: r.createdAt,
+    }));
+  }
+
   async updateRole(requesterId: string, targetId: string, dto: UpdateUserRoleDto) {
     if (requesterId === targetId) {
       throw new ForbiddenException("본인 계정의 권한은 변경할 수 없습니다.");
@@ -225,6 +243,15 @@ export class AdminUsersService {
       this.notificationGateway.emitToUser(targetId, "force-logout", { reason: dto.reason ?? null, suspendedUntil });
       this.notificationGateway.server.in(`user:${targetId}`).disconnectSockets(true);
     }
+
+    void logSuspensionChange(
+      this.prisma,
+      targetId,
+      dto.status === "SUSPENDED" ? "SUSPENDED" : "UNSUSPENDED",
+      dto.status === "SUSPENDED" ? (dto.reason ?? null) : null,
+      dto.status === "SUSPENDED" ? suspendedUntil : null,
+      requesterId,
+    );
 
     return updated;
   }

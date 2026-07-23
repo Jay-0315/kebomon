@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { NotificationGatewayModule } from "../gateway/notification-gateway.module";
+import { AdminBannersController } from "./admin-banners.controller";
+import { AdminBannersService } from "./admin-banners.service";
 import { AdminBattlesController } from "./admin-battles.controller";
 import { AdminBattlesService } from "./admin-battles.service";
 import { AdminCharactersController } from "./admin-characters.controller";
@@ -14,6 +16,8 @@ import { AdminGachaController } from "./admin-gacha.controller";
 import { AdminGachaService } from "./admin-gacha.service";
 import { AdminGuildsController } from "./admin-guilds.controller";
 import { AdminGuildsService } from "./admin-guilds.service";
+import { AdminInquiriesController } from "./admin-inquiries.controller";
+import { AdminInquiriesService } from "./admin-inquiries.service";
 import { AdminMaintenanceController } from "./admin-maintenance.controller";
 import { AdminMaintenanceService } from "./admin-maintenance.service";
 import { AdminNotificationsController } from "./admin-notifications.controller";
@@ -36,6 +40,8 @@ import { AdminUsersService } from "./admin-users.service";
     AdminCharactersController,
     AdminReportsController,
     AdminMaintenanceController,
+    AdminBannersController,
+    AdminInquiriesController,
   ],
   providers: [
     AdminUsersService,
@@ -48,6 +54,8 @@ import { AdminUsersService } from "./admin-users.service";
     AdminCharactersService,
     AdminReportsService,
     AdminMaintenanceService,
+    AdminBannersService,
+    AdminInquiriesService,
   ],
 })
 export class AdminModule {}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { api } from "../lib/api";
 
 type BossAnomaly = {
@@ -100,7 +101,11 @@ export default function GuildsPage() {
           <tbody>
             {data?.guilds.map((g) => (
               <tr key={g.id} className={`border-t border-[var(--border)] ${g.bossAnomaly?.suspicious ? "bg-amber-500/10" : ""}`}>
-                <td className="px-3 py-2">{g.name}</td>
+                <td className="px-3 py-2">
+                  <Link to={`/guilds/${g.id}`} className="text-[#b7607e] hover:underline">
+                    {g.name}
+                  </Link>
+                </td>
                 <td className="px-3 py-2">{g.level}</td>
                 <td className="px-3 py-2">{g.memberCount}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)]">

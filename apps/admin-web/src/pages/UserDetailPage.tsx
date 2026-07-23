@@ -28,6 +28,21 @@ type ActivityLog = {
   characters: { characterId: number; name: string; obtainedAt: string }[];
 };
 
+type SuspensionHistoryRow = {
+  id: string;
+  action: "SUSPENDED" | "UNSUSPENDED" | "AUTO_EXPIRED";
+  reason: string | null;
+  suspendedUntil: string | null;
+  actedBy: string | null;
+  createdAt: string;
+};
+
+const SUSPENSION_ACTION_LABEL: Record<SuspensionHistoryRow["action"], string> = {
+  SUSPENDED: "정지",
+  UNSUSPENDED: "정지 해제",
+  AUTO_EXPIRED: "기간 만료(자동 해제)",
+};
+
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-lg border border-[var(--border)] p-3">
@@ -42,6 +57,7 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityLog | null>(null);
+  const [suspensionHistory, setSuspensionHistory] = useState<SuspensionHistoryRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReward, setShowReward] = useState(false);
@@ -52,12 +68,14 @@ export default function UserDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [userRes, logRes] = await Promise.all([
+      const [userRes, logRes, suspensionRes] = await Promise.all([
         api.get<UserDetail>(`/admin/users/${id}`),
         api.get<ActivityLog>(`/admin/users/${id}/activity-log`),
+        api.get<SuspensionHistoryRow[]>(`/admin/users/${id}/suspension-history`),
       ]);
       setUser(userRes);
       setActivityLog(logRes);
+      setSuspensionHistory(suspensionRes);
     } catch {
       setError("유저 정보를 불러오지 못했습니다.");
     } finally {
@@ -223,6 +241,28 @@ export default function UserDetailPage() {
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-[var(--border)] p-4">
+        <h2 className="mb-3 text-sm font-semibold">정지 이력</h2>
+        {!suspensionHistory || suspensionHistory.length === 0 ? (
+          <p className="text-sm text-[var(--fg-faint)]">내역이 없습니다.</p>
+        ) : (
+          <ul className="max-h-64 space-y-2 overflow-y-auto">
+            {suspensionHistory.map((h) => (
+              <li key={h.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                <span className={h.action === "SUSPENDED" ? "text-red-400" : "text-emerald-400"}>
+                  {SUSPENSION_ACTION_LABEL[h.action]}
+                </span>
+                {h.reason && <> · {h.reason}</>}
+                {h.action === "SUSPENDED" && (
+                  <> · {h.suspendedUntil ? `~${new Date(h.suspendedUntil).toLocaleString("ko-KR")}` : "영구 정지"}</>
+                )}
+                <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(h.createdAt).toLocaleString()}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {showReward && (

@@ -34,6 +34,7 @@ import { useLang } from "../context/LangContext";
 import { clearAuthSession } from "../lib/auth";
 import TitleBadge from "./TitleBadge";
 import NotificationBell from "./NotificationBell";
+import InquiryFab from "./InquiryFab";
 import UserAvatar from "./UserAvatar";
 
 export default function Layout() {
@@ -522,6 +523,7 @@ export default function Layout() {
         {!["/colosseum", "/raid", "/rogue", "/duel"].includes(location.pathname) && (
           <NotificationBell floating />
         )}
+        <InquiryFab stacked={!["/colosseum", "/raid", "/rogue", "/duel"].includes(location.pathname)} />
 
         <main
           ref={mainRef}

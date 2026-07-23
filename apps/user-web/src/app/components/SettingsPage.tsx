@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { registerPush, unregisterPush } from "../lib/push";
 import PrivacyModal from "./PrivacyModal";
+import InquiryModal from "./InquiryModal";
 import { useNavigate } from "react-router";
 import { api } from "../lib/api";
 import {
@@ -18,6 +19,7 @@ import {
   Link2,
   Lock,
   Mail,
+  MessageCircleQuestion,
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -56,6 +58,7 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [isSendingPwCode, setIsSendingPwCode] = useState(false);
   const [pwCodeError, setPwCodeError] = useState("");
   const [linkedProviders, setLinkedProviders] = useState<LinkedProvider[]>([]);
@@ -345,6 +348,22 @@ export default function SettingsPage() {
           </button>
 
           <button
+            onClick={() => setShowInquiryModal(true)}
+            className="w-full flex items-center justify-between p-3 rounded hover:bg-muted transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <MessageCircleQuestion className="w-5 h-5 text-primary" />
+              <div className="text-left">
+                <p className="font-medium">{t("settings.inquiry")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("settings.inquiry_desc")}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+
+          <button
             onClick={() => setShowDeleteModal(true)}
             className="w-full flex items-center justify-between p-3 rounded hover:bg-destructive/10 transition-colors text-destructive"
           >
@@ -509,6 +528,10 @@ export default function SettingsPage() {
 
       {showPrivacyModal && (
         <PrivacyModal onClose={() => setShowPrivacyModal(false)} />
+      )}
+
+      {showInquiryModal && (
+        <InquiryModal onClose={() => setShowInquiryModal(false)} />
       )}
 
       {/* Account Deletion Modal */}

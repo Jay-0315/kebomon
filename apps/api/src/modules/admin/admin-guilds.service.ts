@@ -6,6 +6,7 @@ const PAGE_SIZE = 20;
 // 인원이 있는 길드에서 유독 한 명에게 쏠릴 때만 이상치로 표시
 const SUSPICIOUS_MIN_MEMBERS = 5;
 const SUSPICIOUS_TOP_SHARE = 0.6;
+const ROLE_ORDER: Record<string, number> = { owner: 0, officer: 1, member: 2 };
 
 @Injectable()
 export class AdminGuildsService {
@@ -72,6 +73,62 @@ export class AdminGuildsService {
     });
 
     return { guilds: rows, total, page, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+  }
+
+  async findById(id: string) {
+    const guild = await this.prisma.guild.findUnique({
+      where: { id },
+      include: {
+        owner: { select: { id: true, name: true, email: true } },
+        members: {
+          orderBy: [{ totalContribution: "desc" }],
+          include: { user: { select: { id: true, name: true, email: true } } },
+        },
+        bossRuns: {
+          orderBy: { weekKey: "desc" as const },
+          take: 8,
+          include: { contributions: { include: { user: { select: { id: true, name: true } } } } },
+        },
+      },
+    });
+    if (!guild) throw new NotFoundException("길드를 찾을 수 없습니다.");
+
+    return {
+      id: guild.id,
+      name: guild.name,
+      iconId: guild.iconId,
+      notice: guild.notice,
+      level: guild.level,
+      exp: guild.exp,
+      owner: guild.owner,
+      createdAt: guild.createdAt,
+      members: guild.members
+        // "owner" > "officer" > "member" 순으로, 같은 역할 안에서는 기여도 내림차순(이미 쿼리 orderBy로 정렬됨)
+        .sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role])
+        .map((m) => ({
+          userId: m.user.id,
+          name: m.user.name,
+          email: m.user.email,
+          role: m.role,
+          totalContribution: m.totalContribution,
+          joinedAt: m.joinedAt,
+        })),
+      bossRuns: guild.bossRuns.map((run) => {
+        const totalDamage = run.contributions.reduce((s, c) => s + c.damage, 0);
+        return {
+          weekKey: run.weekKey,
+          bossId: run.bossId,
+          maxHp: run.maxHp,
+          hpRemaining: run.hpRemaining,
+          clearedAt: run.clearedAt,
+          rewardsGranted: run.rewardsGranted,
+          totalDamage,
+          contributions: run.contributions
+            .sort((a, b) => b.damage - a.damage)
+            .map((c) => ({ userId: c.userId, name: c.user.name, damage: c.damage })),
+        };
+      }),
+    };
   }
 
   async disband(id: string) {

@@ -10,11 +10,13 @@ const navItems = [
   { to: "/community/posts", label: "게시글 관리" },
   { to: "/community/comments", label: "댓글 관리" },
   { to: "/reports", label: "신고 관리" },
+  { to: "/inquiries", label: "문의 관리" },
   { to: "/gacha-config", label: "가챠 확률 설정" },
   { to: "/characters", label: "케보몬 관리" },
   { to: "/battles", label: "전적 모니터링" },
   { to: "/guilds", label: "길드 관리" },
   { to: "/notifications", label: "공지 발송" },
+  { to: "/banners", label: "배너 관리" },
   { to: "/maintenance", label: "점검 모드" },
 ];
 

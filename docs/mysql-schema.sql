@@ -139,18 +139,6 @@ CREATE TABLE push_subscriptions (
   CONSTRAINT fk_push_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE raid_contents (
-  id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
-  raid_type  INT          NOT NULL,
-  text         TEXT         NOT NULL,
-  answer       TEXT         NULL,
-  active       TINYINT(1)   NOT NULL DEFAULT 1,
-  report_count INT          NOT NULL DEFAULT 0,
-  created_by   VARCHAR(36)  NULL,
-  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_raid_contents_type (raid_type, active)
-);
-
 CREATE TABLE user_titles (
   id         BIGINT       AUTO_INCREMENT PRIMARY KEY,
   user_id    VARCHAR(36)  NOT NULL,
@@ -197,6 +185,50 @@ CREATE TABLE IF NOT EXISTS points_ledger (
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_points_ledger_user_created (user_id, created_at DESC),
   CONSTRAINT fk_points_ledger_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS suspension_history (
+  id              BIGINT       AUTO_INCREMENT PRIMARY KEY,
+  user_id         VARCHAR(36)  NOT NULL,
+  action          VARCHAR(20)  NOT NULL,
+  reason          VARCHAR(255) NULL,
+  suspended_until DATETIME     NULL,
+  acted_by        VARCHAR(36)  NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_suspension_history_user_created (user_id, created_at DESC),
+  CONSTRAINT fk_suspension_history_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS banners (
+  id         VARCHAR(36)  NOT NULL PRIMARY KEY,
+  title      VARCHAR(60)  NOT NULL,
+  title_ja   VARCHAR(60)  NULL,
+  title_en   VARCHAR(60)  NULL,
+  body       VARCHAR(200) NULL,
+  body_ja    VARCHAR(200) NULL,
+  body_en    VARCHAR(200) NULL,
+  link_url   VARCHAR(300) NULL,
+  active     TINYINT(1)   NOT NULL DEFAULT 1,
+  starts_at  DATETIME     NULL,
+  ends_at    DATETIME     NULL,
+  sort_order INT          NOT NULL DEFAULT 0,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS inquiries (
+  id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+  user_id     VARCHAR(36)   NOT NULL,
+  category    VARCHAR(20)   NOT NULL,
+  content     VARCHAR(1000) NOT NULL,
+  status      VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+  admin_reply VARCHAR(1000) NULL,
+  replied_by  VARCHAR(36)   NULL,
+  replied_at  DATETIME      NULL,
+  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_inquiries_status (status),
+  INDEX idx_inquiries_user_created (user_id, created_at DESC),
+  CONSTRAINT fk_inquiries_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS daily_quest_progress (

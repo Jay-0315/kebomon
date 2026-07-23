@@ -1,4 +1,5 @@
 import { PrismaService } from "../prisma/prisma.service";
+import { logSuspensionChange } from "../admin/suspension-history.util";
 
 /** 기간 정지(suspendedUntil 지정)가 만료됐는지 확인 — null이면 영구 정지라 만료되지 않음 */
 export function isSuspensionExpired(user: { status: string; suspendedUntil: Date | null }): boolean {
@@ -15,5 +16,6 @@ export async function reactivateIfExpired(
     where: { id: user.id },
     data: { status: "ACTIVE", suspendedReason: null, suspendedUntil: null },
   });
+  void logSuspensionChange(prisma, user.id, "AUTO_EXPIRED", null, null, null);
   return true;
 }
