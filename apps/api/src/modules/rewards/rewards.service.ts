@@ -406,8 +406,6 @@ export class RewardsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return;
     await this.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
-    void this.markQuestDone(userId, "login").catch(() => undefined);
-    void this.incrementWeeklyQuestProgress(userId, "login").catch(() => undefined);
   }
 
   // ─── 원정 (서버 권위 상태 — 보상은 클라이언트가 아닌 서버가 계산) ──────────────────
@@ -745,6 +743,8 @@ export class RewardsService {
       },
     });
     void logPointsChange(this.prisma, userId, points, "출석 체크 보상");
+    void this.markQuestDone(userId, "login").catch(() => undefined);
+    void this.incrementWeeklyQuestProgress(userId, "login").catch(() => undefined);
 
     return {
       alreadyClaimed: false,
