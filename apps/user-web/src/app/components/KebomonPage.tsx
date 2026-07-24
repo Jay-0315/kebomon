@@ -53,6 +53,8 @@ import type {
   RogueArchetype,
 } from "../data/characters";
 
+// 관리자페이지에서 캐릭터별로 아레나 역할을 오버라이드하지 않았을 때 쓰는 종족별 기본값
+// (character-master.util.ts TYPE_ARENA_ARCHETYPE와 동일 매핑 — 서버 기본값과 항상 일치해야 함)
 const CARD_ARCH_MAP: Partial<Record<string, string>> = {
   wolf:"warrior",  tiger:"warrior",  lion:"warrior",   bear:"warrior",
   cat:"rogue",     rabbit:"rogue",   deer:"rogue",     eagle:"rogue",
@@ -62,12 +64,13 @@ const CARD_ARCH_MAP: Partial<Record<string, string>> = {
   robot:"meka",    slime:"meka",     beetle:"meka",
   fox:"cursed",    monkey:"cursed",  raven:"cursed",   snake:"cursed",  demon:"cursed",
 };
-function CardArchIcon({ type, className }: { type: string; className?: string }) {
-  const ca = CARD_ARCH_MAP[type];
-  if (!ca) return null;
-  const color = ca==="warrior"?"#f97316":ca==="rogue"?"#c084fc":ca==="mage"?"#60a5fa":ca==="tank"?"#94a3b8":ca==="nature"?"#4ade80":ca==="cursed"?"#7c3aed":ca==="meka"?"#2dd4bf":"#64748b";
-  const Icon = ca==="warrior"?Sword:ca==="rogue"?Wind:ca==="mage"?Wand2:ca==="tank"?Layers:ca==="nature"?Leaf:ca==="cursed"?Flame:Cpu;
-  return <Icon className={className} style={{ color }} />;
+// 관리자페이지 케보몬 관리에서 캐릭터별로 조정한 아레나 역할(arenaArchetype)이 있으면
+// 그 값을 우선 사용하고, 없으면(또는 아직 마스터 데이터 로딩 전이면) 종족 기본값으로 폴백.
+function resolveArenaArchetype(
+  characterMasterMap: Record<number, { arenaArchetype?: string }>,
+  char: { id: number; type: string },
+): string {
+  return characterMasterMap[char.id]?.arenaArchetype ?? CARD_ARCH_MAP[char.type] ?? "warrior";
 }
 
 // 도감 컴플리트 마일스톤 — 실제 보상 계산은 서버(rewards.service.ts DEX_MILESTONES)가 담당, 여기선 진행도 표시용
@@ -831,6 +834,7 @@ export default function KebomonPage() {
     profile,
     enhanceCharacter,
     buyShopItem,
+    characterMasterMap,
   } = useAppData();
   const { t, lang } = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -982,7 +986,7 @@ export default function KebomonPage() {
       ? CHARACTERS
       : CHARACTERS.filter((c) => c.rarity === filter)
   )
-    .filter((c) => archFilter === "all" || CARD_ARCH_MAP[c.type] === archFilter)
+    .filter((c) => archFilter === "all" || resolveArenaArchetype(characterMasterMap, c) === archFilter)
     .slice()
     .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]);
   const selectedChar =
@@ -1312,6 +1316,7 @@ export default function KebomonPage() {
             filtered={filtered}
             rarities={rarities}
             equipping={equipping}
+            characterMasterMap={characterMasterMap}
             characterEnhancements={rewardSummary.characterEnhancements}
             dexMilestoneBest={rewardSummary.dexMilestoneBest}
             totalOwned={ownedCharacterIds.length}
@@ -1371,6 +1376,7 @@ function CollectionTab({
   characterEnhancements,
   dexMilestoneBest,
   totalOwned,
+  characterMasterMap,
   t,
 }: {
   ownedSet: Set<number>;
@@ -1385,6 +1391,7 @@ function CollectionTab({
   characterEnhancements: Record<number, number>;
   dexMilestoneBest: number;
   totalOwned: number;
+  characterMasterMap: Record<number, { arenaArchetype?: string }>;
   onSelectFilter: (f: Filter) => void;
   onSelectArchFilter: (a: string) => void;
   onSelectChar: (id: number) => void;
@@ -1418,6 +1425,7 @@ function CollectionTab({
           equipping={equipping}
           enhance={characterEnhancements[selectedChar.id] ?? 0}
           onEquip={onEquip}
+          characterMasterMap={characterMasterMap}
           t={t}
         />
       )}
@@ -1558,7 +1566,7 @@ function CollectionTab({
               {isOwned && (
                 <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-44 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 drop-shadow-xl">
                   <div className="rounded-xl border border-border bg-card p-2">
-                    <CharStatMini char={char} enhance={characterEnhancements[char.id] ?? 0} />
+                    <CharStatMini char={char} enhance={characterEnhancements[char.id] ?? 0} characterMasterMap={characterMasterMap} />
                   </div>
                 </div>
               )}
@@ -1589,7 +1597,7 @@ function CollectionTab({
               </div>
               {/* name row: job icon + type icon + name text */}
               <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
-                {isOwned && <CardArchIcon type={char.type} className="w-2 h-2 shrink-0" />}
+                {isOwned && archIconFor(resolveArenaArchetype(characterMasterMap, char), "w-2 h-2 shrink-0")}
                 {isOwned && (() => {
                   const rt: RogueArchetype = ROGUE_TYPE_MAP[char.type] ?? "energy";
                   const rtColor = rt === "energy" ? "#38bdf8" : rt === "attack" ? "#f87171" : "#60a5fa";
@@ -1621,7 +1629,15 @@ function CollectionTab({
 }
 
 // ─── Compact stat card (hover tooltip + detail panel reuse) ──────────────
-function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: number }) {
+function CharStatMini({
+  char,
+  enhance = 0,
+  characterMasterMap,
+}: {
+  char: CharacterDef;
+  enhance?: number;
+  characterMasterMap: Record<number, { arenaArchetype?: string }>;
+}) {
   const { lang } = useLang();
   const ko = lang !== "ja" && lang !== "en";
   const ja = lang === "ja";
@@ -1649,7 +1665,7 @@ function CharStatMini({ char, enhance = 0 }: { char: CharacterDef; enhance?: num
       : rt === "energy" ? "+1 Energy" : rt === "attack" ? "+1 STR" : "Shield persists";
   const rtColor = rt === "energy" ? "#60a5fa" : rt === "attack" ? "#f87171" : "#4ade80";
 
-  const ca = CARD_ARCH_MAP[char.type];
+  const ca = resolveArenaArchetype(characterMasterMap, char);
   const archLabel = ko
     ? ca === "warrior" ? "전사" : ca === "rogue" ? "도적" : ca === "mage" ? "마법사" : ca === "tank" ? "수호자" : ca === "nature" ? "자연" : ca === "meka" ? "메카" : ca === "cursed" ? "저주술사" : "공용"
     : ja
@@ -1705,6 +1721,7 @@ function CharacterDetail({
   equipping,
   enhance,
   onEquip,
+  characterMasterMap,
   t,
 }: {
   char: CharacterDef;
@@ -1713,6 +1730,7 @@ function CharacterDetail({
   equipping: boolean;
   enhance: number;
   onEquip: (id: number) => void;
+  characterMasterMap: Record<number, { arenaArchetype?: string }>;
   t: TFunc;
 }) {
   const { lang } = useLang();
@@ -1794,7 +1812,7 @@ function CharacterDetail({
       {/* 콘텐츠 스탯 */}
       {isOwned && (
         <div className="mt-3 pt-3 border-t border-border">
-          <CharStatMini char={char} enhance={enhance} />
+          <CharStatMini char={char} enhance={enhance} characterMasterMap={characterMasterMap} />
         </div>
       )}
     </div>

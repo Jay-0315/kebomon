@@ -84,7 +84,7 @@ interface AppDataContextValue {
   settings: AppSettings;
   posts: CommunityPost[];
   rewardSummary: RewardSummary;
-  characterMasterMap: Record<number, { rarity: string; rogueArchetype: string }>;
+  characterMasterMap: Record<number, { rarity: string; arenaArchetype: string; rogueArchetype: string }>;
   gachaConfig: GachaConfig;
   dailyQuests: DailyQuests | null;
   fetchDailyQuests: () => Promise<void>;
@@ -231,7 +231,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     normalizeRewardSummary(undefined),
   );
   const [characterMasterMap, setCharacterMasterMap] = useState<
-    Record<number, { rarity: string; rogueArchetype: string }>
+    Record<number, { rarity: string; arenaArchetype: string; rogueArchetype: string }>
   >({});
   const [gachaConfig, setGachaConfig] = useState<GachaConfig>({
     gachaRates: GACHA_RATES,
@@ -297,7 +297,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }>(`/users/${currentUser.id}/profile`),
         api.get<{ posts: Record<string, unknown>[] }>(`/community/posts?userId=${currentUser.id}`),
         api.get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`),
-        api.get<Record<number, { rarity: string; rogueArchetype: string }>>("/rewards/character-master"),
+        api.get<Record<number, { rarity: string; arenaArchetype: string; rogueArchetype: string }>>("/rewards/character-master"),
         api.get<GachaConfig>("/rewards/gacha-config"),
         api.get<DailyQuests>("/rewards/quests/today"),
       ]);

@@ -48,6 +48,7 @@ type AdminUserRow = {
   createdAt: string;
   lastLoginAt: string | null;
   reward: RewardSummary;
+  online: boolean;
 };
 
 type UsersResponse = {
@@ -173,7 +174,7 @@ export default function UsersPage() {
               <SortHeader sortKey="name" label="이름" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader sortKey="email" label="이메일" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader sortKey="role" label="권한" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <SortHeader sortKey="status" label="상태" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <th className="px-3 py-2">접속</th>
               <SortHeader
                 sortKey="reward"
                 label="재화 (KP/일반알/왕알/황금알/강화석)"
@@ -197,17 +198,13 @@ export default function UsersPage() {
                 <td className="px-3 py-2">{u.email}</td>
                 <td className="px-3 py-2">{u.role}</td>
                 <td className="px-3 py-2">
-                  {u.status}
-                  {u.status === "SUSPENDED" && (
-                    <span className="ml-1 text-[var(--fg-faint)]">
-                      (
-                      {u.suspendedUntil
-                        ? `~${new Date(u.suspendedUntil).toLocaleString("ko-KR")}`
-                        : "영구 정지"}
-                      {u.suspendedReason ? ` · ${u.suspendedReason}` : ""}
-                      )
-                    </span>
-                  )}
+                  <span className="flex items-center gap-1.5" title={u.online ? "접속 중" : "오프라인"}>
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ background: u.online ? "#3b82f6" : "#ef4444" }}
+                    />
+                    <span className="text-[var(--fg-muted)]">{u.online ? "접속 중" : "오프라인"}</span>
+                  </span>
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
                   {u.reward

@@ -93,7 +93,7 @@ export class AdminUsersService {
     );
 
     return {
-      users,
+      users: users.map((u) => ({ ...u, online: this.notificationGateway.isOnline(u.id) })),
       total,
       page,
       totalPages: Math.ceil(total / PAGE_SIZE),
@@ -135,7 +135,7 @@ export class AdminUsersService {
       user.suspendedUntil = null;
     }
 
-    return { ...user, reportsAgainstCount: reportsAgainst };
+    return { ...user, reportsAgainstCount: reportsAgainst, online: this.notificationGateway.isOnline(user.id) };
   }
 
   /** 활동 로그 — KP 변동 내역 + 케릭터 획득 내역 (최근 50건씩) */
