@@ -1,5 +1,6 @@
 import { Controller, Delete, Get, Param, ParseIntPipe, Query, UseGuards } from "@nestjs/common";
 import { PostCategory } from "@prisma/client";
+import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -21,8 +22,8 @@ export class AdminCommunityController {
   }
 
   @Delete("posts/:id")
-  removePost(@Param("id") id: string) {
-    return this.adminCommunityService.removePost(id);
+  removePost(@CurrentUser() requester: { sub: string }, @Param("id") id: string) {
+    return this.adminCommunityService.removePost(requester.sub, id);
   }
 
   @Get("comments")
@@ -35,7 +36,7 @@ export class AdminCommunityController {
   }
 
   @Delete("comments/:id")
-  removeComment(@Param("id", ParseIntPipe) id: number) {
-    return this.adminCommunityService.removeComment(BigInt(id));
+  removeComment(@CurrentUser() requester: { sub: string }, @Param("id", ParseIntPipe) id: number) {
+    return this.adminCommunityService.removeComment(requester.sub, BigInt(id));
   }
 }

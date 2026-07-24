@@ -1118,6 +1118,7 @@ export class ArenaService {
       link: `/colosseum?battleId=${battleLog.id.toString()}`,
     }).catch(() => undefined);
     void this.rewards.markQuestDone(attackerId, "battle").catch(() => undefined);
+    void this.rewards.incrementWeeklyQuestProgress(attackerId, "battle").catch(() => undefined);
 
     return {
       won,
@@ -1172,6 +1173,7 @@ export class ArenaService {
     };
     await this.prisma.battleStats.upsert({ where: { userId: attackerId }, create: { userId: attackerId, ...data }, update: data });
     void this.rewards.markQuestDone(attackerId, "battle").catch(() => undefined);
+    void this.rewards.incrementWeeklyQuestProgress(attackerId, "battle").catch(() => undefined);
 
     return {
       won, pointsDelta, tierPoints: newPoints,

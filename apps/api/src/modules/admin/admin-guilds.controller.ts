@@ -1,4 +1,5 @@
 import { Controller, Delete, Get, Param, Query, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -21,7 +22,7 @@ export class AdminGuildsController {
   }
 
   @Delete(":id")
-  disband(@Param("id") id: string) {
-    return this.adminGuildsService.disband(id);
+  disband(@CurrentUser() requester: { sub: string }, @Param("id") id: string) {
+    return this.adminGuildsService.disband(requester.sub, id);
   }
 }

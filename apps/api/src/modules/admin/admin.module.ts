@@ -2,6 +2,11 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { NotificationGatewayModule } from "../gateway/notification-gateway.module";
+import { RewardsModule } from "../rewards/rewards.module";
+import { AdminActionLogController } from "./admin-action-log.controller";
+import { AdminActionLogService } from "./admin-action-log.service";
+import { AdminSeasonController } from "./admin-season.controller";
+import { AdminSeasonService } from "./admin-season.service";
 import { AdminBannersController } from "./admin-banners.controller";
 import { AdminBannersService } from "./admin-banners.service";
 import { AdminBattlesController } from "./admin-battles.controller";
@@ -28,7 +33,7 @@ import { AdminUsersController } from "./admin-users.controller";
 import { AdminUsersService } from "./admin-users.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, NotificationGatewayModule],
+  imports: [AuthModule, NotificationsModule, NotificationGatewayModule, RewardsModule],
   controllers: [
     AdminUsersController,
     AdminCommunityController,
@@ -42,6 +47,8 @@ import { AdminUsersService } from "./admin-users.service";
     AdminMaintenanceController,
     AdminBannersController,
     AdminInquiriesController,
+    AdminActionLogController,
+    AdminSeasonController,
   ],
   providers: [
     AdminUsersService,
@@ -56,6 +63,8 @@ import { AdminUsersService } from "./admin-users.service";
     AdminMaintenanceService,
     AdminBannersService,
     AdminInquiriesService,
+    AdminActionLogService,
+    AdminSeasonService,
   ],
 })
 export class AdminModule {}

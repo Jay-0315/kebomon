@@ -19,6 +19,9 @@ import MaintenancePage from "./pages/MaintenancePage";
 import BannersPage from "./pages/BannersPage";
 import UserDetailPage from "./pages/UserDetailPage";
 import GuildDetailPage from "./pages/GuildDetailPage";
+import AdminAccountsPage from "./pages/AdminAccountsPage";
+import AdminActionLogPage from "./pages/AdminActionLogPage";
+import SeasonPage from "./pages/SeasonPage";
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
@@ -76,6 +79,9 @@ export default function App() {
           <Route path="/inquiries" element={<InquiriesPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/banners" element={<BannersPage />} />
+          <Route path="/season" element={<SeasonPage />} />
+          <Route path="/admin-accounts" element={<AdminAccountsPage />} />
+          <Route path="/action-log" element={<AdminActionLogPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

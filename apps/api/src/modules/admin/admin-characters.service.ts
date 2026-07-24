@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { allCharacterIds, getDefaultCharacterMaster, loadCharacterMasterMap } from "../rewards/character-master.util";
 import { CHARACTER_NAMES } from "./character-names.constant";
 import { UpdateCharacterDto } from "./dto/update-character.dto";
+import { logAdminAction } from "./admin-action-log.util";
 
 @Injectable()
 export class AdminCharactersService {
@@ -21,7 +22,7 @@ export class AdminCharactersService {
     });
   }
 
-  async update(id: number, dto: UpdateCharacterDto) {
+  async update(requesterId: string, id: number, dto: UpdateCharacterDto) {
     if (!CHARACTER_NAMES[id]) throw new NotFoundException("존재하지 않는 캐릭터입니다.");
 
     const current = (await loadCharacterMasterMap(this.prisma)).get(id) ?? getDefaultCharacterMaster(id);
@@ -42,6 +43,7 @@ export class AdminCharactersService {
       update: next,
     });
 
+    void logAdminAction(this.prisma, requesterId, "CHARACTER_BALANCE_UPDATE", "CHARACTER", String(id), null);
     return { ...saved, name: CHARACTER_NAMES[id].name, korName: CHARACTER_NAMES[id].korName };
   }
 }

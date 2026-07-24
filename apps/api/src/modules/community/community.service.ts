@@ -183,6 +183,7 @@ export class CommunityService {
       this.rewards.checkAndGrantTitles(dto.userId),
     ]);
     void this.rewards.markQuestDone(dto.userId, "community").catch(() => undefined);
+    void this.rewards.incrementWeeklyQuestProgress(dto.userId, "community").catch(() => undefined);
 
     return this.formatPost(post, false);
   }
@@ -305,6 +306,7 @@ export class CommunityService {
       }).catch(() => undefined);
     }
     void this.rewards.markQuestDone(dto.userId, "community").catch(() => undefined);
+    void this.rewards.incrementWeeklyQuestProgress(dto.userId, "community").catch(() => undefined);
 
     return this.formatComment(comment);
   }

@@ -15,6 +15,7 @@ import KebomonPage from "./components/KebomonPage";
 import LiveChatPage from "./components/LiveChatPage";
 import RaidPage from "./components/RaidPage";
 import ColosseumPage from "./components/ColosseumPage";
+import HallOfFamePage from "./components/HallOfFamePage";
 import RoguePage from "./components/RoguePage";
 import DuelPage from "./components/DuelPage";
 import ExpeditionPage from "./components/ExpeditionPage";
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="mission" element={<MissionPage />} />
           <Route path="raid" element={<RaidPage />} />
           <Route path="colosseum" element={<ColosseumPage />} />
+          <Route path="colosseum/hall-of-fame" element={<HallOfFamePage />} />
           <Route path="rogue" element={<RoguePage />} />
           <Route path="duel" element={<DuelPage />} />
           <Route path="expedition" element={<ExpeditionPage />} />

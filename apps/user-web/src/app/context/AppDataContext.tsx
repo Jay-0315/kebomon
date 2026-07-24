@@ -69,6 +69,13 @@ export interface DailyQuests {
   bonusClaimed: boolean;
 }
 
+export interface WeeklyQuests {
+  progress: Record<string, number>;
+  targets: Record<string, number>;
+  allDone: boolean;
+  bonusClaimed: boolean;
+}
+
 interface AppDataContextValue {
   hasInitialized: boolean;
   rewardsFailed: boolean;
@@ -82,6 +89,9 @@ interface AppDataContextValue {
   dailyQuests: DailyQuests | null;
   fetchDailyQuests: () => Promise<void>;
   claimDailyQuestBonus: () => Promise<{ points: number } | null>;
+  weeklyQuests: WeeklyQuests | null;
+  fetchWeeklyQuests: () => Promise<void>;
+  claimWeeklyQuestBonus: () => Promise<{ points: number } | null>;
   createPost: (draft: CommunityPostDraft) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   togglePostLike: (postId: string) => Promise<void>;
@@ -229,6 +239,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     pityLegendaryThreshold: DEFAULT_PITY_LEGENDARY_THRESHOLD,
   });
   const [dailyQuests, setDailyQuests] = useState<DailyQuests | null>(null);
+  const [weeklyQuests, setWeeklyQuests] = useState<WeeklyQuests | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     const userId = getStoredUser()?.id;
     return userId ? localStorage.getItem(profilePhotoKey(userId)) : null;
@@ -628,6 +639,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const fetchWeeklyQuests = async () => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    try {
+      setWeeklyQuests(await api.get<WeeklyQuests>("/rewards/quests/weekly"));
+    } catch {
+      // 실패해도 위젯이 조용히 숨겨지므로 별도 처리 불필요
+    }
+  };
+
+  const claimWeeklyQuestBonus = async (): Promise<{ points: number } | null> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return null;
+    try {
+      const result = await api.post<{ points: number }>("/rewards/quests/weekly/claim");
+      setWeeklyQuests((prev) => (prev ? { ...prev, bonusClaimed: true } : prev));
+      setRewardSummary((prev) => ({ ...prev, missionPoints: prev.missionPoints + result.points }));
+      return result;
+    } catch {
+      return null;
+    }
+  };
+
   const checkAchievements = async (): Promise<{ newlyUnlocked: number[]; dexMilestones: number[] }> => {
     const currentUser = getStoredUser();
     if (!currentUser) return { newlyUnlocked: [], dexMilestones: [] };
@@ -792,6 +826,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     dailyQuests,
     fetchDailyQuests,
     claimDailyQuestBonus,
+    weeklyQuests,
+    fetchWeeklyQuests,
+    claimWeeklyQuestBonus,
     createPost,
     deletePost,
     togglePostLike,

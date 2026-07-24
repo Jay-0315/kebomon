@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { resolveMaintenanceConfig } from "../maintenance/maintenance-config.util";
 import { UpdateMaintenanceConfigDto } from "./dto/update-maintenance-config.dto";
+import { logAdminAction } from "./admin-action-log.util";
 
 @Injectable()
 export class AdminMaintenanceService {
@@ -11,7 +12,7 @@ export class AdminMaintenanceService {
     return resolveMaintenanceConfig(this.prisma);
   }
 
-  async updateConfig(dto: UpdateMaintenanceConfigDto) {
+  async updateConfig(requesterId: string, dto: UpdateMaintenanceConfigDto) {
     let endsAt: Date | null = null;
     if (dto.enabled && dto.endsAt) {
       endsAt = new Date(dto.endsAt);
@@ -31,6 +32,15 @@ export class AdminMaintenanceService {
       create: { id: 1, ...data },
       update: data,
     });
+
+    void logAdminAction(
+      this.prisma,
+      requesterId,
+      dto.enabled ? "MAINTENANCE_ENABLE" : "MAINTENANCE_DISABLE",
+      null,
+      null,
+      dto.message ?? null,
+    );
 
     return data;
   }

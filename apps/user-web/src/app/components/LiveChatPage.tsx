@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { Radio, Users, Send, ArrowLeft, Castle, Landmark, Waves, Flame, Star } from "lucide-react";
+import { Radio, Users, Send, ArrowLeft, Castle, Landmark, Waves, Flame, Star, Shield } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { getChatSocket, disconnectChatSocket } from "../lib/socket";
 import { PixelSprite } from "./PixelCharacter";
 import { CHARACTERS } from "../data/characters";
 import { useLang } from "../context/LangContext";
+import { api } from "../lib/api";
 
 const CHANNELS = [1, 2, 3, 4] as const;
 const BUBBLE_TTL = 5000;
@@ -32,8 +33,8 @@ const BG_MAP: Record<number, { desktop: string; mobile: string; fill: string; bo
   4: { desktop: "/bg-camp.png",   mobile: "/bg-camp-v.png",   fill: "#2a3a1a", border: "#2a3a1a" },
 };
 
-function ChannelBackground({ channelId }: { channelId: number }) {
-  const bg = BG_MAP[channelId];
+function ChannelBackground({ channelId }: { channelId: number | "guild" }) {
+  const bg = typeof channelId === "number" ? BG_MAP[channelId] : undefined;
   if (!bg) return <div className="w-full aspect-video bg-gray-900" />;
   return (
     <div className="relative w-full" style={{ backgroundColor: bg.fill }}>
@@ -107,7 +108,8 @@ export default function LiveChatPage() {
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
 
   const [view, setView] = useState<"lobby" | "room">("lobby");
-  const [channelId, setChannelId] = useState<number>(1);
+  const [channelId, setChannelId] = useState<number | "guild">(1);
+  const [hasGuild, setHasGuild] = useState(false);
   const [counts, setCounts] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 });
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [self, setSelf] = useState<SelfInfo | null>(null);
@@ -223,6 +225,14 @@ export default function LiveChatPage() {
   }, []);
 
   useEffect(() => {
+    api
+      .get<unknown | null>(`/guild/mine?userId=${profile.id}`)
+      .then((g) => setHasGuild(!!g))
+      .catch(() => setHasGuild(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (view !== "room") return;
     const MOVE_KEYS = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d","W","A","S","D"]);
     const kd = (e: KeyboardEvent) => {
@@ -287,6 +297,18 @@ export default function LiveChatPage() {
     allPosRef.current = {};
     ownPosRef.current = { x: 50, y: 78 };
     getChatSocket().emit("chat:join", { channelId: id, characterId: myCharacterId, userId: profile.id, lang });
+    setView("room");
+  };
+
+  const enterGuildChannel = () => {
+    setChannelId("guild");
+    setBubbles([]);
+    setRoster([]);
+    setSelf(null);
+    setPositions({});
+    allPosRef.current = {};
+    ownPosRef.current = { x: 50, y: 78 };
+    getChatSocket().emit("chat:join-guild", { characterId: myCharacterId, lang });
     setView("room");
   };
 
@@ -371,6 +393,28 @@ export default function LiveChatPage() {
               </button>
             );
           })}
+          {hasGuild && (
+            <button
+              onClick={enterGuildChannel}
+              className="group relative flex overflow-hidden rounded-2xl border border-primary/40 bg-primary/10 text-left transition-all hover:shadow-lg"
+            >
+              <div className="relative flex w-full items-center justify-between p-5">
+                <div>
+                  <div className="flex items-center gap-2 text-lg font-bold text-primary">
+                    <Shield className="h-[18px] w-[18px]" />
+                    {t("live.guild_channel")}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{t("live.guild_channel_desc")}</span>
+                  </div>
+                </div>
+                <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
+                  {t("live.enter")}
+                </div>
+              </div>
+            </button>
+          )}
         </div>
       </div>
     );
@@ -389,10 +433,19 @@ export default function LiveChatPage() {
           <ArrowLeft className="h-4 w-4" /> {t("live.leave")}
         </button>
         <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100">
-          <Radio className="h-4 w-4 text-primary" />
-          {CHANNEL_ICONS[channelId]}
-          <span>ch.{channelId}</span>
-          <span className="text-sm font-normal text-muted-foreground">{t(CHANNEL_NAME_KEYS[channelId as keyof typeof CHANNEL_NAME_KEYS])}</span>
+          {channelId === "guild" ? (
+            <>
+              <Shield className="h-4 w-4 text-primary" />
+              <span className="text-sm font-normal text-muted-foreground">{t("live.guild_channel")}</span>
+            </>
+          ) : (
+            <>
+              <Radio className="h-4 w-4 text-primary" />
+              {CHANNEL_ICONS[channelId]}
+              <span>ch.{channelId}</span>
+              <span className="text-sm font-normal text-muted-foreground">{t(CHANNEL_NAME_KEYS[channelId as keyof typeof CHANNEL_NAME_KEYS])}</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
           <Users className="h-4 w-4" /> {roster.length}

@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from "socket.io";
 import { RewardsService } from "../rewards/rewards.service";
 import { JwtStrategy } from "../auth/jwt.strategy";
+import { PrismaService } from "../prisma/prisma.service";
 
 export const CHANNEL_IDS = [1, 2, 3, 4] as const;
 
@@ -17,7 +18,9 @@ interface Participant {
   socketId: string;
   characterId: number;
   nickname: string;
-  channelId: number;
+  // 공개 채널이면 channelId(1~4)만, 길드 채널이면 guildId만 채워짐 — 항상 둘 중 하나만 유효
+  channelId: number | null;
+  guildId: string | null;
   recentMessageTimes: number[];
   mutedUntil: number;
   x: number;
@@ -65,6 +68,9 @@ function randomNickname(lang: "ko" | "ja" = "ko"): string {
 }
 
 const room = (channelId: number) => `chat:${channelId}`;
+const guildRoom = (guildId: string) => `guild-chat:${guildId}`;
+/** 참가자가 지금 실제로 속한 소켓 room — 공개 채널/길드 채널 어느 쪽이든 이 값 기준으로 송수신 */
+const roomOf = (p: Participant) => (p.guildId ? guildRoom(p.guildId) : room(p.channelId!));
 
 @WebSocketGateway({
   namespace: "/chat",
@@ -78,6 +84,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly rewards: RewardsService,
     private readonly jwtStrategy: JwtStrategy,
+    private readonly prisma: PrismaService,
   ) {}
 
   private participants = new Map<string, Participant>();
@@ -111,9 +118,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // leave previous channel if switching
     const prev = this.participants.get(client.id);
     if (prev) {
-      client.leave(room(prev.channelId));
+      client.leave(roomOf(prev));
       this.participants.delete(client.id);
-      this.broadcastRoster(prev.channelId);
+      if (prev.guildId) this.broadcastGuildRoster(prev.guildId);
+      else this.broadcastRoster(prev.channelId!);
     }
 
     const nickname = randomNickname(data?.lang === "ja" ? "ja" : "ko");
@@ -122,6 +130,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       characterId,
       nickname,
       channelId,
+      guildId: null,
       recentMessageTimes: [],
       mutedUntil: 0,
       x: 50,
@@ -129,8 +138,63 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
     client.join(room(channelId));
 
-    client.emit("chat:self", { socketId: client.id, nickname, characterId, channelId, x: 50, y: 78 });
+    client.emit("chat:self", { socketId: client.id, nickname, characterId, channelId, guildId: null, x: 50, y: 78 });
     this.broadcastRoster(channelId);
+    this.broadcastCounts();
+  }
+
+  @SubscribeMessage("chat:join-guild")
+  async handleJoinGuild(
+    @MessageBody() data: { characterId: number; lang?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) return;
+
+    const membership = await this.prisma.guildMember.findUnique({
+      where: { userId },
+      select: { guildId: true },
+    });
+    if (!membership) {
+      client.emit("chat:guild-error", { message: "길드에 가입되어 있지 않습니다." });
+      return;
+    }
+
+    const characterId = Number(data?.characterId) || 1;
+
+    const prev = this.participants.get(client.id);
+    if (prev) {
+      client.leave(roomOf(prev));
+      this.participants.delete(client.id);
+      if (prev.guildId) this.broadcastGuildRoster(prev.guildId);
+      else this.broadcastRoster(prev.channelId!);
+    }
+
+    const nickname = randomNickname(data?.lang === "ja" ? "ja" : "ko");
+    const participant: Participant = {
+      socketId: client.id,
+      characterId,
+      nickname,
+      channelId: null,
+      guildId: membership.guildId,
+      recentMessageTimes: [],
+      mutedUntil: 0,
+      x: 50,
+      y: 78,
+    };
+    this.participants.set(client.id, participant);
+    client.join(guildRoom(membership.guildId));
+
+    client.emit("chat:self", {
+      socketId: client.id,
+      nickname,
+      characterId,
+      channelId: null,
+      guildId: membership.guildId,
+      x: 50,
+      y: 78,
+    });
+    this.broadcastGuildRoster(membership.guildId);
     this.broadcastCounts();
   }
 
@@ -172,7 +236,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    this.server.to(room(participant.channelId)).emit("chat:message", {
+    this.server.to(roomOf(participant)).emit("chat:message", {
       id: `${client.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       socketId: client.id,
       nickname: participant.nickname,
@@ -190,7 +254,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!participant) return;
     participant.x = Math.max(0, Math.min(100, Number(data?.x) || 50));
     participant.y = Math.max(0, Math.min(100, Number(data?.y) || 78));
-    this.server.to(room(participant.channelId)).emit("chat:move", {
+    this.server.to(roomOf(participant)).emit("chat:move", {
       socketId: client.id,
       x: participant.x,
       y: participant.y,
@@ -209,9 +273,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private removeParticipant(client: Socket) {
     const participant = this.participants.get(client.id);
     if (!participant) return;
-    client.leave(room(participant.channelId));
+    client.leave(roomOf(participant));
     this.participants.delete(client.id);
-    this.broadcastRoster(participant.channelId);
+    if (participant.guildId) this.broadcastGuildRoster(participant.guildId);
+    else this.broadcastRoster(participant.channelId!);
     this.broadcastCounts();
   }
 
@@ -223,13 +288,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private broadcastRoster(channelId: number) {
     const participants = this.rosterFor(channelId);
-    this.server.to(room(channelId)).emit("chat:roster", { channelId, participants });
+    this.server.to(room(channelId)).emit("chat:roster", { channelId, guildId: null, participants });
+  }
+
+  private guildRosterFor(guildId: string) {
+    return [...this.participants.values()]
+      .filter((p) => p.guildId === guildId)
+      .map((p) => ({ socketId: p.socketId, characterId: p.characterId, nickname: p.nickname, x: p.x, y: p.y }));
+  }
+
+  private broadcastGuildRoster(guildId: string) {
+    const participants = this.guildRosterFor(guildId);
+    this.server.to(guildRoom(guildId)).emit("chat:roster", { channelId: null, guildId, participants });
   }
 
   private channelCounts(): Record<number, number> {
     const counts: Record<number, number> = {};
     for (const id of CHANNEL_IDS) counts[id] = 0;
-    for (const p of this.participants.values()) counts[p.channelId] = (counts[p.channelId] ?? 0) + 1;
+    for (const p of this.participants.values()) {
+      if (p.channelId === null) continue;
+      counts[p.channelId] = (counts[p.channelId] ?? 0) + 1;
+    }
     return counts;
   }
 

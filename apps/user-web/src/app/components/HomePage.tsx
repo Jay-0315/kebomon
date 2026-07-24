@@ -29,6 +29,7 @@ import TitleBadge from "./TitleBadge";
 import StatusPanel from "./StatusPanel";
 import UserAvatar from "./UserAvatar";
 import DailyQuestCard from "./DailyQuestCard";
+import WeeklyQuestCard from "./WeeklyQuestCard";
 import BannerSlot from "./BannerSlot";
 
 const CHANNEL_DATA = [
@@ -174,6 +175,9 @@ export default function HomePage() {
 
       {/* ── 일일 퀘스트 ── */}
       <DailyQuestCard />
+
+      {/* ── 주간 퀘스트 ── */}
+      <WeeklyQuestCard />
 
       {/* ── Quick links ── */}
       <div className="grid grid-cols-2 gap-3">

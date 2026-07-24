@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UpdateReportStatusDto } from "./dto/update-report-status.dto";
+import { logAdminAction } from "./admin-action-log.util";
 
 const PAGE_SIZE = 20;
 
@@ -51,6 +52,7 @@ export class AdminReportsService {
       where: { id },
       data: { status: dto.status, resolvedAt: new Date(), resolvedBy: requesterId },
     });
+    void logAdminAction(this.prisma, requesterId, "REPORT_RESOLVE", "REPORT", id, `status -> ${dto.status}`);
 
     const note = dto.resolutionNote?.trim();
     const body =

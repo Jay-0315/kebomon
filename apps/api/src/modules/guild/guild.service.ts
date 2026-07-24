@@ -493,6 +493,7 @@ export class GuildService {
       }),
     ]);
     void this.rewards.markQuestDone(userId, "battle").catch(() => undefined);
+    void this.rewards.incrementWeeklyQuestProgress(userId, "battle").catch(() => undefined);
 
     if (justCleared) {
       await this.addGuildExp(member.guildId, BOSS_CLEAR_GUILD_EXP);

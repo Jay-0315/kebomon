@@ -9,6 +9,7 @@ import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { logSuspensionChange } from "./suspension-history.util";
+import { logAdminAction } from "./admin-action-log.util";
 import { CHARACTER_NAMES } from "./character-names.constant";
 
 const PAGE_SIZE = 20;
@@ -197,6 +198,7 @@ export class AdminUsersService {
       data: { role: dto.role },
       select: { id: true, name: true, email: true, role: true, status: true },
     });
+    void logAdminAction(this.prisma, requesterId, "USER_ROLE_CHANGE", "USER", targetId, `role -> ${dto.role}`);
     return updated;
   }
 
@@ -252,6 +254,14 @@ export class AdminUsersService {
       dto.status === "SUSPENDED" ? suspendedUntil : null,
       requesterId,
     );
+    void logAdminAction(
+      this.prisma,
+      requesterId,
+      dto.status === "SUSPENDED" ? "USER_SUSPEND" : "USER_UNSUSPEND",
+      "USER",
+      targetId,
+      dto.reason ?? null,
+    );
 
     return updated;
   }
@@ -303,6 +313,15 @@ export class AdminUsersService {
         })
         .catch(() => undefined);
     }
+
+    void logAdminAction(
+      this.prisma,
+      requesterId,
+      "USER_REWARD_ADJUST",
+      "USER",
+      targetId,
+      changes.join(", ") + (dto.reason ? ` (사유: ${dto.reason})` : ""),
+    );
 
     return updated;
   }

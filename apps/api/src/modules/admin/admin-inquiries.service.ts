@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ReplyInquiryDto } from "./dto/reply-inquiry.dto";
+import { logAdminAction } from "./admin-action-log.util";
 
 const PAGE_SIZE = 20;
 
@@ -57,6 +58,8 @@ export class AdminInquiriesService {
         link: "/settings",
       })
       .catch(() => undefined);
+
+    void logAdminAction(this.prisma, requesterId, "INQUIRY_REPLY", "INQUIRY", id, dto.reply.slice(0, 200));
 
     return updated;
   }

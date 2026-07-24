@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { SendNotificationDto } from "./dto/send-notification.dto";
+import { logAdminAction } from "./admin-action-log.util";
 
 @Injectable()
 export class AdminNotificationsService {
@@ -10,7 +11,7 @@ export class AdminNotificationsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async send(dto: SendNotificationDto) {
+  async send(requesterId: string, dto: SendNotificationDto) {
     let userIds: string[];
 
     if (dto.target === "user") {
@@ -37,6 +38,14 @@ export class AdminNotificationsService {
     );
 
     const sent = results.filter((r) => r.status === "fulfilled").length;
+    void logAdminAction(
+      this.prisma,
+      requesterId,
+      "NOTIFICATION_BROADCAST",
+      null,
+      null,
+      `${dto.title} (${sent}/${results.length}명)`,
+    );
     return { sent, failed: results.length - sent, total: results.length };
   }
 }

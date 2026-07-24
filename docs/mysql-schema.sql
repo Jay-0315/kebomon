@@ -232,6 +232,49 @@ CREATE TABLE IF NOT EXISTS inquiries (
   CONSTRAINT fk_inquiries_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS admin_action_log (
+  id          BIGINT       AUTO_INCREMENT PRIMARY KEY,
+  actor_id    VARCHAR(36)  NOT NULL,
+  action      VARCHAR(40)  NOT NULL,
+  target_type VARCHAR(20)  NULL,
+  target_id   VARCHAR(36)  NULL,
+  detail      VARCHAR(500) NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_admin_action_log_actor_created (actor_id, created_at DESC),
+  INDEX idx_admin_action_log_target (target_type, target_id)
+);
+
+CREATE TABLE IF NOT EXISTS weekly_quest_progress (
+  id              VARCHAR(36)  NOT NULL PRIMARY KEY,
+  user_id         VARCHAR(36)  NOT NULL,
+  week_key        VARCHAR(8)   NOT NULL,
+  login_count     INT          NOT NULL DEFAULT 0,
+  gacha_count     INT          NOT NULL DEFAULT 0,
+  battle_count    INT          NOT NULL DEFAULT 0,
+  community_count INT          NOT NULL DEFAULT 0,
+  bonus_claimed   TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_weekly_quest_progress_user_week (user_id, week_key),
+  INDEX idx_weekly_quest_progress_user (user_id),
+  CONSTRAINT fk_weekly_quest_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS season_hall_of_fame (
+  id          VARCHAR(36) NOT NULL PRIMARY KEY,
+  season_id   INT         NOT NULL,
+  `rank`      INT         NOT NULL,
+  user_id     VARCHAR(36) NOT NULL,
+  nickname    VARCHAR(50) NOT NULL,
+  tier_points INT         NOT NULL,
+  wins        INT         NOT NULL,
+  losses      INT         NOT NULL,
+  win_streak  INT         NOT NULL,
+  created_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_season_hall_of_fame_season_rank (season_id, `rank`),
+  INDEX idx_season_hall_of_fame_season (season_id)
+);
+
 CREATE TABLE IF NOT EXISTS daily_quest_progress (
   id             VARCHAR(36)  NOT NULL PRIMARY KEY,
   user_id        VARCHAR(36)  NOT NULL,

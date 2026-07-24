@@ -117,6 +117,18 @@ export class RewardsController {
     return this.rewardsService.claimQuestBonus(user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("quests/weekly")
+  getThisWeekQuests(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.getThisWeekQuests(user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("quests/weekly/claim")
+  claimWeeklyQuestBonus(@CurrentUser() user: { sub: string }) {
+    return this.rewardsService.claimWeeklyQuestBonus(user.sub);
+  }
+
   @Get("colosseum-rankings")
   getColosseumRankings() {
     return this.rewardsService.getColosseumRankings();
@@ -197,18 +209,9 @@ export class RewardsController {
     return this.rewardsService.getChallengeRankings();
   }
 
-  @Post("season/grant-rank-titles")
-  grantSeasonRankTitles(@Body() body: { seasonId: number }) {
-    return this.rewardsService.grantSeasonRankTitles(body.seasonId ?? 1);
-  }
-
-  @Post("season/grant-tier-borders")
-  grantSeasonTierBorders(@Body() body: { seasonId: number }) {
-    return this.rewardsService.grantSeasonTierBorders(body.seasonId ?? 1);
-  }
-
-  @Post("season/reset-stats")
-  resetSeasonStats() {
-    return this.rewardsService.resetSeasonStats();
+  @UseGuards(JwtAuthGuard)
+  @Get("hall-of-fame")
+  getHallOfFame() {
+    return this.rewardsService.getHallOfFame();
   }
 }

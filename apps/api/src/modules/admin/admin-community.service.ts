@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PostCategory } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { logAdminAction } from "./admin-action-log.util";
 
 const PAGE_SIZE = 20;
 
@@ -42,10 +43,11 @@ export class AdminCommunityService {
     };
   }
 
-  async removePost(id: string) {
+  async removePost(requesterId: string, id: string) {
     const post = await this.prisma.communityPost.findUnique({ where: { id } });
     if (!post) throw new NotFoundException("게시글을 찾을 수 없습니다.");
     await this.prisma.communityPost.delete({ where: { id } });
+    void logAdminAction(this.prisma, requesterId, "POST_DELETE", "POST", id, null);
     return { id };
   }
 
@@ -81,10 +83,11 @@ export class AdminCommunityService {
     };
   }
 
-  async removeComment(id: bigint) {
+  async removeComment(requesterId: string, id: bigint) {
     const comment = await this.prisma.comment.findUnique({ where: { id } });
     if (!comment) throw new NotFoundException("댓글을 찾을 수 없습니다.");
     await this.prisma.comment.delete({ where: { id } });
+    void logAdminAction(this.prisma, requesterId, "COMMENT_DELETE", "COMMENT", String(id), null);
     return { id: String(id) };
   }
 }

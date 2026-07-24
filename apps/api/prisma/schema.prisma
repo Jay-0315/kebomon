@@ -109,6 +109,7 @@ model User {
   pointsLedger           PointsLedger[]
   suspensionHistory      SuspensionHistory[]
   inquiries              Inquiry[]
+  weeklyQuestProgress    WeeklyQuestProgress[]
 
   @@map("users")
 }
@@ -594,6 +595,55 @@ model Inquiry {
   @@index([status])
   @@index([userId, createdAt(sort: Desc)])
   @@map("inquiries")
+}
+
+model AdminActionLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String   @map("actor_id")
+  action     String   @db.VarChar(40)
+  targetType String?  @map("target_type") @db.VarChar(20)
+  targetId   String?  @map("target_id")
+  detail     String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@map("admin_action_log")
+}
+
+model WeeklyQuestProgress {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  weekKey        String   @map("week_key") @db.VarChar(8) // "YYYY-Www" KST
+  loginCount     Int      @default(0) @map("login_count")
+  gachaCount     Int      @default(0) @map("gacha_count")
+  battleCount    Int      @default(0) @map("battle_count")
+  communityCount Int      @default(0) @map("community_count")
+  bonusClaimed   Boolean  @default(false) @map("bonus_claimed")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekKey])
+  @@index([userId])
+  @@map("weekly_quest_progress")
+}
+
+model SeasonHallOfFame {
+  id         String   @id @default(uuid())
+  seasonId   Int      @map("season_id")
+  rank       Int
+  userId     String   @map("user_id")
+  nickname   String   @db.VarChar(50)
+  tierPoints Int      @map("tier_points")
+  wins       Int
+  losses     Int
+  winStreak  Int      @map("win_streak")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([seasonId, rank])
+  @@index([seasonId])
+  @@map("season_hall_of_fame")
 }
 
 model PasswordChangeHistory {

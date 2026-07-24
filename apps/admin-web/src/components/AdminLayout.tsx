@@ -17,7 +17,10 @@ const navItems = [
   { to: "/guilds", label: "길드 관리" },
   { to: "/notifications", label: "공지 발송" },
   { to: "/banners", label: "배너 관리" },
+  { to: "/season", label: "시즌 관리" },
   { to: "/maintenance", label: "점검 모드" },
+  { to: "/admin-accounts", label: "관리자 계정" },
+  { to: "/action-log", label: "감사 로그" },
 ];
 
 function NavList({ onNav }: { onNav?: () => void }) {

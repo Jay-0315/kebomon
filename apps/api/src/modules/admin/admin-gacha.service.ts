@@ -7,6 +7,7 @@ import {
   resolveGachaConfig,
 } from "../rewards/gacha-config.util";
 import { UpdateGachaConfigDto } from "./dto/update-gacha-config.dto";
+import { logAdminAction } from "./admin-action-log.util";
 
 @Injectable()
 export class AdminGachaService {
@@ -16,7 +17,7 @@ export class AdminGachaService {
     return resolveGachaConfig(this.prisma);
   }
 
-  async updateConfig(dto: UpdateGachaConfigDto) {
+  async updateConfig(requesterId: string, dto: UpdateGachaConfigDto) {
     const current = await resolveGachaConfig(this.prisma);
 
     const next = {
@@ -28,10 +29,12 @@ export class AdminGachaService {
       pityLegendaryThreshold: dto.pityLegendaryThreshold ?? current.pityLegendaryThreshold,
     };
 
-    return this.prisma.gachaConfig.upsert({
+    const updated = await this.prisma.gachaConfig.upsert({
       where: { id: 1 },
       create: { id: 1, ...next },
       update: next,
     });
+    void logAdminAction(this.prisma, requesterId, "GACHA_CONFIG_UPDATE", null, null, null);
+    return updated;
   }
 }

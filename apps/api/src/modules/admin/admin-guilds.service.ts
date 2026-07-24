@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { logAdminAction } from "./admin-action-log.util";
 
 const PAGE_SIZE = 20;
 // 소수 인원 길드에서 한 명이 보스 데미지 대부분을 담당하는 건 흔함(정예 소수 길드) — 어느 정도
@@ -131,11 +132,12 @@ export class AdminGuildsService {
     };
   }
 
-  async disband(id: string) {
+  async disband(requesterId: string, id: string) {
     const guild = await this.prisma.guild.findUnique({ where: { id } });
     if (!guild) throw new NotFoundException("길드를 찾을 수 없습니다.");
     // 길드원/가입신청/보스전/길드 게시글까지 전부 cascade 삭제됨 (schema.prisma onDelete: Cascade)
     await this.prisma.guild.delete({ where: { id } });
+    void logAdminAction(this.prisma, requesterId, "GUILD_DISBAND", "GUILD", id, guild.name);
     return { id };
   }
 }

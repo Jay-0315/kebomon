@@ -8106,21 +8106,39 @@ export default function ColosseumPage() {
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      fetchRankings();
-                      setRankPage(0);
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 2,
-                      lineHeight: 0,
-                    }}
-                  >
-                    <ChevronRight size={14} color={C.stoneFaint} />
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      onClick={() => navigate("/colosseum/hall-of-fame")}
+                      style={{
+                        background: "none",
+                        border: `1px solid ${C.borderFaint}`,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        padding: "2px 8px",
+                        fontFamily: FONT,
+                        fontSize: 9,
+                        fontWeight: 900,
+                        color: C.gold,
+                      }}
+                    >
+                      {ko ? "명예의 전당" : ja ? "殿堂入り" : "Hall of Fame"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        fetchRankings();
+                        setRankPage(0);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 2,
+                        lineHeight: 0,
+                      }}
+                    >
+                      <ChevronRight size={14} color={C.stoneFaint} />
+                    </button>
+                  </div>
                 </div>
                 {/* 티어 필터 칩 */}
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>

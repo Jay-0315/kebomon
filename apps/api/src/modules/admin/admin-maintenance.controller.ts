@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -17,7 +18,7 @@ export class AdminMaintenanceController {
   }
 
   @Patch()
-  updateConfig(@Body() dto: UpdateMaintenanceConfigDto) {
-    return this.adminMaintenanceService.updateConfig(dto);
+  updateConfig(@CurrentUser() requester: { sub: string }, @Body() dto: UpdateMaintenanceConfigDto) {
+    return this.adminMaintenanceService.updateConfig(requester.sub, dto);
   }
 }

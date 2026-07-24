@@ -17,6 +17,7 @@ import {
 import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
 import { CharacterMasterRow, loadCharacterMasterMap } from "./character-master.util";
 import { getTodayKTC, getYesterdayKTC } from "./date.util";
+import { getIsoWeekKey } from "../guild/guild.constants";
 import { logPointsChange } from "./points-ledger.util";
 
 const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
@@ -406,6 +407,7 @@ export class RewardsService {
     if (!user) return;
     await this.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
     void this.markQuestDone(userId, "login").catch(() => undefined);
+    void this.incrementWeeklyQuestProgress(userId, "login").catch(() => undefined);
   }
 
   // ─── 원정 (서버 권위 상태 — 보상은 클라이언트가 아닌 서버가 계산) ──────────────────
@@ -596,6 +598,7 @@ export class RewardsService {
       this.checkAndGrantTitles(userId),
     ]).catch(() => undefined);
     void this.markQuestDone(userId, "battle").catch(() => undefined);
+    void this.incrementWeeklyQuestProgress(userId, "battle").catch(() => undefined);
 
     return { rogueClears: newClears, milestones };
   }
@@ -898,6 +901,91 @@ export class RewardsService {
     return { points: RewardsService.DAILY_QUEST_BONUS_POINTS };
   }
 
+  // ─── 주간 퀘스트 (일일 퀘스트와 동일한 4개 항목, 주 단위 누적 카운트 + 더 큰 보상) ──
+  private static readonly WEEKLY_QUEST_TARGETS = { login: 5, gacha: 3, battle: 10, community: 3 } as const;
+  private static readonly WEEKLY_QUEST_BONUS_POINTS = 400;
+  private static readonly WEEKLY_QUEST_COLUMN = {
+    login: "loginCount",
+    gacha: "gachaCount",
+    battle: "battleCount",
+    community: "communityCount",
+  } as const;
+
+  private async getOrCreateThisWeekRow(userId: string) {
+    const weekKey = getIsoWeekKey(new Date());
+    return this.prisma.weeklyQuestProgress.upsert({
+      where: { userId_weekKey: { userId, weekKey } },
+      create: { userId, weekKey },
+      update: {},
+    });
+  }
+
+  private toWeeklyProgress(row: {
+    loginCount: number;
+    gachaCount: number;
+    battleCount: number;
+    communityCount: number;
+  }) {
+    return { login: row.loginCount, gacha: row.gachaCount, battle: row.battleCount, community: row.communityCount };
+  }
+
+  async getThisWeekQuests(userId: string) {
+    const row = await this.getOrCreateThisWeekRow(userId);
+    const progress = this.toWeeklyProgress(row);
+    const targets = RewardsService.WEEKLY_QUEST_TARGETS;
+    const allDone = (Object.keys(targets) as (keyof typeof targets)[]).every((k) => progress[k] >= targets[k]);
+    return { progress, targets, allDone, bonusClaimed: row.bonusClaimed };
+  }
+
+  /** 일일 퀘스트의 markQuestDone과 나란히 호출되는 주간 카운터 증가 — 컬럼 단위 increment라 레이스에 안전 */
+  async incrementWeeklyQuestProgress(userId: string, questKey: (typeof RewardsService.DAILY_QUEST_KEYS)[number]) {
+    const weekKey = getIsoWeekKey(new Date());
+    const column = RewardsService.WEEKLY_QUEST_COLUMN[questKey];
+    await this.prisma.weeklyQuestProgress.upsert({
+      where: { userId_weekKey: { userId, weekKey } },
+      create: { userId, weekKey, [column]: 1 },
+      update: { [column]: { increment: 1 } },
+    });
+  }
+
+  async claimWeeklyQuestBonus(userId: string) {
+    const row = await this.getOrCreateThisWeekRow(userId);
+    const progress = this.toWeeklyProgress(row);
+    const targets = RewardsService.WEEKLY_QUEST_TARGETS;
+    const allDone = (Object.keys(targets) as (keyof typeof targets)[]).every((k) => progress[k] >= targets[k]);
+    if (!allDone) throw new BadRequestException("아직 모든 주간 퀘스트를 완료하지 않았습니다.");
+    if (row.bonusClaimed) throw new BadRequestException("이미 보상을 받았습니다.");
+
+    await this.getOrCreateReward(userId);
+    const claimed = await this.prisma.weeklyQuestProgress.updateMany({
+      where: { id: row.id, bonusClaimed: false },
+      data: { bonusClaimed: true },
+    });
+    if (claimed.count === 0) {
+      throw new BadRequestException("이미 보상을 받았습니다.");
+    }
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: { missionPoints: { increment: RewardsService.WEEKLY_QUEST_BONUS_POINTS } },
+    });
+    void logPointsChange(this.prisma, userId, RewardsService.WEEKLY_QUEST_BONUS_POINTS, "주간 퀘스트 보너스");
+
+    void this.notifications
+      .create({
+        userId,
+        type: "quest",
+        title: "주간 퀘스트 완료!",
+        body: `모든 주간 퀘스트를 완료해 ${RewardsService.WEEKLY_QUEST_BONUS_POINTS}P를 받았습니다.`,
+        titleJa: "ウィークリークエスト達成！",
+        bodyJa: `すべてのウィークリークエストを達成し、${RewardsService.WEEKLY_QUEST_BONUS_POINTS}Pを獲得しました。`,
+        titleEn: "Weekly Quests Complete!",
+        bodyEn: `You completed all weekly quests and earned ${RewardsService.WEEKLY_QUEST_BONUS_POINTS}P.`,
+      })
+      .catch(() => undefined);
+
+    return { points: RewardsService.WEEKLY_QUEST_BONUS_POINTS };
+  }
+
   // ─── 포인트 상점 ─────────────────────────────────────────────────────────────
   private static readonly SHOP_ITEMS: Record<string, { price: number; label: string }> = {
     enhancement_stone: { price: 600, label: "강화석" },
@@ -1035,6 +1123,7 @@ export class RewardsService {
       this.checkAndGrantTitles(userId),
     ]).catch(() => undefined);
     void this.markQuestDone(userId, "battle").catch(() => undefined);
+    void this.incrementWeeklyQuestProgress(userId, "battle").catch(() => undefined);
   }
 
   /** 레이드 랭킹 보상 지급 (알 여러 개 또는 포인트) */
@@ -1238,6 +1327,7 @@ export class RewardsService {
     void logPointsChange(this.prisma, userId, -cost + totalBonusPoints, "가챠 뽑기");
 
     void this.markQuestDone(userId, "gacha").catch(() => undefined);
+    void this.incrementWeeklyQuestProgress(userId, "gacha").catch(() => undefined);
 
     return {
       results,
@@ -1528,7 +1618,14 @@ export class RewardsService {
     const rows = await this.prisma.battleStats.findMany({
       take: 10,
       orderBy: { tierPoints: "desc" },
-      select: { userId: true },
+      select: {
+        userId: true,
+        tierPoints: true,
+        wins: true,
+        losses: true,
+        winStreak: true,
+        user: { select: { name: true } },
+      },
     });
 
     // 시즌별 한정 칭호 base ID: 시즌1=43, 시즌2=58, 시즌N(N>=2)=58+(N-2)*4
@@ -1537,6 +1634,19 @@ export class RewardsService {
     const grants: { userId: string; titleId: number }[] = rows.map((r, i) => ({
       userId: r.userId,
       titleId: i === 0 ? base : i === 1 ? base + 1 : i === 2 ? base + 2 : base + 3,
+    }));
+    // resetSeasonStats()가 곧 tierPoints/wins/losses/winStreak를 0으로 되돌리므로, 명예의 전당
+    // 스냅샷용으로 리셋 전 값을 여기서 같이 들고 반환한다(랭킹 쿼리를 한 번 더 안 날림)
+    const topRankers = rows.map((r, i) => ({
+      rank: i + 1,
+      userId: r.userId,
+      // SeasonHallOfFame.nickname은 VARCHAR(50)인데 User.name엔 길이 제한이 없어서 자름
+      // (여기서 실패하면 스냅샷 이후의 티어테두리/KP보상/스탯리셋까지 전부 안 돌아감)
+      nickname: r.user.name.slice(0, 50),
+      tierPoints: r.tierPoints,
+      wins: r.wins,
+      losses: r.losses,
+      winStreak: r.winStreak,
     }));
 
     await this.prisma.$transaction(
@@ -1566,7 +1676,7 @@ export class RewardsService {
       }).catch(() => undefined);
     }
 
-    return { granted: grants.length, details: grants };
+    return { granted: grants.length, details: grants, topRankers };
   }
 
   async updateBattleStats(userId: string, won: boolean) {
@@ -1610,6 +1720,15 @@ export class RewardsService {
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
     return (prevYear - this.SEASON_BASE.year) * 12 + (prevMonth - this.SEASON_BASE.month) + 1;
+  }
+
+  /** 지금 이 순간 진행 중인 시즌 번호 — 월중에 관리자가 수동 종료할 때는 "직전 달"이 아니라
+   *  "이번 달"이 끝나는 시즌이므로 getEndingSeasonNumber()와 분리해서 계산한다. */
+  private getCurrentSeasonNumber(): number {
+    const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const year = kstNow.getUTCFullYear();
+    const month = kstNow.getUTCMonth() + 1;
+    return (year - this.SEASON_BASE.year) * 12 + (month - this.SEASON_BASE.month) + 1;
   }
 
   async grantSeasonTierBorders(seasonId: number) {
@@ -1697,17 +1816,62 @@ export class RewardsService {
     this.rankingsCache = null;
   }
 
+  /** resetSeasonStats()가 리셋하기 전 top10 스냅샷을 명예의 전당에 영구 보관 (동일 시즌 재실행 시 덮어씀) */
+  private async snapshotSeasonHallOfFame(
+    seasonId: number,
+    topRankers: { rank: number; userId: string; nickname: string; tierPoints: number; wins: number; losses: number; winStreak: number }[],
+  ) {
+    if (topRankers.length === 0) return;
+    await this.prisma.$transaction(
+      topRankers.map((r) =>
+        this.prisma.seasonHallOfFame.upsert({
+          where: { seasonId_rank: { seasonId, rank: r.rank } },
+          create: { seasonId, ...r },
+          update: { ...r },
+        }),
+      ),
+    );
+  }
+
+  async getHallOfFame() {
+    return this.prisma.seasonHallOfFame.findMany({
+      orderBy: [{ seasonId: "desc" }, { rank: "asc" }],
+    });
+  }
+
+  /** 시즌 종료 처리 본체 — 크론과 관리자 수동 강제종료가 공유한다 */
+  private async runSeasonReset(seasonId: number) {
+    this.logger.log(`시즌 ${seasonId} 종료 처리 시작`);
+    const { topRankers } = await this.grantSeasonRankTitles(seasonId);
+    await this.snapshotSeasonHallOfFame(seasonId, topRankers);
+    await this.grantSeasonTierBorders(seasonId);
+    await this.grantSeasonKpBonus(seasonId);
+    await this.resetSeasonStats();
+    this.logger.log(`시즌 ${seasonId} 종료 처리 완료`);
+  }
+
+  /** 관리자 수동 강제종료 — 실패 시 그대로 던져서 관리자 화면에 에러가 보이게 한다(크론과 달리 조용히 삼키지 않음) */
+  async forceEndCurrentSeason() {
+    const seasonId = this.getCurrentSeasonNumber();
+    await this.runSeasonReset(seasonId);
+    return { seasonId };
+  }
+
+  async getSeasonPreview() {
+    const seasonId = this.getCurrentSeasonNumber();
+    const { rankings } = await this.getColosseumRankings();
+    const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const nextResetKst = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() + 1, 1));
+    const nextResetAt = new Date(nextResetKst.getTime() - 9 * 60 * 60 * 1000);
+    return { seasonId, topRankers: rankings.slice(0, 10), nextResetAt };
+  }
+
   // 매월 1일 00:00 KST에 실행 — 직전 달 시즌 종료 처리
   @Cron("0 0 1 * *", { timeZone: "Asia/Seoul" })
   async handleSeasonReset() {
     const seasonId = this.getEndingSeasonNumber();
-    this.logger.log(`시즌 ${seasonId} 종료 처리 시작`);
     try {
-      await this.grantSeasonRankTitles(seasonId);
-      await this.grantSeasonTierBorders(seasonId);
-      await this.grantSeasonKpBonus(seasonId);
-      await this.resetSeasonStats();
-      this.logger.log(`시즌 ${seasonId} 종료 처리 완료`);
+      await this.runSeasonReset(seasonId);
     } catch (err) {
       this.logger.error(`시즌 ${seasonId} 종료 처리 실패`, err);
     }
