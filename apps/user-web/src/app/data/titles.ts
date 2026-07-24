@@ -9,7 +9,7 @@ export interface TitleDef {
   conditionValue: number;
   description: string;
   hidden?: boolean;
-  variant?: "season_neon" | "season_fire"; // 시즌 한정 스타일
+  variant?: "season_neon" | "season_fire" | "season_venom"; // 시즌 한정 스타일
 }
 
 
@@ -93,6 +93,10 @@ export const TITLES: TitleDef[] = [
   { id: 59, name: "시즌2 TOP2",  grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 2 최종 2위 달성",    hidden: true, variant: "season_fire" },
   { id: 60, name: "시즌2 TOP3",  grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 2 최종 3위 달성",    hidden: true, variant: "season_fire" },
   { id: 61, name: "시즌2 TOP10", grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 2 최종 TOP 10 달성", hidden: true, variant: "season_fire" },
+  { id: 62, name: "시즌3 TOP1",  grade: "limited",   conditionType: "season_rank", conditionValue: 1,     description: "시즌 3 최종 1위 달성",    hidden: true, variant: "season_venom" },
+  { id: 63, name: "시즌3 TOP2",  grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 3 최종 2위 달성",    hidden: true, variant: "season_venom" },
+  { id: 64, name: "시즌3 TOP3",  grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 3 최종 3위 달성",    hidden: true, variant: "season_venom" },
+  { id: 65, name: "시즌3 TOP10", grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 3 최종 TOP 10 달성", hidden: true, variant: "season_venom" },
   // ── 로그라이크 ──
   { id: 48, name: "덱의 입문자",     grade: "common",    conditionType: "rogue_clears",    conditionValue: 1,   description: "로그라이크 첫 클리어" },
   { id: 49, name: "탐험의 첫걸음",   grade: "common",    conditionType: "expedition_count",conditionValue: 1,   description: "원정 첫 완료" },

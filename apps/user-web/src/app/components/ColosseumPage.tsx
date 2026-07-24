@@ -42,7 +42,23 @@ import { useLang } from "../context/LangContext";
 import { api } from "../lib/api";
 
 // ─── 시즌/티어 상수 (외부 컴포넌트에서 import함 — 유지 필수) ──────────────────
-const SEASON = { number: 2, startDate: "2026-07-01", endDate: "2026-07-31" };
+// 시즌 번호/기간은 하드코딩 대신 현재 날짜로 계산 — rewards.service.ts의
+// getCurrentSeasonNumber()와 동일한 기준점(2026년 6월 = 시즌1)이라 매달 1일
+// 00시(KST) 시즌 전환 시 배포 없이 자동으로 맞물린다.
+function getCurrentSeasonInfo() {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const year = kstNow.getUTCFullYear();
+  const month = kstNow.getUTCMonth() + 1;
+  const number = (year - 2026) * 12 + (month - 6) + 1;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return {
+    number,
+    startDate: `${year}-${pad(month)}-01`,
+    endDate: `${year}-${pad(month)}-${pad(lastDay)}`,
+  };
+}
+const SEASON = getCurrentSeasonInfo();
 
 export const BORDER_STYLES: Record<string, { image: string }> = {
   s1_silver: { image: "/silver.png" },
@@ -57,6 +73,12 @@ export const BORDER_STYLES: Record<string, { image: string }> = {
   s2_diamond: { image: "/diamond.png" },
   s2_master: { image: "/master.png" },
   s2_challenger: { image: "/challenger.png" },
+  s3_silver: { image: "/silver.png" },
+  s3_gold: { image: "/gold.png" },
+  s3_platinum: { image: "/platinum.png" },
+  s3_diamond: { image: "/diamond.png" },
+  s3_master: { image: "/master.png" },
+  s3_challenger: { image: "/challenger.png" },
   gm: { image: "/GM.png" },
 };
 export const BORDER_NAMES: Record<
@@ -82,6 +104,16 @@ export const BORDER_NAMES: Record<
     ko: "S2 챌린저",
     ja: "S2チャレンジャー",
     en: "S2 Challenger",
+  },
+  s3_silver: { ko: "S3 실버", ja: "S3シルバー", en: "S3 Silver" },
+  s3_gold: { ko: "S3 골드", ja: "S3ゴールド", en: "S3 Gold" },
+  s3_platinum: { ko: "S3 플레티넘", ja: "S3プラチナ", en: "S3 Platinum" },
+  s3_diamond: { ko: "S3 다이아몬드", ja: "S3ダイヤ", en: "S3 Diamond" },
+  s3_master: { ko: "S3 마스터", ja: "S3マスター", en: "S3 Master" },
+  s3_challenger: {
+    ko: "S3 챌린저",
+    ja: "S3チャレンジャー",
+    en: "S3 Challenger",
   },
   gm: { ko: "GM", ja: "GM", en: "GM" },
 };

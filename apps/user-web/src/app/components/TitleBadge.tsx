@@ -23,6 +23,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const isLimited = grade === "limited";
   const isSeasonNeon = isLimited && variant === "season_neon";
   const isSeasonFire = isLimited && variant === "season_fire";
+  const isSeasonVenom = isLimited && variant === "season_venom";
 
   const fontSizeClass = size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm";
   const paddingClass = size === "xs" ? "px-1 py-px" : size === "sm" ? "px-1.5 py-0.5" : "px-2 py-1";
@@ -32,12 +33,16 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
       ? "rgba(0,20,50,0.88)"
       : isSeasonFire
       ? "rgba(30,10,0,0.88)"
+      : isSeasonVenom
+      ? "rgba(6,26,14,0.88)"
       : TITLE_GRADE_BG[grade],
     borderRadius: "4px",
     border: isSeasonNeon
       ? "1.5px solid rgba(0,160,255,0.45)"
       : isSeasonFire
       ? "1.5px solid rgba(255,60,0,0.6)"
+      : isSeasonVenom
+      ? "1.5px solid rgba(60,220,120,0.5)"
       : isLimited
       ? "1.5px solid rgba(180,120,0,0.55)"
       : undefined,
@@ -62,6 +67,8 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
         <SeasonNeonText text={name} size={size} />
       ) : isSeasonFire ? (
         <SeasonFireText text={name} size={size} />
+      ) : isSeasonVenom ? (
+        <SeasonVenomText text={name} size={size} />
       ) : isLimited ? (
         <LimitedAnimatedText text={name} size={size} />
       ) : (
@@ -158,6 +165,28 @@ function SeasonNeonText({ text, size }: { text: string; size: "xs" | "sm" | "md"
         WebkitTextFillColor: "transparent",
         color: "transparent",
         animation: "seasonNeonShimmer 4s linear infinite, seasonNeonGlow 2.4s ease-in-out infinite",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+// 시즌3 한정 칭호: 독성 에메랄드 스타일 (초록→라임→에메랄드→흰빛)
+function SeasonVenomText({ text, size }: { text: string; size: "xs" | "sm" | "md" }) {
+  const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
+  return (
+    <span
+      style={{
+        fontSize,
+        fontWeight: 700,
+        background: "linear-gradient(90deg, #003d1a, #00a651, #6cff8a, #d4ffe0, #ffffff, #d4ffe0, #6cff8a, #00a651, #003d1a)",
+        backgroundSize: "300% auto",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        color: "transparent",
+        animation: "seasonVenomShimmer 4s linear infinite, seasonVenomGlow 2.4s ease-in-out infinite",
       }}
     >
       {text}
