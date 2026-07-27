@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type ReportRow = {
   id: string;
@@ -26,22 +28,23 @@ type ReportsResponse = {
   totalPages: number;
 };
 
-const TYPE_LABEL: Record<ReportRow["targetType"], string> = {
-  POST: "게시글",
-  COMMENT: "댓글",
-  USER: "유저",
+const TYPE_LABEL_KEY: Record<ReportRow["targetType"], TranslationKey> = {
+  POST: "reports.type_post",
+  COMMENT: "reports.type_comment",
+  USER: "reports.type_user",
 };
 
-const STATUS_LABEL: Record<ReportRow["status"], string> = {
-  PENDING: "대기",
-  RESOLVED: "처리완료",
-  DISMISSED: "기각",
+const STATUS_LABEL_KEY: Record<ReportRow["status"], TranslationKey> = {
+  PENDING: "reports.status_pending",
+  RESOLVED: "reports.status_resolved",
+  DISMISSED: "reports.status_dismissed",
 };
 
 function PreviewCell({ report }: { report: ReportRow }) {
+  const { t } = useLang();
   const p = report.preview;
   if ("deleted" in p) {
-    return <span className="text-[var(--fg-faint)]">삭제됨</span>;
+    return <span className="text-[var(--fg-faint)]">{t("reports.deleted")}</span>;
   }
   if (report.targetType === "USER" && "email" in p) {
     return (
@@ -57,6 +60,7 @@ function PreviewCell({ report }: { report: ReportRow }) {
 }
 
 export default function ReportsPage() {
+  const { t } = useLang();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<ReportsResponse | null>(null);
@@ -73,7 +77,7 @@ export default function ReportsPage() {
       const res = await api.get<ReportsResponse>(`/admin/reports?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("reports.error_load"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +104,7 @@ export default function ReportsPage() {
       setResolutionNote("");
       load();
     } catch {
-      window.alert("처리에 실패했습니다.");
+      window.alert(t("reports.error_resolve"));
     } finally {
       setSubmitting(false);
     }
@@ -108,7 +112,7 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">신고 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("reports.title")}</h1>
 
       <div className="mb-4 flex gap-2">
         <select
@@ -119,10 +123,10 @@ export default function ReportsPage() {
           }}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 상태</option>
-          <option value="PENDING" className="bg-[var(--bg-elevated)] text-[var(--fg)]">대기</option>
-          <option value="RESOLVED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">처리완료</option>
-          <option value="DISMISSED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">기각</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("reports.status_all")}</option>
+          <option value="PENDING" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("reports.status_pending")}</option>
+          <option value="RESOLVED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("reports.status_resolved")}</option>
+          <option value="DISMISSED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("reports.status_dismissed")}</option>
         </select>
       </div>
 
@@ -132,19 +136,19 @@ export default function ReportsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">유형</th>
-              <th className="px-3 py-2">신고자</th>
-              <th className="px-3 py-2">대상</th>
-              <th className="px-3 py-2">사유</th>
-              <th className="px-3 py-2">상태</th>
-              <th className="px-3 py-2">신고일</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("reports.col_type")}</th>
+              <th className="px-3 py-2">{t("reports.col_reporter")}</th>
+              <th className="px-3 py-2">{t("reports.col_target")}</th>
+              <th className="px-3 py-2">{t("reports.col_reason")}</th>
+              <th className="px-3 py-2">{t("common.status")}</th>
+              <th className="px-3 py-2">{t("reports.col_created")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {data?.reports.map((r) => (
               <tr key={r.id} className="border-t border-[var(--border)]">
-                <td className="px-3 py-2">{TYPE_LABEL[r.targetType]}</td>
+                <td className="px-3 py-2">{t(TYPE_LABEL_KEY[r.targetType])}</td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   <Link to={`/users/${r.reporterId}`} className="text-[#b7607e] hover:underline">
                     {r.reporter.name}
@@ -155,7 +159,7 @@ export default function ReportsPage() {
                   <PreviewCell report={r} />
                 </td>
                 <td className="px-3 py-2 max-w-xs">{r.reason}</td>
-                <td className="px-3 py-2">{STATUS_LABEL[r.status]}</td>
+                <td className="px-3 py-2">{t(STATUS_LABEL_KEY[r.status])}</td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
                   {new Date(r.createdAt).toLocaleDateString()}
                 </td>
@@ -166,17 +170,17 @@ export default function ReportsPage() {
                         onClick={() => setResolving({ id: r.id, status: "RESOLVED" })}
                         className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                       >
-                        처리완료
+                        {t("reports.status_resolved")}
                       </button>
                       <button
                         onClick={() => setResolving({ id: r.id, status: "DISMISSED" })}
                         className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                       >
-                        기각
+                        {t("reports.status_dismissed")}
                       </button>
                     </div>
                   ) : (
-                    <span className="text-xs text-[var(--fg-faint)]">처리됨</span>
+                    <span className="text-xs text-[var(--fg-faint)]">{t("reports.already_handled")}</span>
                   )}
                 </td>
               </tr>
@@ -184,7 +188,7 @@ export default function ReportsPage() {
             {!loading && data?.reports.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -199,7 +203,7 @@ export default function ReportsPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -209,7 +213,7 @@ export default function ReportsPage() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}
@@ -224,17 +228,15 @@ export default function ReportsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-1 text-sm font-semibold">
-              {resolving.status === "RESOLVED" ? "신고 처리완료" : "신고 기각"}
+              {resolving.status === "RESOLVED" ? t("reports.modal_title_resolved") : t("reports.modal_title_dismissed")}
             </h2>
-            <p className="mb-3 text-xs text-[var(--fg-faint)]">
-              신고자에게 알림으로 발송됩니다. 처리 내용을 입력하면 함께 전달돼요. (선택)
-            </p>
+            <p className="mb-3 text-xs text-[var(--fg-faint)]">{t("reports.modal_desc")}</p>
             <textarea
               value={resolutionNote}
               onChange={(e) => setResolutionNote(e.target.value)}
               rows={3}
               maxLength={255}
-              placeholder="예: 해당 게시글을 삭제 조치했습니다."
+              placeholder={t("reports.note_placeholder")}
               className="mb-4 w-full resize-none rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
             />
             <div className="flex justify-end gap-2">
@@ -244,7 +246,7 @@ export default function ReportsPage() {
                 disabled={submitting}
                 className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
               >
-                취소
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -252,7 +254,7 @@ export default function ReportsPage() {
                 disabled={submitting}
                 className="rounded-md bg-[#b7607e] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
               >
-                {submitting ? "처리 중..." : "확인"}
+                {submitting ? t("reports.processing") : t("common.confirm")}
               </button>
             </div>
           </div>

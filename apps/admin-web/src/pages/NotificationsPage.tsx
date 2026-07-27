@@ -1,29 +1,32 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import UserPickerModal, { type PickedUser } from "../components/UserPickerModal";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type SendResult = { sent: number; failed: number; total: number };
 
-const LINK_OPTIONS: { label: string; value: string }[] = [
-  { label: "홈", value: "/" },
-  { label: "커뮤니티", value: "/community" },
-  { label: "출석체크", value: "/attendance" },
-  { label: "마이페이지", value: "/mypage" },
-  { label: "케보몬 도감", value: "/kebomon" },
-  { label: "가챠", value: "/gacha" },
-  { label: "라이브 채팅", value: "/live" },
-  { label: "미션", value: "/mission" },
-  { label: "레이드", value: "/raid" },
-  { label: "콜로세움", value: "/colosseum" },
-  { label: "로그라이크", value: "/rogue" },
-  { label: "듀얼", value: "/duel" },
-  { label: "원정", value: "/expedition" },
-  { label: "길드", value: "/guild" },
-  { label: "상점", value: "/shop" },
-  { label: "설정", value: "/settings" },
+const LINK_OPTIONS: { labelKey: TranslationKey; value: string }[] = [
+  { labelKey: "notifications.link_home", value: "/" },
+  { labelKey: "notifications.link_community", value: "/community" },
+  { labelKey: "notifications.link_attendance", value: "/attendance" },
+  { labelKey: "notifications.link_mypage", value: "/mypage" },
+  { labelKey: "notifications.link_kebomon", value: "/kebomon" },
+  { labelKey: "notifications.link_gacha", value: "/gacha" },
+  { labelKey: "notifications.link_live", value: "/live" },
+  { labelKey: "notifications.link_mission", value: "/mission" },
+  { labelKey: "notifications.link_raid", value: "/raid" },
+  { labelKey: "notifications.link_colosseum", value: "/colosseum" },
+  { labelKey: "notifications.link_rogue", value: "/rogue" },
+  { labelKey: "notifications.link_duel", value: "/duel" },
+  { labelKey: "notifications.link_expedition", value: "/expedition" },
+  { labelKey: "notifications.link_guild", value: "/guild" },
+  { labelKey: "notifications.link_shop", value: "/shop" },
+  { labelKey: "notifications.link_settings", value: "/settings" },
 ];
 
 export default function NotificationsPage() {
+  const { t } = useLang();
   const [target, setTarget] = useState<"all" | "user">("user");
   const [selectedUsers, setSelectedUsers] = useState<PickedUser[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -40,10 +43,10 @@ export default function NotificationsPage() {
     setResult(null);
 
     if (target === "user" && selectedUsers.length === 0) {
-      setError("유저를 한 명 이상 선택하세요.");
+      setError(t("notifications.error_no_user"));
       return;
     }
-    if (target === "all" && !window.confirm("전체 회원에게 발송합니다. 계속할까요?")) {
+    if (target === "all" && !window.confirm(t("notifications.confirm_send_all"))) {
       return;
     }
 
@@ -61,7 +64,7 @@ export default function NotificationsPage() {
       setBody("");
       setLink("");
     } catch {
-      setError("발송에 실패했습니다.");
+      setError(t("notifications.error_send"));
     } finally {
       setSending(false);
     }
@@ -69,7 +72,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="mb-4 text-lg font-semibold">공지 발송</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("notifications.title")}</h1>
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-[var(--border)] p-4">
         <div className="mb-4 flex gap-4 text-sm">
@@ -79,7 +82,7 @@ export default function NotificationsPage() {
               checked={target === "user"}
               onChange={() => setTarget("user")}
             />
-            특정 유저
+            {t("notifications.target_user")}
           </label>
           <label className="flex items-center gap-1.5">
             <input
@@ -87,30 +90,33 @@ export default function NotificationsPage() {
               checked={target === "all"}
               onChange={() => setTarget("all")}
             />
-            전체 회원
+            {t("notifications.target_all")}
           </label>
         </div>
 
         {target === "user" && (
           <>
-            <label className="mb-1 block text-xs text-[var(--fg-muted)]">받는 사람</label>
+            <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("notifications.recipient_label")}</label>
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
               className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-left text-sm hover:bg-[var(--bg-hover)]"
             >
               {selectedUsers.length === 0 ? (
-                <span className="text-[var(--fg-faint)]">클릭해서 유저 선택...</span>
+                <span className="text-[var(--fg-faint)]">{t("notifications.pick_placeholder")}</span>
               ) : selectedUsers.length <= 3 ? (
                 selectedUsers.map((u) => u.name).join(", ")
               ) : (
-                `${selectedUsers.slice(0, 3).map((u) => u.name).join(", ")} 외 ${selectedUsers.length - 3}명`
+                t("notifications.pick_more", {
+                  names: selectedUsers.slice(0, 3).map((u) => u.name).join(", "),
+                  count: selectedUsers.length - 3,
+                })
               )}
             </button>
           </>
         )}
 
-        <label className="mb-1 block text-xs text-[var(--fg-muted)]">제목</label>
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("notifications.title_label")}</label>
         <input
           required
           maxLength={120}
@@ -119,7 +125,7 @@ export default function NotificationsPage() {
           className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         />
 
-        <label className="mb-1 block text-xs text-[var(--fg-muted)]">내용</label>
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("notifications.body_label")}</label>
         <textarea
           required
           maxLength={255}
@@ -129,16 +135,16 @@ export default function NotificationsPage() {
           className="mb-4 w-full resize-none rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         />
 
-        <label className="mb-1 block text-xs text-[var(--fg-muted)]">링크 (선택)</label>
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("notifications.link_label")}</label>
         <select
           value={link}
           onChange={(e) => setLink(e.target.value)}
           className="mb-4 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">링크 없음</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("notifications.link_none")}</option>
           {LINK_OPTIONS.map((o) => (
             <option key={o.value} value={o.value} className="bg-[var(--bg-elevated)] text-[var(--fg)]">
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
@@ -146,7 +152,8 @@ export default function NotificationsPage() {
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
         {result && (
           <p className="mb-4 text-sm text-emerald-400">
-            발송 완료: {result.sent}건 성공{result.failed > 0 ? ` / ${result.failed}건 실패` : ""}
+            {t("notifications.result_success", { sent: result.sent })}
+            {result.failed > 0 ? t("notifications.result_failed", { failed: result.failed }) : ""}
           </p>
         )}
 
@@ -155,7 +162,7 @@ export default function NotificationsPage() {
           disabled={sending}
           className="rounded-md bg-[#b7607e] px-4 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
         >
-          {sending ? "발송 중..." : "발송"}
+          {sending ? t("notifications.sending") : t("notifications.send")}
         </button>
       </form>
 

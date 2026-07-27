@@ -1,3 +1,5 @@
+import { useLang } from "../context/LangContext";
+
 export type PostDetail = {
   id: string;
   content: string;
@@ -15,6 +17,7 @@ export default function PostDetailModal({
   post: PostDetail;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4"
@@ -33,7 +36,7 @@ export default function PostDetailModal({
               </span>
             </h2>
             <p className="mt-1 text-xs text-[var(--fg-faint)]">
-              {post.category} · 좋아요 {post.likesCount} ·{" "}
+              {post.category} · {t("community.col_likes")} {post.likesCount} ·{" "}
               {new Date(post.createdAt).toLocaleString()}
             </p>
           </div>
@@ -41,7 +44,7 @@ export default function PostDetailModal({
             onClick={onClose}
             className="shrink-0 rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
           >
-            닫기
+            {t("common.close")}
           </button>
         </div>
 

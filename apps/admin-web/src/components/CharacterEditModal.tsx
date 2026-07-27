@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 export type CharacterRow = {
   id: number;
@@ -33,6 +34,7 @@ export default function CharacterEditModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLang();
   const [form, setForm] = useState({
     type: character.type,
     rarity: character.rarity,
@@ -55,7 +57,7 @@ export default function CharacterEditModal({
       onSaved();
       onClose();
     } catch {
-      setError("저장에 실패했습니다.");
+      setError(t("characterModal.error_save"));
     } finally {
       setSaving(false);
     }
@@ -74,7 +76,7 @@ export default function CharacterEditModal({
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs text-[var(--fg-muted)]">타입</label>
+            <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("characterModal.field_type")}</label>
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
@@ -86,7 +88,7 @@ export default function CharacterEditModal({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-[var(--fg-muted)]">등급</label>
+            <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("characterModal.field_rarity")}</label>
             <select
               value={form.rarity}
               onChange={(e) => setForm({ ...form, rarity: e.target.value })}
@@ -98,7 +100,7 @@ export default function CharacterEditModal({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-[var(--fg-muted)]">아레나/콜로세움 역할</label>
+            <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("characterModal.field_arena")}</label>
             <select
               value={form.arenaArchetype}
               onChange={(e) => setForm({ ...form, arenaArchetype: e.target.value })}
@@ -111,7 +113,7 @@ export default function CharacterEditModal({
           </div>
           <div>
             <label className="mb-1 block text-xs text-[var(--fg-muted)]">
-              로그라이크 역할
+              {t("characterModal.field_rogue")}
             </label>
             <select
               value={form.rogueArchetype}
@@ -126,7 +128,7 @@ export default function CharacterEditModal({
         </div>
 
         <label className="mb-1 block text-xs text-[var(--fg-muted)]">
-          스탯 배율 (기본 1.0, 아레나 전투력에 반영)
+          {t("characterModal.stat_mult_label")}
         </label>
         <div className="mb-4 grid grid-cols-4 gap-2">
           {(["hpMult", "atkMult", "defMult", "spdMult"] as const).map((key) => (
@@ -153,14 +155,14 @@ export default function CharacterEditModal({
             onClick={onClose}
             className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]"
           >
-            취소
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="rounded-md bg-[#b7607e] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
           >
-            {saving ? "저장 중..." : "저장"}
+            {saving ? t("gacha.saving") : t("common.save")}
           </button>
         </div>
       </form>

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router";
 import { api } from "../lib/api";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type UserDetail = {
   id: string;
@@ -37,10 +39,10 @@ type SuspensionHistoryRow = {
   createdAt: string;
 };
 
-const SUSPENSION_ACTION_LABEL: Record<SuspensionHistoryRow["action"], string> = {
-  SUSPENDED: "정지",
-  UNSUSPENDED: "정지 해제",
-  AUTO_EXPIRED: "기간 만료(자동 해제)",
+const SUSPENSION_ACTION_KEY: Record<SuspensionHistoryRow["action"], TranslationKey> = {
+  SUSPENDED: "users.suspend",
+  UNSUSPENDED: "users.unsuspend",
+  AUTO_EXPIRED: "userDetail.auto_expired",
 };
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
@@ -55,6 +57,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLang();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityLog | null>(null);
   const [suspensionHistory, setSuspensionHistory] = useState<SuspensionHistoryRow[] | null>(null);
@@ -77,7 +80,7 @@ export default function UserDetailPage() {
       setActivityLog(logRes);
       setSuspensionHistory(suspensionRes);
     } catch {
-      setError("유저 정보를 불러오지 못했습니다.");
+      setError(t("userDetail.error_load"));
     } finally {
       setLoading(false);
     }
@@ -91,28 +94,28 @@ export default function UserDetailPage() {
   async function toggleRole() {
     if (!user) return;
     const nextRole = user.role === "ADMIN" ? "USER" : "ADMIN";
-    if (!window.confirm(`${user.email}의 권한을 ${nextRole}로 변경할까요?`)) return;
+    if (!window.confirm(t("users.confirm_role_change", { email: user.email, role: nextRole }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/role`, { role: nextRole });
       load();
     } catch {
-      window.alert("권한 변경에 실패했습니다.");
+      window.alert(t("users.error_role_change"));
     }
   }
 
   async function unsuspend() {
     if (!user) return;
-    if (!window.confirm(`${user.email}의 정지를 해제할까요?`)) return;
+    if (!window.confirm(t("users.confirm_unsuspend", { email: user.email }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
       load();
     } catch {
-      window.alert("정지 해제에 실패했습니다.");
+      window.alert(t("users.error_unsuspend"));
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">불러오는 중...</p>;
-  if (error || !user) return <p className="text-red-400">{error ?? "유저를 찾을 수 없습니다."}</p>;
+  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (error || !user) return <p className="text-red-400">{error ?? t("userDetail.not_found")}</p>;
 
   return (
     <div className="max-w-3xl">
@@ -120,7 +123,7 @@ export default function UserDetailPage() {
         onClick={() => navigate("/users")}
         className="mb-4 text-sm text-[var(--fg-muted)] hover:text-[var(--fg)]"
       >
-        ← 회원 목록으로
+        {t("userDetail.back_to_list")}
       </button>
 
       <div className="mb-4 rounded-lg border border-[var(--border)] p-4">
@@ -129,8 +132,10 @@ export default function UserDetailPage() {
             <h1 className="text-lg font-semibold">{user.name}</h1>
             <p className="text-sm text-[var(--fg-muted)]">{user.email}</p>
             <p className="mt-1 text-xs text-[var(--fg-faint)]">
-              가입일 {new Date(user.createdAt).toLocaleDateString()} · 최근 로그인{" "}
-              {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "-"}
+              {t("userDetail.joined_and_login", {
+                date: new Date(user.createdAt).toLocaleDateString(),
+                login: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "-",
+              })}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -142,7 +147,7 @@ export default function UserDetailPage() {
                   (
                   {user.suspendedUntil
                     ? `~${new Date(user.suspendedUntil).toLocaleString("ko-KR")}`
-                    : "영구 정지"}
+                    : t("userDetail.permanent")}
                   {user.suspendedReason ? ` · ${user.suspendedReason}` : ""}
                   )
                 </span>
@@ -156,41 +161,52 @@ export default function UserDetailPage() {
             onClick={toggleRole}
             className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
           >
-            {user.role === "ADMIN" ? "관리자 해제" : "관리자 지정"}
+            {user.role === "ADMIN" ? t("users.demote") : t("users.promote")}
           </button>
           <button
             onClick={() => (user.status === "SUSPENDED" ? unsuspend() : setShowSuspend(true))}
             className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
           >
-            {user.status === "SUSPENDED" ? "정지 해제" : "정지"}
+            {user.status === "SUSPENDED" ? t("users.unsuspend") : t("users.suspend")}
           </button>
           <button
             onClick={() => setShowReward(true)}
             className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
           >
-            재화 조정
+            {t("users.adjust_reward")}
           </button>
         </div>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile label="KP" value={user.reward?.missionPoints ?? 0} />
-        <StatTile label="보유 캐릭터" value={user._count.characters} />
-        <StatTile label="게시글" value={user._count.posts} />
-        <StatTile label="댓글" value={user._count.comments} />
+        <StatTile label={t("userDetail.stat_characters")} value={user._count.characters} />
+        <StatTile label={t("userDetail.stat_posts")} value={user._count.posts} />
+        <StatTile label={t("userDetail.stat_comments")} value={user._count.comments} />
         <StatTile
-          label="콜로세움"
-          value={user.battleStats ? `${user.battleStats.wins}승 ${user.battleStats.losses}패` : "-"}
+          label={t("userDetail.stat_colosseum")}
+          value={
+            user.battleStats
+              ? t("userDetail.wins_losses", { wins: user.battleStats.wins, losses: user.battleStats.losses })
+              : "-"
+          }
         />
-        <StatTile label="듀얼" value={user.duelStats ? `${user.duelStats.wins}승 ${user.duelStats.losses}패` : "-"} />
-        <StatTile label="길드" value={user.guildMembership?.guild.name ?? "-"} />
-        <StatTile label="피신고 횟수" value={user.reportsAgainstCount} />
+        <StatTile
+          label={t("userDetail.stat_duel")}
+          value={
+            user.duelStats
+              ? t("userDetail.wins_losses", { wins: user.duelStats.wins, losses: user.duelStats.losses })
+              : "-"
+          }
+        />
+        <StatTile label={t("userDetail.stat_guild")} value={user.guildMembership?.guild.name ?? "-"} />
+        <StatTile label={t("userDetail.stat_reports_against")} value={user.reportsAgainstCount} />
       </div>
 
       <div className="rounded-lg border border-[var(--border)] p-4">
-        <h2 className="mb-3 text-sm font-semibold">최근 게시글</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("userDetail.recent_posts")}</h2>
         {user.posts.length === 0 ? (
-          <p className="text-sm text-[var(--fg-faint)]">작성한 게시글이 없습니다.</p>
+          <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_posts")}</p>
         ) : (
           <ul className="space-y-2">
             {user.posts.map((p) => (
@@ -207,9 +223,9 @@ export default function UserDetailPage() {
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-[var(--border)] p-4">
-          <h2 className="mb-3 text-sm font-semibold">KP 내역</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("userDetail.points_history")}</h2>
           {!activityLog || activityLog.points.length === 0 ? (
-            <p className="text-sm text-[var(--fg-faint)]">내역이 없습니다.</p>
+            <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_history")}</p>
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto">
               {activityLog.points.map((p) => (
@@ -227,14 +243,14 @@ export default function UserDetailPage() {
         </div>
 
         <div className="rounded-lg border border-[var(--border)] p-4">
-          <h2 className="mb-3 text-sm font-semibold">케릭터 획득 내역</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("userDetail.characters_history")}</h2>
           {!activityLog || activityLog.characters.length === 0 ? (
-            <p className="text-sm text-[var(--fg-faint)]">내역이 없습니다.</p>
+            <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_history")}</p>
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto">
               {activityLog.characters.map((c, i) => (
                 <li key={`${c.characterId}-${i}`} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
-                  {c.name} 획득
+                  {t("userDetail.character_obtained", { name: c.name })}
                   <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(c.obtainedAt).toLocaleString()}</p>
                 </li>
               ))}
@@ -244,19 +260,19 @@ export default function UserDetailPage() {
       </div>
 
       <div className="mt-4 rounded-lg border border-[var(--border)] p-4">
-        <h2 className="mb-3 text-sm font-semibold">정지 이력</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("userDetail.suspension_history")}</h2>
         {!suspensionHistory || suspensionHistory.length === 0 ? (
-          <p className="text-sm text-[var(--fg-faint)]">내역이 없습니다.</p>
+          <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_history")}</p>
         ) : (
           <ul className="max-h-64 space-y-2 overflow-y-auto">
             {suspensionHistory.map((h) => (
               <li key={h.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
                 <span className={h.action === "SUSPENDED" ? "text-red-400" : "text-emerald-400"}>
-                  {SUSPENSION_ACTION_LABEL[h.action]}
+                  {t(SUSPENSION_ACTION_KEY[h.action])}
                 </span>
                 {h.reason && <> · {h.reason}</>}
                 {h.action === "SUSPENDED" && (
-                  <> · {h.suspendedUntil ? `~${new Date(h.suspendedUntil).toLocaleString("ko-KR")}` : "영구 정지"}</>
+                  <> · {h.suspendedUntil ? `~${new Date(h.suspendedUntil).toLocaleString("ko-KR")}` : t("userDetail.permanent")}</>
                 )}
                 <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(h.createdAt).toLocaleString()}</p>
               </li>

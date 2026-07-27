@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 export type PickedUser = { id: string; name: string; email: string };
 
@@ -19,6 +20,7 @@ export default function UserPickerModal({
   onClose: () => void;
   onApply: (users: PickedUser[]) => void;
 }) {
+  const { t } = useLang();
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<UsersResponse | null>(null);
@@ -36,7 +38,7 @@ export default function UserPickerModal({
       const res = await api.get<UsersResponse>(`/admin/users?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     }
   }
 
@@ -63,18 +65,18 @@ export default function UserPickerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6">
-        <h2 className="mb-1 text-base font-semibold">유저 선택</h2>
-        <p className="mb-3 text-xs text-[var(--fg-faint)]">{selected.size}명 선택됨</p>
+        <h2 className="mb-1 text-base font-semibold">{t("userPicker.title")}</h2>
+        <p className="mb-3 text-xs text-[var(--fg-faint)]">{t("userPicker.selected_count", { count: selected.size })}</p>
 
         <form onSubmit={handleSearchSubmit} className="mb-3 flex gap-2">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="이름 또는 이메일 검색"
+            placeholder={t("users.search_placeholder")}
             className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
           />
           <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
-            검색
+            {t("common.search")}
           </button>
         </form>
 
@@ -85,8 +87,8 @@ export default function UserPickerModal({
             <thead className="sticky top-0 z-10 bg-[var(--bg-elevated)] text-[var(--fg-muted)]">
               <tr>
                 <th className="w-10 px-3 py-2"></th>
-                <th className="px-3 py-2">이름</th>
-                <th className="px-3 py-2">이메일</th>
+                <th className="px-3 py-2">{t("users.col_name")}</th>
+                <th className="px-3 py-2">{t("users.col_email")}</th>
               </tr>
             </thead>
             <tbody>
@@ -106,7 +108,7 @@ export default function UserPickerModal({
               {data?.users.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                    결과가 없습니다.
+                    {t("common.no_results")}
                   </td>
                 </tr>
               )}
@@ -121,7 +123,7 @@ export default function UserPickerModal({
               onClick={() => setPage((p) => p - 1)}
               className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
             >
-              이전
+              {t("common.prev")}
             </button>
             <span className="text-[var(--fg-muted)]">
               {data.page} / {data.totalPages}
@@ -131,7 +133,7 @@ export default function UserPickerModal({
               onClick={() => setPage((p) => p + 1)}
               className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
             >
-              다음
+              {t("common.next")}
             </button>
           </div>
         )}
@@ -142,14 +144,14 @@ export default function UserPickerModal({
             onClick={onClose}
             className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]"
           >
-            취소
+            {t("common.cancel")}
           </button>
           <button
             type="button"
             onClick={() => onApply(Array.from(selected.values()))}
             className="rounded-md bg-[#b7607e] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#a2536e]"
           >
-            적용
+            {t("userPicker.apply")}
           </button>
         </div>
       </div>

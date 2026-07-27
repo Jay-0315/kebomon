@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type InquiryRow = {
   id: string;
@@ -21,19 +23,20 @@ type InquiriesResponse = {
   totalPages: number;
 };
 
-const CATEGORY_LABEL: Record<InquiryRow["category"], string> = {
-  bug: "버그 제보",
-  account: "계정 문의",
-  suggestion: "건의사항",
-  etc: "기타",
+const CATEGORY_LABEL_KEY: Record<InquiryRow["category"], TranslationKey> = {
+  bug: "inquiries.category_bug",
+  account: "inquiries.category_account",
+  suggestion: "inquiries.category_suggestion",
+  etc: "inquiries.category_etc",
 };
 
-const STATUS_LABEL: Record<InquiryRow["status"], string> = {
-  PENDING: "대기",
-  ANSWERED: "답변완료",
+const STATUS_LABEL_KEY: Record<InquiryRow["status"], TranslationKey> = {
+  PENDING: "inquiries.status_pending",
+  ANSWERED: "inquiries.status_answered",
 };
 
 export default function InquiriesPage() {
+  const { t } = useLang();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<InquiriesResponse | null>(null);
@@ -53,7 +56,7 @@ export default function InquiriesPage() {
       const res = await api.get<InquiriesResponse>(`/admin/inquiries?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("inquiries.error_load"));
     } finally {
       setLoading(false);
     }
@@ -73,7 +76,7 @@ export default function InquiriesPage() {
       setReplyText("");
       load();
     } catch {
-      window.alert("답변 등록에 실패했습니다.");
+      window.alert(t("inquiries.error_reply"));
     } finally {
       setSubmitting(false);
     }
@@ -81,7 +84,7 @@ export default function InquiriesPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">문의 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("inquiries.title")}</h1>
 
       <div className="mb-4 flex gap-2">
         <select
@@ -92,9 +95,9 @@ export default function InquiriesPage() {
           }}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 상태</option>
-          <option value="PENDING" className="bg-[var(--bg-elevated)] text-[var(--fg)]">대기</option>
-          <option value="ANSWERED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">답변완료</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("inquiries.status_all")}</option>
+          <option value="PENDING" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("inquiries.status_pending")}</option>
+          <option value="ANSWERED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("inquiries.status_answered")}</option>
         </select>
       </div>
 
@@ -104,18 +107,18 @@ export default function InquiriesPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">분류</th>
-              <th className="px-3 py-2">작성자</th>
-              <th className="px-3 py-2">내용</th>
-              <th className="px-3 py-2">상태</th>
-              <th className="px-3 py-2">작성일</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("inquiries.col_category")}</th>
+              <th className="px-3 py-2">{t("inquiries.col_author")}</th>
+              <th className="px-3 py-2">{t("inquiries.col_content")}</th>
+              <th className="px-3 py-2">{t("common.status")}</th>
+              <th className="px-3 py-2">{t("inquiries.col_created")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {data?.inquiries.map((q) => (
               <tr key={q.id} className="border-t border-[var(--border)]">
-                <td className="px-3 py-2 whitespace-nowrap">{CATEGORY_LABEL[q.category]}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{t(CATEGORY_LABEL_KEY[q.category])}</td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   <Link to={`/users/${q.userId}`} className="text-[#b7607e] hover:underline">
                     {q.user.name}
@@ -125,10 +128,12 @@ export default function InquiriesPage() {
                 <td className="px-3 py-2 max-w-xs">
                   <span className="line-clamp-2">{q.content}</span>
                   {q.adminReply && (
-                    <p className="mt-1 line-clamp-2 text-xs text-[var(--fg-faint)]">답변: {q.adminReply}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-[var(--fg-faint)]">
+                      {t("inquiries.reply_prefix", { reply: q.adminReply })}
+                    </p>
                   )}
                 </td>
-                <td className="px-3 py-2">{STATUS_LABEL[q.status]}</td>
+                <td className="px-3 py-2">{t(STATUS_LABEL_KEY[q.status])}</td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
                   {new Date(q.createdAt).toLocaleDateString()}
                 </td>
@@ -141,10 +146,10 @@ export default function InquiriesPage() {
                       }}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
-                      답변하기
+                      {t("inquiries.reply_button")}
                     </button>
                   ) : (
-                    <span className="text-xs text-[var(--fg-faint)]">처리됨</span>
+                    <span className="text-xs text-[var(--fg-faint)]">{t("inquiries.already_handled")}</span>
                   )}
                 </td>
               </tr>
@@ -152,7 +157,7 @@ export default function InquiriesPage() {
             {!loading && data?.inquiries.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -167,7 +172,7 @@ export default function InquiriesPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -177,7 +182,7 @@ export default function InquiriesPage() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}
@@ -191,9 +196,9 @@ export default function InquiriesPage() {
             className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-1 text-sm font-semibold">문의 답변</h2>
+            <h2 className="mb-1 text-sm font-semibold">{t("inquiries.modal_title")}</h2>
             <p className="mb-3 text-xs text-[var(--fg-faint)]">
-              {replyTarget.user.name} ({replyTarget.user.email}) · {CATEGORY_LABEL[replyTarget.category]}
+              {replyTarget.user.name} ({replyTarget.user.email}) · {t(CATEGORY_LABEL_KEY[replyTarget.category])}
             </p>
             <p className="mb-3 max-h-32 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-soft)] p-2 text-sm whitespace-pre-wrap">
               {replyTarget.content}
@@ -203,7 +208,7 @@ export default function InquiriesPage() {
               onChange={(e) => setReplyText(e.target.value)}
               rows={4}
               maxLength={1000}
-              placeholder="답변 내용을 입력하세요."
+              placeholder={t("inquiries.reply_placeholder")}
               className="mb-4 w-full resize-none rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
             />
             <div className="flex justify-end gap-2">
@@ -213,7 +218,7 @@ export default function InquiriesPage() {
                 disabled={submitting}
                 className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
               >
-                취소
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -221,7 +226,7 @@ export default function InquiriesPage() {
                 disabled={submitting || !replyText.trim()}
                 className="rounded-md bg-[#b7607e] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
               >
-                {submitting ? "등록 중..." : "답변 등록"}
+                {submitting ? t("inquiries.submitting") : t("inquiries.submit_reply")}
               </button>
             </div>
           </div>

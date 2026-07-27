@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 type BossAnomaly = {
   weekKey: string;
@@ -29,6 +30,7 @@ type GuildsResponse = {
 };
 
 export default function GuildsPage() {
+  const { t } = useLang();
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<GuildsResponse | null>(null);
@@ -43,7 +45,7 @@ export default function GuildsPage() {
       const res = await api.get<GuildsResponse>(`/admin/guilds?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     }
   }
 
@@ -59,28 +61,28 @@ export default function GuildsPage() {
   }
 
   async function handleDisband(guild: GuildRow) {
-    if (!window.confirm(`"${guild.name}" 길드를 해체할까요? 길드원/게시글/보스전 기록이 모두 삭제되며 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t("guilds.confirm_disband", { name: guild.name }))) return;
     try {
       await api.delete(`/admin/guilds/${guild.id}`);
       load();
     } catch {
-      window.alert("해체에 실패했습니다.");
+      window.alert(t("guilds.error_disband"));
     }
   }
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">길드 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("guilds.title")}</h1>
 
       <form onSubmit={handleSearchSubmit} className="mb-4 flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="길드명 검색"
+          placeholder={t("guilds.search_placeholder")}
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
-          검색
+          {t("common.search")}
         </button>
       </form>
 
@@ -90,12 +92,12 @@ export default function GuildsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">길드명</th>
-              <th className="px-3 py-2">레벨</th>
-              <th className="px-3 py-2">인원</th>
-              <th className="px-3 py-2">길드장</th>
-              <th className="px-3 py-2">최근 보스전 기여도</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("guilds.col_name")}</th>
+              <th className="px-3 py-2">{t("guilds.col_level")}</th>
+              <th className="px-3 py-2">{t("guilds.col_members")}</th>
+              <th className="px-3 py-2">{t("guilds.col_owner")}</th>
+              <th className="px-3 py-2">{t("guilds.col_recent_boss")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -114,15 +116,15 @@ export default function GuildsPage() {
                 <td className="px-3 py-2">
                   {g.bossAnomaly ? (
                     <>
-                      최고 기여 {(g.bossAnomaly.topShare * 100).toFixed(0)}%
+                      {t("guilds.top_contribution", { pct: (g.bossAnomaly.topShare * 100).toFixed(0) })}
                       {g.bossAnomaly.suspicious && (
                         <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
-                          쏠림 의심
+                          {t("guilds.suspicious_share")}
                         </span>
                       )}
                     </>
                   ) : (
-                    <span className="text-[var(--fg-faint)]">기록 없음</span>
+                    <span className="text-[var(--fg-faint)]">{t("guilds.no_record")}</span>
                   )}
                 </td>
                 <td className="px-3 py-2">
@@ -130,7 +132,7 @@ export default function GuildsPage() {
                     onClick={() => handleDisband(g)}
                     className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
                   >
-                    해체
+                    {t("guilds.disband")}
                   </button>
                 </td>
               </tr>
@@ -138,7 +140,7 @@ export default function GuildsPage() {
             {data?.guilds.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -153,7 +155,7 @@ export default function GuildsPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -163,7 +165,7 @@ export default function GuildsPage() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}

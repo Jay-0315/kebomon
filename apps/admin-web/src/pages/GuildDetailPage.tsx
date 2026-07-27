@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type GuildMemberRow = {
   userId: string;
@@ -36,7 +38,11 @@ type GuildDetail = {
   bossRuns: GuildBossRun[];
 };
 
-const ROLE_LABEL: Record<string, string> = { owner: "길드장", officer: "부길드장", member: "길드원" };
+const ROLE_LABEL_KEY: Record<string, TranslationKey> = {
+  owner: "guildDetail.role_owner",
+  officer: "guildDetail.role_officer",
+  member: "guildDetail.role_member",
+};
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -50,6 +56,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
 export default function GuildDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLang();
   const [guild, setGuild] = useState<GuildDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +70,7 @@ export default function GuildDetailPage() {
       const res = await api.get<GuildDetail>(`/admin/guilds/${id}`);
       setGuild(res);
     } catch {
-      setError("길드 정보를 불러오지 못했습니다.");
+      setError(t("guildDetail.error_load"));
     } finally {
       setLoading(false);
     }
@@ -76,17 +83,17 @@ export default function GuildDetailPage() {
 
   async function handleDisband() {
     if (!guild) return;
-    if (!window.confirm(`"${guild.name}" 길드를 해체할까요? 길드원/게시글/보스전 기록이 모두 삭제되며 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t("guilds.confirm_disband", { name: guild.name }))) return;
     try {
       await api.delete(`/admin/guilds/${guild.id}`);
       navigate("/guilds");
     } catch {
-      window.alert("해체에 실패했습니다.");
+      window.alert(t("guilds.error_disband"));
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">불러오는 중...</p>;
-  if (error || !guild) return <p className="text-red-400">{error ?? "길드를 찾을 수 없습니다."}</p>;
+  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (error || !guild) return <p className="text-red-400">{error ?? t("guildDetail.not_found")}</p>;
 
   return (
     <div className="max-w-3xl">
@@ -94,7 +101,7 @@ export default function GuildDetailPage() {
         onClick={() => navigate("/guilds")}
         className="mb-4 text-sm text-[var(--fg-muted)] hover:text-[var(--fg)]"
       >
-        ← 길드 목록으로
+        {t("guildDetail.back_to_list")}
       </button>
 
       <div className="mb-4 rounded-lg border border-[var(--border)] p-4">
@@ -102,13 +109,13 @@ export default function GuildDetailPage() {
           <div>
             <h1 className="text-lg font-semibold">{guild.name}</h1>
             <p className="text-sm text-[var(--fg-muted)]">
-              길드장{" "}
+              {t("guildDetail.owner_label")}{" "}
               <Link to={`/users/${guild.owner.id}`} className="text-[#b7607e] hover:underline">
                 {guild.owner.name} ({guild.owner.email})
               </Link>
             </p>
             <p className="mt-1 text-xs text-[var(--fg-faint)]">
-              생성일 {new Date(guild.createdAt).toLocaleDateString()}
+              {t("guildDetail.created_at", { date: new Date(guild.createdAt).toLocaleDateString() })}
             </p>
             {guild.notice && (
               <p className="mt-2 whitespace-pre-wrap rounded border border-[var(--border)] bg-[var(--bg-soft)] p-2 text-xs text-[var(--fg-muted)]">
@@ -120,18 +127,24 @@ export default function GuildDetailPage() {
             onClick={handleDisband}
             className="shrink-0 rounded border border-red-500/30 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10"
           >
-            해체
+            {t("guilds.disband")}
           </button>
         </div>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="레벨" value={guild.level} />
-        <StatTile label="경험치" value={guild.exp} />
-        <StatTile label="인원" value={guild.members.length} />
+        <StatTile label={t("guildDetail.stat_level")} value={guild.level} />
+        <StatTile label={t("guildDetail.stat_exp")} value={guild.exp} />
+        <StatTile label={t("guildDetail.stat_members")} value={guild.members.length} />
         <StatTile
-          label="이번 주 보스전"
-          value={guild.bossRuns[0] ? (guild.bossRuns[0].clearedAt ? "클리어" : "진행중") : "기록 없음"}
+          label={t("guildDetail.stat_weekly_boss")}
+          value={
+            guild.bossRuns[0]
+              ? guild.bossRuns[0].clearedAt
+                ? t("guildDetail.boss_cleared")
+                : t("guildDetail.boss_in_progress")
+              : t("guilds.no_record")
+          }
         />
       </div>
 
@@ -139,11 +152,11 @@ export default function GuildDetailPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">이름</th>
-              <th className="px-3 py-2">이메일</th>
-              <th className="px-3 py-2">역할</th>
-              <th className="px-3 py-2">누적 기여도</th>
-              <th className="px-3 py-2">가입일</th>
+              <th className="px-3 py-2">{t("users.col_name")}</th>
+              <th className="px-3 py-2">{t("users.col_email")}</th>
+              <th className="px-3 py-2">{t("guildDetail.col_role")}</th>
+              <th className="px-3 py-2">{t("guildDetail.col_contribution")}</th>
+              <th className="px-3 py-2">{t("users.col_created")}</th>
             </tr>
           </thead>
           <tbody>
@@ -155,7 +168,7 @@ export default function GuildDetailPage() {
                   </Link>
                 </td>
                 <td className="px-3 py-2 text-[var(--fg-muted)]">{m.email}</td>
-                <td className="px-3 py-2">{ROLE_LABEL[m.role] ?? m.role}</td>
+                <td className="px-3 py-2">{ROLE_LABEL_KEY[m.role] ? t(ROLE_LABEL_KEY[m.role]) : m.role}</td>
                 <td className="px-3 py-2">{m.totalContribution.toLocaleString()}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)]">{new Date(m.joinedAt).toLocaleDateString()}</td>
               </tr>
@@ -163,7 +176,7 @@ export default function GuildDetailPage() {
             {guild.members.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  길드원이 없습니다.
+                  {t("guildDetail.no_members")}
                 </td>
               </tr>
             )}
@@ -172,9 +185,11 @@ export default function GuildDetailPage() {
       </div>
 
       <div className="rounded-lg border border-[var(--border)] p-4">
-        <h2 className="mb-3 text-sm font-semibold">길드 보스전 기록 (최근 {guild.bossRuns.length}주)</h2>
+        <h2 className="mb-3 text-sm font-semibold">
+          {t("guildDetail.boss_history_title", { count: guild.bossRuns.length })}
+        </h2>
         {guild.bossRuns.length === 0 ? (
-          <p className="text-sm text-[var(--fg-faint)]">기록이 없습니다.</p>
+          <p className="text-sm text-[var(--fg-faint)]">{t("guildDetail.no_boss_history")}</p>
         ) : (
           <ul className="space-y-2">
             {guild.bossRuns.map((run) => (
@@ -184,13 +199,15 @@ export default function GuildDetailPage() {
                   className="flex w-full items-center justify-between text-left hover:text-[var(--fg)]"
                 >
                   <span>
-                    {run.weekKey} · 보스 #{run.bossId} · {run.hpRemaining.toLocaleString()} / {run.maxHp.toLocaleString()} HP
-                    {run.clearedAt && <span className="ml-2 text-emerald-400">클리어</span>}
+                    {run.weekKey} · {t("guildDetail.boss_label", { id: run.bossId })} · {run.hpRemaining.toLocaleString()} / {run.maxHp.toLocaleString()} HP
+                    {run.clearedAt && <span className="ml-2 text-emerald-400">{t("guildDetail.boss_cleared")}</span>}
                     {!run.rewardsGranted && run.clearedAt && (
-                      <span className="ml-2 text-amber-400">보상 미지급</span>
+                      <span className="ml-2 text-amber-400">{t("guildDetail.rewards_pending")}</span>
                     )}
                   </span>
-                  <span className="text-[var(--fg-faint)]">{expandedWeek === run.weekKey ? "접기" : "기여도 보기"}</span>
+                  <span className="text-[var(--fg-faint)]">
+                    {expandedWeek === run.weekKey ? t("guildDetail.collapse") : t("guildDetail.view_contribution")}
+                  </span>
                 </button>
                 {expandedWeek === run.weekKey && (
                   <ul className="mt-2 space-y-1 pl-3 text-xs text-[var(--fg-muted)]">
@@ -203,7 +220,7 @@ export default function GuildDetailPage() {
                         </span>
                       </li>
                     ))}
-                    {run.contributions.length === 0 && <li>기여 기록이 없습니다.</li>}
+                    {run.contributions.length === 0 && <li>{t("guildDetail.no_contribution")}</li>}
                   </ul>
                 )}
               </li>

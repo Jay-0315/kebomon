@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type RateMap = Record<string, number>;
 
@@ -12,13 +14,13 @@ type GachaConfig = {
   pityLegendaryThreshold: number;
 };
 
-const RARITY_LABEL: Record<string, string> = {
-  common: "커먼",
-  uncommon: "언커먼",
-  rare: "레어",
-  epic: "에픽",
-  legendary: "레전더리",
-  mythic: "신화",
+const RARITY_LABEL_KEY: Record<string, TranslationKey> = {
+  common: "gacha.rarity_common",
+  uncommon: "gacha.rarity_uncommon",
+  rare: "gacha.rarity_rare",
+  epic: "gacha.rarity_epic",
+  legendary: "gacha.rarity_legendary",
+  mythic: "gacha.rarity_mythic",
 };
 
 const GACHA_KEYS = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
@@ -37,19 +39,22 @@ function RateTable({
   values: RateMap;
   onChange: (key: string, value: number) => void;
 }) {
+  const { t } = useLang();
   const sum = keys.reduce((s, k) => s + (values[k] ?? 0), 0);
   return (
     <div className="rounded-lg border border-[var(--border)] p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold">{title}</h3>
         <span className={`text-xs ${Math.abs(sum - 100) < 0.01 ? "text-[var(--fg-faint)]" : "text-amber-400"}`}>
-          합계 {sum.toFixed(2)}
+          {t("gacha.sum", { sum: sum.toFixed(2) })}
         </span>
       </div>
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
         {keys.map((k) => (
           <div key={k}>
-            <label className="mb-1 block text-xs text-[var(--fg-muted)]">{RARITY_LABEL[k] ?? k}</label>
+            <label className="mb-1 block text-xs text-[var(--fg-muted)]">
+              {RARITY_LABEL_KEY[k] ? t(RARITY_LABEL_KEY[k]) : k}
+            </label>
             <input
               type="number"
               step="0.01"
@@ -66,6 +71,7 @@ function RateTable({
 }
 
 export default function GachaConfigPage() {
+  const { t } = useLang();
   const [config, setConfig] = useState<GachaConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,7 +89,7 @@ export default function GachaConfigPage() {
       const res = await api.get<GachaConfig>("/admin/gacha-config");
       setConfig(res);
     } catch {
-      setError("설정을 불러오지 못했습니다.");
+      setError(t("gacha.error_load"));
     } finally {
       setLoading(false);
     }
@@ -105,25 +111,23 @@ export default function GachaConfigPage() {
       setConfig(updated);
       setSavedAt(Date.now());
     } catch {
-      setError("저장에 실패했습니다.");
+      setError(t("gacha.error_save"));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">불러오는 중...</p>;
-  if (!config) return <p className="text-red-400">{error ?? "설정이 없습니다."}</p>;
+  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (!config) return <p className="text-red-400">{error ?? t("gacha.no_config")}</p>;
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-1 text-lg font-semibold">가챠 확률 / 천장 설정</h1>
-      <p className="mb-4 text-sm text-[var(--fg-faint)]">
-        캐릭터 뽑기 풀(등급별 배정)은 여기서 편집할 수 없습니다 — 등급별 확률과 천장(pity) 회차만 조정합니다.
-      </p>
+      <h1 className="mb-1 text-lg font-semibold">{t("gacha.title")}</h1>
+      <p className="mb-4 text-sm text-[var(--fg-faint)]">{t("gacha.subtitle")}</p>
 
       <div className="mb-4 flex flex-wrap gap-4">
         <div>
-          <label className="mb-1 block text-xs text-[var(--fg-muted)]">레어+ 확정 천장 (연속 미당첨 횟수)</label>
+          <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("gacha.pity_rare_label")}</label>
           <input
             type="number"
             min={1}
@@ -133,7 +137,7 @@ export default function GachaConfigPage() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-[var(--fg-muted)]">레전더리+ 확정 천장 (누적 회차)</label>
+          <label className="mb-1 block text-xs text-[var(--fg-muted)]">{t("gacha.pity_legendary_label")}</label>
           <input
             type="number"
             min={1}
@@ -146,25 +150,25 @@ export default function GachaConfigPage() {
 
       <div className="mb-4 flex flex-col gap-4">
         <RateTable
-          title="KP 가챠 확률"
+          title={t("gacha.rates_kp")}
           keys={GACHA_KEYS}
           values={config.gachaRates}
           onChange={(k, v) => updateRate("gachaRates", k, v)}
         />
         <RateTable
-          title="일반 알 확률"
+          title={t("gacha.rates_normal_egg")}
           keys={NORMAL_EGG_KEYS}
           values={config.normalEggRates}
           onChange={(k, v) => updateRate("normalEggRates", k, v)}
         />
         <RateTable
-          title="왕알 확률"
+          title={t("gacha.rates_big_egg")}
           keys={BIG_EGG_KEYS}
           values={config.bigEggRates}
           onChange={(k, v) => updateRate("bigEggRates", k, v)}
         />
         <RateTable
-          title="황금 알 확률"
+          title={t("gacha.rates_golden_egg")}
           keys={GOLDEN_EGG_KEYS}
           values={config.goldenEggRates}
           onChange={(k, v) => updateRate("goldenEggRates", k, v)}
@@ -172,14 +176,14 @@ export default function GachaConfigPage() {
       </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-      {savedAt && !error && <p className="mb-4 text-sm text-emerald-400">저장되었습니다.</p>}
+      {savedAt && !error && <p className="mb-4 text-sm text-emerald-400">{t("gacha.saved")}</p>}
 
       <button
         onClick={handleSave}
         disabled={saving}
         className="rounded-md bg-[#b7607e] px-4 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
       >
-        {saving ? "저장 중..." : "저장"}
+        {saving ? t("gacha.saving") : t("common.save")}
       </button>
     </div>
   );

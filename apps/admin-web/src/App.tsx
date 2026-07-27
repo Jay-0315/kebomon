@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import AdminLayout from "./components/AdminLayout";
 import { isAdminAuthenticated, setAuthToken } from "./lib/auth";
 import { api } from "./lib/api";
+import { LangProvider } from "./context/LangContext";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import UsersPage from "./pages/UsersPage";
@@ -54,37 +55,39 @@ export default function App() {
 
   return (
     <BrowserRouter basename={basename}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route
-          element={
-            <AdminRoute>
-              <AdminLayout />
-            </AdminRoute>
-          }
-        >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/users/:id" element={<UserDetailPage />} />
-          <Route path="/community/posts" element={<CommunityPostsPage />} />
-          <Route path="/community/comments" element={<CommunityCommentsPage />} />
-          <Route path="/gacha-config" element={<GachaConfigPage />} />
-          <Route path="/battles" element={<BattlesPage />} />
-          <Route path="/guilds" element={<GuildsPage />} />
-          <Route path="/guilds/:id" element={<GuildDetailPage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/characters" element={<CharactersPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/inquiries" element={<InquiriesPage />} />
-          <Route path="/maintenance" element={<MaintenancePage />} />
-          <Route path="/banners" element={<BannersPage />} />
-          <Route path="/season" element={<SeasonPage />} />
-          <Route path="/admin-accounts" element={<AdminAccountsPage />} />
-          <Route path="/action-log" element={<AdminActionLogPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <LangProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/:id" element={<UserDetailPage />} />
+            <Route path="/community/posts" element={<CommunityPostsPage />} />
+            <Route path="/community/comments" element={<CommunityCommentsPage />} />
+            <Route path="/gacha-config" element={<GachaConfigPage />} />
+            <Route path="/battles" element={<BattlesPage />} />
+            <Route path="/guilds" element={<GuildsPage />} />
+            <Route path="/guilds/:id" element={<GuildDetailPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/characters" element={<CharactersPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/inquiries" element={<InquiriesPage />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/banners" element={<BannersPage />} />
+            <Route path="/season" element={<SeasonPage />} />
+            <Route path="/admin-accounts" element={<AdminAccountsPage />} />
+            <Route path="/action-log" element={<AdminActionLogPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </LangProvider>
     </BrowserRouter>
   );
 }

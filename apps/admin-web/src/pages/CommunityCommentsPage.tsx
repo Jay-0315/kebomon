@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 type CommentRow = {
   id: string;
@@ -23,6 +24,7 @@ const stripHtml = (html: string) =>
     .trim();
 
 export default function CommunityCommentsPage() {
+  const { t } = useLang();
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CommentsResponse | null>(null);
@@ -37,7 +39,7 @@ export default function CommunityCommentsPage() {
       const res = await api.get<CommentsResponse>(`/admin/community/comments?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     }
   }
 
@@ -53,28 +55,28 @@ export default function CommunityCommentsPage() {
   }
 
   async function handleDelete(comment: CommentRow) {
-    if (!window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없습니다.")) return;
+    if (!window.confirm(t("community.confirm_delete_comment"))) return;
     try {
       await api.delete(`/admin/community/comments/${comment.id}`);
       load();
     } catch {
-      window.alert("삭제에 실패했습니다.");
+      window.alert(t("community.error_delete"));
     }
   }
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">댓글 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("community.title_comments")}</h1>
 
       <form onSubmit={handleSearchSubmit} className="mb-4 flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="내용 검색"
+          placeholder={t("community.search_placeholder")}
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
-          검색
+          {t("common.search")}
         </button>
       </form>
 
@@ -84,18 +86,18 @@ export default function CommunityCommentsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">작성자</th>
-              <th className="px-3 py-2">내용</th>
-              <th className="px-3 py-2">게시글 ID</th>
-              <th className="px-3 py-2">작성일</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("community.col_author")}</th>
+              <th className="px-3 py-2">{t("community.col_content")}</th>
+              <th className="px-3 py-2">{t("community.col_post_id")}</th>
+              <th className="px-3 py-2">{t("community.col_created")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {data?.comments.map((c) => (
               <tr key={c.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2 whitespace-nowrap">{c.author?.name ?? "-"}</td>
-                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(c.content) || "(내용 없음)"}</td>
+                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(c.content) || t("community.no_content")}</td>
                 <td className="px-3 py-2 text-[var(--fg-faint)]">{c.postId}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">
                   {new Date(c.createdAt).toLocaleDateString()}
@@ -105,7 +107,7 @@ export default function CommunityCommentsPage() {
                     onClick={() => handleDelete(c)}
                     className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
                   >
-                    삭제
+                    {t("common.delete")}
                   </button>
                 </td>
               </tr>
@@ -113,7 +115,7 @@ export default function CommunityCommentsPage() {
             {data?.comments.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -128,7 +130,7 @@ export default function CommunityCommentsPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -138,7 +140,7 @@ export default function CommunityCommentsPage() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 type BattleRow = {
   userId: string;
@@ -24,6 +25,7 @@ type BattleResponse = {
 type Mode = "colosseum" | "duel";
 
 export default function BattlesPage() {
+  const { t } = useLang();
   const [mode, setMode] = useState<Mode>("colosseum");
   const [sort, setSort] = useState<"winrate" | "tierpoints" | "streak">("winrate");
   const [page, setPage] = useState(1);
@@ -35,7 +37,8 @@ export default function BattlesPage() {
     api
       .get<BattleResponse>(`/admin/battles/${mode}?sort=${sort}&page=${page}`)
       .then(setData)
-      .catch(() => setError("목록을 불러오지 못했습니다."));
+      .catch(() => setError(t("common.error_load")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, sort, page]);
 
   function switchMode(next: Mode) {
@@ -45,11 +48,9 @@ export default function BattlesPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold">전적 모니터링</h1>
+      <h1 className="mb-1 text-lg font-semibold">{t("battles.title")}</h1>
       <p className="mb-4 text-sm text-[var(--fg-faint)]">
-        {mode === "colosseum"
-          ? "같은 상대를 반복 공격해서 포인트를 파밍한 정황이 있는 계정을 노란색으로 표시합니다 (어뷰징 참고용, 자동 제재 아님)."
-          : "표본이 어느 정도 쌓였는데 승률이 비정상적으로 높은 계정을 노란색으로 표시합니다 (어뷰징 참고용, 자동 제재 아님)."}
+        {mode === "colosseum" ? t("battles.subtitle_colosseum") : t("battles.subtitle_duel")}
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -62,7 +63,7 @@ export default function BattlesPage() {
                 mode === m ? "bg-[var(--bg-active)] text-[var(--fg)]" : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
               }`}
             >
-              {m === "colosseum" ? "콜로세움" : "듀얼"}
+              {m === "colosseum" ? t("battles.mode_colosseum") : t("battles.mode_duel")}
             </button>
           ))}
         </div>
@@ -71,9 +72,9 @@ export default function BattlesPage() {
           onChange={(e) => setSort(e.target.value as typeof sort)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="winrate" className="bg-[var(--bg-elevated)] text-[var(--fg)]">승률순</option>
-          {mode === "colosseum" && <option value="tierpoints" className="bg-[var(--bg-elevated)] text-[var(--fg)]">티어포인트순</option>}
-          <option value="streak" className="bg-[var(--bg-elevated)] text-[var(--fg)]">최고연승순</option>
+          <option value="winrate" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("battles.sort_winrate")}</option>
+          {mode === "colosseum" && <option value="tierpoints" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("battles.sort_tierpoints")}</option>}
+          <option value="streak" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("battles.sort_streak")}</option>
         </select>
       </div>
 
@@ -83,12 +84,12 @@ export default function BattlesPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">이름</th>
-              <th className="px-3 py-2">이메일</th>
-              {mode === "colosseum" && <th className="px-3 py-2">티어포인트</th>}
-              <th className="px-3 py-2">승/패</th>
-              <th className="px-3 py-2">승률</th>
-              <th className="px-3 py-2">연승 (현재/최고)</th>
+              <th className="px-3 py-2">{t("battles.col_name")}</th>
+              <th className="px-3 py-2">{t("battles.col_email")}</th>
+              {mode === "colosseum" && <th className="px-3 py-2">{t("battles.col_tierpoints")}</th>}
+              <th className="px-3 py-2">{t("battles.col_wins_losses")}</th>
+              <th className="px-3 py-2">{t("battles.col_winrate")}</th>
+              <th className="px-3 py-2">{t("battles.col_streak")}</th>
             </tr>
           </thead>
           <tbody>
@@ -101,7 +102,7 @@ export default function BattlesPage() {
                   {r.name}
                   {r.suspicious && (
                     <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
-                      의심
+                      {t("battles.suspicious")}
                     </span>
                   )}
                 </td>
@@ -119,7 +120,7 @@ export default function BattlesPage() {
             {data?.rows.length === 0 && (
               <tr>
                 <td colSpan={mode === "colosseum" ? 6 : 5} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -134,7 +135,7 @@ export default function BattlesPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -144,7 +145,7 @@ export default function BattlesPage() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import PostDetailModal, { type PostDetail } from "../components/PostDetailModal";
+import { useLang } from "../context/LangContext";
 
 type PostRow = PostDetail;
 
@@ -18,6 +19,7 @@ const stripHtml = (html: string) =>
     .trim();
 
 export default function CommunityPostsPage() {
+  const { t } = useLang();
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
@@ -35,7 +37,7 @@ export default function CommunityPostsPage() {
       const res = await api.get<PostsResponse>(`/admin/community/posts?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     }
   }
 
@@ -51,24 +53,24 @@ export default function CommunityPostsPage() {
   }
 
   async function handleDelete(post: PostRow) {
-    if (!window.confirm("이 게시글을 삭제할까요? 되돌릴 수 없습니다.")) return;
+    if (!window.confirm(t("community.confirm_delete_post"))) return;
     try {
       await api.delete(`/admin/community/posts/${post.id}`);
       load();
     } catch {
-      window.alert("삭제에 실패했습니다.");
+      window.alert(t("community.error_delete"));
     }
   }
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">게시글 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("community.title_posts")}</h1>
 
       <form onSubmit={handleSearchSubmit} className="mb-4 flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="내용 검색"
+          placeholder={t("community.search_placeholder")}
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <select
@@ -76,13 +78,13 @@ export default function CommunityPostsPage() {
           onChange={(e) => setCategory(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 카테고리</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("community.category_all")}</option>
           <option value="brag" className="bg-[var(--bg-elevated)] text-[var(--fg)]">brag</option>
           <option value="tip" className="bg-[var(--bg-elevated)] text-[var(--fg)]">tip</option>
           <option value="chat" className="bg-[var(--bg-elevated)] text-[var(--fg)]">chat</option>
         </select>
         <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
-          검색
+          {t("common.search")}
         </button>
       </form>
 
@@ -92,19 +94,19 @@ export default function CommunityPostsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">작성자</th>
-              <th className="px-3 py-2">내용</th>
-              <th className="px-3 py-2">카테고리</th>
-              <th className="px-3 py-2">좋아요</th>
-              <th className="px-3 py-2">작성일</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("community.col_author")}</th>
+              <th className="px-3 py-2">{t("community.col_content")}</th>
+              <th className="px-3 py-2">{t("community.col_category")}</th>
+              <th className="px-3 py-2">{t("community.col_likes")}</th>
+              <th className="px-3 py-2">{t("community.col_created")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {data?.posts.map((p) => (
               <tr key={p.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2 whitespace-nowrap">{p.author?.name ?? "-"}</td>
-                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(p.content) || "(내용 없음)"}</td>
+                <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(p.content) || t("community.no_content")}</td>
                 <td className="px-3 py-2">{p.category}</td>
                 <td className="px-3 py-2">{p.likesCount}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">
@@ -116,13 +118,13 @@ export default function CommunityPostsPage() {
                       onClick={() => setViewing(p)}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
-                      상세보기
+                      {t("community.view_detail")}
                     </button>
                     <button
                       onClick={() => handleDelete(p)}
                       className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
                     >
-                      삭제
+                      {t("common.delete")}
                     </button>
                   </div>
                 </td>
@@ -131,7 +133,7 @@ export default function CommunityPostsPage() {
             {data?.posts.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -146,7 +148,7 @@ export default function CommunityPostsPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -156,7 +158,7 @@ export default function CommunityPostsPage() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}

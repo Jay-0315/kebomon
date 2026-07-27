@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { TriangleAlert } from "lucide-react";
 import { api } from "../lib/api";
 import CharacterEditModal, { type CharacterRow } from "../components/CharacterEditModal";
+import { useLang } from "../context/LangContext";
 
 const RARITIES = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const ARENA_ARCHETYPES = ["warrior", "tank", "mage", "rogue", "nature", "meka", "cursed"];
 
 export default function CharactersPage() {
+  const { t } = useLang();
   const [rows, setRows] = useState<CharacterRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -20,7 +22,7 @@ export default function CharactersPage() {
       const res = await api.get<CharacterRow[]>("/admin/characters");
       setRows(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     }
   }
 
@@ -43,12 +45,12 @@ export default function CharactersPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold">케보몬 관리</h1>
+      <h1 className="mb-1 text-lg font-semibold">{t("characters.title")}</h1>
       <p className="mb-4 text-sm text-[var(--fg-faint)]">
-        등급/역할/스탯 배율은 콜로세움·아레나·레이드·가챠·로그라이크에 즉시 반영됩니다.{" "}
+        {t("characters.subtitle")}{" "}
         <span className="inline-flex items-center gap-1 text-amber-400">
           <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-          단, 로그라이크 시작 덱(카드 구성)은 캐릭터 타입의 정적 데이터를 그대로 사용해 여기서 타입을 바꿔도 덱 구성에는 반영되지 않습니다.
+          {t("characters.subtitle_warning")}
         </span>
       </p>
 
@@ -56,7 +58,7 @@ export default function CharactersPage() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="이름 또는 ID 검색"
+          placeholder={t("characters.search_placeholder")}
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <select
@@ -64,7 +66,7 @@ export default function CharactersPage() {
           onChange={(e) => setRarityFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 등급</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("characters.rarity_all")}</option>
           {RARITIES.map((r) => (
             <option key={r} value={r} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{r}</option>
           ))}
@@ -74,12 +76,14 @@ export default function CharactersPage() {
           onChange={(e) => setArchFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 아레나 역할</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("characters.arena_all")}</option>
           {ARENA_ARCHETYPES.map((a) => (
             <option key={a} value={a} className="bg-[var(--bg-elevated)] text-[var(--fg)]">{a}</option>
           ))}
         </select>
-        <span className="self-center text-xs text-[var(--fg-faint)]">{filtered.length}종</span>
+        <span className="self-center text-xs text-[var(--fg-faint)]">
+          {t("characters.count_suffix", { count: filtered.length })}
+        </span>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
@@ -88,14 +92,14 @@ export default function CharactersPage() {
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--bg-elevated)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">ID</th>
-              <th className="px-3 py-2">이름</th>
-              <th className="px-3 py-2">타입</th>
-              <th className="px-3 py-2">등급</th>
-              <th className="px-3 py-2">아레나 역할</th>
-              <th className="px-3 py-2">로그라이크 역할</th>
-              <th className="px-3 py-2">배율 (hp/atk/def/spd)</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("characters.col_id")}</th>
+              <th className="px-3 py-2">{t("characters.col_name")}</th>
+              <th className="px-3 py-2">{t("characters.col_type")}</th>
+              <th className="px-3 py-2">{t("characters.col_rarity")}</th>
+              <th className="px-3 py-2">{t("characters.col_arena")}</th>
+              <th className="px-3 py-2">{t("characters.col_rogue")}</th>
+              <th className="px-3 py-2">{t("characters.col_mult")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -115,7 +119,7 @@ export default function CharactersPage() {
                     onClick={() => setEditing(c)}
                     className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                   >
-                    편집
+                    {t("characters.edit")}
                   </button>
                 </td>
               </tr>
@@ -123,7 +127,7 @@ export default function CharactersPage() {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}

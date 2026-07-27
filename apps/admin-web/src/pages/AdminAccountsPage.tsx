@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 type AdminUserRow = {
   id: string;
@@ -17,6 +18,7 @@ type UsersResponse = {
 };
 
 export default function AdminAccountsPage() {
+  const { t } = useLang();
   const [users, setUsers] = useState<AdminUserRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,30 +28,29 @@ export default function AdminAccountsPage() {
       const res = await api.get<UsersResponse>("/admin/users?role=ADMIN&sortBy=createdAt&sortDir=asc");
       setUsers(res.users);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     }
   }
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleRevoke(user: AdminUserRow) {
-    if (!window.confirm(`${user.email}의 관리자 권한을 해제할까요?`)) return;
+    if (!window.confirm(t("adminAccounts.confirm_revoke", { email: user.email }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/role`, { role: "USER" });
       load();
     } catch {
-      window.alert("권한 변경에 실패했습니다.");
+      window.alert(t("users.error_role_change"));
     }
   }
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold">관리자 계정</h1>
-      <p className="mb-4 text-sm text-[var(--fg-faint)]">
-        현재 ADMIN 권한을 보유한 계정 전체 목록입니다.
-      </p>
+      <h1 className="mb-1 text-lg font-semibold">{t("adminAccounts.title")}</h1>
+      <p className="mb-4 text-sm text-[var(--fg-faint)]">{t("adminAccounts.subtitle")}</p>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
@@ -57,11 +58,11 @@ export default function AdminAccountsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <th className="px-3 py-2">이름</th>
-              <th className="px-3 py-2">이메일</th>
-              <th className="px-3 py-2">가입일</th>
-              <th className="px-3 py-2">최근 접속</th>
-              <th className="px-3 py-2">액션</th>
+              <th className="px-3 py-2">{t("users.col_name")}</th>
+              <th className="px-3 py-2">{t("users.col_email")}</th>
+              <th className="px-3 py-2">{t("users.col_created")}</th>
+              <th className="px-3 py-2">{t("users.col_last_login")}</th>
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -82,7 +83,7 @@ export default function AdminAccountsPage() {
                     onClick={() => handleRevoke(u)}
                     className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
                   >
-                    관리자 해제
+                    {t("users.demote")}
                   </button>
                 </td>
               </tr>
@@ -90,7 +91,7 @@ export default function AdminAccountsPage() {
             {users?.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  관리자 계정이 없습니다.
+                  {t("adminAccounts.no_admins")}
                 </td>
               </tr>
             )}

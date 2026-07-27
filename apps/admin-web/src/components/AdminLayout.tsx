@@ -3,27 +3,30 @@ import { NavLink, Outlet, useNavigate } from "react-router";
 import { Menu, PanelLeft, PanelLeftClose, X } from "lucide-react";
 import { clearAuthSession, getStoredUser } from "../lib/auth";
 import { getTheme, toggleTheme } from "../lib/theme";
+import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 
 const navItems = [
-  { to: "/dashboard", label: "대시보드" },
-  { to: "/users", label: "회원 관리" },
-  { to: "/community/posts", label: "게시글 관리" },
-  { to: "/community/comments", label: "댓글 관리" },
-  { to: "/reports", label: "신고 관리" },
-  { to: "/inquiries", label: "문의 관리" },
-  { to: "/gacha-config", label: "가챠 확률 설정" },
-  { to: "/characters", label: "케보몬 관리" },
-  { to: "/battles", label: "전적 모니터링" },
-  { to: "/guilds", label: "길드 관리" },
-  { to: "/notifications", label: "공지 발송" },
-  { to: "/banners", label: "배너 관리" },
-  { to: "/season", label: "시즌 관리" },
-  { to: "/maintenance", label: "점검 모드" },
-  { to: "/admin-accounts", label: "관리자 계정" },
-  { to: "/action-log", label: "감사 로그" },
-];
+  { to: "/dashboard", key: "nav.dashboard" },
+  { to: "/users", key: "nav.users" },
+  { to: "/community/posts", key: "nav.community_posts" },
+  { to: "/community/comments", key: "nav.community_comments" },
+  { to: "/reports", key: "nav.reports" },
+  { to: "/inquiries", key: "nav.inquiries" },
+  { to: "/gacha-config", key: "nav.gacha_config" },
+  { to: "/characters", key: "nav.characters" },
+  { to: "/battles", key: "nav.battles" },
+  { to: "/guilds", key: "nav.guilds" },
+  { to: "/notifications", key: "nav.notifications" },
+  { to: "/banners", key: "nav.banners" },
+  { to: "/season", key: "nav.season" },
+  { to: "/maintenance", key: "nav.maintenance" },
+  { to: "/admin-accounts", key: "nav.admin_accounts" },
+  { to: "/action-log", key: "nav.action_log" },
+] satisfies { to: string; key: TranslationKey }[];
 
 function NavList({ onNav }: { onNav?: () => void }) {
+  const { t } = useLang();
   return (
     <nav className="flex flex-col gap-1">
       {navItems.map((item) => (
@@ -39,21 +42,49 @@ function NavList({ onNav }: { onNav?: () => void }) {
             }`
           }
         >
-          {item.label}
+          {t(item.key)}
         </NavLink>
       ))}
     </nav>
   );
 }
 
+const LANG_OPTIONS: { code: "ko" | "ja" | "en"; label: string }[] = [
+  { code: "ko", label: "한국어" },
+  { code: "ja", label: "日本語" },
+  { code: "en", label: "EN" },
+];
+
+function LangSwitcher() {
+  const { lang, setLang, t } = useLang();
+  return (
+    <div className="flex items-center gap-0.5 rounded-md border border-[var(--border)] p-0.5" title={t("nav.lang_toggle")}>
+      {LANG_OPTIONS.map((opt) => (
+        <button
+          key={opt.code}
+          onClick={() => setLang(opt.code)}
+          className={`rounded px-1.5 py-1 text-xs ${
+            lang === opt.code
+              ? "bg-[var(--bg-active)] text-[var(--fg)]"
+              : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ThemeToggleButton() {
   const [theme, setTheme] = useState(getTheme);
+  const { t } = useLang();
 
   return (
     <button
       onClick={() => setTheme(toggleTheme())}
-      aria-label="다크/라이트 모드 전환"
-      title="다크/라이트 모드 전환"
+      aria-label={t("nav.theme_toggle")}
+      title={t("nav.theme_toggle")}
       className="rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]"
     >
       {theme === "light" ? (
@@ -73,6 +104,7 @@ function ThemeToggleButton() {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const user = getStoredUser();
+  const { t } = useLang();
   const [collapsed, setCollapsed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("adminSidebarCollapsed") === "1",
   );
@@ -129,11 +161,14 @@ export default function AdminLayout() {
               <p className="truncate px-2 text-xs text-[var(--fg-muted)]">
                 {user?.name} ({user?.email})
               </p>
+              <div className="flex justify-center">
+                <LangSwitcher />
+              </div>
               <button
                 onClick={handleLogout}
                 className="w-full rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
               >
-                로그아웃
+                {t("nav.logout")}
               </button>
             </div>
           </aside>
@@ -145,14 +180,14 @@ export default function AdminLayout() {
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button
               onClick={() => setMobileOpen(true)}
-              title="메뉴 열기"
+              title={t("nav.menu_open")}
               className="rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] lg:hidden"
             >
               <Menu className="h-4 w-4" />
             </button>
             <button
               onClick={toggleCollapsed}
-              title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+              title={collapsed ? t("nav.sidebar_expand") : t("nav.sidebar_collapse")}
               className="hidden rounded-md border border-[var(--border)] p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] lg:flex"
             >
               {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -162,12 +197,13 @@ export default function AdminLayout() {
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <LangSwitcher />
             <ThemeToggleButton />
             <button
               onClick={handleLogout}
               className="hidden rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] sm:inline-flex"
             >
-              로그아웃
+              {t("nav.logout")}
             </button>
           </div>
         </header>

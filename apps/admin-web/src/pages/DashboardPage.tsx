@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../lib/api";
+import { useLang } from "../context/LangContext";
 
 type TrendPoint = { date: string; count: number };
 
@@ -91,6 +92,7 @@ function TrendChart({ id, title, data, color }: { id: string; title: string; dat
 }
 
 export default function DashboardPage() {
+  const { t } = useLang();
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,26 +100,27 @@ export default function DashboardPage() {
     api
       .get<DashboardSummary>("/admin/dashboard")
       .then(setData)
-      .catch(() => setError("통계를 불러오지 못했습니다."));
+      .catch(() => setError(t("dashboard.error_load")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (error) return <p className="text-red-400">{error}</p>;
-  if (!data) return <p className="text-[var(--fg-faint)]">불러오는 중...</p>;
+  if (!data) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">대시보드</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("dashboard.title")}</h1>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="총 회원수" value={data.totalUsers} />
-        <StatTile label="오늘 접속(DAU)" value={data.dau} />
-        <StatTile label="총 게시글" value={data.totalPosts} />
-        <StatTile label="총 댓글" value={data.totalComments} />
+        <StatTile label={t("dashboard.total_users")} value={data.totalUsers} />
+        <StatTile label={t("dashboard.dau")} value={data.dau} />
+        <StatTile label={t("dashboard.total_posts")} value={data.totalPosts} />
+        <StatTile label={t("dashboard.total_comments")} value={data.totalComments} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TrendChart id="signup" title="최근 14일 가입 추이" data={data.signupTrend} color="var(--chart-1)" />
-        <TrendChart id="posts" title="최근 14일 게시글 추이" data={data.postTrend} color="var(--chart-2)" />
+        <TrendChart id="signup" title={t("dashboard.signup_trend")} data={data.signupTrend} color="var(--chart-1)" />
+        <TrendChart id="posts" title={t("dashboard.post_trend")} data={data.postTrend} color="var(--chart-2)" />
       </div>
     </div>
   );

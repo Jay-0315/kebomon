@@ -24,8 +24,21 @@ export class AdminActionLogService {
       this.prisma.adminActionLog.count({ where }),
     ]);
 
+    // actorId/targetId(USER)는 FK 없는 평문 컬럼이라(탈퇴 유저 기록도 남아야 함) 별도 조회로 이름을 붙인다.
+    const userTargetIds = rows.filter((r) => r.targetType === "USER" && r.targetId).map((r) => r.targetId as string);
+    const idsToResolve = [...new Set([...rows.map((r) => r.actorId), ...userTargetIds])];
+    const users = idsToResolve.length
+      ? await this.prisma.user.findMany({ where: { id: { in: idsToResolve } }, select: { id: true, name: true } })
+      : [];
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
+
     return {
-      logs: rows.map((r) => ({ ...r, id: r.id.toString() })),
+      logs: rows.map((r) => ({
+        ...r,
+        id: r.id.toString(),
+        actorName: nameById.get(r.actorId) ?? null,
+        targetName: r.targetType === "USER" && r.targetId ? (nameById.get(r.targetId) ?? null) : null,
+      })),
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),

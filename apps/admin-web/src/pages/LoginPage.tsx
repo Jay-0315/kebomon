@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../lib/api";
 import { clearAuthSession, setAuthSession, type AdminUser } from "../lib/auth";
+import { useLang } from "../context/LangContext";
 
 type LoginResponse = {
   accessToken: string;
@@ -10,6 +11,7 @@ type LoginResponse = {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +22,7 @@ export default function LoginPage() {
   function finishLogin(res: LoginResponse) {
     if (res.user.role !== "ADMIN") {
       clearAuthSession();
-      setError("관리자 계정이 아닙니다.");
+      setError(t("login.error_forbidden"));
       return;
     }
     setAuthSession(res.accessToken, res.user);
@@ -36,7 +38,7 @@ export default function LoginPage() {
         client_id: googleClientId,
         callback: async (response) => {
           if (!response.credential) {
-            setError("Google 로그인 토큰을 받지 못했습니다.");
+            setError(t("login.error_google_token"));
             return;
           }
           setLoading(true);
@@ -48,7 +50,7 @@ export default function LoginPage() {
             });
             finishLogin(res);
           } catch {
-            setError("Google 로그인에 실패했습니다.");
+            setError(t("login.error_google_failed"));
           } finally {
             setLoading(false);
           }
@@ -86,7 +88,7 @@ export default function LoginPage() {
       const res = await api.post<LoginResponse>("/auth/login", { email, password });
       finishLogin(res);
     } catch {
-      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      setError(t("login.error_invalid"));
     } finally {
       setLoading(false);
     }
@@ -96,9 +98,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] p-8">
         <p className="mb-1 text-sm text-[#b7607e]">KEBO</p>
-        <h1 className="mb-6 text-xl font-semibold">관리자 로그인</h1>
+        <h1 className="mb-6 text-xl font-semibold">{t("login.heading")}</h1>
 
-        <label className="mb-1 block text-sm text-[var(--fg-muted)]">이메일</label>
+        <label className="mb-1 block text-sm text-[var(--fg-muted)]">{t("login.email")}</label>
         <input
           type="email"
           required
@@ -107,7 +109,7 @@ export default function LoginPage() {
           className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
         />
 
-        <label className="mb-1 block text-sm text-[var(--fg-muted)]">비밀번호</label>
+        <label className="mb-1 block text-sm text-[var(--fg-muted)]">{t("login.password")}</label>
         <input
           type="password"
           required
@@ -123,14 +125,14 @@ export default function LoginPage() {
           disabled={loading}
           className="mb-4 w-full rounded-md bg-[#b7607e] px-3 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
         >
-          {loading ? "로그인 중..." : "로그인"}
+          {loading ? t("login.submitting") : t("login.submit")}
         </button>
 
         {googleClientId && (
           <>
             <div className="mb-4 flex items-center gap-3 text-xs text-[var(--fg-faint)]">
               <div className="h-px flex-1 bg-[var(--border)]" />
-              또는
+              {t("login.or")}
               <div className="h-px flex-1 bg-[var(--border)]" />
             </div>
             <div ref={googleButtonRef} className="flex justify-center" />

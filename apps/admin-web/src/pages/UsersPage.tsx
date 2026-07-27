@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useLang } from "../context/LangContext";
 
 type SortKey = "name" | "email" | "role" | "status" | "reward" | "createdAt" | "lastLoginAt";
 type SortDir = "asc" | "desc";
@@ -59,6 +60,7 @@ type UsersResponse = {
 };
 
 export default function UsersPage() {
+  const { t } = useLang();
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q, 300);
   const [roleFilter, setRoleFilter] = useState("");
@@ -86,7 +88,7 @@ export default function UsersPage() {
       const res = await api.get<UsersResponse>(`/admin/users?${params.toString()}`);
       setData(res);
     } catch {
-      setError("목록을 불러오지 못했습니다.");
+      setError(t("common.error_load"));
     } finally {
       setLoading(false);
     }
@@ -115,34 +117,34 @@ export default function UsersPage() {
 
   async function toggleRole(user: AdminUserRow) {
     const nextRole = user.role === "ADMIN" ? "USER" : "ADMIN";
-    if (!window.confirm(`${user.email}의 권한을 ${nextRole}로 변경할까요?`)) return;
+    if (!window.confirm(t("users.confirm_role_change", { email: user.email, role: nextRole }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/role`, { role: nextRole });
       void load(page);
     } catch {
-      window.alert("권한 변경에 실패했습니다.");
+      window.alert(t("users.error_role_change"));
     }
   }
 
   async function unsuspend(user: AdminUserRow) {
-    if (!window.confirm(`${user.email}의 정지를 해제할까요?`)) return;
+    if (!window.confirm(t("users.confirm_unsuspend", { email: user.email }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
       void load(page);
     } catch {
-      window.alert("정지 해제에 실패했습니다.");
+      window.alert(t("users.error_unsuspend"));
     }
   }
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">회원 관리</h1>
+      <h1 className="mb-4 text-lg font-semibold">{t("users.title")}</h1>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="이름 또는 이메일 검색"
+          placeholder={t("users.search_placeholder")}
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
         <select
@@ -150,7 +152,7 @@ export default function UsersPage() {
           onChange={(e) => setRoleFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 권한</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.role_all")}</option>
           <option value="USER" className="bg-[var(--bg-elevated)] text-[var(--fg)]">USER</option>
           <option value="ADMIN" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ADMIN</option>
         </select>
@@ -159,7 +161,7 @@ export default function UsersPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
-          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">전체 상태</option>
+          <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.status_all")}</option>
           <option value="ACTIVE" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ACTIVE</option>
           <option value="SUSPENDED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">SUSPENDED</option>
         </select>
@@ -171,20 +173,20 @@ export default function UsersPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
-              <SortHeader sortKey="name" label="이름" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <SortHeader sortKey="email" label="이메일" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <SortHeader sortKey="role" label="권한" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <th className="px-3 py-2">접속</th>
+              <SortHeader sortKey="name" label={t("users.col_name")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="email" label={t("users.col_email")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="role" label={t("users.col_role")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <th className="px-3 py-2">{t("users.col_online")}</th>
               <SortHeader
                 sortKey="reward"
-                label="재화 (KP/일반알/왕알/황금알/강화석)"
+                label={t("users.col_reward")}
                 activeKey={sortBy}
                 dir={sortDir}
                 onToggle={toggleSort}
               />
-              <SortHeader sortKey="createdAt" label="가입일" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <SortHeader sortKey="lastLoginAt" label="최근 접속" activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <th className="px-3 py-2">액션</th>
+              <SortHeader sortKey="createdAt" label={t("users.col_created")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <SortHeader sortKey="lastLoginAt" label={t("users.col_last_login")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
+              <th className="px-3 py-2">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -198,12 +200,12 @@ export default function UsersPage() {
                 <td className="px-3 py-2">{u.email}</td>
                 <td className="px-3 py-2">{u.role}</td>
                 <td className="px-3 py-2">
-                  <span className="flex items-center gap-1.5" title={u.online ? "접속 중" : "오프라인"}>
+                  <span className="flex items-center gap-1.5" title={u.online ? t("users.online") : t("users.offline")}>
                     <span
                       className="inline-block h-2.5 w-2.5 rounded-full"
                       style={{ background: u.online ? "#3b82f6" : "#ef4444" }}
                     />
-                    <span className="text-[var(--fg-muted)]">{u.online ? "접속 중" : "오프라인"}</span>
+                    <span className="text-[var(--fg-muted)]">{u.online ? t("users.online") : t("users.offline")}</span>
                   </span>
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
@@ -221,19 +223,19 @@ export default function UsersPage() {
                       onClick={() => toggleRole(u)}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
-                      {u.role === "ADMIN" ? "관리자 해제" : "관리자 지정"}
+                      {u.role === "ADMIN" ? t("users.demote") : t("users.promote")}
                     </button>
                     <button
                       onClick={() => (u.status === "SUSPENDED" ? unsuspend(u) : setSuspendTarget(u))}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
-                      {u.status === "SUSPENDED" ? "정지 해제" : "정지"}
+                      {u.status === "SUSPENDED" ? t("users.unsuspend") : t("users.suspend")}
                     </button>
                     <button
                       onClick={() => setRewardTarget(u)}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
-                      재화 조정
+                      {t("users.adjust_reward")}
                     </button>
                   </div>
                 </td>
@@ -242,7 +244,7 @@ export default function UsersPage() {
             {!loading && data?.users.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-6 text-center text-[var(--fg-faint)]">
-                  결과가 없습니다.
+                  {t("common.no_results")}
                 </td>
               </tr>
             )}
@@ -257,7 +259,7 @@ export default function UsersPage() {
             onClick={() => handlePageChange(page - 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            이전
+            {t("common.prev")}
           </button>
           <span className="text-[var(--fg-muted)]">
             {data.page} / {data.totalPages}
@@ -267,7 +269,7 @@ export default function UsersPage() {
             onClick={() => handlePageChange(page + 1)}
             className="rounded border border-[var(--border)] px-2 py-1 disabled:opacity-30"
           >
-            다음
+            {t("common.next")}
           </button>
         </div>
       )}
