@@ -51,17 +51,24 @@ async function request<T>(
       if (response.status === 401 && token) {
         emitAuthExpired();
       }
-      if (response.status === 503) {
-        try {
-          const body = await response.json();
-          if (body?.maintenance) {
-            emitMaintenance({ message: body.message ?? null, endsAt: body.endsAt ?? null });
-          }
-        } catch {
-          /* 바디 파싱 실패는 무시 — 폴링이 폴백 */
-        }
+
+      // NestJS 에러 응답 바디: { statusCode, message, error } — message는
+      // BadRequestException("텍스트")면 문자열, class-validator 검증 실패면 문자열 배열
+      let body: { message?: string | string[]; maintenance?: boolean; endsAt?: string } | null = null;
+      try {
+        body = await response.json();
+      } catch {
+        /* 바디 파싱 실패는 무시 — 아래에서 HTTP {status}로 폴백 */
       }
-      const error = new Error(`HTTP ${response.status}`) as Error & {
+
+      if (response.status === 503 && body?.maintenance) {
+        emitMaintenance({ message: (body.message as string) ?? null, endsAt: body.endsAt ?? null });
+      }
+
+      const serverMessage = Array.isArray(body?.message)
+        ? body.message.join(" ")
+        : body?.message;
+      const error = new Error(serverMessage || `HTTP ${response.status}`) as Error & {
         status: number;
       };
       error.status = response.status;

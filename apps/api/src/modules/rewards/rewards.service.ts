@@ -701,6 +701,7 @@ export class RewardsService {
     monthDays: number;
     monthWeekRewards: number;
     eggReward: "big" | "golden" | null;
+    newlyUnlockedAchievements: number[];
   }> {
     const todayKTC = getTodayKTC();
     const currentMonthKey = todayKTC.slice(0, 7); // "YYYY-MM"
@@ -708,7 +709,7 @@ export class RewardsService {
     const reward = await this.getOrCreateReward(userId);
 
     if (reward.lastAttendanceDate === todayKTC) {
-      return { alreadyClaimed: true, points: 0, streakDays: reward.streakDays, attendanceDays: reward.attendanceDays, monthDays: reward.monthDays, monthWeekRewards: reward.monthWeekRewards, eggReward: null };
+      return { alreadyClaimed: true, points: 0, streakDays: reward.streakDays, attendanceDays: reward.attendanceDays, monthDays: reward.monthDays, monthWeekRewards: reward.monthWeekRewards, eggReward: null, newlyUnlockedAchievements: [] };
     }
 
     // 월 바뀌면 monthDays·monthWeekRewards 리셋
@@ -756,6 +757,8 @@ export class RewardsService {
     void this.markQuestDone(userId, "login").catch(() => undefined);
     void this.incrementWeeklyQuestProgress(userId, "login").catch(() => undefined);
 
+    const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
+
     return {
       alreadyClaimed: false,
       points,
@@ -764,6 +767,7 @@ export class RewardsService {
       monthDays: updated.monthDays,
       monthWeekRewards: updated.monthWeekRewards,
       eggReward,
+      newlyUnlockedAchievements,
     };
   }
 
@@ -909,7 +913,9 @@ export class RewardsService {
       })
       .catch(() => undefined);
 
-    return { points: RewardsService.DAILY_QUEST_BONUS_POINTS };
+    const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
+
+    return { points: RewardsService.DAILY_QUEST_BONUS_POINTS, newlyUnlockedAchievements };
   }
 
   // ─── 주간 퀘스트 (일일 퀘스트와 동일한 4개 항목, 주 단위 누적 카운트 + 더 큰 보상) ──
@@ -994,7 +1000,9 @@ export class RewardsService {
       })
       .catch(() => undefined);
 
-    return { points: RewardsService.WEEKLY_QUEST_BONUS_POINTS };
+    const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
+
+    return { points: RewardsService.WEEKLY_QUEST_BONUS_POINTS, newlyUnlockedAchievements };
   }
 
   // ─── 포인트 상점 ─────────────────────────────────────────────────────────────
@@ -1252,6 +1260,8 @@ export class RewardsService {
       ]);
     }
 
+    const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
+
     return {
       eggType,
       characterId: pick.id,
@@ -1259,6 +1269,7 @@ export class RewardsService {
       isDuplicate,
       points: dupPoints,
       essence: dupEssence,
+      newlyUnlockedAchievements,
     };
   }
 
@@ -1314,6 +1325,10 @@ export class RewardsService {
       ),
     ]);
     void logPointsChange(this.prisma, userId, totalDupPoints, "알 일괄 까기 중복 환급");
+
+    // 결과 배열 형태(results)는 프론트가 그대로 쓰고 있어 그대로 유지 — 새로 지급된 업적
+    // 캐릭터는 프론트에서 /rewards/summary 재조회로 감지(완료된 원정/로그라이크와 동일 패턴)
+    await this.grantAchievementsAndTitles(userId);
 
     return results;
   }
@@ -1412,6 +1427,8 @@ export class RewardsService {
     void this.markQuestDone(userId, "gacha").catch(() => undefined);
     void this.incrementWeeklyQuestProgress(userId, "gacha").catch(() => undefined);
 
+    const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
+
     return {
       results,
       pointsSpent: cost,
@@ -1420,6 +1437,7 @@ export class RewardsService {
       remainingPoints: reward.missionPoints - cost + totalBonusPoints,
       gachaPityCount: pity,
       legendaryPityCount: legendaryPity,
+      newlyUnlockedAchievements,
     };
   }
 
@@ -1589,6 +1607,15 @@ export class RewardsService {
     const dexReward = await this.checkAndGrantDexMilestones(userId, ownedSet.size + newlyUnlocked.length);
 
     return { newlyUnlocked, dexMilestones: dexReward.milestones, dexReward };
+  }
+
+  /** 업적/칭호를 함께 재확인 — 실패해도 메인 흐름은 막지 않고, 새로 획득한 업적 캐릭터 id만 반환 */
+  private async grantAchievementsAndTitles(userId: string): Promise<number[]> {
+    const [achResult] = await Promise.all([
+      this.checkAndGrantAchievements(userId),
+      this.checkAndGrantTitles(userId),
+    ]).catch(() => [{ newlyUnlocked: [] as number[] }] as [{ newlyUnlocked: number[] }]);
+    return achResult.newlyUnlocked;
   }
 
   /** 도감 보유 종 수가 마일스톤을 새로 넘겼으면 KP/알/강화석을 지급 */

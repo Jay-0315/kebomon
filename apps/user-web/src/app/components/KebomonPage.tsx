@@ -846,6 +846,7 @@ export default function KebomonPage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [equipping, setEquipping] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  const [enhancePhase, setEnhancePhase] = useState<"idle" | "charging" | "result">("idle");
   const [enhanceResult, setEnhanceResult] = useState<{
     success: boolean;
     newLevel: number;
@@ -857,6 +858,7 @@ export default function KebomonPage() {
   );
   const [breedRarity, setBreedRarity] = useState<CharacterRarity>("common");
   const [breeding, setBreeding] = useState(false);
+  const [breedPhase, setBreedPhase] = useState<"idle" | "synthesizing" | "reveal">("idle");
   const [breedResult, setBreedResult] = useState<{ characterId: number } | null>(null);
   const [breedError, setBreedError] = useState<string | null>(null);
   const [checkingAchievements, setCheckingAchievements] = useState(false);
@@ -943,8 +945,12 @@ export default function KebomonPage() {
 
     setEnhancing(true);
     setEnhanceResult(null);
+    setEnhancePhase("charging");
     try {
-      const result = await enhanceCharacter(equippedChar.id);
+      const [result] = await Promise.all([
+        enhanceCharacter(equippedChar.id),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
       setEnhanceResult({ success: result.success, newLevel: result.newLevel });
     } catch {
       setEnhanceResult({
@@ -953,8 +959,13 @@ export default function KebomonPage() {
       });
     } finally {
       setEnhancing(false);
-      setTimeout(() => setEnhanceResult(null), 2500);
+      setEnhancePhase("result");
     }
+  };
+
+  const closeEnhanceModal = () => {
+    setEnhancePhase("idle");
+    setEnhanceResult(null);
   };
 
   const handleBuy = async () => {
@@ -983,14 +994,25 @@ export default function KebomonPage() {
     setBreeding(true);
     setBreedError(null);
     setBreedResult(null);
+    setBreedPhase("synthesizing");
     try {
-      const result = await breedCharacter(breedRarity);
+      const [result] = await Promise.all([
+        breedCharacter(breedRarity),
+        new Promise((resolve) => setTimeout(resolve, 1800)),
+      ]);
       setBreedResult({ characterId: result.characterId });
+      setBreedPhase("reveal");
     } catch (e) {
       setBreedError(e instanceof Error ? e.message : String(e));
+      setBreedPhase("idle");
     } finally {
       setBreeding(false);
     }
+  };
+
+  const closeBreedModal = () => {
+    setBreedPhase("idle");
+    setBreedResult(null);
   };
 
   const rarities: Filter[] = [
@@ -1311,18 +1333,6 @@ export default function KebomonPage() {
                             ? t("enhance.max")
                             : t("enhance.btn")}
                       </button>
-                      {enhanceResult && (
-                        <p
-                          className={`text-sm font-medium ${enhanceResult.success ? "text-emerald-400" : "text-rose-400"}`}
-                        >
-                          {enhanceResult.success
-                            ? t("enhance.success")
-                            : t("enhance.fail")}
-                          {enhanceResult.success
-                            ? ` +${enhanceResult.newLevel}`
-                            : ""}
-                        </p>
-                      )}
                     </div>
 
                     <p className="text-[11px] text-muted-foreground/60 mt-2">
@@ -1338,122 +1348,75 @@ export default function KebomonPage() {
         {/* ══════════════ 합성 탭 ══════════════ */}
         {tab === "breed" && (
           <div className="flex flex-col gap-4">
-            <div className="bg-card rounded-2xl border border-border p-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{t("breed.essence")}</p>
-                <p className="text-2xl font-bold flex items-center gap-2 mt-1">
-                  {breedingEssence}
-                  <FlaskConical className="w-5 h-5 text-primary" />
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground max-w-[55%] text-right">
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <p className="text-xs text-muted-foreground">{t("breed.essence")}</p>
+              <p className="text-2xl font-bold flex items-center gap-2 mt-1">
+                {breedingEssence}
+                <FlaskConical className="w-5 h-5 text-primary" />
+              </p>
+              <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
                 {t("breed.desc")}
               </p>
             </div>
 
-            {breedResult ? (
-              (() => {
-                const resultChar =
-                  CHARACTERS.find((c) => c.id === breedResult.characterId) ?? CHARACTERS[0];
-                return (
-                  <div
-                    className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[resultChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[resultChar.rarity]}`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm font-semibold text-primary">{t("breed.success")}</p>
-                      <div
-                        className={`rounded-2xl ${resultChar.rarity === "mythic" ? "" : RARITY_BG[resultChar.rarity]} relative overflow-hidden`}
-                        style={{ width: "100%", minHeight: 200 }}
-                      >
-                        {resultChar.rarity === "mythic" && (
-                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none z-0">
-                            <MythicMagicCircle size={220} />
-                          </div>
-                        )}
-                        <div className="relative z-10 flex items-center justify-center py-6">
-                          <PixelCharacter characterId={resultChar.id} size={130} float />
-                        </div>
-                      </div>
-                      <span
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${RARITY_BG[resultChar.rarity]} ${RARITY_COLOR[resultChar.rarity]}`}
-                      >
-                        {getRarityLabel(resultChar.rarity, lang)}
-                      </span>
-                      <p className={`text-xl font-bold ${RARITY_COLOR[resultChar.rarity]}`}>
-                        {getCharName(resultChar, lang)}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(["common", "uncommon", "rare", "epic", "legendary", "mythic"] as CharacterRarity[]).map(
+                (rarity) => {
+                  const remaining = breedCandidateCount(rarity);
+                  const cost = BREEDING_ESSENCE_COST[rarity];
+                  const selected = breedRarity === rarity;
+                  return (
+                    <button
+                      key={rarity}
+                      onClick={() => setBreedRarity(rarity)}
+                      className={`rounded-xl border-2 p-3 text-left transition ${
+                        selected
+                          ? `${RARITY_BORDER[rarity]} ${RARITY_BG[rarity]}`
+                          : "border-border bg-muted"
+                      }`}
+                    >
+                      <p className={`text-sm font-bold ${RARITY_COLOR[rarity]}`}>
+                        {getRarityLabel(rarity, lang)}
                       </p>
-                      <button
-                        onClick={() => setBreedResult(null)}
-                        className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90"
-                      >
-                        {t("breed.confirm_close")}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()
-            ) : (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(["common", "uncommon", "rare", "epic", "legendary", "mythic"] as CharacterRarity[]).map(
-                    (rarity) => {
-                      const remaining = breedCandidateCount(rarity);
-                      const cost = BREEDING_ESSENCE_COST[rarity];
-                      const selected = breedRarity === rarity;
-                      return (
-                        <button
-                          key={rarity}
-                          onClick={() => setBreedRarity(rarity)}
-                          className={`rounded-xl border-2 p-3 text-left transition ${
-                            selected
-                              ? `${RARITY_BORDER[rarity]} ${RARITY_BG[rarity]}`
-                              : "border-border bg-muted"
-                          }`}
-                        >
-                          <p className={`text-sm font-bold ${RARITY_COLOR[rarity]}`}>
-                            {getRarityLabel(rarity, lang)}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <FlaskConical className="w-3 h-3" /> {cost}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                            {remaining > 0
-                              ? `${t("breed.remaining")} ${remaining}`
-                              : t("breed.owned_all")}
-                          </p>
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <FlaskConical className="w-3 h-3" /> {cost}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                        {remaining > 0
+                          ? `${t("breed.remaining")} ${remaining}`
+                          : t("breed.owned_all")}
+                      </p>
+                    </button>
+                  );
+                },
+              )}
+            </div>
 
-                <button
-                  onClick={() => void handleBreed()}
-                  disabled={
-                    breeding ||
-                    breedingEssence < BREEDING_ESSENCE_COST[breedRarity] ||
-                    breedCandidateCount(breedRarity) === 0
-                  }
-                  className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
-                    !breeding &&
-                    breedingEssence >= BREEDING_ESSENCE_COST[breedRarity] &&
-                    breedCandidateCount(breedRarity) > 0
-                      ? "bg-primary text-white hover:bg-primary/90"
-                      : "bg-secondary text-muted-foreground cursor-not-allowed"
-                  }`}
-                >
-                  {breeding
-                    ? t("breed.breeding")
-                    : breedCandidateCount(breedRarity) === 0
-                      ? t("breed.owned_all")
-                      : breedingEssence < BREEDING_ESSENCE_COST[breedRarity]
-                        ? t("breed.insufficient")
-                        : t("breed.confirm")}
-                </button>
-                {breedError && (
-                  <p className="text-sm text-rose-400 text-center">{breedError}</p>
-                )}
-              </>
+            <button
+              onClick={() => void handleBreed()}
+              disabled={
+                breeding ||
+                breedingEssence < BREEDING_ESSENCE_COST[breedRarity] ||
+                breedCandidateCount(breedRarity) === 0
+              }
+              className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
+                !breeding &&
+                breedingEssence >= BREEDING_ESSENCE_COST[breedRarity] &&
+                breedCandidateCount(breedRarity) > 0
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "bg-secondary text-muted-foreground cursor-not-allowed"
+              }`}
+            >
+              {breeding
+                ? t("breed.breeding")
+                : breedCandidateCount(breedRarity) === 0
+                  ? t("breed.owned_all")
+                  : breedingEssence < BREEDING_ESSENCE_COST[breedRarity]
+                    ? t("breed.insufficient")
+                    : t("breed.confirm")}
+            </button>
+            {breedError && (
+              <p className="text-sm text-rose-400 text-center">{breedError}</p>
             )}
           </div>
         )}
@@ -1506,6 +1469,186 @@ export default function KebomonPage() {
             <Trophy className="w-4 h-4 text-primary" />
             {t("kebomon.dex_milestone_toast").replace("{n}", String(dexMilestoneToast))}
           </p>
+        </div>
+      )}
+
+      {breedPhase !== "idle" && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-6"
+          onClick={breedPhase === "reveal" ? closeBreedModal : undefined}
+        >
+          <style>{`
+            @keyframes breed-ring-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            @keyframes breed-orb-pulse { 0%,100%{transform:scale(1);opacity:0.85} 50%{transform:scale(1.18);opacity:1} }
+            @keyframes breed-pop { 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
+          `}</style>
+          <div
+            className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {breedPhase === "synthesizing" ? (
+              <div className="flex flex-col items-center py-8">
+                <p className="mb-6 text-sm font-semibold text-primary">{t("breed.breeding")}</p>
+                <div className="relative flex items-center justify-center" style={{ width: 140, height: 140 }}>
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: `3px dashed ${RARITY_HEX[breedRarity]}`,
+                      animation: "breed-ring-spin 2.5s linear infinite",
+                    }}
+                  />
+                  <div
+                    className="rounded-full"
+                    style={{
+                      width: 84,
+                      height: 84,
+                      background: `radial-gradient(circle, ${RARITY_HEX[breedRarity]}cc, ${RARITY_HEX[breedRarity]}22 70%)`,
+                      boxShadow: `0 0 40px ${RARITY_HEX[breedRarity]}99`,
+                      animation: "breed-orb-pulse 1s ease-in-out infinite",
+                    }}
+                  />
+                  <FlaskConical className="absolute w-8 h-8 text-white" />
+                </div>
+              </div>
+            ) : (
+              breedResult &&
+              (() => {
+                const resultChar =
+                  CHARACTERS.find((c) => c.id === breedResult.characterId) ?? CHARACTERS[0];
+                return (
+                  <>
+                    <p className="mb-1 text-sm font-semibold text-primary">{t("breed.success")}</p>
+                    <div
+                      className={`rounded-2xl ${resultChar.rarity === "mythic" ? "" : RARITY_BG[resultChar.rarity]} relative overflow-hidden`}
+                      style={{ width: "100%", minHeight: 200 }}
+                    >
+                      {resultChar.rarity === "mythic" && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none z-0">
+                          <MythicMagicCircle size={220} />
+                        </div>
+                      )}
+                      <div
+                        className="relative z-10 flex items-center justify-center py-6"
+                        style={{ animation: "breed-pop 0.5s ease-out" }}
+                      >
+                        <PixelCharacter characterId={resultChar.id} size={130} float />
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-block text-xs font-bold px-2.5 py-0.5 rounded-full ${RARITY_BG[resultChar.rarity]} ${RARITY_COLOR[resultChar.rarity]}`}
+                    >
+                      {getRarityLabel(resultChar.rarity, lang)}
+                    </span>
+                    <p className={`mt-1 text-xl font-bold ${RARITY_COLOR[resultChar.rarity]}`}>
+                      {getCharName(resultChar, lang)}
+                    </p>
+                    <button
+                      onClick={closeBreedModal}
+                      className="mt-4 w-full rounded-full bg-primary py-2 font-semibold text-primary-foreground"
+                    >
+                      {t("breed.confirm_close")}
+                    </button>
+                  </>
+                );
+              })()
+            )}
+          </div>
+        </div>
+      )}
+
+      {enhancePhase !== "idle" && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-6"
+          onClick={enhancePhase === "result" ? closeEnhanceModal : undefined}
+        >
+          <style>{`
+            @keyframes ehc-ring-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            @keyframes ehc-orb-pulse { 0%,100%{transform:scale(1);opacity:0.8} 50%{transform:scale(1.22);opacity:1} }
+            @keyframes ehc-flash-success { 0%{opacity:0} 12%{opacity:0.9} 100%{opacity:0} }
+            @keyframes ehc-flash-fail { 0%{opacity:0} 12%{opacity:0.75} 100%{opacity:0} }
+            @keyframes ehc-pop { 0%{transform:scale(0) rotate(-6deg)} 55%{transform:scale(1.25) rotate(3deg)} 100%{transform:scale(1) rotate(0)} }
+            @keyframes ehc-level-pop { 0%{transform:scale(0)} 50%{transform:scale(1.4)} 100%{transform:scale(1)} }
+            @keyframes ehc-shake { 0%,100%{transform:translateX(0)} 15%{transform:translateX(-10px)} 30%{transform:translateX(9px)} 45%{transform:translateX(-7px)} 60%{transform:translateX(5px)} 75%{transform:translateX(-3px)} 90%{transform:translateX(2px)} }
+          `}</style>
+          <div
+            className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {enhancePhase === "result" && enhanceResult && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: enhanceResult.success
+                    ? "radial-gradient(circle, #fde68acc 0%, transparent 70%)"
+                    : "radial-gradient(circle, #ef444499 0%, transparent 70%)",
+                  animation: `${enhanceResult.success ? "ehc-flash-success" : "ehc-flash-fail"} 0.7s ease-out both`,
+                }}
+              />
+            )}
+
+            {enhancePhase === "charging" ? (
+              <div className="flex flex-col items-center py-6">
+                <p className="mb-6 text-sm font-semibold text-amber-400">{t("enhance.enhancing")}</p>
+                <div className="relative flex items-center justify-center" style={{ width: 160, height: 160 }}>
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{ border: "3px dashed #f59e0b", animation: "ehc-ring-spin 1.8s linear infinite" }}
+                  />
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      width: 130,
+                      height: 130,
+                      background: "radial-gradient(circle, #f59e0b55 0%, transparent 70%)",
+                      animation: "ehc-orb-pulse 0.85s ease-in-out infinite",
+                    }}
+                  />
+                  <PixelCharacter characterId={equippedChar.id} size={110} float />
+                </div>
+              </div>
+            ) : (
+              enhanceResult && (
+                <div
+                  className="flex flex-col items-center py-2"
+                  style={{ animation: enhanceResult.success ? undefined : "ehc-shake 0.5s ease-in-out both" }}
+                >
+                  <p
+                    className={`mb-2 text-sm font-semibold ${enhanceResult.success ? "text-amber-400" : "text-rose-400"}`}
+                  >
+                    {enhanceResult.success ? t("enhance.success") : t("enhance.fail")}
+                  </p>
+                  <div
+                    className={`rounded-2xl ${equippedChar.rarity === "mythic" ? "" : RARITY_BG[equippedChar.rarity]} relative overflow-hidden`}
+                    style={{ width: "100%", minHeight: 190 }}
+                  >
+                    {equippedChar.rarity === "mythic" && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none z-0">
+                        <MythicMagicCircle size={200} />
+                      </div>
+                    )}
+                    <div
+                      className="relative z-10 flex items-center justify-center py-6"
+                      style={{ animation: "ehc-pop 0.5s ease-out" }}
+                    >
+                      <PixelCharacter characterId={equippedChar.id} size={120} float />
+                    </div>
+                  </div>
+                  <p
+                    className={`mt-2 text-3xl font-extrabold ${enhanceResult.success ? "text-amber-400" : "text-muted-foreground"}`}
+                    style={enhanceResult.success ? { animation: "ehc-level-pop 0.4s ease-out 0.15s both" } : undefined}
+                  >
+                    +{enhanceResult.newLevel}
+                  </p>
+                  <button
+                    onClick={closeEnhanceModal}
+                    className="mt-4 w-full rounded-full bg-primary py-2 font-semibold text-primary-foreground"
+                  >
+                    {t("kebomon.gacha_confirm")}
+                  </button>
+                </div>
+              )
+            )}
+          </div>
         </div>
       )}
     </>

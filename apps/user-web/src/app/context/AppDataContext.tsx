@@ -14,6 +14,7 @@ export interface GachaResult {
   remainingPoints: number;
   gachaPityCount: number;
   legendaryPityCount: number;
+  newlyUnlockedAchievements?: number[];
 }
 
 export type EggType = "normal" | "big" | "golden";
@@ -24,6 +25,7 @@ export interface EggOpenResult {
   isDuplicate: boolean;
   points: number;
   essence: number;
+  newlyUnlockedAchievements?: number[];
 }
 import {
   CHARACTERS as _CHARS,
@@ -476,6 +478,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...result.results.filter((r) => !r.isDuplicate).map((r) => r.characterId),
       ],
     }));
+    if (result.newlyUnlockedAchievements && result.newlyUnlockedAchievements.length > 0) {
+      const unlocked = result.newlyUnlockedAchievements;
+      setPendingAchievements((prev) => [...new Set([...prev, ...unlocked])]);
+    }
     void fetchDailyQuests();
     return result;
   };
@@ -498,12 +504,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ? prev.ownedCharacterIds
         : [...prev.ownedCharacterIds, result.characterId],
     }));
+    if (result.newlyUnlockedAchievements && result.newlyUnlockedAchievements.length > 0) {
+      const unlocked = result.newlyUnlockedAchievements;
+      setPendingAchievements((prev) => [...new Set([...prev, ...unlocked])]);
+    }
     return result;
   };
 
   const openEggs = async (eggType: EggType, count: number): Promise<EggOpenResult[]> => {
     const currentUser = getStoredUser();
     if (!currentUser) throw new Error("로그인이 필요합니다.");
+    const prevOwnedIds = new Set(rewardSummary.ownedCharacterIds);
     const results = await api.post<EggOpenResult[]>("/rewards/egg/open-batch", {
       userId: currentUser.id,
       eggType,
@@ -521,6 +532,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       breedingEssence: prev.breedingEssence + totalDupEssence,
       ownedCharacterIds: [...prev.ownedCharacterIds, ...newCharIds],
     }));
+    // 배치 알까기는 업적 캐릭터가 함께 지급될 수 있어 최신 보유 목록을 다시 조회해 감지
+    api
+      .get<RewardSummary>(`/rewards/summary?userId=${currentUser.id}`)
+      .then((summary) => {
+        const ownedNow = normalizeRewardSummary(summary).ownedCharacterIds;
+        const newAchievementChars = ownedNow.filter(
+          (id) => !prevOwnedIds.has(id) && !newCharIds.includes(id) && _ACHIEVEMENT_CHAR_IDS.has(id),
+        );
+        if (newAchievementChars.length > 0) {
+          setPendingAchievements((prev) => [...new Set([...prev, ...newAchievementChars])]);
+        }
+      })
+      .catch(() => undefined);
     return results;
   };
 
@@ -618,6 +642,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       monthDays: number;
       monthWeekRewards: number;
       eggReward?: "big" | "golden" | null;
+      newlyUnlockedAchievements?: number[];
     }>(
       "/rewards/attendance/claim",
       { userId: currentUser.id },
@@ -634,6 +659,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         bigEggs: result.eggReward === "big" ? prev.bigEggs + 1 : prev.bigEggs,
         goldenEggs: result.eggReward === "golden" ? prev.goldenEggs + 1 : prev.goldenEggs,
       }));
+      if (result.newlyUnlockedAchievements && result.newlyUnlockedAchievements.length > 0) {
+        const unlocked = result.newlyUnlockedAchievements;
+        setPendingAchievements((prev) => [...new Set([...prev, ...unlocked])]);
+      }
       void fetchDailyQuests();
     }
     return { alreadyClaimed: result.alreadyClaimed, points: result.points };
@@ -653,10 +682,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const currentUser = getStoredUser();
     if (!currentUser) return null;
     try {
-      const result = await api.post<{ points: number }>("/rewards/quests/claim");
+      const result = await api.post<{ points: number; newlyUnlockedAchievements?: number[] }>("/rewards/quests/claim");
       setDailyQuests((prev) => (prev ? { ...prev, bonusClaimed: true } : prev));
       setRewardSummary((prev) => ({ ...prev, missionPoints: prev.missionPoints + result.points }));
-      return result;
+      if (result.newlyUnlockedAchievements && result.newlyUnlockedAchievements.length > 0) {
+        const unlocked = result.newlyUnlockedAchievements;
+        setPendingAchievements((prev) => [...new Set([...prev, ...unlocked])]);
+      }
+      return { points: result.points };
     } catch {
       return null;
     }
@@ -676,10 +709,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const currentUser = getStoredUser();
     if (!currentUser) return null;
     try {
-      const result = await api.post<{ points: number }>("/rewards/quests/weekly/claim");
+      const result = await api.post<{ points: number; newlyUnlockedAchievements?: number[] }>("/rewards/quests/weekly/claim");
       setWeeklyQuests((prev) => (prev ? { ...prev, bonusClaimed: true } : prev));
       setRewardSummary((prev) => ({ ...prev, missionPoints: prev.missionPoints + result.points }));
-      return result;
+      if (result.newlyUnlockedAchievements && result.newlyUnlockedAchievements.length > 0) {
+        const unlocked = result.newlyUnlockedAchievements;
+        setPendingAchievements((prev) => [...new Set([...prev, ...unlocked])]);
+      }
+      return { points: result.points };
     } catch {
       return null;
     }
