@@ -24,6 +24,7 @@ import {
   Wand2,
   Leaf,
   Cpu,
+  FlaskConical,
 } from "lucide-react";
 import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -38,6 +39,7 @@ import {
   GACHA_COST_SINGLE,
   GACHA_COST_TEN,
   RARITY_DUPLICATE_POINTS,
+  BREEDING_ESSENCE_COST,
   RARITY_COLOR,
   RARITY_BORDER,
   ROGUE_TYPE_MAP,
@@ -152,7 +154,7 @@ const RARITY_GLOW: Record<CharacterRarity, string> = {
   mythic: "shadow-pink-400/60",
 };
 
-type Tab = "character" | "enhance" | "collection" | "achievement";
+type Tab = "character" | "enhance" | "breed" | "collection" | "achievement";
 type Filter = "all" | CharacterRarity;
 
 // ─── Pixel Gacha Ball SVG ─────────────────────────────────────────────────
@@ -834,6 +836,7 @@ export default function KebomonPage() {
     profile,
     enhanceCharacter,
     buyShopItem,
+    breedCharacter,
     characterMasterMap,
   } = useAppData();
   const { t, lang } = useLang();
@@ -852,6 +855,10 @@ export default function KebomonPage() {
   const [buyFeedback, setBuyFeedback] = useState<"success" | "fail" | null>(
     null,
   );
+  const [breedRarity, setBreedRarity] = useState<CharacterRarity>("common");
+  const [breeding, setBreeding] = useState(false);
+  const [breedResult, setBreedResult] = useState<{ characterId: number } | null>(null);
+  const [breedError, setBreedError] = useState<string | null>(null);
   const [checkingAchievements, setCheckingAchievements] = useState(false);
   const [dexMilestoneToast, setDexMilestoneToast] = useState<number | null>(null);
   const [archFilter, setArchFilter] = useState<"all" | string>("all");
@@ -879,6 +886,7 @@ export default function KebomonPage() {
     equippedCharacterId,
     ownedCharacterIds,
     enhancementStones,
+    breedingEssence,
     raidCount,
     rogueClears,
     expeditionCount,
@@ -964,6 +972,27 @@ export default function KebomonPage() {
     }
   };
 
+  const breedCandidateCount = (rarity: CharacterRarity) =>
+    CHARACTERS.filter((c) => c.rarity === rarity && !ownedSet.has(c.id)).length;
+
+  const handleBreed = async () => {
+    if (breeding) return;
+    const cost = BREEDING_ESSENCE_COST[breedRarity];
+    if (breedingEssence < cost || breedCandidateCount(breedRarity) === 0) return;
+
+    setBreeding(true);
+    setBreedError(null);
+    setBreedResult(null);
+    try {
+      const result = await breedCharacter(breedRarity);
+      setBreedResult({ characterId: result.characterId });
+    } catch (e) {
+      setBreedError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBreeding(false);
+    }
+  };
+
   const rarities: Filter[] = [
     "all",
     "common",
@@ -1011,17 +1040,19 @@ export default function KebomonPage() {
 
         {/* ── Tab Navigation ── */}
         <div className="flex gap-1 bg-muted p-1 rounded-xl">
-          {(["character", "enhance", "collection", "achievement"] as Tab[]).map(
+          {(["character", "enhance", "breed", "collection", "achievement"] as Tab[]).map(
             (t_) => {
               const icons: Record<Tab, React.ReactNode> = {
                 character: <User className="w-3.5 h-3.5" />,
                 enhance: <Shield className="w-3.5 h-3.5" />,
+                breed: <FlaskConical className="w-3.5 h-3.5" />,
                 collection: <BookOpen className="w-3.5 h-3.5" />,
                 achievement: <Trophy className="w-3.5 h-3.5" />,
               };
               const labels: Record<Tab, string> = {
                 character: t("kebomon.my_character"),
                 enhance: t("enhance.tab"),
+                breed: t("breed.tab"),
                 collection: t("kebomon.collection"),
                 achievement: t("kebomon.achievement_tab"),
               };
@@ -1301,6 +1332,129 @@ export default function KebomonPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ══════════════ 합성 탭 ══════════════ */}
+        {tab === "breed" && (
+          <div className="flex flex-col gap-4">
+            <div className="bg-card rounded-2xl border border-border p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("breed.essence")}</p>
+                <p className="text-2xl font-bold flex items-center gap-2 mt-1">
+                  {breedingEssence}
+                  <FlaskConical className="w-5 h-5 text-primary" />
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-[55%] text-right">
+                {t("breed.desc")}
+              </p>
+            </div>
+
+            {breedResult ? (
+              (() => {
+                const resultChar =
+                  CHARACTERS.find((c) => c.id === breedResult.characterId) ?? CHARACTERS[0];
+                return (
+                  <div
+                    className={`bg-card rounded-2xl border-2 ${RARITY_BORDER[resultChar.rarity]} p-6 shadow-lg ${RARITY_GLOW[resultChar.rarity]}`}
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-sm font-semibold text-primary">{t("breed.success")}</p>
+                      <div
+                        className={`rounded-2xl ${resultChar.rarity === "mythic" ? "" : RARITY_BG[resultChar.rarity]} relative overflow-hidden`}
+                        style={{ width: "100%", minHeight: 200 }}
+                      >
+                        {resultChar.rarity === "mythic" && (
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none z-0">
+                            <MythicMagicCircle size={220} />
+                          </div>
+                        )}
+                        <div className="relative z-10 flex items-center justify-center py-6">
+                          <PixelCharacter characterId={resultChar.id} size={130} float />
+                        </div>
+                      </div>
+                      <span
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${RARITY_BG[resultChar.rarity]} ${RARITY_COLOR[resultChar.rarity]}`}
+                      >
+                        {getRarityLabel(resultChar.rarity, lang)}
+                      </span>
+                      <p className={`text-xl font-bold ${RARITY_COLOR[resultChar.rarity]}`}>
+                        {getCharName(resultChar, lang)}
+                      </p>
+                      <button
+                        onClick={() => setBreedResult(null)}
+                        className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90"
+                      >
+                        {t("breed.confirm_close")}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {(["common", "uncommon", "rare", "epic", "legendary", "mythic"] as CharacterRarity[]).map(
+                    (rarity) => {
+                      const remaining = breedCandidateCount(rarity);
+                      const cost = BREEDING_ESSENCE_COST[rarity];
+                      const selected = breedRarity === rarity;
+                      return (
+                        <button
+                          key={rarity}
+                          onClick={() => setBreedRarity(rarity)}
+                          className={`rounded-xl border-2 p-3 text-left transition ${
+                            selected
+                              ? `${RARITY_BORDER[rarity]} ${RARITY_BG[rarity]}`
+                              : "border-border bg-muted"
+                          }`}
+                        >
+                          <p className={`text-sm font-bold ${RARITY_COLOR[rarity]}`}>
+                            {getRarityLabel(rarity, lang)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <FlaskConical className="w-3 h-3" /> {cost}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                            {remaining > 0
+                              ? `${t("breed.remaining")} ${remaining}`
+                              : t("breed.owned_all")}
+                          </p>
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+
+                <button
+                  onClick={() => void handleBreed()}
+                  disabled={
+                    breeding ||
+                    breedingEssence < BREEDING_ESSENCE_COST[breedRarity] ||
+                    breedCandidateCount(breedRarity) === 0
+                  }
+                  className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
+                    !breeding &&
+                    breedingEssence >= BREEDING_ESSENCE_COST[breedRarity] &&
+                    breedCandidateCount(breedRarity) > 0
+                      ? "bg-primary text-white hover:bg-primary/90"
+                      : "bg-secondary text-muted-foreground cursor-not-allowed"
+                  }`}
+                >
+                  {breeding
+                    ? t("breed.breeding")
+                    : breedCandidateCount(breedRarity) === 0
+                      ? t("breed.owned_all")
+                      : breedingEssence < BREEDING_ESSENCE_COST[breedRarity]
+                        ? t("breed.insufficient")
+                        : t("breed.confirm")}
+                </button>
+                {breedError && (
+                  <p className="text-sm text-rose-400 text-center">{breedError}</p>
+                )}
+              </>
+            )}
           </div>
         )}
 

@@ -75,6 +75,7 @@ export interface RewardSummary {
   bigEggs: number;
   goldenEggs: number;
   enhancementStones: number;
+  breedingEssence: number;
   characterEnhancements: Record<number, number>;
   raidCount: number;
   liveCount: number;

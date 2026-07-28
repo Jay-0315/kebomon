@@ -154,6 +154,12 @@ export class RewardsController {
     return this.rewardsService.enhanceCharacter(user.sub, body.characterId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post("breed")
+  breedCharacter(@CurrentUser() user: { sub: string }, @Body() body: { rarity: string }) {
+    return this.rewardsService.breedCharacter(user.sub, body.rarity);
+  }
+
   @Get("colosseum-stats")
   getColosseumStats(@Query("userId") userId: string) {
     return this.rewardsService.getBattleStats(userId);

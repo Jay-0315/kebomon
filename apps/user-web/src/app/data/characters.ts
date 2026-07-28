@@ -120,12 +120,32 @@ export const RARITY_BORDER: Record<CharacterRarity, string> = {
 };
 
 export const RARITY_DUPLICATE_POINTS: Record<CharacterRarity, number> = {
-  common: 5,
-  uncommon: 10,
-  rare: 20,
-  epic: 30,
-  legendary: 60,
-  mythic: 120,
+  common: 3,
+  uncommon: 6,
+  rare: 12,
+  epic: 18,
+  legendary: 35,
+  mythic: 70,
+};
+
+// 중복 캐릭터 획득 시 함께 지급되는 교배의 정수 — 케보몬 합성 재료
+export const RARITY_ESSENCE_POINTS: Record<CharacterRarity, number> = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  epic: 5,
+  legendary: 10,
+  mythic: 20,
+};
+
+// 케보몬 합성(교배) 시 등급별 소모 정수량
+export const BREEDING_ESSENCE_COST: Record<CharacterRarity, number> = {
+  common: 8,
+  uncommon: 15,
+  rare: 30,
+  epic: 60,
+  legendary: 150,
+  mythic: 400,
 };
 
 // Gacha pull rates (sum = 100) — 서버 기본값과 동일한 폴백. 실제 확률은

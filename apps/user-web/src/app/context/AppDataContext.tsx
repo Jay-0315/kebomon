@@ -7,9 +7,10 @@ import {
 } from "react";
 
 export interface GachaResult {
-  results: { characterId: number; rarity: string; isDuplicate: boolean; bonusPoints: number }[];
+  results: { characterId: number; rarity: string; isDuplicate: boolean; bonusPoints: number; bonusEssence: number }[];
   pointsSpent: number;
   bonusPoints: number;
+  bonusEssence: number;
   remainingPoints: number;
   gachaPityCount: number;
   legendaryPityCount: number;
@@ -22,6 +23,7 @@ export interface EggOpenResult {
   rarity: string;
   isDuplicate: boolean;
   points: number;
+  essence: number;
 }
 import {
   CHARACTERS as _CHARS,
@@ -114,6 +116,7 @@ interface AppDataContextValue {
   claimAttendance: () => Promise<{ alreadyClaimed: boolean; points: number; eggReward?: "big" | "golden" | null }>;
   buyShopItem: (itemId: string, quantity?: number) => Promise<{ success: boolean; remainingPoints: number; enhancementStones: number }>;
   enhanceCharacter: (characterId: number) => Promise<{ success: boolean; newLevel: number; remainingStones: number }>;
+  breedCharacter: (rarity: string) => Promise<{ characterId: number; rarity: string; remainingEssence: number }>;
   startExpedition: (regionId: string, partyIds: number[], durationHours: number) => Promise<ExpeditionState>;
   getExpeditionState: () => Promise<ExpeditionState | null>;
   resolveExpeditionEvent: (risky: boolean) => Promise<{ eventBonusMult: number }>;
@@ -150,6 +153,7 @@ function normalizeRewardSummary(summary: Partial<RewardSummary> | null | undefin
     bigEggs: summary?.bigEggs ?? 0,
     goldenEggs: summary?.goldenEggs ?? 0,
     enhancementStones: summary?.enhancementStones ?? 0,
+    breedingEssence: summary?.breedingEssence ?? 0,
     characterEnhancements: summary?.characterEnhancements ?? {},
     raidCount: summary?.raidCount ?? 0,
     liveCount: summary?.liveCount ?? 0,
@@ -464,6 +468,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setRewardSummary((prev) => ({
       ...prev,
       missionPoints: result.remainingPoints,
+      breedingEssence: prev.breedingEssence + result.bonusEssence,
       gachaPityCount: result.gachaPityCount,
       legendaryPityCount: result.legendaryPityCount,
       ownedCharacterIds: [
@@ -488,6 +493,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       bigEggs: prev.bigEggs - (eggType === "big" ? 1 : 0),
       goldenEggs: prev.goldenEggs - (eggType === "golden" ? 1 : 0),
       missionPoints: prev.missionPoints + (result.isDuplicate ? result.points : 0),
+      breedingEssence: prev.breedingEssence + (result.isDuplicate ? result.essence : 0),
       ownedCharacterIds: result.isDuplicate
         ? prev.ownedCharacterIds
         : [...prev.ownedCharacterIds, result.characterId],
@@ -505,15 +511,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     const newCharIds = results.filter((r) => !r.isDuplicate).map((r) => r.characterId);
     const totalDupPoints = results.reduce((sum, r) => sum + (r.isDuplicate ? r.points : 0), 0);
+    const totalDupEssence = results.reduce((sum, r) => sum + (r.isDuplicate ? r.essence : 0), 0);
     setRewardSummary((prev) => ({
       ...prev,
       normalEggs: prev.normalEggs - (eggType === "normal" ? count : 0),
       bigEggs: prev.bigEggs - (eggType === "big" ? count : 0),
       goldenEggs: prev.goldenEggs - (eggType === "golden" ? count : 0),
       missionPoints: prev.missionPoints + totalDupPoints,
+      breedingEssence: prev.breedingEssence + totalDupEssence,
       ownedCharacterIds: [...prev.ownedCharacterIds, ...newCharIds],
     }));
     return results;
+  };
+
+  const breedCharacter = async (rarity: string): Promise<{ characterId: number; rarity: string; remainingEssence: number }> => {
+    const currentUser = getStoredUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다.");
+    const result = await api.post<{ characterId: number; rarity: string; remainingEssence: number }>(
+      "/rewards/breed",
+      { userId: currentUser.id, rarity },
+    );
+    setRewardSummary((prev) => ({
+      ...prev,
+      breedingEssence: result.remainingEssence,
+      ownedCharacterIds: [...prev.ownedCharacterIds, result.characterId],
+    }));
+    return result;
   };
 
   const refreshRewards = async () => {
@@ -851,6 +874,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     claimAttendance,
     buyShopItem,
     enhanceCharacter,
+    breedCharacter,
     startExpedition,
     getExpeditionState,
     resolveExpeditionEvent,

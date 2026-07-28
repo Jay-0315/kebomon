@@ -15,7 +15,7 @@ import {
   rollExpeditionRiskyMult,
 } from "./expedition.constants";
 import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
-import { CharacterMasterRow, loadCharacterMasterMap } from "./character-master.util";
+import { CharacterMasterRow, loadCharacterMasterMap, RARITIES } from "./character-master.util";
 import { getTodayKTC, getYesterdayKTC } from "./date.util";
 import { getIsoWeekKey } from "../guild/guild.constants";
 import { logPointsChange } from "./points-ledger.util";
@@ -75,13 +75,23 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
 ];
 
 // Character rarity duplicate point values (mirrors frontend constants)
+// 기존 값의 일부를 교배의 정수(breedingEssence)로 대체 — 중복 획득이 합성 재료로도 쌓이게 함
 const RARITY_DUPLICATE_POINTS: Record<string, number> = {
-  common: 5,
-  uncommon: 10,
-  rare: 20,
-  epic: 30,
-  legendary: 60,
-  mythic: 120,
+  common: 3,
+  uncommon: 6,
+  rare: 12,
+  epic: 18,
+  legendary: 35,
+  mythic: 70,
+};
+
+const RARITY_DUPLICATE_ESSENCE: Record<string, number> = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  epic: 5,
+  legendary: 10,
+  mythic: 20,
 };
 
 // 가챠로 뽑힐 수 있는 캐릭터 ID 목록(140종, 스타터/업적 전용 40종 제외) — 등급 정보는
@@ -799,6 +809,7 @@ export class RewardsService {
       bigEggs: reward.bigEggs,
       goldenEggs: reward.goldenEggs,
       enhancementStones: reward.enhancementStones,
+      breedingEssence: reward.breedingEssence,
       raidCount: reward.raidCount,
       liveCount: reward.liveCount,
       expeditionCount: reward.expeditionCount,
@@ -1058,6 +1069,58 @@ export class RewardsService {
     };
   }
 
+  // ─── 케보몬 교배(합성) ───────────────────────────────────────────────────
+  private static readonly BREEDING_ESSENCE_COST: Record<string, number> = {
+    common: 8, uncommon: 15, rare: 30, epic: 60, legendary: 150, mythic: 400,
+  };
+
+  /** 정수를 소모해 선택한 등급의 "미보유" 케보몬 1종을 확정 랜덤 지급 */
+  async breedCharacter(userId: string, rarity: string) {
+    if (!(RARITIES as readonly string[]).includes(rarity)) {
+      throw new BadRequestException("유효하지 않은 등급입니다.");
+    }
+
+    const reward = await this.getOrCreateReward(userId);
+    const cost = RewardsService.BREEDING_ESSENCE_COST[rarity] ?? 0;
+    if (reward.breedingEssence < cost) {
+      throw new BadRequestException(
+        `정수가 부족합니다. 필요: ${cost}, 보유: ${reward.breedingEssence}`,
+      );
+    }
+
+    const owned = await this.prisma.userCharacter.findMany({
+      where: { userId },
+      select: { characterId: true },
+    });
+    const ownedSet = new Set(owned.map((c) => c.characterId));
+    const masterMap = await loadCharacterMasterMap(this.prisma);
+
+    const candidates = GACHA_POOL_IDS.filter(
+      (id) => masterMap.get(id)?.rarity === rarity && !ownedSet.has(id),
+    );
+    if (candidates.length === 0) {
+      throw new BadRequestException("이미 해당 등급의 케보몬을 모두 보유하고 있습니다.");
+    }
+
+    const characterId = candidates[Math.floor(Math.random() * candidates.length)];
+
+    const [updatedReward] = await this.prisma.$transaction([
+      this.prisma.userReward.update({
+        where: { userId },
+        data: { breedingEssence: { decrement: cost } },
+      }),
+      this.prisma.userCharacter.create({ data: { userId, characterId } }),
+    ]);
+
+    void this.checkAndGrantAchievements(userId).catch(() => undefined);
+
+    return {
+      characterId,
+      rarity,
+      remainingEssence: updatedReward.breedingEssence,
+    };
+  }
+
   async selectStarter(userId: string, characterId: number) {
     if (!STARTER_IDS.includes(characterId)) {
       throw new BadRequestException("유효한 스타팅 캐릭터가 아닙니다.");
@@ -1167,11 +1230,16 @@ export class RewardsService {
     });
     const isDuplicate = !!owned;
     const dupPoints = isDuplicate ? (RARITY_DUPLICATE_POINTS[pick.rarity] ?? 0) : 0;
+    const dupEssence = isDuplicate ? (RARITY_DUPLICATE_ESSENCE[pick.rarity] ?? 0) : 0;
 
     if (isDuplicate) {
       await this.prisma.userReward.update({
         where: { userId },
-        data: { ...eggDelta(eggType, -1), missionPoints: { increment: dupPoints } },
+        data: {
+          ...eggDelta(eggType, -1),
+          missionPoints: { increment: dupPoints },
+          breedingEssence: { increment: dupEssence },
+        },
       });
       void logPointsChange(this.prisma, userId, dupPoints, "알 까기 중복 환급");
     } else {
@@ -1190,6 +1258,7 @@ export class RewardsService {
       rarity: pick.rarity,
       isDuplicate,
       points: dupPoints,
+      essence: dupEssence,
     };
   }
 
@@ -1210,28 +1279,35 @@ export class RewardsService {
     const masterMap = await loadCharacterMasterMap(this.prisma);
     const eggRates = eggRatesFor(config, eggType);
 
-    const results: { eggType: EggType; characterId: number; rarity: string; isDuplicate: boolean; points: number }[] = [];
+    const results: { eggType: EggType; characterId: number; rarity: string; isDuplicate: boolean; points: number; essence: number }[] = [];
     const newCharIds: number[] = [];
     let totalDupPoints = 0;
+    let totalDupEssence = 0;
 
     for (let i = 0; i < count; i++) {
       const rarity = weightedRandom(eggRates);
       const pick = pickFromPool(rarity, masterMap);
       const isDuplicate = ownedSet.has(pick.id);
       const dupPoints = isDuplicate ? (RARITY_DUPLICATE_POINTS[pick.rarity] ?? 0) : 0;
+      const dupEssence = isDuplicate ? (RARITY_DUPLICATE_ESSENCE[pick.rarity] ?? 0) : 0;
 
       if (!isDuplicate) {
         ownedSet.add(pick.id);
         newCharIds.push(pick.id);
       }
       totalDupPoints += dupPoints;
-      results.push({ eggType, characterId: pick.id, rarity: pick.rarity, isDuplicate, points: dupPoints });
+      totalDupEssence += dupEssence;
+      results.push({ eggType, characterId: pick.id, rarity: pick.rarity, isDuplicate, points: dupPoints, essence: dupEssence });
     }
 
     await this.prisma.$transaction([
       this.prisma.userReward.update({
         where: { userId },
-        data: { ...eggDelta(eggType, -count), missionPoints: { increment: totalDupPoints } },
+        data: {
+          ...eggDelta(eggType, -count),
+          missionPoints: { increment: totalDupPoints },
+          breedingEssence: { increment: totalDupEssence },
+        },
       }),
       ...newCharIds.map((characterId) =>
         this.prisma.userCharacter.create({ data: { userId, characterId } }),
@@ -1266,8 +1342,10 @@ export class RewardsService {
       rarity: string;
       isDuplicate: boolean;
       bonusPoints: number;
+      bonusEssence: number;
     }[] = [];
     let totalBonusPoints = 0;
+    let totalBonusEssence = 0;
     let pity = reward.gachaPityCount; // rare+ 보장 카운터 (consecutive non-rare)
     let legendaryPity = reward.legendaryPityCount; // 천장 카운터 (관리자 설정 회차 후 레전더리+ 보장)
 
@@ -1288,9 +1366,13 @@ export class RewardsService {
       const bonusPoints = isDuplicate
         ? (RARITY_DUPLICATE_POINTS[rarity] ?? 0)
         : 0;
+      const bonusEssence = isDuplicate
+        ? (RARITY_DUPLICATE_ESSENCE[rarity] ?? 0)
+        : 0;
 
-      results.push({ characterId: char.id, rarity, isDuplicate, bonusPoints });
+      results.push({ characterId: char.id, rarity, isDuplicate, bonusPoints, bonusEssence });
       totalBonusPoints += bonusPoints;
+      totalBonusEssence += bonusEssence;
 
       if (!isDuplicate) ownedSet.add(char.id);
 
@@ -1313,6 +1395,7 @@ export class RewardsService {
         where: { userId },
         data: {
           missionPoints: reward.missionPoints - cost + totalBonusPoints,
+          breedingEssence: { increment: totalBonusEssence },
           gachaPityCount: pity,
           legendaryPityCount: legendaryPity,
           totalPointsUsed: { increment: cost },
@@ -1333,6 +1416,7 @@ export class RewardsService {
       results,
       pointsSpent: cost,
       bonusPoints: totalBonusPoints,
+      bonusEssence: totalBonusEssence,
       remainingPoints: reward.missionPoints - cost + totalBonusPoints,
       gachaPityCount: pity,
       legendaryPityCount: legendaryPity,
