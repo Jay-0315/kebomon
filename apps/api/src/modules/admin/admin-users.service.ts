@@ -48,38 +48,62 @@ export class AdminUsersService {
       ...(status ? { status } : {}),
     };
     const dir = sortDir === "asc" ? "asc" : "desc";
-    const orderByMap: Record<string, object> = {
-      name: { name: dir },
-      email: { email: dir },
-      role: { role: dir },
-      status: { status: dir },
-      reward: { reward: { missionPoints: dir } },
-      createdAt: { createdAt: dir },
-      lastLoginAt: { lastLoginAt: dir },
-    };
-    const orderBy = orderByMap[sortBy ?? ""] ?? { createdAt: "desc" };
+    const selectFields = {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+      suspendedReason: true,
+      suspendedUntil: true,
+      createdAt: true,
+      lastLoginAt: true,
+      reward: { select: rewardSelect },
+    } as const;
 
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
+    let users: Awaited<ReturnType<typeof this.prisma.user.findMany<{ where: typeof where; select: typeof selectFields }>>>;
+    let total: number;
+
+    if (sortBy === "online") {
+      // online은 DB 컬럼이 아니라 소켓 연결 상태라 DB 단에서 정렬할 수 없음 —
+      // 전체 매칭 유저를 가져와 접속 상태 기준으로 정렬한 뒤 애플리케이션 단에서 페이지네이션
+      const onlineIds = this.notificationGateway.getOnlineUserIds();
+      const all = await this.prisma.user.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          status: true,
-          suspendedReason: true,
-          suspendedUntil: true,
-          createdAt: true,
-          lastLoginAt: true,
-          reward: { select: rewardSelect },
-        },
-        orderBy,
-        skip,
-        take: PAGE_SIZE,
-      }),
-      this.prisma.user.count({ where }),
-    ]);
+        select: selectFields,
+        orderBy: { lastLoginAt: "desc" },
+      });
+      total = all.length;
+      const sorted = all
+        .map((u) => ({ ...u, online: onlineIds.has(u.id) }))
+        .sort((a, b) => {
+          const onlineDiff = dir === "asc" ? Number(a.online) - Number(b.online) : Number(b.online) - Number(a.online);
+          return onlineDiff;
+        });
+      users = sorted.slice(skip, skip + PAGE_SIZE);
+    } else {
+      const orderByMap: Record<string, object> = {
+        name: { name: dir },
+        email: { email: dir },
+        role: { role: dir },
+        status: { status: dir },
+        reward: { reward: { missionPoints: dir } },
+        createdAt: { createdAt: dir },
+        lastLoginAt: { lastLoginAt: dir },
+      };
+      const orderBy = orderByMap[sortBy ?? ""] ?? { createdAt: "desc" };
+
+      [users, total] = await Promise.all([
+        this.prisma.user.findMany({
+          where,
+          select: selectFields,
+          orderBy,
+          skip,
+          take: PAGE_SIZE,
+        }),
+        this.prisma.user.count({ where }),
+      ]);
+    }
 
     // 목록 조회 시점에 기간 정지가 만료된 계정은 화면에도 실제 상태(ACTIVE)로 보이도록 정리
     await Promise.all(

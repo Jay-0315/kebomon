@@ -7,7 +7,7 @@ import SuspendUserModal from "../components/SuspendUserModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useLang } from "../context/LangContext";
 
-type SortKey = "name" | "email" | "role" | "status" | "reward" | "createdAt" | "lastLoginAt";
+type SortKey = "name" | "email" | "role" | "status" | "online" | "reward" | "createdAt" | "lastLoginAt";
 type SortDir = "asc" | "desc";
 
 function SortHeader({
@@ -65,7 +65,7 @@ export default function UsersPage() {
   const debouncedQ = useDebouncedValue(q, 300);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("createdAt");
+  const [sortBy, setSortBy] = useState<SortKey>("online");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<UsersResponse | null>(null);
@@ -176,7 +176,7 @@ export default function UsersPage() {
               <SortHeader sortKey="name" label={t("users.col_name")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader sortKey="email" label={t("users.col_email")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader sortKey="role" label={t("users.col_role")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
-              <th className="px-3 py-2">{t("users.col_online")}</th>
+              <SortHeader sortKey="online" label={t("users.col_online")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader
                 sortKey="reward"
                 label={t("users.col_reward")}

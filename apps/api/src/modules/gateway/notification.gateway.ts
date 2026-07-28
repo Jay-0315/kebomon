@@ -51,6 +51,10 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     return this.onlineCounts.has(userId);
   }
 
+  getOnlineUserIds(): Set<string> {
+    return new Set(this.onlineCounts.keys());
+  }
+
   @SubscribeMessage("joinRoom")
   handleJoinRoom(
     @MessageBody() data: { groupId: string },
