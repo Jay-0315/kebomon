@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { AdminUsersService } from "./admin-users.service";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
+import { BulkAdjustRewardDto } from "./dto/bulk-adjust-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 
@@ -66,5 +67,13 @@ export class AdminUsersController {
     @Body() dto: AdjustUserRewardDto,
   ) {
     return this.adminUsersService.adjustReward(requester.sub, id, dto);
+  }
+
+  @Post("bulk-reward")
+  bulkAdjustReward(
+    @CurrentUser() requester: { sub: string },
+    @Body() dto: BulkAdjustRewardDto,
+  ) {
+    return this.adminUsersService.bulkAdjustReward(requester.sub, dto);
   }
 }

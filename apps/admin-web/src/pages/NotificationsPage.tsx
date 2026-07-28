@@ -5,6 +5,7 @@ import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
 
 type SendResult = { sent: number; failed: number; total: number };
+type BulkRewardResult = { total: number; notified: number; delta: number };
 
 const LINK_OPTIONS: { labelKey: TranslationKey; value: string }[] = [
   { labelKey: "notifications.link_home", value: "/" },
@@ -12,6 +13,10 @@ const LINK_OPTIONS: { labelKey: TranslationKey; value: string }[] = [
   { labelKey: "notifications.link_attendance", value: "/attendance" },
   { labelKey: "notifications.link_mypage", value: "/mypage" },
   { labelKey: "notifications.link_kebomon", value: "/kebomon" },
+  { labelKey: "notifications.link_kebomon_enhance", value: "/kebomon?tab=enhance" },
+  { labelKey: "notifications.link_kebomon_breed", value: "/kebomon?tab=breed" },
+  { labelKey: "notifications.link_kebomon_collection", value: "/kebomon?tab=collection" },
+  { labelKey: "notifications.link_kebomon_achievement", value: "/kebomon?tab=achievement" },
   { labelKey: "notifications.link_gacha", value: "/gacha" },
   { labelKey: "notifications.link_live", value: "/live" },
   { labelKey: "notifications.link_mission", value: "/mission" },
@@ -36,6 +41,12 @@ export default function NotificationsPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SendResult | null>(null);
+
+  const [bulkAmount, setBulkAmount] = useState("");
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkRewardResult | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +78,36 @@ export default function NotificationsPage() {
       setError(t("notifications.error_send"));
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleBulkReward(e: React.FormEvent) {
+    e.preventDefault();
+    setBulkError(null);
+    setBulkResult(null);
+
+    const amount = Number(bulkAmount);
+    if (!Number.isInteger(amount) || amount < 1) {
+      setBulkError(t("notifications.bulk_reward_error"));
+      return;
+    }
+    if (!window.confirm(t("notifications.bulk_reward_confirm", { amount }))) {
+      return;
+    }
+
+    setBulkSending(true);
+    try {
+      const res = await api.post<BulkRewardResult>("/admin/users/bulk-reward", {
+        missionPointsDelta: amount,
+        reason: bulkReason || undefined,
+      });
+      setBulkResult(res);
+      setBulkAmount("");
+      setBulkReason("");
+    } catch {
+      setBulkError(t("notifications.bulk_reward_error"));
+    } finally {
+      setBulkSending(false);
     }
   }
 
@@ -163,6 +204,47 @@ export default function NotificationsPage() {
           className="rounded-md bg-[#b7607e] px-4 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
         >
           {sending ? t("notifications.sending") : t("notifications.send")}
+        </button>
+      </form>
+
+      <form onSubmit={handleBulkReward} className="mt-6 rounded-lg border border-[var(--border)] p-4">
+        <h2 className="mb-4 text-sm font-semibold">{t("notifications.bulk_reward_title")}</h2>
+
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">
+          {t("notifications.bulk_reward_amount_label")}
+        </label>
+        <input
+          required
+          type="number"
+          min={1}
+          value={bulkAmount}
+          onChange={(e) => setBulkAmount(e.target.value)}
+          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
+        />
+
+        <label className="mb-1 block text-xs text-[var(--fg-muted)]">
+          {t("notifications.bulk_reward_reason_label")}
+        </label>
+        <input
+          maxLength={255}
+          value={bulkReason}
+          onChange={(e) => setBulkReason(e.target.value)}
+          className="mb-4 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[#b7607e]"
+        />
+
+        {bulkError && <p className="mb-4 text-sm text-red-400">{bulkError}</p>}
+        {bulkResult && (
+          <p className="mb-4 text-sm text-emerald-400">
+            {t("notifications.bulk_reward_result", { total: bulkResult.total, notified: bulkResult.notified })}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={bulkSending}
+          className="rounded-md bg-[#b7607e] px-4 py-2 text-sm font-medium text-white hover:bg-[#a2536e] disabled:opacity-50"
+        >
+          {bulkSending ? t("notifications.bulk_reward_sending") : t("notifications.bulk_reward_send")}
         </button>
       </form>
 

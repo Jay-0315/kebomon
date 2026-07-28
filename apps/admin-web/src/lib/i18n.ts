@@ -331,7 +331,11 @@ const dict = {
     "notifications.link_community": "커뮤니티",
     "notifications.link_attendance": "출석체크",
     "notifications.link_mypage": "마이페이지",
-    "notifications.link_kebomon": "케보몬 도감",
+    "notifications.link_kebomon": "케보몬 홈",
+    "notifications.link_kebomon_enhance": "케보몬 강화",
+    "notifications.link_kebomon_breed": "케보몬 합성",
+    "notifications.link_kebomon_collection": "케보몬 도감",
+    "notifications.link_kebomon_achievement": "케보몬 업적",
     "notifications.link_gacha": "가챠",
     "notifications.link_live": "라이브 채팅",
     "notifications.link_mission": "미션",
@@ -350,6 +354,16 @@ const dict = {
     "notifications.result_failed": " / {{failed}}건 실패",
     "notifications.sending": "발송 중...",
     "notifications.send": "발송",
+
+    // ── 전체 유저 KP 일괄 지급 ──
+    "notifications.bulk_reward_title": "전체 유저 KP 일괄 지급",
+    "notifications.bulk_reward_amount_label": "지급 KP",
+    "notifications.bulk_reward_reason_label": "사유 (선택)",
+    "notifications.bulk_reward_confirm": "전체 유저에게 KP {{amount}}를 지급합니다. 계속할까요?",
+    "notifications.bulk_reward_send": "일괄 지급",
+    "notifications.bulk_reward_sending": "지급 중...",
+    "notifications.bulk_reward_error": "지급에 실패했습니다.",
+    "notifications.bulk_reward_result": "지급 완료: {{total}}명 중 {{notified}}명 알림 발송",
 
     // ── 유저 선택 모달 ──
     "userPicker.title": "유저 선택",
@@ -800,7 +814,11 @@ const dict = {
     "notifications.link_community": "コミュニティ",
     "notifications.link_attendance": "出席チェック",
     "notifications.link_mypage": "マイページ",
-    "notifications.link_kebomon": "ケボモン図鑑",
+    "notifications.link_kebomon": "ケボモンホーム",
+    "notifications.link_kebomon_enhance": "ケボモン強化",
+    "notifications.link_kebomon_breed": "ケボモン合成",
+    "notifications.link_kebomon_collection": "ケボモン図鑑",
+    "notifications.link_kebomon_achievement": "ケボモン実績",
     "notifications.link_gacha": "ガチャ",
     "notifications.link_live": "ライブチャット",
     "notifications.link_mission": "ミッション",
@@ -819,6 +837,16 @@ const dict = {
     "notifications.result_failed": " / {{failed}}件失敗",
     "notifications.sending": "送信中...",
     "notifications.send": "送信",
+
+    // ── 全ユーザーKP一括支給 ──
+    "notifications.bulk_reward_title": "全ユーザーKP一括支給",
+    "notifications.bulk_reward_amount_label": "支給KP",
+    "notifications.bulk_reward_reason_label": "理由(任意)",
+    "notifications.bulk_reward_confirm": "全ユーザーにKP {{amount}}を支給します。続けますか？",
+    "notifications.bulk_reward_send": "一括支給",
+    "notifications.bulk_reward_sending": "支給中...",
+    "notifications.bulk_reward_error": "支給に失敗しました。",
+    "notifications.bulk_reward_result": "支給完了: {{total}}名中{{notified}}名に通知送信",
 
     // ── ユーザー選択モーダル ──
     "userPicker.title": "ユーザー選択",
@@ -1269,7 +1297,11 @@ const dict = {
     "notifications.link_community": "Community",
     "notifications.link_attendance": "Attendance",
     "notifications.link_mypage": "My Page",
-    "notifications.link_kebomon": "Kebomon Dex",
+    "notifications.link_kebomon": "Kebomon Home",
+    "notifications.link_kebomon_enhance": "Kebomon Enhance",
+    "notifications.link_kebomon_breed": "Kebomon Breed",
+    "notifications.link_kebomon_collection": "Kebomon Dex",
+    "notifications.link_kebomon_achievement": "Kebomon Achievements",
     "notifications.link_gacha": "Gacha",
     "notifications.link_live": "Live Chat",
     "notifications.link_mission": "Mission",
@@ -1288,6 +1320,16 @@ const dict = {
     "notifications.result_failed": " / {{failed}} failed",
     "notifications.sending": "Sending...",
     "notifications.send": "Send",
+
+    // ── Bulk KP Grant ──
+    "notifications.bulk_reward_title": "Bulk KP Grant to All Users",
+    "notifications.bulk_reward_amount_label": "KP Amount",
+    "notifications.bulk_reward_reason_label": "Reason (optional)",
+    "notifications.bulk_reward_confirm": "This will grant {{amount}} KP to all users. Continue?",
+    "notifications.bulk_reward_send": "Grant to All",
+    "notifications.bulk_reward_sending": "Granting...",
+    "notifications.bulk_reward_error": "Failed to grant.",
+    "notifications.bulk_reward_result": "Done: notified {{notified}} of {{total}} users",
 
     // ── User Picker Modal ──
     "userPicker.title": "Select Users",

@@ -5,6 +5,7 @@ import { EmailService } from "../auth/email.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationGateway } from "../gateway/notification.gateway";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
+import { BulkAdjustRewardDto } from "./dto/bulk-adjust-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { logPointsChange } from "../rewards/points-ledger.util";
@@ -324,5 +325,50 @@ export class AdminUsersService {
     );
 
     return updated;
+  }
+
+  /** 전체 유저에게 KP를 일괄 지급 — UserReward가 없는 유저는 새로 생성 */
+  async bulkAdjustReward(requesterId: string, dto: BulkAdjustRewardDto) {
+    const delta = dto.missionPointsDelta;
+
+    const allUserIds = (await this.prisma.user.findMany({ select: { id: true } })).map((u) => u.id);
+    const existingIds = new Set(
+      (await this.prisma.userReward.findMany({ select: { userId: true } })).map((r) => r.userId),
+    );
+    const missingIds = allUserIds.filter((id) => !existingIds.has(id));
+
+    await this.prisma.userReward.updateMany({
+      data: { missionPoints: { increment: delta } },
+    });
+
+    if (missingIds.length > 0) {
+      await this.prisma.userReward.createMany({
+        data: missingIds.map((userId) => ({ userId, missionPoints: delta })),
+      });
+    }
+
+    const results = await Promise.allSettled(
+      allUserIds.map(async (userId) => {
+        void logPointsChange(this.prisma, userId, delta, `전체 지급${dto.reason ? `: ${dto.reason}` : ""}`);
+        await this.notifications.create({
+          userId,
+          type: "notice",
+          title: "KP 지급 안내",
+          body: `KP +${delta}${dto.reason ? ` (사유: ${dto.reason})` : ""}`,
+        });
+      }),
+    );
+    const notified = results.filter((r) => r.status === "fulfilled").length;
+
+    void logAdminAction(
+      this.prisma,
+      requesterId,
+      "USER_REWARD_BULK_ADJUST",
+      null,
+      null,
+      `KP +${delta} × ${allUserIds.length}명${dto.reason ? ` (사유: ${dto.reason})` : ""}`,
+    );
+
+    return { total: allUserIds.length, notified, delta };
   }
 }
