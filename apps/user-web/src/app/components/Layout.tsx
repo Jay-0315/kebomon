@@ -23,6 +23,7 @@ import {
   Zap,
   Radio,
   Users,
+  FlaskConical,
 } from "lucide-react";
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
@@ -250,6 +251,13 @@ export default function Layout() {
             tab="enhance"
             icon={Shield}
             label={t("enhance.tab")}
+            onNav={onNav}
+          />
+          <NavTabLink
+            to="/kebomon"
+            tab="breed"
+            icon={FlaskConical}
+            label={t("breed.tab")}
             onNav={onNav}
           />
           <NavTabLink
