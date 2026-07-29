@@ -181,6 +181,8 @@ model UserReward {
   breedingEssence     Int       @default(0) @map("breeding_essence")
   lastFishCastAt      DateTime? @map("last_fish_cast_at")
   fishDexMilestoneBest Int      @default(0) @map("fish_dex_milestone_best")
+  fishDailyPoints     Int       @default(0) @map("fish_daily_points")
+  fishDailyDate       String?   @map("fish_daily_date") @db.VarChar(10)
   raidCount           Int       @default(0) @map("raid_count")
   liveCount           Int       @default(0) @map("live_count")
   expeditionCount     Int       @default(0) @map("expedition_count")

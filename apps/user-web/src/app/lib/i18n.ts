@@ -685,6 +685,10 @@ const dict = {
     "fishing.new_badge": "NEW",
     "fishing.continue": "계속 낚시하기",
     "fishing.milestone_toast": "낚시 도감 {n}종 달성! 보상 획득",
+    "fishing.daily_cap": "오늘 낚시 KP: {earned}/{cap}",
+    "fishing.daily_cap_reached": "오늘 낚시 KP 한도에 도달했어요",
+    "fishing.milestone_heading": "낚시 도감 보상",
+    "fishing.milestone_item": "{count}종 달성 → {kp}KP",
     // Status Panel
     "status.title": "전투 현황",
     "status.char": "장착 캐릭터",
@@ -1394,6 +1398,10 @@ const dict = {
     "fishing.new_badge": "NEW",
     "fishing.continue": "釣りを続ける",
     "fishing.milestone_toast": "釣り図鑑{n}種達成！報酬獲得",
+    "fishing.daily_cap": "本日の釣りKP: {earned}/{cap}",
+    "fishing.daily_cap_reached": "本日の釣りKP上限に達しました",
+    "fishing.milestone_heading": "釣り図鑑報酬",
+    "fishing.milestone_item": "{count}種達成 → {kp}KP",
     // Status Panel
     "status.title": "バトル現況",
     "status.char": "装備キャラ",
@@ -2102,6 +2110,10 @@ const dict = {
     "fishing.new_badge": "NEW",
     "fishing.continue": "Keep Fishing",
     "fishing.milestone_toast": "Fish Dex {n} species reached! Reward earned",
+    "fishing.daily_cap": "Today's fishing KP: {earned}/{cap}",
+    "fishing.daily_cap_reached": "You've reached today's fishing KP cap",
+    "fishing.milestone_heading": "Fish Dex Rewards",
+    "fishing.milestone_item": "{count} species → {kp}KP",
     // Status Panel
     "status.title": "Battle Status",
     "status.char": "Equipped Character",

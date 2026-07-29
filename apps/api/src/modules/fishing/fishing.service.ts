@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { logPointsChange } from "../rewards/points-ledger.util";
+import { getTodayKTC } from "../rewards/date.util";
 import {
   FISH_CATCH_POINTS,
   FISH_DEX_MILESTONES,
@@ -15,6 +16,8 @@ const FISH_CAST_COOLDOWN_MS = 3000;
 
 @Injectable()
 export class FishingService {
+  private static readonly DAILY_KP_CAP = 500;
+
   constructor(private readonly prisma: PrismaService) {}
 
   private async getOrCreateReward(userId: string) {
@@ -37,12 +40,15 @@ export class FishingService {
     const cooldownRemainingMs = reward.lastFishCastAt
       ? Math.max(0, FISH_CAST_COOLDOWN_MS - (Date.now() - reward.lastFishCastAt.getTime()))
       : 0;
+    const dailyPointsEarned = reward.fishDailyDate === getTodayKTC() ? reward.fishDailyPoints : 0;
 
     return {
       ownedFish: Object.fromEntries(fish.map((f) => [f.fishId, f.count])),
       cooldownRemainingMs,
       fishDexMilestoneBest: reward.fishDexMilestoneBest,
       totalFishCount: TOTAL_FISH_COUNT,
+      dailyPointsEarned,
+      dailyPointsCap: FishingService.DAILY_KP_CAP,
     };
   }
 
@@ -58,6 +64,36 @@ export class FishingService {
       data: { lastFishCastAt: new Date() },
     });
     return { ok: true };
+  }
+
+  /** 낚시로 얻는 KP는 하루 DAILY_KP_CAP까지만 인정 — 남은 한도만큼만 실제 지급하고 나머지는 버림 */
+  private async grantFishingPoints(userId: string, amount: number, reason: string): Promise<number> {
+    if (amount <= 0) return 0;
+    const today = getTodayKTC();
+    const reward = await this.getOrCreateReward(userId);
+    const baselineToday = reward.fishDailyDate === today ? reward.fishDailyPoints : 0;
+    const granted = Math.max(0, Math.min(amount, FishingService.DAILY_KP_CAP - baselineToday));
+
+    if (granted <= 0) {
+      if (reward.fishDailyDate !== today) {
+        await this.prisma.userReward.update({
+          where: { userId },
+          data: { fishDailyDate: today, fishDailyPoints: 0 },
+        });
+      }
+      return 0;
+    }
+
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        missionPoints: { increment: granted },
+        fishDailyPoints: baselineToday + granted,
+        fishDailyDate: today,
+      },
+    });
+    void logPointsChange(this.prisma, userId, granted, reason);
+    return granted;
   }
 
   /** 타이밍 판정 결과(Perfect/Good)에 따라 물고기 등급을 서버가 추첨해 지급 */
@@ -76,20 +112,18 @@ export class FishingService {
     });
     const isNew = !existing;
     const basePoints = FISH_CATCH_POINTS[FISH_ID_TO_RARITY[fishId]];
-    const points = isNew ? basePoints : Math.ceil(basePoints / 2);
+    const wantedPoints = isNew ? basePoints : Math.ceil(basePoints / 2);
 
-    const [updatedFish] = await this.prisma.$transaction([
-      this.prisma.userFish.upsert({
-        where: { userId_fishId: { userId, fishId } },
-        create: { userId, fishId },
-        update: { count: { increment: 1 } },
-      }),
-      this.prisma.userReward.update({
-        where: { userId },
-        data: { missionPoints: { increment: points } },
-      }),
-    ]);
-    void logPointsChange(this.prisma, userId, points, isNew ? "낚시 신규 포획" : "낚시 중복 포획");
+    const updatedFish = await this.prisma.userFish.upsert({
+      where: { userId_fishId: { userId, fishId } },
+      create: { userId, fishId },
+      update: { count: { increment: 1 } },
+    });
+    const points = await this.grantFishingPoints(
+      userId,
+      wantedPoints,
+      isNew ? "낚시 신규 포획" : "낚시 중복 포획",
+    );
 
     const distinctCount = await this.prisma.userFish.count({ where: { userId } });
     const milestoneKp = await this.checkFishDexMilestones(userId, distinctCount);
@@ -99,6 +133,7 @@ export class FishingService {
       rarity,
       isNew,
       points,
+      dailyCapReached: points < wantedPoints,
       totalCaught: updatedFish.count,
       distinctCount,
       milestoneKp,
@@ -117,10 +152,9 @@ export class FishingService {
 
     await this.prisma.userReward.update({
       where: { userId },
-      data: { missionPoints: { increment: kp }, fishDexMilestoneBest: newBest },
+      data: { fishDexMilestoneBest: newBest },
     });
-    void logPointsChange(this.prisma, userId, kp, "낚시 도감 마일스톤 보상");
 
-    return kp;
+    return this.grantFishingPoints(userId, kp, "낚시 도감 마일스톤 보상");
   }
 }

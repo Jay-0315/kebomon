@@ -8,6 +8,14 @@ export interface FishDef {
   jaName: string;
 }
 
+// 서버(fish-master.constant.ts FISH_DEX_MILESTONES)와 동일한 값 — 표시 전용, 실제 지급은 서버가 판정
+export const FISH_DEX_MILESTONES: { count: number; kp: number }[] = [
+  { count: 6, kp: 100 },
+  { count: 12, kp: 250 },
+  { count: 18, kp: 500 },
+  { count: 24, kp: 1000 },
+];
+
 const f = (id: number, rarity: CharacterRarity, name: string, korName: string, jaName: string): FishDef => ({
   id,
   rarity,

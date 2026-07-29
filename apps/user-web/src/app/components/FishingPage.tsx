@@ -6,12 +6,17 @@ import { api } from "../lib/api";
 import {
   FISH,
   FISH_BY_ID,
+  FISH_DEX_MILESTONES,
   FISH_RARITY_BG,
   FISH_RARITY_GLOW,
   FISH_RARITY_HEX,
   getFishName,
 } from "../data/fish";
-import { RARITY_COLOR, RARITY_BORDER, getRarityLabel } from "../data/characters";
+import {
+  RARITY_COLOR,
+  RARITY_BORDER,
+  getRarityLabel,
+} from "../data/characters";
 
 type Phase = "idle" | "casting" | "waiting" | "biting" | "revealing" | "missed";
 type Grade = "perfect" | "good" | "miss";
@@ -33,6 +38,7 @@ interface CatchResult {
   rarity: keyof typeof FISH_RARITY_BG;
   isNew: boolean;
   points: number;
+  dailyCapReached: boolean;
   totalCaught: number;
   distinctCount: number;
   milestoneKp: number;
@@ -49,6 +55,9 @@ export default function FishingPage() {
   const [catchResult, setCatchResult] = useState<CatchResult | null>(null);
   const [ownedFish, setOwnedFish] = useState<Record<number, number>>({});
   const [cooldownMs, setCooldownMs] = useState(0);
+  const [dailyEarned, setDailyEarned] = useState(0);
+  const [dailyCap, setDailyCap] = useState(500);
+  const [fishDexBest, setFishDexBest] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [milestoneToast, setMilestoneToast] = useState<number | null>(null);
 
@@ -58,10 +67,19 @@ export default function FishingPage() {
 
   useEffect(() => {
     api
-      .get<{ ownedFish: Record<number, number>; cooldownRemainingMs: number }>("/fishing/summary")
+      .get<{
+        ownedFish: Record<number, number>;
+        cooldownRemainingMs: number;
+        dailyPointsEarned: number;
+        dailyPointsCap: number;
+        fishDexMilestoneBest: number;
+      }>("/fishing/summary")
       .then((s) => {
         setOwnedFish(s.ownedFish);
         setCooldownMs(s.cooldownRemainingMs);
+        setDailyEarned(s.dailyPointsEarned);
+        setDailyCap(s.dailyPointsCap);
+        setFishDexBest(s.fishDexMilestoneBest);
       })
       .catch(() => undefined);
   }, []);
@@ -104,7 +122,9 @@ export default function FishingPage() {
       await api.post("/fishing/cast");
       setCooldownMs(3000);
       setPhase("waiting");
-      const delay = BITE_MIN_DELAY_MS + Math.random() * (BITE_MAX_DELAY_MS - BITE_MIN_DELAY_MS);
+      const delay =
+        BITE_MIN_DELAY_MS +
+        Math.random() * (BITE_MAX_DELAY_MS - BITE_MIN_DELAY_MS);
       waitTimerRef.current = setTimeout(startBiting, delay);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -136,9 +156,14 @@ export default function FishingPage() {
       .post<CatchResult>("/fishing/catch", { grade })
       .then((result) => {
         setCatchResult(result);
-        setOwnedFish((prev) => ({ ...prev, [result.fishId]: result.totalCaught }));
+        setOwnedFish((prev) => ({
+          ...prev,
+          [result.fishId]: result.totalCaught,
+        }));
+        setDailyEarned((prev) => Math.min(dailyCap, prev + result.points + result.milestoneKp));
         void refreshRewards();
         if (result.milestoneKp > 0) {
+          setFishDexBest(result.distinctCount);
           setMilestoneToast(result.distinctCount);
           setTimeout(() => setMilestoneToast(null), 3500);
         }
@@ -176,7 +201,9 @@ export default function FishingPage() {
             key={tb}
             onClick={() => setTab(tb)}
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-              tab === tb ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              tab === tb
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground"
             }`}
           >
             {tb === "fish" ? t("fishing.tab_fish") : t("fishing.tab_dex")}
@@ -188,6 +215,11 @@ export default function FishingPage() {
         <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center gap-4">
           <p className="text-xs text-muted-foreground">
             {t("fishing.dex_count")} {distinctCount}/{FISH.length}
+          </p>
+          <p className="text-[11px] text-muted-foreground/70">
+            {t("fishing.daily_cap")
+              .replace("{earned}", String(dailyEarned))
+              .replace("{cap}", String(dailyCap))}
           </p>
 
           {(phase === "idle" || phase === "casting") && (
@@ -213,25 +245,38 @@ export default function FishingPage() {
           {phase === "waiting" && (
             <>
               <Waves className="w-16 h-16 text-primary animate-pulse" />
-              <p className="text-sm text-muted-foreground">{t("fishing.waiting")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("fishing.waiting")}
+              </p>
             </>
           )}
 
           {phase === "biting" && (
             <>
-              <p className="text-lg font-bold text-primary">{t("fishing.bite")}</p>
+              <p className="text-lg font-bold text-primary">
+                {t("fishing.bite")}
+              </p>
               <div className="relative w-full h-7 rounded-full bg-muted overflow-hidden">
                 <div
                   className="absolute inset-y-0 bg-emerald-400/25"
-                  style={{ left: `${50 - GOOD_HALF_WIDTH}%`, width: `${GOOD_HALF_WIDTH * 2}%` }}
+                  style={{
+                    left: `${50 - GOOD_HALF_WIDTH}%`,
+                    width: `${GOOD_HALF_WIDTH * 2}%`,
+                  }}
                 />
                 <div
                   className="absolute inset-y-0 bg-emerald-400/60"
-                  style={{ left: `${50 - PERFECT_HALF_WIDTH}%`, width: `${PERFECT_HALF_WIDTH * 2}%` }}
+                  style={{
+                    left: `${50 - PERFECT_HALF_WIDTH}%`,
+                    width: `${PERFECT_HALF_WIDTH * 2}%`,
+                  }}
                 />
                 <div
                   className="absolute top-0 bottom-0 w-1 bg-white shadow-lg"
-                  style={{ left: `${markerPct}%`, transform: "translateX(-50%)" }}
+                  style={{
+                    left: `${markerPct}%`,
+                    transform: "translateX(-50%)",
+                  }}
                 />
               </div>
               <button
@@ -244,7 +289,9 @@ export default function FishingPage() {
           )}
 
           {phase === "missed" && (
-            <p className="text-sm text-muted-foreground py-6">{t("fishing.miss")}</p>
+            <p className="text-sm text-muted-foreground py-6">
+              {t("fishing.miss")}
+            </p>
           )}
 
           {phase === "revealing" &&
@@ -256,27 +303,43 @@ export default function FishingPage() {
                 return (
                   <div className="flex flex-col items-center gap-2 py-2">
                     {lastGrade && (
-                      <p className="text-xs font-bold text-primary uppercase">{t(`fishing.${lastGrade}`)}</p>
+                      <p className="text-xs font-bold text-primary uppercase">
+                        {t(`fishing.${lastGrade}`)}
+                      </p>
                     )}
                     <div
                       className={`rounded-2xl border-2 ${RARITY_BORDER[rarity]} ${FISH_RARITY_BG[rarity]} ${FISH_RARITY_GLOW[rarity]} p-6 flex flex-col items-center gap-2`}
                       style={{ minWidth: 200 }}
                     >
-                      <FishIcon className="w-16 h-16" style={{ color: FISH_RARITY_HEX[rarity] }} />
+                      <FishIcon
+                        className="w-16 h-16"
+                        style={{ color: FISH_RARITY_HEX[rarity] }}
+                      />
                       <span
                         className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${FISH_RARITY_BG[rarity]} ${RARITY_COLOR[rarity]}`}
                       >
                         {getRarityLabel(rarity, lang)}
                       </span>
-                      <p className={`text-lg font-bold ${RARITY_COLOR[rarity]}`}>{getFishName(fishDef, lang)}</p>
+                      <p
+                        className={`text-lg font-bold ${RARITY_COLOR[rarity]}`}
+                      >
+                        {getFishName(fishDef, lang)}
+                      </p>
                       {catchResult.isNew ? (
                         <span className="text-[10px] text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded-full font-semibold">
                           {t("fishing.new_badge")}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">x{catchResult.totalCaught}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          x{catchResult.totalCaught}
+                        </span>
                       )}
-                      <span className="text-xs text-muted-foreground">+{catchResult.points}KP</span>
+                      <span className="text-xs text-muted-foreground">
+                        +{catchResult.points}KP
+                      </span>
+                      {catchResult.dailyCapReached && (
+                        <p className="text-[10px] text-amber-400">{t("fishing.daily_cap_reached")}</p>
+                      )}
                     </div>
                     <button
                       onClick={closeReveal}
@@ -288,13 +351,37 @@ export default function FishingPage() {
                 );
               })()
             ) : (
-              <p className="text-sm text-muted-foreground py-6">{t("fishing.reeling")}</p>
+              <p className="text-sm text-muted-foreground py-6">
+                {t("fishing.reeling")}
+              </p>
             ))}
         </div>
       )}
 
       {tab === "dex" && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <div className="space-y-3">
+          <div className="bg-card rounded-2xl border border-border p-4">
+            <p className="text-xs font-semibold text-foreground mb-2">
+              {t("fishing.milestone_heading")}
+            </p>
+            <div className="flex flex-col gap-1">
+              {FISH_DEX_MILESTONES.map((m) => {
+                const achieved = fishDexBest >= m.count;
+                return (
+                  <p
+                    key={m.count}
+                    className={`text-xs ${achieved ? "text-primary font-semibold" : "text-muted-foreground"}`}
+                  >
+                    {achieved ? "✓ " : ""}
+                    {t("fishing.milestone_item")
+                      .replace("{count}", String(m.count))
+                      .replace("{kp}", String(m.kp))}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {FISH.map((fishDef) => {
             const count = ownedFish[fishDef.id] ?? 0;
             const owned = count > 0;
@@ -302,20 +389,31 @@ export default function FishingPage() {
               <div
                 key={fishDef.id}
                 className={`rounded-xl border p-3 flex flex-col items-center gap-1 ${
-                  owned ? `${RARITY_BORDER[fishDef.rarity]} ${FISH_RARITY_BG[fishDef.rarity]}` : "border-border bg-muted opacity-50"
+                  owned
+                    ? `${RARITY_BORDER[fishDef.rarity]} ${FISH_RARITY_BG[fishDef.rarity]}`
+                    : "border-border bg-muted opacity-50"
                 }`}
               >
                 <FishIcon
                   className="w-7 h-7"
-                  style={{ color: owned ? FISH_RARITY_HEX[fishDef.rarity] : undefined }}
+                  style={{
+                    color: owned ? FISH_RARITY_HEX[fishDef.rarity] : undefined,
+                  }}
                 />
-                <p className={`text-[11px] font-medium text-center ${owned ? RARITY_COLOR[fishDef.rarity] : "text-muted-foreground"}`}>
+                <p
+                  className={`text-[11px] font-medium text-center ${owned ? RARITY_COLOR[fishDef.rarity] : "text-muted-foreground"}`}
+                >
                   {owned ? getFishName(fishDef, lang) : "???"}
                 </p>
-                {owned && <span className="text-[10px] text-muted-foreground">x{count}</span>}
+                {owned && (
+                  <span className="text-[10px] text-muted-foreground">
+                    x{count}
+                  </span>
+                )}
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -323,7 +421,10 @@ export default function FishingPage() {
         <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-primary/40 bg-card px-4 py-2.5 shadow-lg">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             <FishIcon className="w-4 h-4 text-primary" />
-            {t("fishing.milestone_toast").replace("{n}", String(milestoneToast))}
+            {t("fishing.milestone_toast").replace(
+              "{n}",
+              String(milestoneToast),
+            )}
           </p>
         </div>
       )}
