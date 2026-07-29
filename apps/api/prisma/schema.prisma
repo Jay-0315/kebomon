@@ -89,6 +89,7 @@ model User {
   characters             UserCharacter[]
   titles                 UserTitle[]
   borders                UserBorder[]
+  fish                   UserFish[]
   identities             UserIdentity[]
   postLikes              PostLike[]
   passwordChangeHistory  PasswordChangeHistory?
@@ -178,6 +179,8 @@ model UserReward {
   goldenEggs          Int       @default(0) @map("golden_eggs")
   enhancementStones   Int       @default(0) @map("enhancement_stones")
   breedingEssence     Int       @default(0) @map("breeding_essence")
+  lastFishCastAt      DateTime? @map("last_fish_cast_at")
+  fishDexMilestoneBest Int      @default(0) @map("fish_dex_milestone_best")
   raidCount           Int       @default(0) @map("raid_count")
   liveCount           Int       @default(0) @map("live_count")
   expeditionCount     Int       @default(0) @map("expedition_count")
@@ -221,6 +224,19 @@ model UserBorder {
   @@unique([userId, borderId])
   @@index([userId])
   @@map("user_borders")
+}
+
+model UserFish {
+  id            BigInt   @id @default(autoincrement())
+  userId        String   @map("user_id")
+  fishId        Int      @map("fish_id")
+  count         Int      @default(1)
+  firstCaughtAt DateTime @default(now()) @map("first_caught_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fishId])
+  @@index([userId])
+  @@map("user_fish")
 }
 
 model UserCharacter {

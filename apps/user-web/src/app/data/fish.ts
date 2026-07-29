@@ -1,0 +1,87 @@
+import type { CharacterRarity } from "./characters";
+
+export interface FishDef {
+  id: number;
+  rarity: CharacterRarity;
+  name: string; // en
+  korName: string;
+  jaName: string;
+}
+
+const f = (id: number, rarity: CharacterRarity, name: string, korName: string, jaName: string): FishDef => ({
+  id,
+  rarity,
+  name,
+  korName,
+  jaName,
+});
+
+export const FISH: FishDef[] = [
+  // common
+  f(1, "common", "Crucian Carp", "붕어", "フナ"),
+  f(2, "common", "Minnow", "피라미", "ハヤ"),
+  f(3, "common", "Catfish", "메기", "ナマズ"),
+  f(4, "common", "Loach", "미꾸라지", "ドジョウ"),
+  // uncommon
+  f(5, "uncommon", "Carp", "잉어", "コイ"),
+  f(6, "uncommon", "Bass", "배스", "バス"),
+  f(7, "uncommon", "Sweetfish", "은어", "アユ"),
+  f(8, "uncommon", "Eel", "장어", "ウナギ"),
+  // rare
+  f(9, "rare", "Red Sea Bream", "참돔", "マダイ"),
+  f(10, "rare", "Flounder", "광어", "ヒラメ"),
+  f(11, "rare", "Lobster", "랍스터", "ロブスター"),
+  f(12, "rare", "Octopus", "문어", "タコ"),
+  // epic
+  f(13, "epic", "Golden Carp", "황금잉어", "金鯉"),
+  f(14, "epic", "Baby Great White", "새끼 백상아리", "ホホジロザメの子"),
+  f(15, "epic", "Jellyfish King", "해파리 왕", "クラゲの王"),
+  f(16, "epic", "Deep-sea Anglerfish", "심해 아귀", "深海アンコウ"),
+  // legendary
+  f(17, "legendary", "Marlin", "청새치", "カジキ"),
+  f(18, "legendary", "Giant Tuna", "초대형 참치", "超巨大マグロ"),
+  f(19, "legendary", "Century Turtle", "백년거북", "百年亀"),
+  f(20, "legendary", "Aurora Eel", "오로라 뱀장어", "オーロラウナギ"),
+  // mythic
+  f(21, "mythic", "Leviathan", "리바이어던", "リヴァイアサン"),
+  f(22, "mythic", "Mermaid's Tear", "인어의 눈물", "人魚の涙"),
+  f(23, "mythic", "Golden Dragonfish", "황금용어", "金龍魚"),
+  f(24, "mythic", "Kebomon Water Spirit", "케보몬 물의 정령", "ケボモン水の精霊"),
+];
+
+export const FISH_BY_ID = new Map(FISH.map((fi) => [fi.id, fi]));
+
+export function getFishName(fish: FishDef, lang: string): string {
+  if (lang === "ja") return fish.jaName;
+  if (lang === "ko") return fish.korName;
+  return fish.name;
+}
+
+// characters.ts의 RARITY_BG/RARITY_GLOW는 KebomonPage.tsx 로컬 상수라 재사용 불가 —
+// 낚시터 전용으로 소규모 등급 배경/후광 스타일만 별도 정의
+export const FISH_RARITY_BG: Record<CharacterRarity, string> = {
+  common: "bg-gray-500/10",
+  uncommon: "bg-green-500/10",
+  rare: "bg-blue-500/10",
+  epic: "bg-purple-500/10",
+  legendary: "bg-amber-500/10",
+  mythic: "bg-pink-500/10",
+};
+
+export const FISH_RARITY_GLOW: Record<CharacterRarity, string> = {
+  common: "shadow-gray-400/20",
+  uncommon: "shadow-green-400/30",
+  rare: "shadow-blue-400/30",
+  epic: "shadow-purple-400/40",
+  legendary: "shadow-amber-400/50",
+  mythic: "shadow-pink-400/60",
+};
+
+export const FISH_RARITY_HEX: Record<CharacterRarity, string> = {
+  common: "#9ca3af",
+  uncommon: "#4ade80",
+  rare: "#60a5fa",
+  epic: "#c084fc",
+  legendary: "#fbbf24",
+  mythic: "#f472b6",
+};

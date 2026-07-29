@@ -19,6 +19,7 @@ import HallOfFamePage from "./components/HallOfFamePage";
 import RoguePage from "./components/RoguePage";
 import DuelPage from "./components/DuelPage";
 import ExpeditionPage from "./components/ExpeditionPage";
+import FishingPage from "./components/FishingPage";
 import GuildPage from "./components/GuildPage";
 import ShopPage from "./components/ShopPage";
 import SettingsPage from "./components/SettingsPage";
@@ -148,6 +149,7 @@ export default function App() {
           <Route path="rogue" element={<RoguePage />} />
           <Route path="duel" element={<DuelPage />} />
           <Route path="expedition" element={<ExpeditionPage />} />
+          <Route path="fishing" element={<FishingPage />} />
           <Route path="guild" element={<GuildPage />} />
           <Route path="shop" element={<ShopPage />} />
           <Route path="settings" element={<SettingsPage />} />

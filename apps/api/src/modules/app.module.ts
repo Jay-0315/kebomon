@@ -12,6 +12,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { ArenaModule } from "./arena/arena.module";
 import { GuildModule } from "./guild/guild.module";
+import { FishingModule } from "./fishing/fishing.module";
 import { ReportsModule } from "./reports/reports.module";
 import { BannersModule } from "./banners/banners.module";
 import { InquiriesModule } from "./inquiries/inquiries.module";
@@ -34,6 +35,7 @@ import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
     GatewayModule,
     ArenaModule,
     GuildModule,
+    FishingModule,
     ReportsModule,
     BannersModule,
     InquiriesModule,
