@@ -18,10 +18,10 @@ type Grade = "perfect" | "good" | "miss";
 
 const BITE_MIN_DELAY_MS = 2000;
 const BITE_MAX_DELAY_MS = 5000;
-const BITING_WINDOW_MS = 1800;
-const SWEEP_PERIOD_MS = 900;
-const PERFECT_HALF_WIDTH = 6; // 중심 44~56%
-const GOOD_HALF_WIDTH = 18; // 중심 32~68%
+const BITING_WINDOW_MS = 3200;
+const SWEEP_PERIOD_MS = 1800;
+const PERFECT_HALF_WIDTH = 11; // 중심 39~61%
+const GOOD_HALF_WIDTH = 28; // 중심 22~78%
 
 function triangleWave(elapsedMs: number, periodMs: number): number {
   const phase = (elapsedMs % periodMs) / periodMs;
