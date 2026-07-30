@@ -92,8 +92,8 @@ const AOE_RADIUS = 46;
 const PROJECTILE_SPEED = 340; // px/sec
 const PROJECTILE_HIT_R = 14;
 
-const CANVAS_W = 640;
-const CANVAS_H = 320;
+const CANVAS_W = 720;
+const CANVAS_H = 380;
 
 // ─── 경로 기하 헬퍼 — 웨이포인트 배열만 주면 어떤 모양의 맵이든 동작 ───
 interface Point {
@@ -143,38 +143,85 @@ function buildSlots(path: Point[], count: number, offset: number): Point[] {
   return slots.slice(0, count);
 }
 
+type DecoShape = "grass" | "ember" | "snow";
+
+interface MapTheme {
+  bg: string;
+  pathFill: string;
+  pathBorder: string;
+  decoColor: string;
+  decoShape: DecoShape;
+}
+
 interface MapDef {
   id: string;
   nameKey: TranslationKey;
   path: Point[];
   slots: Point[];
+  theme: MapTheme;
+  decorations: Point[];
 }
 
-function defineMap(id: string, nameKey: TranslationKey, path: Point[], slotOffset: number): MapDef {
-  return { id, nameKey, path, slots: buildSlots(path, SLOT_COUNT, slotOffset) };
+function scatterDecorations(w: number, h: number, count: number): Point[] {
+  return Array.from({ length: count }, () => ({ x: Math.random() * w, y: Math.random() * h }));
+}
+
+function defineMap(
+  id: string,
+  nameKey: TranslationKey,
+  path: Point[],
+  slotOffset: number,
+  theme: MapTheme,
+): MapDef {
+  return {
+    id,
+    nameKey,
+    path,
+    slots: buildSlots(path, SLOT_COUNT, slotOffset),
+    theme,
+    decorations: scatterDecorations(CANVAS_W, CANVAS_H, 28),
+  };
 }
 
 const MAPS: MapDef[] = [
-  defineMap("straight", "td.map_straight", [
-    { x: 0, y: 160 },
-    { x: 640, y: 160 },
-  ], 65),
-  defineMap("zigzag", "td.map_zigzag", [
-    { x: 0, y: 80 },
-    { x: 220, y: 80 },
-    { x: 220, y: 240 },
-    { x: 440, y: 240 },
-    { x: 440, y: 80 },
-    { x: 640, y: 80 },
-  ], 42),
-  defineMap("scorridor", "td.map_scorridor", [
-    { x: 0, y: 60 },
-    { x: 600, y: 60 },
-    { x: 600, y: 160 },
-    { x: 40, y: 160 },
-    { x: 40, y: 255 },
-    { x: 640, y: 255 },
-  ], 34),
+  defineMap(
+    "straight",
+    "td.map_straight",
+    [
+      { x: 0, y: 190 },
+      { x: 720, y: 190 },
+    ],
+    75,
+    { bg: "#142118", pathFill: "#33502f", pathBorder: "#5a8a4f", decoColor: "#4ade80", decoShape: "grass" },
+  ),
+  defineMap(
+    "zigzag",
+    "td.map_zigzag",
+    [
+      { x: 0, y: 95 },
+      { x: 250, y: 95 },
+      { x: 250, y: 280 },
+      { x: 470, y: 280 },
+      { x: 470, y: 95 },
+      { x: 720, y: 95 },
+    ],
+    40,
+    { bg: "#241213", pathFill: "#4a2420", pathBorder: "#8a4530", decoColor: "#f97316", decoShape: "ember" },
+  ),
+  defineMap(
+    "scorridor",
+    "td.map_scorridor",
+    [
+      { x: 0, y: 70 },
+      { x: 680, y: 70 },
+      { x: 680, y: 190 },
+      { x: 50, y: 190 },
+      { x: 50, y: 290 },
+      { x: 720, y: 290 },
+    ],
+    34,
+    { bg: "#0f1b2b", pathFill: "#233a52", pathBorder: "#4a7aa0", decoColor: "#bfe3ff", decoShape: "snow" },
+  ),
 ];
 
 interface TowerDef {
@@ -197,6 +244,13 @@ interface Enemy {
   element: Element;
   dotUntil: number;
   dotDmgPerTick: number;
+  flinchUntil: number;
+}
+interface HitFx {
+  x: number;
+  y: number;
+  color: string;
+  createdAt: number;
 }
 interface Projectile {
   id: number;
@@ -217,6 +271,8 @@ interface GameState {
   slots: (TowerInstance | null)[];
   enemies: Enemy[];
   projectiles: Projectile[];
+  hitFx: HitFx[];
+  shakeUntil: number;
   nextEnemyId: number;
   nextProjectileId: number;
   spawnQueue: { hp: number; speed: number; isBoss: boolean }[];
@@ -237,6 +293,8 @@ function freshGameState(mapId: string): GameState {
     slots: Array(SLOT_COUNT).fill(null),
     enemies: [],
     projectiles: [],
+    hitFx: [],
+    shakeUntil: 0,
     nextEnemyId: 1,
     nextProjectileId: 1,
     spawnQueue: [],
@@ -279,6 +337,61 @@ function weightedTowerPick(pool: TowerDef[], weights: Record<string, number>): T
   }
   const candidates = byRarity.get(picked) ?? pool;
   return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+/** 원형 대신 실제 몬스터처럼 보이는 블롭 실루엣 — 속성색으로 물들이고 보스는 뿔을 추가 */
+function drawMonster(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  bodyColor: string,
+  flinch: boolean,
+  isBoss: boolean,
+) {
+  const scale = flinch ? 1.18 : 1;
+  const rr = r * scale;
+
+  if (isBoss) {
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.moveTo(x - rr * 0.55, y - rr * 1.1);
+    ctx.lineTo(x - rr * 0.85, y - rr * 1.85);
+    ctx.lineTo(x - rr * 0.15, y - rr * 1.05);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + rr * 0.55, y - rr * 1.1);
+    ctx.lineTo(x + rr * 0.85, y - rr * 1.85);
+    ctx.lineTo(x + rr * 0.15, y - rr * 1.05);
+    ctx.fill();
+  }
+
+  // 몸통 (블롭)
+  ctx.fillStyle = flinch ? "#ffffff" : bodyColor;
+  ctx.beginPath();
+  ctx.moveTo(x - rr, y);
+  ctx.quadraticCurveTo(x - rr, y - rr * 1.3, x, y - rr * 1.3);
+  ctx.quadraticCurveTo(x + rr, y - rr * 1.3, x + rr, y);
+  ctx.quadraticCurveTo(x + rr, y + rr * 0.9, x, y + rr * 1.15);
+  ctx.quadraticCurveTo(x - rr, y + rr * 0.9, x - rr, y);
+  ctx.closePath();
+  ctx.fill();
+
+  // 눈
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(x - rr * 0.34, y - rr * 0.15, rr * 0.24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + rr * 0.34, y - rr * 0.15, rr * 0.24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#181818";
+  ctx.beginPath();
+  ctx.arc(x - rr * 0.34, y - rr * 0.1, rr * 0.11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + rr * 0.34, y - rr * 0.1, rr * 0.11, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 interface RankingEntry {
@@ -449,6 +562,7 @@ export default function TowerDefensePage() {
           element: g.waveElement,
           dotUntil: 0,
           dotDmgPerTick: 0,
+          flinchUntil: 0,
         });
         g.spawnTimer = SPAWN_INTERVAL_MS;
       }
@@ -509,6 +623,9 @@ export default function TowerDefensePage() {
       if (dist <= PROJECTILE_HIT_R) {
         const elemMult = ELEMENT_ADVANTAGE[p.element] === target.element ? ELEMENT_BONUS : 1;
         const dmg = p.damage * elemMult;
+        target.flinchUntil = now + 110;
+        g.hitFx.push({ x: tp.x, y: tp.y, color: ELEMENT_COLOR[p.element], createdAt: now });
+        if (target.isBoss) g.shakeUntil = now + 140;
         if (p.pattern === "aoe") {
           for (const e of g.enemies) {
             const ep = pointAtDistance(map.path, e.dist);
@@ -517,6 +634,7 @@ export default function TowerDefensePage() {
             if (Math.sqrt(ddx * ddx + ddy * ddy) <= AOE_RADIUS) {
               const em = ELEMENT_ADVANTAGE[p.element] === e.element ? ELEMENT_BONUS : 1;
               e.hp -= p.damage * em;
+              e.flinchUntil = now + 110;
             }
           }
         } else if (p.pattern === "dot") {
@@ -534,6 +652,7 @@ export default function TowerDefensePage() {
       return true;
     });
     g.enemies = g.enemies.filter((e) => e.hp > 0);
+    g.hitFx = g.hitFx.filter((fx) => now - fx.createdAt < 260);
 
     if (g.lives <= 0) {
       finishGame(false);
@@ -571,10 +690,40 @@ export default function TowerDefensePage() {
     if (!ctx) return;
     const g = gRef.current;
     const map = MAPS.find((m) => m.id === g.mapId) ?? MAPS[0];
+    const now = performance.now();
+    const theme = map.theme;
 
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = "#151a26";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.save();
+    if (now < g.shakeUntil) {
+      ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+    }
+
+    ctx.clearRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
+
+    // 맵 테마 배경 장식
+    for (const d of map.decorations) {
+      if (theme.decoShape === "grass") {
+        ctx.strokeStyle = `${theme.decoColor}55`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y + 5);
+        ctx.lineTo(d.x, d.y - 5);
+        ctx.stroke();
+      } else if (theme.decoShape === "ember") {
+        const pulse = 0.5 + 0.5 * Math.sin(now / 400 + d.x);
+        ctx.fillStyle = `${theme.decoColor}${Math.round(30 + pulse * 50).toString(16).padStart(2, "0")}`;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 1.5 + pulse * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = `${theme.decoColor}66`;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // 경로 (웨이포인트 폴리라인)
     const drawPathLine = () => {
@@ -582,45 +731,52 @@ export default function TowerDefensePage() {
       ctx.moveTo(map.path[0].x, map.path[0].y);
       for (const pt of map.path.slice(1)) ctx.lineTo(pt.x, pt.y);
     };
-    ctx.strokeStyle = "#2c3446";
+    ctx.strokeStyle = theme.pathFill;
     ctx.lineWidth = 46;
     ctx.lineJoin = "round";
     drawPathLine();
     ctx.stroke();
-    ctx.strokeStyle = "#3a4358";
+    ctx.strokeStyle = theme.pathBorder;
     ctx.lineWidth = 2;
     ctx.setLineDash([10, 8]);
     drawPathLine();
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 적
+    // 적 (몬스터 실루엣)
     for (const e of g.enemies) {
       const pos = pointAtDistance(map.path, e.dist);
-      const r = e.isBoss ? 18 : 10;
-      ctx.fillStyle = e.isBoss ? "#f472b6" : e.dotUntil > performance.now() ? "#84cc16" : "#f87171";
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = ELEMENT_COLOR[e.element];
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, r + 2, 0, Math.PI * 2);
-      ctx.stroke();
+      const r = e.isBoss ? 19 : 11;
+      const flinch = now < e.flinchUntil;
+      const bodyColor = e.dotUntil > now ? "#84cc16" : ELEMENT_COLOR[e.element];
+      drawMonster(ctx, pos.x, pos.y, r, bodyColor, flinch, e.isBoss);
       // hp bar
       const barW = r * 2.2;
       ctx.fillStyle = "#00000066";
-      ctx.fillRect(pos.x - barW / 2, pos.y - r - 10, barW, 4);
+      ctx.fillRect(pos.x - barW / 2, pos.y - r - 12, barW, 4);
       ctx.fillStyle = "#4ade80";
-      ctx.fillRect(pos.x - barW / 2, pos.y - r - 10, barW * Math.max(0, e.hp / e.maxHp), 4);
+      ctx.fillRect(pos.x - barW / 2, pos.y - r - 12, barW * Math.max(0, e.hp / e.maxHp), 4);
     }
 
     // 투사체
     for (const p of g.projectiles) {
-      ctx.fillStyle = p.pattern === "aoe" ? "#c084fc" : p.pattern === "dot" ? "#84cc16" : "#60a5fa";
+      ctx.fillStyle = ELEMENT_COLOR[p.element];
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // 타격 이펙트 (히트스파크)
+    for (const fx of g.hitFx) {
+      const age = now - fx.createdAt;
+      const life = Math.max(0, 1 - age / 260);
+      ctx.strokeStyle = fx.color;
+      ctx.globalAlpha = life;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, 6 + (1 - life) * 16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
 
     // 슬롯 테두리 (빈 슬롯 표시용 힌트)
@@ -633,6 +789,8 @@ export default function TowerDefensePage() {
         ctx.setLineDash([]);
       }
     }
+
+    ctx.restore();
   };
 
   const openOffer = (slotIndex: number) => {
@@ -687,7 +845,7 @@ export default function TowerDefensePage() {
   const counterArch = ELEMENT_TO_ARCH[COUNTERED_BY[waveElement] ?? "fire"];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Castle className="w-6 h-6 text-primary" />
@@ -846,7 +1004,7 @@ export default function TowerDefensePage() {
                 </div>
                 <button
                   onClick={closeOffer}
-                  className="w-full rounded-lg bg-secondary text-foreground text-xs font-semibold py-2"
+                  className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2 hover:bg-white/5"
                 >
                   {t("td.cancel_offer")}
                 </button>
