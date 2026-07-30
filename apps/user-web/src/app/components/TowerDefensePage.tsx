@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Castle, Coins, Heart, Skull, Trophy, X } from "lucide-react";
+import { Castle, Coins, Heart, Skull, Sparkles, Trophy, X } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { api } from "../lib/api";
@@ -83,14 +83,15 @@ const RARITY_POWER_MULT: Record<string, number> = {
 const MERGE_TIER_MULT = [1, 1.8, 3.2];
 const MAX_TIER = 3;
 
-// ─── 골드 경제: 시작부터 슬롯을 전부 무료로 채우지 못하도록 소환 비용이 배치 수에 비례해 오른다 ───
-// 판매는 티어별 고정 환불로, "다른 캐릭터만 계속 나와 슬롯이 막히는" 경우 되팔아 새로 시도할 수 있게 한다.
-const STARTING_GOLD = 70;
-const SUMMON_BASE_COST = 25;
-const SUMMON_COST_PER_TOWER = 8;
+// ─── 골드 경제: 빈 슬롯 배치는 무료(최하등급 랜덤)이므로 골드는 오직 강화에만 쓰인다 ───
+// 티어1(합성 안 된 갓 배치된 타워) 판매 환불은 0으로 둬서 "무료 배치→즉시 판매"로 골드를 무한
+// 생성하는 구멍을 막는다. 합성으로 만든 티어2/3만 실제 투자가 있었다고 보고 환불해준다.
+const STARTING_GOLD = 30;
 const KILL_GOLD = 6;
 const BOSS_KILL_GOLD = 30;
-const TIER_SELL_GOLD = [0, 15, 40, 85]; // index = tower.tier (1~3)
+const TIER_SELL_GOLD = [0, 0, 40, 85]; // index = tower.tier (1~3)
+const LOWEST_RARITY = "common";
+const BOSS_REWARD_FALLBACK_GOLD = 150; // 보상 선택 시 빈 슬롯이 하나도 없으면 골드로 대신 지급
 
 // ─── 강화(Enhance): 골드를 소모해 배치된 타워를 직접 강하게 만드는 시스템 ───
 // 100라운드까지 이어지는 긴 세션에서 골드를 계속 투자할 곳이 필요해서 합성(티어업)과 별개로 추가.
@@ -273,6 +274,7 @@ interface GameState {
   waveClearedAt: number | null;
   gameOver: boolean;
   won: boolean;
+  bossRewardPending: boolean;
 }
 
 function freshGameState(mapId: string): GameState {
@@ -296,6 +298,7 @@ function freshGameState(mapId: string): GameState {
     waveClearedAt: null,
     gameOver: false,
     won: false,
+    bossRewardPending: false,
   };
 }
 
@@ -312,31 +315,18 @@ function buildWaveSpawns(wave: number): { hp: number; speed: number; isBoss: boo
   return spawns;
 }
 
-function summonCost(g: GameState): number {
-  const occupied = g.slots.filter(Boolean).length;
-  return SUMMON_BASE_COST + occupied * SUMMON_COST_PER_TOWER;
+// 지정된 등급들 중에서만 균등 랜덤 — 빈 슬롯 클릭(최하등급 전용)과 보스 보상(상위등급 전용) 둘 다 재사용
+function randomTowerByRarities(pool: TowerDef[], rarities: string[]): TowerDef | null {
+  const candidates = pool.filter((t) => rarities.includes(t.rarity));
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-function weightedTowerPick(pool: TowerDef[], weights: Record<string, number>): TowerDef {
-  const byRarity = new Map<string, TowerDef[]>();
-  for (const t of pool) {
-    const list = byRarity.get(t.rarity) ?? [];
-    list.push(t);
-    byRarity.set(t.rarity, list);
-  }
-  const rarities = Object.keys(weights).filter((r) => (byRarity.get(r)?.length ?? 0) > 0);
-  const total = rarities.reduce((s, r) => s + weights[r], 0);
-  let roll = Math.random() * total;
-  let picked = rarities[0];
-  for (const r of rarities) {
-    roll -= weights[r];
-    if (roll <= 0) {
-      picked = r;
-      break;
-    }
-  }
-  const candidates = byRarity.get(picked) ?? pool;
-  return candidates[Math.floor(Math.random() * candidates.length)];
+// 보스를 잡을수록 보상으로 제시되는 등급대도 같이 올라간다 (난이도 곡선과 함께 스케일)
+function bossRewardRarities(wave: number): string[] {
+  if (wave < 30) return ["uncommon", "rare", "epic"];
+  if (wave < 60) return ["rare", "epic", "legendary"];
+  return ["epic", "legendary", "mythic"];
 }
 
 /** 원형 대신 실제 몬스터처럼 보이는 블롭 실루엣 — 속성색으로 물들이고 보스는 뿔을 추가 */
@@ -404,6 +394,14 @@ interface RankingEntry {
 
 const RANK_COLOR: Record<number, string> = { 1: "#f5c542", 2: "#c7ced8", 3: "#c98a4e" };
 
+// 로비 배경 장식 — 인게임 맵 테마("밤의 성채" 보라색 반짝임)와 통일감을 주기 위한 고정 좌표 반짝임
+const LOBBY_SPARKLES = Array.from({ length: 16 }, (_, i) => ({
+  left: `${(i * 37) % 100}%`,
+  top: `${(i * 53) % 100}%`,
+  delay: `${(i % 8) * 0.35}s`,
+  size: 2 + (i % 3),
+}));
+
 export default function TowerDefensePage() {
   const { t, lang } = useLang();
   const { refreshRewards } = useAppData();
@@ -412,7 +410,6 @@ export default function TowerDefensePage() {
   const [attemptsLeft, setAttemptsLeft] = useState(0);
   const [bestWave, setBestWave] = useState(0);
   const [towerPool, setTowerPool] = useState<TowerDef[]>([]);
-  const [offerWeights, setOfferWeights] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const [showRankings, setShowRankings] = useState(false);
@@ -423,8 +420,7 @@ export default function TowerDefensePage() {
   const [hudGold, setHudGold] = useState(STARTING_GOLD);
   const [bossWarning, setBossWarning] = useState(false);
   const [waveElement, setWaveElement] = useState<Element>("fire");
-  const [offerSlot, setOfferSlot] = useState<number | null>(null);
-  const [offerChoices, setOfferChoices] = useState<TowerDef[]>([]);
+  const [bossReward, setBossReward] = useState<TowerDef[] | null>(null);
   const [manageSlot, setManageSlot] = useState<number | null>(null);
   const [goldWarning, setGoldWarning] = useState(false);
   const [slotsVersion, setSlotsVersion] = useState(0);
@@ -446,14 +442,12 @@ export default function TowerDefensePage() {
         attemptsLeft: number;
         bestWave: number;
         towerPool: TowerDef[];
-        offerWeights: Record<string, number>;
         waveCount: number;
       }>("/tower-defense/summary")
       .then((s) => {
         setAttemptsLeft(s.attemptsLeft);
         setBestWave(s.bestWave);
         setTowerPool(s.towerPool);
-        setOfferWeights(s.offerWeights);
         setPhase("lobby");
       })
       .catch(() => setPhase("lobby"));
@@ -577,6 +571,7 @@ export default function TowerDefensePage() {
       if (e.dotUntil > now) e.hp -= (e.dotDmgPerTick * dt) / 1000;
       if (e.hp <= 0) {
         g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+        if (e.isBoss) g.bossRewardPending = true;
         return false;
       }
       if (e.dist >= totalLen) {
@@ -664,9 +659,19 @@ export default function TowerDefensePage() {
     g.enemies = g.enemies.filter((e) => {
       if (e.hp > 0) return true;
       g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+      if (e.isBoss) g.bossRewardPending = true;
       return false;
     });
     g.hitFx = g.hitFx.filter((fx) => now - fx.createdAt < 260);
+
+    if (g.bossRewardPending) {
+      g.bossRewardPending = false;
+      const rarities = bossRewardRarities(g.wave);
+      const choices = [0, 1, 2]
+        .map(() => randomTowerByRarities(towerPool, rarities))
+        .filter((c): c is TowerDef => c !== null);
+      if (choices.length > 0) setBossReward(choices);
+    }
 
     if (g.lives <= 0) {
       finishGame(false);
@@ -819,34 +824,32 @@ export default function TowerDefensePage() {
     ctx.restore();
   };
 
-  const openOffer = (slotIndex: number) => {
+  // 빈 슬롯 클릭 = 무료, 최하등급 중 랜덤 1종 즉시 배치 (스타2 랜덤 디펜스 스타일)
+  const placeRandomTower = (slotIndex: number) => {
     const g = gRef.current;
     if (g.slots[slotIndex] || towerPool.length === 0) return;
-    if (g.gold < summonCost(g)) {
-      setGoldWarning(true);
-      setTimeout(() => setGoldWarning(false), 1200);
-      return;
-    }
-    const choices: TowerDef[] = [];
-    for (let i = 0; i < 3; i++) choices.push(weightedTowerPick(towerPool, offerWeights));
-    setOfferChoices(choices);
-    setOfferSlot(slotIndex);
+    const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
+    if (!def) return;
+    g.slots[slotIndex] = { ...def, tier: 1, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
+    mergeCheck(def.characterId, 1);
+    setMergeFlash(slotIndex);
+    setTimeout(() => setMergeFlash(null), 400);
+    setSlotsVersion((v) => v + 1);
   };
 
-  const pickOffer = (def: TowerDef) => {
-    if (offerSlot === null) return;
+  // 보스 처치 보상 — 상위등급 중 하나를 선택해 빈 슬롯에 배치. 빈 슬롯이 없으면 골드로 대신 지급
+  const pickBossReward = (def: TowerDef) => {
     const g = gRef.current;
-    const cost = summonCost(g);
-    if (g.gold < cost) {
-      setOfferSlot(null);
-      setOfferChoices([]);
-      return;
+    const emptyIdx = g.slots.findIndex((s) => !s);
+    if (emptyIdx === -1) {
+      g.gold += BOSS_REWARD_FALLBACK_GOLD;
+    } else {
+      g.slots[emptyIdx] = { ...def, tier: 1, slotIndex: emptyIdx, lastAttackAt: 0, enhanceLevel: 0 };
+      mergeCheck(def.characterId, 1);
+      setMergeFlash(emptyIdx);
+      setTimeout(() => setMergeFlash(null), 400);
     }
-    g.gold -= cost;
-    g.slots[offerSlot] = { ...def, tier: 1, slotIndex: offerSlot, lastAttackAt: 0, enhanceLevel: 0 };
-    mergeCheck(def.characterId, 1);
-    setOfferSlot(null);
-    setOfferChoices([]);
+    setBossReward(null);
     setSlotsVersion((v) => v + 1);
   };
 
@@ -908,11 +911,6 @@ export default function TowerDefensePage() {
     mergeCheck(characterId, tier + 1);
   };
 
-  const closeOffer = () => {
-    setOfferSlot(null);
-    setOfferChoices([]);
-  };
-
   const backToLobby = () => {
     setResult(null);
     setPhase("loading");
@@ -924,9 +922,7 @@ export default function TowerDefensePage() {
 
   const counterArch = ELEMENT_TO_ARCH[COUNTERED_BY[waveElement] ?? "fire"];
 
-  const occupiedSlots = gRef.current.slots.filter(Boolean).length;
   void slotsVersion;
-  const nextSummonCost = SUMMON_BASE_COST + occupiedSlots * SUMMON_COST_PER_TOWER;
   const manageTowerInstance = manageSlot !== null ? gRef.current.slots[manageSlot] : null;
   const manageDef = manageTowerInstance ? charById(manageTowerInstance.characterId) : null;
 
@@ -952,31 +948,69 @@ export default function TowerDefensePage() {
       {phase === "loading" && <p className="text-sm text-muted-foreground text-center py-10">{t("td.loading")}</p>}
 
       {phase === "lobby" && (
-        <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center gap-4">
-          <Castle className="w-16 h-16 text-primary/60" />
-          <div className="flex gap-6">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">{t("td.best_wave")}</p>
-              <p className="text-lg font-bold">{bestWave}/{WAVE_COUNT}</p>
+        <div
+          className="relative overflow-hidden rounded-2xl border border-[#8a6bc4]/40 p-6 flex flex-col items-center gap-4"
+          style={{ background: "radial-gradient(ellipse 130% 90% at 50% -15%, #3a2f52 0%, #161226 55%, #0d0a17 100%)" }}
+        >
+          <style>{`@keyframes td-sparkle-twinkle { 0%,100%{opacity:0.15} 50%{opacity:0.9} }`}</style>
+          {LOBBY_SPARKLES.map((s, i) => (
+            <span
+              key={i}
+              className="pointer-events-none absolute rounded-full bg-[#c9a6f5]"
+              style={{
+                left: s.left,
+                top: s.top,
+                width: s.size,
+                height: s.size,
+                animation: `td-sparkle-twinkle 2.4s ease-in-out infinite`,
+                animationDelay: s.delay,
+              }}
+            />
+          ))}
+
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-20 h-20 rounded-full bg-[#c9a6f5]/25 blur-xl animate-pulse" />
+            <Castle className="relative w-16 h-16 text-[#c9a6f5] drop-shadow-[0_0_14px_rgba(201,166,245,0.55)]" />
+          </div>
+
+          <div className="relative flex gap-3 w-full">
+            <div className="flex-1 rounded-xl bg-black/25 border border-[#8a6bc4]/30 py-2 text-center">
+              <p className="text-[10px] text-[#c9a6f5]/80">{t("td.best_wave")}</p>
+              <p className="text-lg font-bold text-[#f1e8fc]">{bestWave}/{WAVE_COUNT}</p>
             </div>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">{t("td.attempts_left")}</p>
-              <p className="text-lg font-bold">{attemptsLeft}</p>
+            <div className="flex-1 rounded-xl bg-black/25 border border-[#8a6bc4]/30 py-2 text-center">
+              <p className="text-[10px] text-[#c9a6f5]/80">{t("td.attempts_left")}</p>
+              <p className="text-lg font-bold text-[#f1e8fc]">{attemptsLeft}</p>
+            </div>
+          </div>
+
+          <div className="relative grid grid-cols-3 gap-2 w-full">
+            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
+              <Sparkles className="w-4 h-4 text-[#c9a6f5]" />
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_merge")}</p>
+            </div>
+            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
+              <Skull className="w-4 h-4 text-amber-400" />
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_boss")}</p>
+            </div>
+            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_enhance")}</p>
             </div>
           </div>
 
           <button
             onClick={() => void handleStart()}
             disabled={attemptsLeft <= 0}
-            className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
+            className={`relative w-full rounded-2xl py-3 text-sm font-semibold transition ${
               attemptsLeft > 0
-                ? "bg-primary text-white hover:bg-primary/90"
+                ? "bg-gradient-to-r from-[#8a6bc4] to-[#c9a6f5] text-white hover:opacity-90 shadow-[0_0_18px_rgba(201,166,245,0.35)]"
                 : "bg-secondary text-muted-foreground cursor-not-allowed"
             }`}
           >
             {attemptsLeft > 0 ? t("td.start") : t("td.no_attempts")}
           </button>
-          <p className="text-[11px] text-muted-foreground text-center">{t("td.desc")}</p>
+          <p className="relative text-[11px] text-[#c9a6f5]/70 text-center">{t("td.desc")}</p>
         </div>
       )}
 
@@ -999,9 +1033,7 @@ export default function TowerDefensePage() {
               .replace("{archetype}", counterArch ? archLabel(counterArch) : "")}
           </p>
 
-          <p className={`text-center text-[11px] ${goldWarning ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
-            {goldWarning ? t("td.not_enough_gold") : t("td.summon_cost_hint").replace("{cost}", String(nextSummonCost))}
-          </p>
+          {goldWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_gold")}</p>}
 
           {bossWarning && (
             <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-400">
@@ -1020,7 +1052,7 @@ export default function TowerDefensePage() {
                 return (
                   <button
                     key={i}
-                    onClick={() => (tower ? setManageSlot(i) : openOffer(i))}
+                    onClick={() => (tower ? setManageSlot(i) : placeRandomTower(i))}
                     className={`absolute flex items-center justify-center rounded-xl transition ${
                       mergeFlash === i ? "scale-125" : ""
                     } ${def ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70` : "hover:bg-white/5"}`}
@@ -1047,21 +1079,20 @@ export default function TowerDefensePage() {
             </div>
           </div>
 
-          {offerSlot !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={closeOffer}>
-              <div
-                className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm space-y-3"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-sm font-semibold text-center">{t("td.pick_offer")}</p>
+          {bossReward !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+              <div className="bg-card rounded-2xl border-2 border-amber-400/60 p-4 w-full max-w-sm space-y-3">
+                <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-center text-amber-400">
+                  <Skull className="w-4 h-4" /> {t("td.boss_reward_title")}
+                </p>
                 <div className="grid grid-cols-3 gap-2">
-                  {offerChoices.map((c, idx) => {
+                  {bossReward.map((c, idx) => {
                     const def = charById(c.characterId);
                     if (!def) return null;
                     return (
                       <button
                         key={idx}
-                        onClick={() => pickOffer(c)}
+                        onClick={() => pickBossReward(c)}
                         className={`rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1`}
                       >
                         <PixelCharacter characterId={def.id} size={48} />
@@ -1074,12 +1105,6 @@ export default function TowerDefensePage() {
                     );
                   })}
                 </div>
-                <button
-                  onClick={closeOffer}
-                  className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2 hover:bg-white/5"
-                >
-                  {t("td.cancel_offer")}
-                </button>
               </div>
             </div>
           )}
