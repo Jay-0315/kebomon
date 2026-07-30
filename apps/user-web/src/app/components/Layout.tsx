@@ -220,6 +220,12 @@ export default function Layout() {
         onNav={onNav}
       />
       <NavLink
+        to="/auction"
+        icon={Gavel}
+        label={t("nav.auction")}
+        onNav={onNav}
+      />
+      <NavLink
         to="/live"
         icon={Radio}
         label={t("nav.live")}
@@ -327,13 +333,6 @@ export default function Layout() {
             to="/fishing"
             icon={Fish}
             label={t("nav.fishing")}
-            sub
-            onNav={onNav}
-          />
-          <NavLink
-            to="/auction"
-            icon={Gavel}
-            label={t("nav.auction")}
             sub
             onNav={onNav}
           />
