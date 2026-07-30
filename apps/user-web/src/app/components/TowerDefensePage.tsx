@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Castle, Heart, Skull, Trophy, X } from "lucide-react";
+import { Castle, Coins, Heart, Skull, Trophy, X } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { api } from "../lib/api";
@@ -83,17 +83,38 @@ const RARITY_POWER_MULT: Record<string, number> = {
 const MERGE_TIER_MULT = [1, 1.8, 3.2];
 const MAX_TIER = 3;
 
-const WAVE_COUNT = 20;
-const BOSS_WAVE_INTERVAL = 5;
-const SLOT_COUNT = 8;
+// ─── 골드 경제: 시작부터 슬롯을 전부 무료로 채우지 못하도록 소환 비용이 배치 수에 비례해 오른다 ───
+// 판매는 티어별 고정 환불로, "다른 캐릭터만 계속 나와 슬롯이 막히는" 경우 되팔아 새로 시도할 수 있게 한다.
+const STARTING_GOLD = 70;
+const SUMMON_BASE_COST = 25;
+const SUMMON_COST_PER_TOWER = 8;
+const KILL_GOLD = 6;
+const BOSS_KILL_GOLD = 30;
+const TIER_SELL_GOLD = [0, 15, 40, 85]; // index = tower.tier (1~3)
+
+// ─── 강화(Enhance): 골드를 소모해 배치된 타워를 직접 강하게 만드는 시스템 ───
+// 100라운드까지 이어지는 긴 세션에서 골드를 계속 투자할 곳이 필요해서 합성(티어업)과 별개로 추가.
+const MAX_ENHANCE = 12;
+const ENHANCE_BASE_COST = 20;
+const ENHANCE_COST_GROWTH = 1.28;
+const ENHANCE_DMG_BONUS = 0.12; // 레벨당 공격력 +12%
+const ENHANCE_SELL_REFUND_PER_LEVEL = 10;
+
+function enhanceCost(level: number): number {
+  return Math.round(ENHANCE_BASE_COST * Math.pow(ENHANCE_COST_GROWTH, level));
+}
+
+const WAVE_COUNT = 100;
+const BOSS_WAVE_INTERVAL = 10;
+const SLOT_COUNT = 12;
 const BASE_LIVES = 20;
 const SPAWN_INTERVAL_MS = 450;
 const AOE_RADIUS = 46;
 const PROJECTILE_SPEED = 340; // px/sec
 const PROJECTILE_HIT_R = 14;
 
-const CANVAS_W = 720;
-const CANVAS_H = 380;
+const CANVAS_W = 980;
+const CANVAS_H = 520;
 
 // ─── 경로 기하 헬퍼 — 웨이포인트 배열만 주면 어떤 모양의 맵이든 동작 ───
 interface Point {
@@ -143,7 +164,7 @@ function buildSlots(path: Point[], count: number, offset: number): Point[] {
   return slots.slice(0, count);
 }
 
-type DecoShape = "grass" | "ember" | "snow";
+type DecoShape = "grass" | "ember" | "snow" | "spark";
 
 interface MapTheme {
   bg: string;
@@ -155,7 +176,6 @@ interface MapTheme {
 
 interface MapDef {
   id: string;
-  nameKey: TranslationKey;
   path: Point[];
   slots: Point[];
   theme: MapTheme;
@@ -166,61 +186,31 @@ function scatterDecorations(w: number, h: number, count: number): Point[] {
   return Array.from({ length: count }, () => ({ x: Math.random() * w, y: Math.random() * h }));
 }
 
-function defineMap(
-  id: string,
-  nameKey: TranslationKey,
-  path: Point[],
-  slotOffset: number,
-  theme: MapTheme,
-): MapDef {
+function defineMap(id: string, path: Point[], slotOffset: number, theme: MapTheme): MapDef {
   return {
     id,
-    nameKey,
     path,
     slots: buildSlots(path, SLOT_COUNT, slotOffset),
     theme,
-    decorations: scatterDecorations(CANVAS_W, CANVAS_H, 28),
+    decorations: scatterDecorations(CANVAS_W, CANVAS_H, 46),
   };
 }
 
+// 맵을 하나로 통일 — 대신 100라운드 긴 세션에 맞게 캔버스를 키우고, 굴곡을 늘려 슬롯 12개가
+// 고르게 배치될 공간을 확보했다. 테마는 Castle 아이콘과 어울리는 "밤의 성채".
 const MAPS: MapDef[] = [
   defineMap(
-    "straight",
-    "td.map_straight",
+    "castle",
     [
-      { x: 0, y: 190 },
-      { x: 720, y: 190 },
+      { x: 0, y: 80 },
+      { x: 760, y: 80 },
+      { x: 760, y: 260 },
+      { x: 120, y: 260 },
+      { x: 120, y: 440 },
+      { x: 980, y: 440 },
     ],
-    75,
-    { bg: "#142118", pathFill: "#33502f", pathBorder: "#5a8a4f", decoColor: "#4ade80", decoShape: "grass" },
-  ),
-  defineMap(
-    "zigzag",
-    "td.map_zigzag",
-    [
-      { x: 0, y: 95 },
-      { x: 250, y: 95 },
-      { x: 250, y: 280 },
-      { x: 470, y: 280 },
-      { x: 470, y: 95 },
-      { x: 720, y: 95 },
-    ],
-    40,
-    { bg: "#241213", pathFill: "#4a2420", pathBorder: "#8a4530", decoColor: "#f97316", decoShape: "ember" },
-  ),
-  defineMap(
-    "scorridor",
-    "td.map_scorridor",
-    [
-      { x: 0, y: 70 },
-      { x: 680, y: 70 },
-      { x: 680, y: 190 },
-      { x: 50, y: 190 },
-      { x: 50, y: 290 },
-      { x: 720, y: 290 },
-    ],
-    34,
-    { bg: "#0f1b2b", pathFill: "#233a52", pathBorder: "#4a7aa0", decoColor: "#bfe3ff", decoShape: "snow" },
+    46,
+    { bg: "#161226", pathFill: "#3a2f52", pathBorder: "#8a6bc4", decoColor: "#c9a6f5", decoShape: "spark" },
   ),
 ];
 
@@ -233,6 +223,7 @@ interface TowerInstance extends TowerDef {
   tier: number;
   slotIndex: number;
   lastAttackAt: number;
+  enhanceLevel: number;
 }
 interface Enemy {
   id: number;
@@ -268,6 +259,7 @@ interface GameState {
   wavesCompleted: number;
   waveElement: Element;
   lives: number;
+  gold: number;
   slots: (TowerInstance | null)[];
   enemies: Enemy[];
   projectiles: Projectile[];
@@ -290,6 +282,7 @@ function freshGameState(mapId: string): GameState {
     wavesCompleted: 0,
     waveElement: "fire",
     lives: BASE_LIVES,
+    gold: STARTING_GOLD,
     slots: Array(SLOT_COUNT).fill(null),
     enemies: [],
     projectiles: [],
@@ -306,15 +299,22 @@ function freshGameState(mapId: string): GameState {
   };
 }
 
+// 100라운드까지 버텨야 하므로 초반은 완만하다가 후반으로 갈수록 급격히 세지는 곡선(선형×지수 복합).
+// 적 마릿수는 30라운드 이후 늘리지 않고 체력/속도로만 난이도를 올려 후반 웨이브가 과도하게 늘어지지 않게 한다.
 function buildWaveSpawns(wave: number): { hp: number; speed: number; isBoss: boolean }[] {
-  const count = 5 + wave;
-  const hp = 18 * (1 + (wave - 1) * 0.18);
-  const speed = 34 + wave * 1.4;
+  const count = 5 + Math.min(wave, 30);
+  const hp = 18 * (1 + wave * 0.05) * Math.pow(1.025, wave);
+  const speed = 32 + wave * 1.5;
   const spawns = Array.from({ length: count }, () => ({ hp, speed, isBoss: false }));
   if (wave % BOSS_WAVE_INTERVAL === 0) {
-    spawns.push({ hp: hp * 7, speed: speed * 0.75, isBoss: true });
+    spawns.push({ hp: hp * 8, speed: speed * 0.7, isBoss: true });
   }
   return spawns;
+}
+
+function summonCost(g: GameState): number {
+  const occupied = g.slots.filter(Boolean).length;
+  return SUMMON_BASE_COST + occupied * SUMMON_COST_PER_TOWER;
 }
 
 function weightedTowerPick(pool: TowerDef[], weights: Record<string, number>): TowerDef {
@@ -413,7 +413,6 @@ export default function TowerDefensePage() {
   const [bestWave, setBestWave] = useState(0);
   const [towerPool, setTowerPool] = useState<TowerDef[]>([]);
   const [offerWeights, setOfferWeights] = useState<Record<string, number>>({});
-  const [selectedMapId, setSelectedMapId] = useState(MAPS[0].id);
   const [error, setError] = useState<string | null>(null);
 
   const [showRankings, setShowRankings] = useState(false);
@@ -421,10 +420,13 @@ export default function TowerDefensePage() {
 
   const [hudWave, setHudWave] = useState(1);
   const [hudLives, setHudLives] = useState(BASE_LIVES);
+  const [hudGold, setHudGold] = useState(STARTING_GOLD);
   const [bossWarning, setBossWarning] = useState(false);
   const [waveElement, setWaveElement] = useState<Element>("fire");
   const [offerSlot, setOfferSlot] = useState<number | null>(null);
   const [offerChoices, setOfferChoices] = useState<TowerDef[]>([]);
+  const [manageSlot, setManageSlot] = useState<number | null>(null);
+  const [goldWarning, setGoldWarning] = useState(false);
   const [slotsVersion, setSlotsVersion] = useState(0);
   const [mergeFlash, setMergeFlash] = useState<number | null>(null);
 
@@ -436,7 +438,7 @@ export default function TowerDefensePage() {
   const gRef = useRef<GameState>(freshGameState(MAPS[0].id));
 
   const charById = (id: number) => CHARACTERS.find((c) => c.id === id);
-  const currentMap = MAPS.find((m) => m.id === gRef.current.mapId) ?? MAPS[0];
+  const currentMap = MAPS[0];
 
   const loadSummary = () => {
     api
@@ -481,13 +483,14 @@ export default function TowerDefensePage() {
     setError(null);
     try {
       await api.post<{ ok: boolean; attemptsLeft: number }>("/tower-defense/start");
-      gRef.current = freshGameState(selectedMapId);
+      gRef.current = freshGameState(MAPS[0].id);
       gRef.current.wave = 1;
       gRef.current.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
       gRef.current.spawnQueue = buildWaveSpawns(1);
       gRef.current.waveActive = true;
       setHudWave(1);
       setHudLives(BASE_LIVES);
+      setHudGold(STARTING_GOLD);
       setBossWarning(false);
       setWaveElement(gRef.current.waveElement);
       setSlotsVersion((v) => v + 1);
@@ -572,7 +575,10 @@ export default function TowerDefensePage() {
     g.enemies = g.enemies.filter((e) => {
       e.dist += (e.speed * dt) / 1000;
       if (e.dotUntil > now) e.hp -= (e.dotDmgPerTick * dt) / 1000;
-      if (e.hp <= 0) return false;
+      if (e.hp <= 0) {
+        g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+        return false;
+      }
       if (e.dist >= totalLen) {
         g.lives -= e.isBoss ? 3 : 1;
         return false;
@@ -600,7 +606,11 @@ export default function TowerDefensePage() {
       }
       if (!nearest) continue;
       tower.lastAttackAt = now;
-      const dmg = stats.damage * RARITY_POWER_MULT[tower.rarity] * MERGE_TIER_MULT[tower.tier - 1];
+      const dmg =
+        stats.damage *
+        RARITY_POWER_MULT[tower.rarity] *
+        MERGE_TIER_MULT[tower.tier - 1] *
+        (1 + tower.enhanceLevel * ENHANCE_DMG_BONUS);
       g.projectiles.push({
         id: g.nextProjectileId++,
         x: pos.x,
@@ -651,7 +661,11 @@ export default function TowerDefensePage() {
       p.y += (dy / dist) * step;
       return true;
     });
-    g.enemies = g.enemies.filter((e) => e.hp > 0);
+    g.enemies = g.enemies.filter((e) => {
+      if (e.hp > 0) return true;
+      g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+      return false;
+    });
     g.hitFx = g.hitFx.filter((fx) => now - fx.createdAt < 260);
 
     if (g.lives <= 0) {
@@ -681,6 +695,7 @@ export default function TowerDefensePage() {
     }
 
     setHudLives((prev) => (prev !== g.lives ? g.lives : prev));
+    setHudGold((prev) => (prev !== g.gold ? g.gold : prev));
   };
 
   const draw = () => {
@@ -717,6 +732,17 @@ export default function TowerDefensePage() {
         ctx.beginPath();
         ctx.arc(d.x, d.y, 1.5 + pulse * 1.5, 0, Math.PI * 2);
         ctx.fill();
+      } else if (theme.decoShape === "spark") {
+        const pulse = 0.5 + 0.5 * Math.sin(now / 600 + d.x * 0.7);
+        const s = 2 + pulse * 2.2;
+        ctx.strokeStyle = `${theme.decoColor}${Math.round(25 + pulse * 60).toString(16).padStart(2, "0")}`;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(d.x - s, d.y);
+        ctx.lineTo(d.x + s, d.y);
+        ctx.moveTo(d.x, d.y - s);
+        ctx.lineTo(d.x, d.y + s);
+        ctx.stroke();
       } else {
         ctx.fillStyle = `${theme.decoColor}66`;
         ctx.beginPath();
@@ -794,7 +820,13 @@ export default function TowerDefensePage() {
   };
 
   const openOffer = (slotIndex: number) => {
-    if (gRef.current.slots[slotIndex] || towerPool.length === 0) return;
+    const g = gRef.current;
+    if (g.slots[slotIndex] || towerPool.length === 0) return;
+    if (g.gold < summonCost(g)) {
+      setGoldWarning(true);
+      setTimeout(() => setGoldWarning(false), 1200);
+      return;
+    }
     const choices: TowerDef[] = [];
     for (let i = 0; i < 3; i++) choices.push(weightedTowerPick(towerPool, offerWeights));
     setOfferChoices(choices);
@@ -804,12 +836,51 @@ export default function TowerDefensePage() {
   const pickOffer = (def: TowerDef) => {
     if (offerSlot === null) return;
     const g = gRef.current;
-    g.slots[offerSlot] = { ...def, tier: 1, slotIndex: offerSlot, lastAttackAt: 0 };
+    const cost = summonCost(g);
+    if (g.gold < cost) {
+      setOfferSlot(null);
+      setOfferChoices([]);
+      return;
+    }
+    g.gold -= cost;
+    g.slots[offerSlot] = { ...def, tier: 1, slotIndex: offerSlot, lastAttackAt: 0, enhanceLevel: 0 };
     mergeCheck(def.characterId, 1);
     setOfferSlot(null);
     setOfferChoices([]);
     setSlotsVersion((v) => v + 1);
   };
+
+  const sellTower = () => {
+    if (manageSlot === null) return;
+    const g = gRef.current;
+    const tower = g.slots[manageSlot];
+    if (!tower) {
+      setManageSlot(null);
+      return;
+    }
+    g.gold += TIER_SELL_GOLD[tower.tier] + tower.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL;
+    g.slots[manageSlot] = null;
+    setManageSlot(null);
+    setSlotsVersion((v) => v + 1);
+  };
+
+  const enhanceTower = () => {
+    if (manageSlot === null) return;
+    const g = gRef.current;
+    const tower = g.slots[manageSlot];
+    if (!tower || tower.enhanceLevel >= MAX_ENHANCE) return;
+    const cost = enhanceCost(tower.enhanceLevel);
+    if (g.gold < cost) {
+      setGoldWarning(true);
+      setTimeout(() => setGoldWarning(false), 1200);
+      return;
+    }
+    g.gold -= cost;
+    tower.enhanceLevel += 1;
+    setSlotsVersion((v) => v + 1);
+  };
+
+  const closeManage = () => setManageSlot(null);
 
   const mergeCheck = (characterId: number, tier: number) => {
     if (tier >= MAX_TIER) return;
@@ -820,9 +891,18 @@ export default function TowerDefensePage() {
     if (matches.length < 3) return;
     const [a, b, c] = matches.slice(0, 3);
     const base = g.slots[c.idx]!;
+    const carryEnhance = Math.max(a.s!.enhanceLevel, b.s!.enhanceLevel, c.s!.enhanceLevel);
     g.slots[a.idx] = null;
     g.slots[b.idx] = null;
-    g.slots[c.idx] = { characterId, archetype: base.archetype, rarity: base.rarity, tier: tier + 1, slotIndex: c.idx, lastAttackAt: 0 };
+    g.slots[c.idx] = {
+      characterId,
+      archetype: base.archetype,
+      rarity: base.rarity,
+      tier: tier + 1,
+      slotIndex: c.idx,
+      lastAttackAt: 0,
+      enhanceLevel: carryEnhance,
+    };
     setMergeFlash(c.idx);
     setTimeout(() => setMergeFlash(null), 600);
     mergeCheck(characterId, tier + 1);
@@ -844,8 +924,14 @@ export default function TowerDefensePage() {
 
   const counterArch = ELEMENT_TO_ARCH[COUNTERED_BY[waveElement] ?? "fire"];
 
+  const occupiedSlots = gRef.current.slots.filter(Boolean).length;
+  void slotsVersion;
+  const nextSummonCost = SUMMON_BASE_COST + occupiedSlots * SUMMON_COST_PER_TOWER;
+  const manageTowerInstance = manageSlot !== null ? gRef.current.slots[manageSlot] : null;
+  const manageDef = manageTowerInstance ? charById(manageTowerInstance.characterId) : null;
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Castle className="w-6 h-6 text-primary" />
@@ -879,32 +965,6 @@ export default function TowerDefensePage() {
             </div>
           </div>
 
-          <div className="w-full">
-            <p className="text-xs text-muted-foreground mb-2 text-center">{t("td.select_map")}</p>
-            <div className="grid grid-cols-3 gap-2">
-              {MAPS.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setSelectedMapId(m.id)}
-                  className={`rounded-xl border-2 p-2 flex flex-col items-center gap-1 transition ${
-                    selectedMapId === m.id ? "border-primary bg-primary/10" : "border-border"
-                  }`}
-                >
-                  <svg viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} className="w-full h-10">
-                    <polyline
-                      points={m.path.map((p) => `${p.x},${p.y}`).join(" ")}
-                      fill="none"
-                      stroke={selectedMapId === m.id ? "#f9a8d4" : "#64748b"}
-                      strokeWidth={18}
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-[10px] font-medium">{t(m.nameKey)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <button
             onClick={() => void handleStart()}
             disabled={attemptsLeft <= 0}
@@ -924,6 +984,9 @@ export default function TowerDefensePage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-2">
             <p className="text-sm font-semibold">{t("td.wave_label")} {hudWave}/{WAVE_COUNT}</p>
+            <p className="flex items-center gap-1 text-sm font-semibold text-amber-400">
+              <Coins className="w-4 h-4" /> {hudGold}
+            </p>
             <p className="flex items-center gap-1 text-sm font-semibold text-rose-400">
               <Heart className="w-4 h-4" /> {hudLives}
             </p>
@@ -934,6 +997,10 @@ export default function TowerDefensePage() {
             {t("td.wave_element_hint")
               .replace("{element}", elemLabel(waveElement))
               .replace("{archetype}", counterArch ? archLabel(counterArch) : "")}
+          </p>
+
+          <p className={`text-center text-[11px] ${goldWarning ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
+            {goldWarning ? t("td.not_enough_gold") : t("td.summon_cost_hint").replace("{cost}", String(nextSummonCost))}
           </p>
 
           {bossWarning && (
@@ -953,7 +1020,7 @@ export default function TowerDefensePage() {
                 return (
                   <button
                     key={i}
-                    onClick={() => openOffer(i)}
+                    onClick={() => (tower ? setManageSlot(i) : openOffer(i))}
                     className={`absolute flex items-center justify-center rounded-xl transition ${
                       mergeFlash === i ? "scale-125" : ""
                     } ${def ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70` : "hover:bg-white/5"}`}
@@ -965,6 +1032,11 @@ export default function TowerDefensePage() {
                         {tower.tier > 1 && (
                           <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-amber-400 text-black rounded-full w-4 h-4 flex items-center justify-center">
                             {tower.tier}
+                          </span>
+                        )}
+                        {tower.enhanceLevel > 0 && (
+                          <span className="absolute -bottom-1 -right-1 text-[8px] font-bold bg-emerald-400 text-black rounded-full px-1">
+                            +{tower.enhanceLevel}
                           </span>
                         )}
                       </div>
@@ -1004,6 +1076,50 @@ export default function TowerDefensePage() {
                 </div>
                 <button
                   onClick={closeOffer}
+                  className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2 hover:bg-white/5"
+                >
+                  {t("td.cancel_offer")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {manageSlot !== null && manageTowerInstance && manageDef && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={closeManage}>
+              <div
+                className="bg-card rounded-2xl border border-border p-4 w-full max-w-xs space-y-3 flex flex-col items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <PixelCharacter characterId={manageDef.id} size={56} />
+                <span className={`text-xs font-semibold ${RARITY_COLOR[manageDef.rarity]}`}>
+                  {getCharName(manageDef, lang)} · Tier {manageTowerInstance.tier} · {t("td.enhance_lv")} {manageTowerInstance.enhanceLevel}
+                </span>
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={enhanceTower}
+                    disabled={manageTowerInstance.enhanceLevel >= MAX_ENHANCE}
+                    className={`flex-1 rounded-lg text-xs font-semibold py-2 ${
+                      manageTowerInstance.enhanceLevel >= MAX_ENHANCE
+                        ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                        : "bg-primary text-white hover:bg-primary/90"
+                    }`}
+                  >
+                    {manageTowerInstance.enhanceLevel >= MAX_ENHANCE
+                      ? t("td.enhance_maxed")
+                      : t("td.enhance_btn").replace("{cost}", String(enhanceCost(manageTowerInstance.enhanceLevel)))}
+                  </button>
+                  <button
+                    onClick={sellTower}
+                    className="flex-1 rounded-lg bg-amber-500 text-black text-xs font-semibold py-2 hover:bg-amber-400"
+                  >
+                    {t("td.sell_btn").replace(
+                      "{gold}",
+                      String(TIER_SELL_GOLD[manageTowerInstance.tier] + manageTowerInstance.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL),
+                    )}
+                  </button>
+                </div>
+                <button
+                  onClick={closeManage}
                   className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2 hover:bg-white/5"
                 >
                   {t("td.cancel_offer")}

@@ -35,19 +35,24 @@ export const OFFER_WEIGHTS: Record<string, number> = {
   mythic: 0.7,
 };
 
-export const WAVE_COUNT = 20;
-export const BOSS_WAVE_INTERVAL = 5;
+export const WAVE_COUNT = 100;
+export const BOSS_WAVE_INTERVAL = 10;
 
-// 웨이브 도달 마일스톤 — 최초 신기록 갱신 시에만 지급
+// 웨이브 도달 마일스톤 — 최초 신기록 갱신 시에만 지급. 100라운드로 늘어난 만큼
+// 보스 웨이브(10단위) 위주로 넓게 분산하고, 완주(100)에 큰 보상을 몰아줬다.
 export const TD_MILESTONES: { wave: number; kp: number }[] = [
-  { wave: 3, kp: 50 },
-  { wave: 5, kp: 100 },
-  { wave: 8, kp: 200 },
-  { wave: 10, kp: 350 },
-  { wave: 13, kp: 500 },
-  { wave: 15, kp: 700 },
-  { wave: 18, kp: 1000 },
-  { wave: 20, kp: 1500 },
+  { wave: 3, kp: 30 },
+  { wave: 5, kp: 60 },
+  { wave: 10, kp: 150 },
+  { wave: 20, kp: 300 },
+  { wave: 30, kp: 500 },
+  { wave: 40, kp: 750 },
+  { wave: 50, kp: 1100 },
+  { wave: 60, kp: 1500 },
+  { wave: 70, kp: 2000 },
+  { wave: 80, kp: 2600 },
+  { wave: 90, kp: 3400 },
+  { wave: 100, kp: 5000 },
 ];
 
 export const MAX_DAILY_ATTEMPTS = 3;
