@@ -96,7 +96,7 @@ const RARITY_DUPLICATE_ESSENCE: Record<string, number> = {
 
 // 가챠로 뽑힐 수 있는 캐릭터 ID 목록(140종, 스타터/업적 전용 40종 제외) — 등급 정보는
 // character-master.util의 마스터 맵에서 조회한다 (예전엔 여기 rarity를 직접 들고 있었음)
-const GACHA_POOL_IDS: number[] = [
+export const GACHA_POOL_IDS: number[] = [
   // Common (20)
   75, 76, 116, 125, 127, 139, 140, 152, 155, 156, 159, 174, 176, 205, 258, 275, 292, 333, 351, 391,
   // Uncommon (23)

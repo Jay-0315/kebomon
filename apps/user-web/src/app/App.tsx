@@ -20,6 +20,7 @@ import RoguePage from "./components/RoguePage";
 import DuelPage from "./components/DuelPage";
 import ExpeditionPage from "./components/ExpeditionPage";
 import FishingPage from "./components/FishingPage";
+import AuctionPage from "./components/AuctionPage";
 import GuildPage from "./components/GuildPage";
 import ShopPage from "./components/ShopPage";
 import SettingsPage from "./components/SettingsPage";
@@ -150,6 +151,7 @@ export default function App() {
           <Route path="duel" element={<DuelPage />} />
           <Route path="expedition" element={<ExpeditionPage />} />
           <Route path="fishing" element={<FishingPage />} />
+          <Route path="auction" element={<AuctionPage />} />
           <Route path="guild" element={<GuildPage />} />
           <Route path="shop" element={<ShopPage />} />
           <Route path="settings" element={<SettingsPage />} />

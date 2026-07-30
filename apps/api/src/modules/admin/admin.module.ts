@@ -5,6 +5,8 @@ import { NotificationGatewayModule } from "../gateway/notification-gateway.modul
 import { RewardsModule } from "../rewards/rewards.module";
 import { AdminActionLogController } from "./admin-action-log.controller";
 import { AdminActionLogService } from "./admin-action-log.service";
+import { AdminAuctionController } from "./admin-auction.controller";
+import { AdminAuctionService } from "./admin-auction.service";
 import { AdminSeasonController } from "./admin-season.controller";
 import { AdminSeasonService } from "./admin-season.service";
 import { AdminBannersController } from "./admin-banners.controller";
@@ -49,6 +51,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminInquiriesController,
     AdminActionLogController,
     AdminSeasonController,
+    AdminAuctionController,
   ],
   providers: [
     AdminUsersService,
@@ -65,6 +68,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminInquiriesService,
     AdminActionLogService,
     AdminSeasonService,
+    AdminAuctionService,
   ],
 })
 export class AdminModule {}

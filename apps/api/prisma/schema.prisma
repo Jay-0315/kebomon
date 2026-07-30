@@ -90,6 +90,8 @@ model User {
   titles                 UserTitle[]
   borders                UserBorder[]
   fish                   UserFish[]
+  auctionListings        AuctionListing[] @relation("AuctionSeller")
+  auctionWins            AuctionListing[] @relation("AuctionBidder")
   identities             UserIdentity[]
   postLikes              PostLike[]
   passwordChangeHistory  PasswordChangeHistory?
@@ -239,6 +241,39 @@ model UserFish {
   @@unique([userId, fishId])
   @@index([userId])
   @@map("user_fish")
+}
+
+model AuctionListing {
+  id               String    @id @default(uuid())
+  sellerId         String    @map("seller_id")
+  characterId      Int       @map("character_id")
+  enhancementLevel Int       @default(0) @map("enhancement_level")
+  startPrice       Int       @map("start_price")
+  buyoutPrice      Int?      @map("buyout_price")
+  currentBid       Int?      @map("current_bid")
+  currentBidderId  String?   @map("current_bidder_id")
+  status           String    @default("active") @db.VarChar(20)
+  endsAt           DateTime  @map("ends_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  seller           User      @relation("AuctionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  bidder           User?     @relation("AuctionBidder", fields: [currentBidderId], references: [id])
+  bids             AuctionBid[]
+
+  @@index([status, endsAt])
+  @@index([sellerId])
+  @@map("auction_listings")
+}
+
+model AuctionBid {
+  id         BigInt   @id @default(autoincrement())
+  listingId  String   @map("listing_id")
+  bidderId   String   @map("bidder_id")
+  amount     Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  listing    AuctionListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("auction_bids")
 }
 
 model UserCharacter {
