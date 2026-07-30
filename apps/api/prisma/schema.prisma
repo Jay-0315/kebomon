@@ -254,6 +254,7 @@ model AuctionListing {
   currentBidderId  String?   @map("current_bidder_id")
   status           String    @default("active") @db.VarChar(20)
   endsAt           DateTime  @map("ends_at")
+  settledAt        DateTime? @map("settled_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   seller           User      @relation("AuctionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
   bidder           User?     @relation("AuctionBidder", fields: [currentBidderId], references: [id])
@@ -261,6 +262,7 @@ model AuctionListing {
 
   @@index([status, endsAt])
   @@index([sellerId])
+  @@index([status, settledAt])
   @@map("auction_listings")
 }
 

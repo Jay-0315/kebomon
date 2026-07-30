@@ -359,7 +359,7 @@ export default function NotificationBell({
             </span>
           )}
         </button>
-        {open && <Dropdown posClass="fixed bottom-24 right-6" />}
+        {open && <Dropdown posClass="fixed bottom-44 right-6" />}
         {detail && <DetailModal />}
       </div>
     );

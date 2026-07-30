@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Gavel } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
@@ -10,7 +10,18 @@ import {
   RARITY_BORDER,
   getCharName,
   getRarityLabel,
+  type CharacterRarity,
 } from "../data/characters";
+
+const RARITY_ORDER: Record<CharacterRarity, number> = {
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 4,
+  mythic: 5,
+};
+const SELL_RARITIES: CharacterRarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
 interface AuctionListing {
   id: string;
@@ -24,6 +35,14 @@ interface AuctionListing {
   status: string;
   endsAt: string;
   createdAt: string;
+}
+
+interface PriceHistoryEntry {
+  id: string;
+  characterId: number;
+  enhancementLevel: number;
+  currentBid: number | null;
+  settledAt: string | null;
 }
 
 const DURATION_OPTIONS = [6, 12, 24, 48] as const;
@@ -43,30 +62,61 @@ function formatRemaining(endsAt: string, now: number): string {
   return `${m}m ${s}s`;
 }
 
+function agoParts(dateStr: string | null, now: number): { unit: "now" | "min" | "hour" | "day"; n: number } {
+  if (!dateStr) return { unit: "now", n: 0 };
+  const ms = Math.max(0, now - new Date(dateStr).getTime());
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return { unit: "now", n: 0 };
+  if (min < 60) return { unit: "min", n: min };
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return { unit: "hour", n: hr };
+  return { unit: "day", n: Math.floor(hr / 24) };
+}
+
 export default function AuctionPage() {
   const { t, lang } = useLang();
   const { rewardSummary, profile, refreshRewards } = useAppData();
   const { ownedCharacterIds, missionPoints } = rewardSummary;
 
-  const [tab, setTab] = useState<"browse" | "sell" | "mine">("browse");
+  const [tab, setTab] = useState<"browse" | "sell" | "mine" | "history">("browse");
   const [listings, setListings] = useState<AuctionListing[]>([]);
   const [myListings, setMyListings] = useState<{ selling: AuctionListing[]; bidding: AuctionListing[] }>({
     selling: [],
     bidding: [],
   });
+  const [history, setHistory] = useState<PriceHistoryEntry[]>([]);
+  const [historySearch, setHistorySearch] = useState("");
   const [now, setNow] = useState(Date.now());
   const [bidAmounts, setBidAmounts] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [sellCharId, setSellCharId] = useState<number | null>(null);
+  const [sellFilter, setSellFilter] = useState<"all" | CharacterRarity>("all");
   const [startPrice, setStartPrice] = useState("");
   const [buyoutPrice, setBuyoutPrice] = useState("");
   const [durationHours, setDurationHours] = useState<(typeof DURATION_OPTIONS)[number]>(24);
   const [sellError, setSellError] = useState<string | null>(null);
   const [selling, setSelling] = useState(false);
 
+  const priceFormRef = useRef<HTMLDivElement>(null);
+  const startPriceInputRef = useRef<HTMLInputElement>(null);
+
+  const switchTab = (tb: "browse" | "sell" | "mine" | "history") => {
+    setTab(tb);
+    setError(null);
+    setSellError(null);
+  };
+
   const charById = (id: number) => CHARACTERS.find((c) => c.id === id);
+
+  const formatAgo = (dateStr: string | null): string => {
+    const { unit, n } = agoParts(dateStr, now);
+    if (unit === "now") return t("auction.just_now");
+    if (unit === "min") return t("auction.min_ago").replace("{n}", String(n));
+    if (unit === "hour") return t("auction.hour_ago").replace("{n}", String(n));
+    return t("auction.day_ago").replace("{n}", String(n));
+  };
 
   const statusLabel = (status: string): string => {
     switch (status) {
@@ -97,9 +147,17 @@ export default function AuctionPage() {
       .catch(() => undefined);
   };
 
+  const loadHistory = () => {
+    api
+      .get<PriceHistoryEntry[]>("/auction/history")
+      .then(setHistory)
+      .catch(() => undefined);
+  };
+
   useEffect(() => {
     loadListings();
     loadMine();
+    loadHistory();
   }, []);
 
   useEffect(() => {
@@ -107,9 +165,35 @@ export default function AuctionPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (sellCharId === null) return;
+    priceFormRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    startPriceInputRef.current?.focus();
+  }, [sellCharId]);
+
   const sellableChars = CHARACTERS.filter(
     (c) => c.obtainMethod === "gacha" && ownedCharacterIds.includes(c.id),
-  );
+  )
+    .filter((c) => sellFilter === "all" || c.rarity === sellFilter)
+    .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]);
+
+  const filteredHistory = history.filter((h) => {
+    if (!historySearch.trim()) return true;
+    const def = charById(h.characterId);
+    if (!def) return false;
+    return getCharName(def, lang).toLowerCase().includes(historySearch.trim().toLowerCase());
+  });
+  const historyPrices = filteredHistory
+    .map((h) => h.currentBid)
+    .filter((p): p is number => p !== null);
+  const historyStats =
+    historyPrices.length > 0
+      ? {
+          avg: Math.round(historyPrices.reduce((s, p) => s + p, 0) / historyPrices.length),
+          min: Math.min(...historyPrices),
+          max: Math.max(...historyPrices),
+        }
+      : null;
 
   const handleBid = async (listing: AuctionListing) => {
     const raw = bidAmounts[listing.id];
@@ -245,7 +329,11 @@ export default function AuctionPage() {
               <button
                 onClick={() => void handleBid(listing)}
                 disabled={busyId === listing.id || missionPoints < min}
-                className="shrink-0 rounded-lg bg-primary text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                className={`shrink-0 rounded-lg text-xs font-semibold px-3 py-1.5 transition ${
+                  busyId !== listing.id && missionPoints >= min
+                    ? "bg-primary text-white hover:bg-primary/90"
+                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                }`}
               >
                 {t("auction.bid_btn")}
               </button>
@@ -254,7 +342,11 @@ export default function AuctionPage() {
               <button
                 onClick={() => void handleBuyout(listing)}
                 disabled={busyId === listing.id || missionPoints < listing.buyoutPrice}
-                className="w-full rounded-lg bg-secondary text-foreground text-xs font-semibold py-1.5 disabled:opacity-50"
+                className={`w-full rounded-lg text-xs font-semibold py-1.5 transition ${
+                  busyId !== listing.id && missionPoints >= listing.buyoutPrice
+                    ? "bg-secondary text-foreground hover:bg-secondary/80"
+                    : "bg-secondary/40 text-muted-foreground cursor-not-allowed"
+                }`}
               >
                 {t("auction.buyout_btn")} ({listing.buyoutPrice}KP)
               </button>
@@ -286,15 +378,21 @@ export default function AuctionPage() {
       </div>
 
       <div className="flex gap-1 bg-muted p-1 rounded-xl">
-        {(["browse", "sell", "mine"] as const).map((tb) => (
+        {(["browse", "sell", "mine", "history"] as const).map((tb) => (
           <button
             key={tb}
-            onClick={() => setTab(tb)}
+            onClick={() => switchTab(tb)}
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
               tab === tb ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
             }`}
           >
-            {tb === "browse" ? t("auction.tab_browse") : tb === "sell" ? t("auction.tab_sell") : t("auction.tab_mine")}
+            {tb === "browse"
+              ? t("auction.tab_browse")
+              : tb === "sell"
+                ? t("auction.tab_sell")
+                : tb === "mine"
+                  ? t("auction.tab_mine")
+                  : t("auction.tab_history")}
           </button>
         ))}
       </div>
@@ -315,6 +413,29 @@ export default function AuctionPage() {
       {tab === "sell" && (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">{t("auction.sell_pick_hint")}</p>
+
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setSellFilter("all")}
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition ${
+                sellFilter === "all" ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
+              }`}
+            >
+              {t("auction.filter_all")}
+            </button>
+            {SELL_RARITIES.map((r) => (
+              <button
+                key={r}
+                onClick={() => setSellFilter(r)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition ${
+                  sellFilter === r ? `${RARITY_BORDER[r]} border bg-card ${RARITY_COLOR[r]}` : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {getRarityLabel(r, lang)}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
             {sellableChars.map((c) => (
               <button
@@ -330,12 +451,18 @@ export default function AuctionPage() {
                 </span>
               </button>
             ))}
+            {sellableChars.length === 0 && (
+              <p className="col-span-full text-xs text-muted-foreground text-center py-6">
+                {t("auction.no_sellable")}
+              </p>
+            )}
           </div>
 
           {sellCharId !== null && (
-            <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <div ref={priceFormRef} className="bg-card rounded-2xl border border-border p-4 space-y-3">
               <label className="block text-xs text-muted-foreground">{t("auction.start_price")}</label>
               <input
+                ref={startPriceInputRef}
                 type="number"
                 value={startPrice}
                 onChange={(e) => setStartPrice(e.target.value)}
@@ -396,6 +523,66 @@ export default function AuctionPage() {
               )}
               {myListings.bidding.map((l) => renderListingCard(l, "mine-bid"))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "history" && (
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            placeholder={t("auction.history_search_placeholder")}
+            className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm"
+          />
+
+          {historyStats && (
+            <div className="flex gap-2">
+              <div className="flex-1 bg-card rounded-xl border border-border p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">{t("auction.stat_avg")}</p>
+                <p className="text-sm font-bold">{historyStats.avg}KP</p>
+              </div>
+              <div className="flex-1 bg-card rounded-xl border border-border p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">{t("auction.stat_min")}</p>
+                <p className="text-sm font-bold">{historyStats.min}KP</p>
+              </div>
+              <div className="flex-1 bg-card rounded-xl border border-border p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">{t("auction.stat_max")}</p>
+                <p className="text-sm font-bold">{historyStats.max}KP</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            {filteredHistory.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">{t("auction.no_history")}</p>
+            )}
+            {filteredHistory.map((h) => {
+              const def = charById(h.characterId);
+              if (!def) return null;
+              return (
+                <div
+                  key={h.id}
+                  className={`flex items-center gap-3 rounded-xl border ${RARITY_BORDER[def.rarity]} bg-card px-3 py-2`}
+                >
+                  <PixelCharacter characterId={def.id} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold truncate ${RARITY_COLOR[def.rarity]}`}>
+                      {getCharName(def, lang)}
+                      {h.enhancementLevel > 0 && (
+                        <span className="text-amber-400 ml-1">+{h.enhancementLevel}</span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{getRarityLabel(def.rarity, lang)}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold">{h.currentBid}KP</p>
+                    <p className="text-[10px] text-muted-foreground">{formatAgo(h.settledAt)}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

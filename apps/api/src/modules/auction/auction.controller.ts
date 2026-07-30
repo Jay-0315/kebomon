@@ -18,6 +18,11 @@ export class AuctionController {
     return this.auctionService.getMyListings(user.sub);
   }
 
+  @Get("history")
+  getPriceHistory(@Query("characterId") characterId?: string) {
+    return this.auctionService.getPriceHistory(characterId ? Number(characterId) : undefined);
+  }
+
   @Post("list")
   listCharacter(
     @CurrentUser() user: { sub: string },

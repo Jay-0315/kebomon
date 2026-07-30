@@ -101,6 +101,22 @@ export class AuctionService {
     return { selling, bidding };
   }
 
+  /** 시세 확인용 — 최근 낙찰 내역 (등급/캐릭터 무관하게 최신순, 필요시 캐릭터로 필터) */
+  async getPriceHistory(characterId?: number) {
+    return this.prisma.auctionListing.findMany({
+      where: { status: "sold", ...(characterId ? { characterId } : {}) },
+      orderBy: { settledAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        characterId: true,
+        enhancementLevel: true,
+        currentBid: true,
+        settledAt: true,
+      },
+    });
+  }
+
   private minNextBid(listing: { startPrice: number; currentBid: number | null }): number {
     if (listing.currentBid === null) return listing.startPrice;
     return listing.currentBid + Math.max(Math.ceil(listing.currentBid * 0.05), 10);
@@ -209,7 +225,7 @@ export class AuctionService {
 
     const updated = await this.prisma.auctionListing.updateMany({
       where: { id: listingId, status: "active" },
-      data: { status: "cancelled" },
+      data: { status: "cancelled", settledAt: new Date() },
     });
     if (updated.count === 0) {
       throw new BadRequestException("이미 처리된 경매입니다.");
@@ -232,7 +248,7 @@ export class AuctionService {
     const finalStatus = listing.currentBidderId ? "sold" : "expired";
     const claimed = await this.prisma.auctionListing.updateMany({
       where: { id: listingId, status: "active" },
-      data: { status: finalStatus },
+      data: { status: finalStatus, settledAt: new Date() },
     });
     if (claimed.count === 0) return;
 

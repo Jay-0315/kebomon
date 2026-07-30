@@ -38,7 +38,7 @@ export class AdminAuctionService {
 
     const claimed = await this.prisma.auctionListing.updateMany({
       where: { id: listingId, status: "active" },
-      data: { status: "cancelled_by_admin" },
+      data: { status: "cancelled_by_admin", settledAt: new Date() },
     });
     if (claimed.count === 0) {
       throw new BadRequestException("이미 처리된 경매입니다.");
