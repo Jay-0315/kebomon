@@ -231,7 +231,7 @@ export default function FishingPage() {
                 className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
                   phase !== "casting" && cooldownMs <= 0
                     ? "bg-primary text-white hover:bg-primary/90"
-                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                    : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-60"
                 }`}
               >
                 {cooldownMs > 0

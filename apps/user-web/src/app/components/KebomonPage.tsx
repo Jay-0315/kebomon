@@ -1280,7 +1280,7 @@ export default function KebomonPage() {
                                 className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
                                   !buying && missionPoints >= 600 * buyQty
                                     ? "bg-primary text-white hover:bg-primary/90"
-                                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                                    : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-60"
                                 }`}
                               >
                                 {buying ? t("shop.buying") : t("shop.buy")}
@@ -1324,7 +1324,7 @@ export default function KebomonPage() {
                         className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
                           canEnhance && !enhancing
                             ? "bg-primary text-white hover:bg-primary/90"
-                            : "bg-secondary text-muted-foreground cursor-not-allowed"
+                            : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-60"
                         }`}
                       >
                         {enhancing
@@ -1404,7 +1404,7 @@ export default function KebomonPage() {
                 breedingEssence >= BREEDING_ESSENCE_COST[breedRarity] &&
                 breedCandidateCount(breedRarity) > 0
                   ? "bg-primary text-white hover:bg-primary/90"
-                  : "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-60"
               }`}
             >
               {breeding

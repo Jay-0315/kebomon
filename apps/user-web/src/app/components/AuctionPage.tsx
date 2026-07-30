@@ -332,7 +332,7 @@ export default function AuctionPage() {
                 className={`shrink-0 rounded-lg text-xs font-semibold px-3 py-1.5 transition ${
                   busyId !== listing.id && missionPoints >= min
                     ? "bg-primary text-white hover:bg-primary/90"
-                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                    : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-60"
                 }`}
               >
                 {t("auction.bid_btn")}
@@ -344,8 +344,8 @@ export default function AuctionPage() {
                 disabled={busyId === listing.id || missionPoints < listing.buyoutPrice}
                 className={`w-full rounded-lg text-xs font-semibold py-1.5 transition ${
                   busyId !== listing.id && missionPoints >= listing.buyoutPrice
-                    ? "bg-secondary text-foreground hover:bg-secondary/80"
-                    : "bg-secondary/40 text-muted-foreground cursor-not-allowed"
+                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-40"
                 }`}
               >
                 {t("auction.buyout_btn")} ({listing.buyoutPrice}KP)
@@ -361,7 +361,7 @@ export default function AuctionPage() {
           <button
             onClick={() => void handleCancel(listing)}
             disabled={busyId === listing.id}
-            className="w-full mt-2 rounded-lg bg-secondary text-foreground text-xs font-semibold py-1.5 disabled:opacity-50"
+            className="w-full mt-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold py-1.5 disabled:opacity-50"
           >
             {t("auction.cancel_btn")}
           </button>
@@ -418,7 +418,7 @@ export default function AuctionPage() {
             <button
               onClick={() => setSellFilter("all")}
               className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition ${
-                sellFilter === "all" ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
+                sellFilter === "all" ? "bg-primary text-white" : "bg-secondary text-secondary-foreground"
               }`}
             >
               {t("auction.filter_all")}
@@ -428,7 +428,7 @@ export default function AuctionPage() {
                 key={r}
                 onClick={() => setSellFilter(r)}
                 className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition ${
-                  sellFilter === r ? `${RARITY_BORDER[r]} border bg-card ${RARITY_COLOR[r]}` : "bg-secondary text-muted-foreground"
+                  sellFilter === r ? `${RARITY_BORDER[r]} border bg-card ${RARITY_COLOR[r]}` : "bg-secondary text-secondary-foreground"
                 }`}
               >
                 {getRarityLabel(r, lang)}
@@ -484,7 +484,7 @@ export default function AuctionPage() {
                     key={h}
                     onClick={() => setDurationHours(h)}
                     className={`flex-1 rounded-lg py-1.5 text-xs font-semibold ${
-                      durationHours === h ? "bg-primary text-white" : "bg-secondary text-foreground"
+                      durationHours === h ? "bg-primary text-white" : "bg-secondary text-secondary-foreground"
                     }`}
                   >
                     {h}h

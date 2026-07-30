@@ -26,6 +26,7 @@ import {
   FlaskConical,
   Fish,
   Gavel,
+  Castle,
 } from "lucide-react";
 import Footer from "./Footer";
 import { AchievementRevealModal } from "./KebomonPage";
@@ -333,6 +334,13 @@ export default function Layout() {
             to="/fishing"
             icon={Fish}
             label={t("nav.fishing")}
+            sub
+            onNav={onNav}
+          />
+          <NavLink
+            to="/tower-defense"
+            icon={Castle}
+            label={t("nav.tower_defense")}
             sub
             onNav={onNav}
           />
