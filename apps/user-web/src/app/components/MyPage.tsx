@@ -195,8 +195,10 @@ export default function MyPage() {
           const equippedBorder = rewardSummary.equippedBorderId
             ? BORDER_STYLES[rewardSummary.equippedBorderId]
             : null;
-          const FRAME_PAD = 10;
-          const PHOTO_SIZE = 64;
+          // 프레임 이미지의 투명 구멍이 캔버스의 절반 정도만 차지해서, 사진을 너무 작게
+          // 잡으면(FRAME_PAD가 크면) 사진과 링 사이에 배경색 틈이 보인다 — 실측해서 보정.
+          const FRAME_PAD = 4;
+          const PHOTO_SIZE = 76;
           const containerSize = equippedBorder
             ? PHOTO_SIZE + FRAME_PAD * 2
             : PHOTO_SIZE;

@@ -74,8 +74,10 @@ export default function PublicProfilePage() {
     ? (CHARACTERS.find((c) => c.id === profile.equippedCharacterId) ?? null)
     : null;
   const border = profile.equippedBorderId ? BORDER_STYLES[profile.equippedBorderId] : null;
-  const FRAME_PAD = 10;
-  const AVATAR_SIZE = 72;
+  // 프레임 이미지(GM.png 등)의 투명 구멍은 캔버스의 절반 정도만 차지해서, 안쪽 아바타를
+  // 너무 작게 잡으면(FRAME_PAD가 크면) 사진과 링 사이에 배경색 틈이 보인다 — 실측해서 보정.
+  const FRAME_PAD = 4;
+  const AVATAR_SIZE = 84;
   const containerSize = border ? AVATAR_SIZE + FRAME_PAD * 2 : AVATAR_SIZE;
 
   return (
@@ -131,7 +133,7 @@ export default function PublicProfilePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-lg font-bold text-foreground truncate">{profile.name}</p>
-            {profile.equippedTitleId && <TitleBadge titleId={profile.equippedTitleId} size="md" />}
+            {profile.equippedTitleId && <TitleBadge titleId={profile.equippedTitleId} size="sm" />}
           </div>
         </div>
 

@@ -180,34 +180,36 @@ const RARITY_POWER_MULT: Record<string, number> = {
   mythic: 3.6,
 };
 
-const MERGE_TIER_MULT = [1, 1.8, 3.2];
-const MAX_TIER = 3;
+// ─── 등급(rarity) 사다리 — 합성은 "같은 등급 2개 → 다음 등급 1개(랜덤 캐릭터)"로 진행된다.
+// 캐릭터 종류/티어는 더 이상 별도 축이 아니라 이 등급 하나로 통일.
+const RARITY_ORDER = [
+  "common",
+  "uncommon",
+  "rare",
+  "epic",
+  "legendary",
+  "mythic",
+] as const;
+function nextRarity(rarity: string): string | null {
+  const idx = RARITY_ORDER.indexOf(rarity as (typeof RARITY_ORDER)[number]);
+  if (idx < 0 || idx >= RARITY_ORDER.length - 1) return null;
+  return RARITY_ORDER[idx + 1];
+}
 
-// ─── 골드 경제: 배치는 유료, 판매는 티어별 환불 ───
+// ─── 골드 경제: 배치는 유료, 판매는 등급별 환불 ───
 const STARTING_GOLD = 300;
 const PLACE_COST = 100; // 빈 슬롯에 최하등급 랜덤 1종 배치
 const KILL_GOLD = 6;
 const BOSS_KILL_GOLD = 30;
-const TIER_SELL_GOLD = [0, 50, 130, 300]; // index = tower.tier (1~3), 판매는 항상 원가보다 낮게
+const RARITY_SELL_GOLD: Record<string, number> = {
+  common: 50,
+  uncommon: 90,
+  rare: 150,
+  epic: 240,
+  legendary: 370,
+  mythic: 560,
+};
 const LOWEST_RARITY = "common";
-
-// ─── 선택배치는 골드가 아니라 "토큰"으로 — 보스를 잡을 때마다 1개씩 지급, 토큰 1개당 1회 사용 ───
-// 원할 때 아무 빈 슬롯에나 써서 3종 중 상위등급 하나를 골라 배치할 수 있다.
-function tokenPlaceRarities(wave: number): string[] {
-  if (wave < 30) return ["uncommon", "rare", "epic"];
-  if (wave < 60) return ["rare", "epic", "legendary"];
-  return ["epic", "legendary", "mythic"];
-}
-
-// ─── 티어(합성 단계) 등장 확률: 20라운드까지는 1티어만, 이후로 2~3티어가 점진적으로 섞여 나온다 ───
-function rollPlacementTier(wave: number): number {
-  const tier3Chance = Math.min(0.15, Math.max(0, (wave - 50) / 80));
-  const tier2Chance = Math.min(0.35, Math.max(0, (wave - 20) / 60));
-  const roll = Math.random();
-  if (roll < tier3Chance) return 3;
-  if (roll < tier3Chance + tier2Chance) return 2;
-  return 1;
-}
 
 // ─── 강화(Enhance): 골드를 소모해 배치된 타워를 직접 강하게 만드는 시스템 ───
 // 100라운드까지 이어지는 긴 세션에서 골드를 계속 투자할 곳이 필요해서 합성(티어업)과 별개로 추가.
@@ -366,7 +368,6 @@ interface TowerDef {
   rarity: string;
 }
 interface TowerInstance extends TowerDef {
-  tier: number;
   slotIndex: number;
   lastAttackAt: number;
   enhanceLevel: number;
@@ -479,23 +480,19 @@ function randomTowerByRarities(
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-function instantiateTower(
-  def: TowerDef,
-  slotIndex: number,
-  tier: number,
-): TowerInstance {
-  return { ...def, tier, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
+function instantiateTower(def: TowerDef, slotIndex: number): TowerInstance {
+  return { ...def, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
 }
 
-// 필드에서 "같은 캐릭터 + 같은 티어"가 2개 이상인 슬롯들을 모두 찾는다 (합성 대상 하이라이트/활성화용)
+// 필드에서 "같은 등급"이 2개 이상인 슬롯들을 모두 찾는다 (합성 대상 하이라이트/활성화용) —
+// 캐릭터 종류는 안 따진다: 같은 rarity면 무엇이든 합성 재료가 될 수 있다.
 function findMergeableSlots(slots: (TowerInstance | null)[]): Set<number> {
   const groups = new Map<string, number[]>();
   slots.forEach((s, idx) => {
-    if (!s || s.tier >= MAX_TIER) return;
-    const key = `${s.characterId}:${s.tier}`;
-    const arr = groups.get(key) ?? [];
+    if (!s || !nextRarity(s.rarity)) return;
+    const arr = groups.get(s.rarity) ?? [];
     arr.push(idx);
-    groups.set(key, arr);
+    groups.set(s.rarity, arr);
   });
   const result = new Set<number>();
   for (const arr of groups.values()) {
@@ -570,9 +567,9 @@ export default function TowerDefensePage() {
   const [selectPlaceTarget, setSelectPlaceTarget] = useState<number | null>(
     null,
   );
-  const [selectPlaceChoices, setSelectPlaceChoices] = useState<
-    { def: TowerDef; tier: number }[]
-  >([]);
+  const [selectPlaceChoices, setSelectPlaceChoices] = useState<TowerDef[]>(
+    [],
+  );
 
   const [result, setResult] = useState<{
     wavesCleared: number;
@@ -585,6 +582,28 @@ export default function TowerDefensePage() {
   const rafRef = useRef<number | null>(null);
   const gRef = useRef<GameState>(freshGameState(MAPS[0].id));
   const speedMultiplierRef = useRef(1);
+
+  // 모바일 대응 — 보드는 내부적으로 항상 CANVAS_W x CANVAS_H 해상도로 그리고,
+  // 화면 폭에 맞춰 CSS transform으로만 축소한다 (그려지는 좌표 로직은 그대로 유지).
+  // 너무 작은 화면에서 슬롯이 탭 하기 힘들 정도로 쪼그라들지 않도록 최소 배율은 둔다.
+  const BOARD_MIN_SCALE = 0.5;
+  const boardWrapRef = useRef<HTMLDivElement>(null);
+  const [boardScale, setBoardScale] = useState(1);
+  useEffect(() => {
+    const el = boardWrapRef.current;
+    if (!el) return;
+    const update = () => {
+      const scale = Math.max(
+        BOARD_MIN_SCALE,
+        Math.min(1, el.clientWidth / CANVAS_W),
+      );
+      setBoardScale(scale);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const charById = (id: number) => CHARACTERS.find((c) => c.id === id);
   const currentMap = MAPS[0];
@@ -809,7 +828,6 @@ export default function TowerDefensePage() {
       const dmg =
         stats.damage *
         RARITY_POWER_MULT[tower.rarity] *
-        MERGE_TIER_MULT[tower.tier - 1] *
         (1 + tower.enhanceLevel * ENHANCE_DMG_BONUS);
       g.projectiles.push({
         id: g.nextProjectileId++,
@@ -1115,7 +1133,7 @@ export default function TowerDefensePage() {
     setTimeout(() => setTokenWarning(false), 1200);
   };
 
-  // 배치 모드: 빈 슬롯 클릭 시 100골드로 최하등급 중 랜덤 1종을 배치. 라운드가 오를수록 2~3티어로도 등장한다
+  // 배치 모드: 빈 슬롯 클릭 시 100골드로 최하등급 중 랜덤 1종을 배치
   const placeRandomTower = (slotIndex: number) => {
     const g = gRef.current;
     if (g.slots[slotIndex] || towerPool.length === 0) return;
@@ -1126,17 +1144,13 @@ export default function TowerDefensePage() {
     const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
     if (!def) return;
     g.gold -= PLACE_COST;
-    g.slots[slotIndex] = instantiateTower(
-      def,
-      slotIndex,
-      rollPlacementTier(g.wave),
-    );
+    g.slots[slotIndex] = instantiateTower(def, slotIndex);
     flashSlot(slotIndex);
     setSlotsVersion((v) => v + 1);
   };
 
   // 선택배치 모드: 골드가 아니라 "토큰" 1개 소모 — 토큰은 보스를 잡을 때마다 1개씩 쌓인다.
-  // 빈 슬롯을 클릭하면 상위등급 3종을 제안받아 하나를 골라 그 슬롯에 배치한다.
+  // 빈 슬롯을 클릭하면 에픽 등급 캐릭터 전체 목록을 보여주고, 그중 원하는 걸 직접 골라 배치한다.
   const openSelectPlace = (slotIndex: number) => {
     const g = gRef.current;
     if (g.slots[slotIndex] || towerPool.length === 0) return;
@@ -1144,19 +1158,13 @@ export default function TowerDefensePage() {
       warnTokens();
       return;
     }
-    const rarities = tokenPlaceRarities(g.wave);
-    const choices = [0, 1, 2]
-      .map(() => {
-        const def = randomTowerByRarities(towerPool, rarities);
-        return def ? { def, tier: rollPlacementTier(g.wave) } : null;
-      })
-      .filter((c): c is { def: TowerDef; tier: number } => c !== null);
+    const choices = towerPool.filter((d) => d.rarity === "epic");
     if (choices.length === 0) return;
     setSelectPlaceChoices(choices);
     setSelectPlaceTarget(slotIndex);
   };
 
-  const confirmSelectPlace = (choice: { def: TowerDef; tier: number }) => {
+  const confirmSelectPlace = (def: TowerDef) => {
     const g = gRef.current;
     if (selectPlaceTarget === null) return;
     if (g.selectTokens < 1) {
@@ -1165,11 +1173,7 @@ export default function TowerDefensePage() {
       return;
     }
     g.selectTokens -= 1;
-    g.slots[selectPlaceTarget] = instantiateTower(
-      choice.def,
-      selectPlaceTarget,
-      choice.tier,
-    );
+    g.slots[selectPlaceTarget] = instantiateTower(def, selectPlaceTarget);
     flashSlot(selectPlaceTarget);
     setSelectPlaceTarget(null);
     setSelectPlaceChoices([]);
@@ -1188,7 +1192,7 @@ export default function TowerDefensePage() {
     const tower = g.slots[slotIndex];
     if (!tower) return;
     g.gold +=
-      TIER_SELL_GOLD[tower.tier] +
+      RARITY_SELL_GOLD[tower.rarity] +
       tower.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL;
     g.slots[slotIndex] = null;
     setSlotsVersion((v) => v + 1);
@@ -1209,20 +1213,17 @@ export default function TowerDefensePage() {
     setSlotsVersion((v) => v + 1);
   };
 
-  // 합성 모드: 같은 캐릭터+같은 티어가 필드에 2개 이상이면 클릭한 쪽을 포함해 둘을 소모하고
-  // 그 자리에 랜덤 캐릭터를 한 단계 위 티어로 배치한다 (합성 결과 캐릭터는 원래 캐릭터와 무관)
+  // 합성 모드: 같은 등급이 필드에 2개 이상이면(캐릭터 종류는 무관) 클릭한 쪽을 포함해 둘을
+  // 소모하고 그 자리에 한 단계 위 등급의 랜덤 캐릭터를 배치한다
   const mergeTowerAt = (slotIndex: number) => {
     const g = gRef.current;
     const tower = g.slots[slotIndex];
-    if (!tower || tower.tier >= MAX_TIER) return;
+    if (!tower) return;
+    const promoted = nextRarity(tower.rarity);
+    if (!promoted) return;
     const matches = g.slots
       .map((s, idx) => ({ s, idx }))
-      .filter(
-        (e) =>
-          e.s &&
-          e.s.characterId === tower.characterId &&
-          e.s.tier === tower.tier,
-      );
+      .filter((e) => e.s && e.s.rarity === tower.rarity);
     if (matches.length < 2) return;
     const clicked = matches.find((m) => m.idx === slotIndex)!;
     const other = matches.find((m) => m.idx !== slotIndex)!;
@@ -1230,14 +1231,10 @@ export default function TowerDefensePage() {
       clicked.s!.enhanceLevel,
       other.s!.enhanceLevel,
     );
-    const resultDef = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
+    const resultDef = randomTowerByRarities(towerPool, [promoted]);
     g.slots[other.idx] = null;
     if (resultDef) {
-      g.slots[clicked.idx] = instantiateTower(
-        resultDef,
-        clicked.idx,
-        tower.tier + 1,
-      );
+      g.slots[clicked.idx] = instantiateTower(resultDef, clicked.idx);
       g.slots[clicked.idx]!.enhanceLevel = carryEnhance;
     } else {
       g.slots[clicked.idx] = null;
@@ -1450,16 +1447,32 @@ export default function TowerDefensePage() {
           )}
 
           {bossWarning && (
-            <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-400">
+            <p
+              className="flex items-center justify-center gap-1.5 text-xs font-bold text-white py-2"
+              style={{
+                backgroundImage: "url(/td/ui/ribbon.png)",
+                backgroundSize: "100% 100%",
+                imageRendering: "pixelated",
+              }}
+            >
               <Skull className="w-4 h-4" /> {t("td.boss_warning")}
             </p>
           )}
 
-          <div className="overflow-x-auto">
+          <div ref={boardWrapRef} className="w-full overflow-x-auto">
             <div
-              className="relative mx-auto"
-              style={{ width: CANVAS_W, height: CANVAS_H }}
+              className="mx-auto"
+              style={{ width: CANVAS_W * boardScale, height: CANVAS_H * boardScale }}
             >
+              <div
+                className="relative"
+                style={{
+                  width: CANVAS_W,
+                  height: CANVAS_H,
+                  transform: `scale(${boardScale})`,
+                  transformOrigin: "top left",
+                }}
+              >
               <canvas
                 ref={canvasRef}
                 width={CANVAS_W}
@@ -1468,7 +1481,14 @@ export default function TowerDefensePage() {
               />
 
               {/* 상태창 — 참고 이미지의 플레이어 목록 박스를 솔로 플레이용으로 단계/킬수/목숨/체력배율만 남겨 재구성 */}
-              <div className="absolute top-2 right-2 rounded-lg border border-[#8a6bc4]/40 bg-black/70 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none">
+              <div
+                className="absolute top-2 right-2 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none"
+                style={{
+                  backgroundImage: "url(/td/ui/plate.png)",
+                  backgroundSize: "100% 100%",
+                  imageRendering: "pixelated",
+                }}
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">
                     {t("td.status_stage")}
@@ -1496,7 +1516,14 @@ export default function TowerDefensePage() {
               </div>
 
               {/* 정비 시간 카운트다운 — 웨이브 클리어 후 5초 동안 표시 */}
-              <div className="absolute bottom-2 left-2 rounded-lg border border-[#8a6bc4]/40 bg-black/70 px-3 py-1.5 text-[11px] font-semibold pointer-events-none">
+              <div
+                className="absolute bottom-2 left-2 px-3 py-1.5 text-[11px] font-semibold text-white pointer-events-none"
+                style={{
+                  backgroundImage: "url(/td/ui/plate.png)",
+                  backgroundSize: "100% 100%",
+                  imageRendering: "pixelated",
+                }}
+              >
                 {hudPrepLeft > 0
                   ? t("td.prep_countdown").replace("{sec}", String(hudPrepLeft))
                   : `${t("td.status_stage")} ${hudWave}`}
@@ -1518,32 +1545,30 @@ export default function TowerDefensePage() {
                   <button
                     key={i}
                     onClick={() => handleSlotClick(i)}
-                    className={`absolute flex items-center justify-center rounded-full transition ${
+                    className={`absolute flex items-center justify-center rounded-full transition active:scale-90 ${
                       mergeFlash === i ? "scale-125" : ""
                     } ${
                       def
-                        ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70`
-                        : "border-2 border-[#8a6bc4]/50 bg-black/25 hover:bg-white/10"
+                        ? `${RARITY_BORDER[def.rarity]} border-2`
+                        : "border-2 border-[#8a6bc4]/50 hover:brightness-125"
                     } ${
                       actionMode && targetable
                         ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse`
                         : ""
                     } ${actionMode && !targetable ? "opacity-35" : ""}`}
                     style={{
-                      left: pos.x - 26,
-                      top: pos.y - 26,
-                      width: 52,
-                      height: 52,
+                      left: pos.x - 30,
+                      top: pos.y - 30,
+                      width: 60,
+                      height: 60,
+                      backgroundImage: "url(/td/ui/circle.png)",
+                      backgroundSize: "100% 100%",
+                      imageRendering: "pixelated",
                     }}
                   >
                     {def && tower && (
                       <div className="relative">
                         <PixelCharacter characterId={def.id} size={44} />
-                        {tower.tier > 1 && (
-                          <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-amber-400 text-black rounded-full w-4 h-4 flex items-center justify-center">
-                            {tower.tier}
-                          </span>
-                        )}
                         {tower.enhanceLevel > 0 && (
                           <span className="absolute -bottom-1 -right-1 text-[8px] font-bold bg-emerald-400 text-black rounded-full px-1">
                             +{tower.enhanceLevel}
@@ -1554,6 +1579,7 @@ export default function TowerDefensePage() {
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -1611,13 +1637,18 @@ export default function TowerDefensePage() {
                     key={a.mode}
                     onClick={() => toggleMode(a.mode)}
                     disabled={a.disabled}
-                    className={`relative flex flex-col items-center gap-0.5 rounded-lg py-2 px-1 text-[10px] font-semibold transition ${
+                    className={`relative flex flex-col items-center gap-0.5 rounded-lg py-2.5 px-1 text-[10px] font-semibold transition active:scale-95 text-white ${
                       a.disabled
-                        ? "bg-secondary text-muted-foreground opacity-50 cursor-not-allowed"
+                        ? "grayscale opacity-50 cursor-not-allowed"
                         : active
-                          ? "bg-primary text-white"
-                          : "bg-secondary/60 text-foreground hover:bg-secondary"
+                          ? "brightness-125 saturate-150"
+                          : "hover:brightness-110"
                     }`}
+                    style={{
+                      backgroundImage: "url(/td/ui/plate.png)",
+                      backgroundSize: "100% 100%",
+                      imageRendering: "pixelated",
+                    }}
                   >
                     <span className="absolute top-0.5 left-1 text-[8px] opacity-60">
                       {a.hotkey}
@@ -1652,27 +1683,22 @@ export default function TowerDefensePage() {
               onClick={cancelSelectPlace}
             >
               <div
-                className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm space-y-3"
+                className="bg-card rounded-2xl border border-border p-4 w-full max-w-md space-y-3"
                 onClick={(e) => e.stopPropagation()}
               >
                 <p className="text-sm font-semibold text-center">
                   {t("td.select_place_title")}
                 </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {selectPlaceChoices.map((c, idx) => {
-                    const def = charById(c.def.characterId);
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[60vh] overflow-y-auto">
+                  {selectPlaceChoices.map((c) => {
+                    const def = charById(c.characterId);
                     if (!def) return null;
                     return (
                       <button
-                        key={idx}
+                        key={c.characterId}
                         onClick={() => confirmSelectPlace(c)}
-                        className={`relative rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1`}
+                        className={`relative rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1 min-h-[88px] active:scale-95 transition-transform`}
                       >
-                        {c.tier > 1 && (
-                          <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-amber-400 text-black rounded-full w-4 h-4 flex items-center justify-center">
-                            {c.tier}
-                          </span>
-                        )}
                         <PixelCharacter characterId={def.id} size={48} />
                         <span
                           className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}
@@ -1685,7 +1711,7 @@ export default function TowerDefensePage() {
                           {getRarityLabel(def.rarity, lang)}
                         </span>
                         <span className="text-[9px] text-muted-foreground">
-                          {archLabel(c.def.archetype)}
+                          {archLabel(c.archetype)}
                         </span>
                       </button>
                     );
@@ -1693,7 +1719,7 @@ export default function TowerDefensePage() {
                 </div>
                 <button
                   onClick={cancelSelectPlace}
-                  className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2 hover:bg-white/5"
+                  className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2.5 hover:bg-white/5 active:scale-95 transition-transform"
                 >
                   {t("td.cancel_offer")}
                 </button>
