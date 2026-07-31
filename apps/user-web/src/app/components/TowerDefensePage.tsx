@@ -150,7 +150,13 @@ const EFFECT_BURST_IMG = Object.fromEntries(
 const FLOOR_BG_IMG = loadTdImage("tiles/floor_bg.png");
 const FLOOR_ALT_IMG = loadTdImage("tiles/floor_alt.png");
 
-const MONSTER_FRAME_SIZE = 64;
+// 원본 스프라이트는 프레임 안에 여백이 많아서(실제 캐릭터가 64x64 중 절반 정도만 차지) 그
+// 여백까지 그대로 그리면 실제로 보이는 크기가 확 작아진다 — 에셋을 캐릭터 외곽선에 맞춰
+// 미리 잘라뒀으므로(walk 35x32, hurt 31x28) 그 크기를 그대로 슬라이싱 기준으로 쓴다.
+const MONSTER_WALK_FRAME_W = 35;
+const MONSTER_WALK_FRAME_H = 32;
+const MONSTER_HURT_FRAME_W = 31;
+const MONSTER_HURT_FRAME_H = 28;
 const MONSTER_WALK_COLS = 8;
 const MONSTER_ANIM_MS = 110; // 프레임당 재생 시간
 
@@ -1016,20 +1022,24 @@ export default function TowerDefensePage() {
       const pos = pointAtDistance(map.path, e.dist);
       const r = e.isBoss ? 19 : 11;
       const flinch = now < e.flinchUntil;
-      const drawSize = r * 3.2;
+      const frameW = flinch ? MONSTER_HURT_FRAME_W : MONSTER_WALK_FRAME_W;
+      const frameH = flinch ? MONSTER_HURT_FRAME_H : MONSTER_WALK_FRAME_H;
+      const drawH = r * 4.2;
+      const drawW = drawH * (frameW / frameH);
+      const drawSize = drawH; // 뿔/중독링 등 장식 요소의 기준 크기
       const sheet = flinch ? MONSTER_HURT_IMG[e.element] : MONSTER_WALK_IMG[e.element];
       const frame = flinch ? 0 : Math.floor(now / MONSTER_ANIM_MS) % MONSTER_WALK_COLS;
       if (sheet.complete && sheet.naturalWidth > 0) {
         ctx.drawImage(
           sheet,
-          frame * MONSTER_FRAME_SIZE,
+          frame * frameW,
           0,
-          MONSTER_FRAME_SIZE,
-          MONSTER_FRAME_SIZE,
-          pos.x - drawSize / 2,
-          pos.y - drawSize / 2,
-          drawSize,
-          drawSize,
+          frameW,
+          frameH,
+          pos.x - drawW / 2,
+          pos.y - drawH / 2,
+          drawW,
+          drawH,
         );
       }
       if (e.isBoss) {
@@ -1067,22 +1077,25 @@ export default function TowerDefensePage() {
       );
     }
 
-    // 투사체 (원소별 색조를 입힌 글로우 오브 스프라이트)
+    // 투사체 (원소별 색조를 입힌 글로우 오브 스프라이트) — 발광 효과라 additive 블렌딩으로 그려야
+    // 어두운 바닥 위에서 은은하게 묻히지 않고 또렷하게 도드라진다
+    ctx.globalCompositeOperation = "lighter";
     for (const p of g.projectiles) {
       const orb = EFFECT_ORB_IMG[p.element];
-      drawIfLoaded(ctx, orb, p.x - 9, p.y - 9, 18, 18);
+      drawIfLoaded(ctx, orb, p.x - 14, p.y - 14, 28, 28);
     }
 
     // 타격 이펙트 (히트스파크 — 원소별 색조의 버스트 스프라이트, 커지면서 페이드)
     for (const fx of g.hitFx) {
       const age = now - fx.createdAt;
       const life = Math.max(0, 1 - age / 260);
-      const size = 26 + (1 - life) * 40;
+      const size = 38 + (1 - life) * 54;
       const burst = EFFECT_BURST_IMG[fx.element];
-      ctx.globalAlpha = life;
+      ctx.globalAlpha = Math.min(1, life * 1.4);
       drawIfLoaded(ctx, burst, fx.x - size / 2, fx.y - size / 2, size, size);
       ctx.globalAlpha = 1;
     }
+    ctx.globalCompositeOperation = "source-over";
 
     ctx.restore();
   };
