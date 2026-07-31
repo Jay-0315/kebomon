@@ -9,6 +9,7 @@ import {
   Plus,
   Skull,
   Sparkles,
+  Ticket,
   Trophy,
   X,
   Zap,
@@ -32,14 +33,15 @@ type Archetype = "warrior" | "rogue" | "mage" | "tank" | "nature" | "meka" | "cu
 type Pattern = "single" | "aoe" | "dot";
 type Element = "fire" | "earth" | "ice" | "dark" | "nature" | "lightning" | "shadow" | "light";
 
+// 공격속도는 /1.5로 나눠서 전체 템포를 1.5배 끌어올림
 const ARCHETYPE_STATS: Record<Archetype, { range: number; atkSpeedMs: number; damage: number; pattern: Pattern }> = {
-  warrior: { range: 90, atkSpeedMs: 700, damage: 12, pattern: "single" },
-  rogue: { range: 80, atkSpeedMs: 450, damage: 7, pattern: "single" },
-  tank: { range: 110, atkSpeedMs: 900, damage: 9, pattern: "single" },
-  mage: { range: 120, atkSpeedMs: 1000, damage: 16, pattern: "aoe" },
-  meka: { range: 100, atkSpeedMs: 850, damage: 13, pattern: "aoe" },
-  nature: { range: 95, atkSpeedMs: 1200, damage: 6, pattern: "dot" },
-  cursed: { range: 95, atkSpeedMs: 1200, damage: 6, pattern: "dot" },
+  warrior: { range: 90, atkSpeedMs: 467, damage: 12, pattern: "single" },
+  rogue: { range: 80, atkSpeedMs: 300, damage: 7, pattern: "single" },
+  tank: { range: 110, atkSpeedMs: 600, damage: 9, pattern: "single" },
+  mage: { range: 120, atkSpeedMs: 667, damage: 16, pattern: "aoe" },
+  meka: { range: 100, atkSpeedMs: 567, damage: 13, pattern: "aoe" },
+  nature: { range: 95, atkSpeedMs: 800, damage: 6, pattern: "dot" },
+  cursed: { range: 95, atkSpeedMs: 800, damage: 6, pattern: "dot" },
 };
 
 // 콜로세움(arena.service.ts)의 원소 상성 시스템을 그대로 이식
@@ -97,15 +99,21 @@ const RARITY_POWER_MULT: Record<string, number> = {
 const MERGE_TIER_MULT = [1, 1.8, 3.2];
 const MAX_TIER = 3;
 
-// ─── 골드 경제: 배치/선택배치는 유료, 판매는 티어별 환불 ───
+// ─── 골드 경제: 배치는 유료, 판매는 티어별 환불 ───
 const STARTING_GOLD = 300;
 const PLACE_COST = 100; // 빈 슬롯에 최하등급 랜덤 1종 배치
-const SELECT_PLACE_COST = 220; // 3종 중 골라서 배치 (배치보다 비싼 프리미엄 선택지)
 const KILL_GOLD = 6;
 const BOSS_KILL_GOLD = 30;
 const TIER_SELL_GOLD = [0, 50, 130, 300]; // index = tower.tier (1~3), 판매는 항상 원가보다 낮게
 const LOWEST_RARITY = "common";
-const BOSS_REWARD_FALLBACK_GOLD = 150; // 보상 선택 시 빈 슬롯이 하나도 없으면 골드로 대신 지급
+
+// ─── 선택배치는 골드가 아니라 "토큰"으로 — 보스를 잡을 때마다 1개씩 지급, 토큰 1개당 1회 사용 ───
+// 원할 때 아무 빈 슬롯에나 써서 3종 중 상위등급 하나를 골라 배치할 수 있다.
+function tokenPlaceRarities(wave: number): string[] {
+  if (wave < 30) return ["uncommon", "rare", "epic"];
+  if (wave < 60) return ["rare", "epic", "legendary"];
+  return ["epic", "legendary", "mythic"];
+}
 
 // ─── 티어(합성 단계) 등장 확률: 20라운드까지는 1티어만, 이후로 2~3티어가 점진적으로 섞여 나온다 ───
 function rollPlacementTier(wave: number): number {
@@ -131,11 +139,11 @@ function enhanceCost(level: number): number {
 
 const WAVE_COUNT = 100;
 const BOSS_WAVE_INTERVAL = 10;
-const SLOT_COUNT = 20;
+const SLOT_COUNT = 24; // 블록 6개 × 패드 4개(2x2)
 const BASE_LIVES = 20;
-const SPAWN_INTERVAL_MS = 450;
+const SPAWN_INTERVAL_MS = 300; // 450 → 300 (스폰 템포 1.5배)
 const AOE_RADIUS = 46;
-const PROJECTILE_SPEED = 340; // px/sec
+const PROJECTILE_SPEED = 510; // px/sec, 340 → 510 (1.5배)
 const PROJECTILE_HIT_R = 14;
 
 const CANVAS_W = 1300;
@@ -170,29 +178,34 @@ function pointAtDistance(path: Point[], dist: number): Point {
   return path[path.length - 1];
 }
 
-function buildSlots(path: Point[], count: number, offset: number): Point[] {
-  const total = pathTotalLength(path);
-  const pairs = Math.ceil(count / 2);
+// 참고 이미지(스타2 랜덤 타워디펜스류)의 "플레이어별 사각 패널 안에 건설 패드 2x2가 뭉쳐있고,
+// 그 패널들 사이 통로로 몬스터가 지나가는" 구조를 그대로 재현 — 블록 6개(3x2 그리드) x 패드 4개.
+const BLOCK_SIZE = 240;
+const PAD_OFFSET = 55; // 블록 중심에서 2x2 패드까지의 거리
+
+interface BlockRect {
+  x: number;
+  y: number;
+  size: number;
+}
+
+function buildBlockSlots(centers: Point[]): Point[] {
   const slots: Point[] = [];
-  for (let i = 0; i < pairs; i++) {
-    const d = total * ((i + 0.5) / pairs);
-    const p = pointAtDistance(path, d);
-    const p2 = pointAtDistance(path, Math.min(total, d + 1));
-    const dx = p2.x - p.x;
-    const dy = p2.y - p.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len;
-    const ny = dx / len;
-    slots.push({ x: p.x + nx * offset, y: p.y + ny * offset });
-    slots.push({ x: p.x - nx * offset, y: p.y - ny * offset });
+  for (const c of centers) {
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        slots.push({ x: c.x + sx * PAD_OFFSET, y: c.y + sy * PAD_OFFSET });
+      }
+    }
   }
-  return slots.slice(0, count);
+  return slots;
 }
 
 type DecoShape = "grass" | "ember" | "snow" | "spark";
 
 interface MapTheme {
   bg: string;
+  tileAlt: string;
   pathFill: string;
   pathBorder: string;
   decoColor: string;
@@ -202,6 +215,7 @@ interface MapTheme {
 interface MapDef {
   id: string;
   path: Point[];
+  blocks: BlockRect[];
   slots: Point[];
   theme: MapTheme;
   decorations: Point[];
@@ -211,33 +225,46 @@ function scatterDecorations(w: number, h: number, count: number): Point[] {
   return Array.from({ length: count }, () => ({ x: Math.random() * w, y: Math.random() * h }));
 }
 
-function defineMap(id: string, path: Point[], slotOffset: number, theme: MapTheme): MapDef {
+function defineMap(id: string, path: Point[], blockCenters: Point[], theme: MapTheme): MapDef {
   return {
     id,
     path,
-    slots: buildSlots(path, SLOT_COUNT, slotOffset),
+    blocks: blockCenters.map((c) => ({ x: c.x, y: c.y, size: BLOCK_SIZE })),
+    slots: buildBlockSlots(blockCenters),
     theme,
     decorations: scatterDecorations(CANVAS_W, CANVAS_H, 90),
   };
 }
 
-// 맵을 하나로 통일 — 참고 이미지(스타2 랜덤 디펜스류)처럼 맵을 훨씬 크게 키우고, 경로를 4줄
-// 지그재그로 늘려서 슬롯 20개가 넓게 깔릴 공간을 확보했다. 테마는 Castle 아이콘과 어울리는 "밤의 성채".
+// 맵을 하나로 통일 — 참고로 주신 스타2 랜덤 타워디펜스류 맵과 동일하게 3x2 블록 그리드 +
+// 블록 사이 통로를 지그재그로 지나가는 몬스터 진행 경로로 구성했다. 테마는 "밤의 성채".
 const MAPS: MapDef[] = [
   defineMap(
     "castle",
     [
-      { x: 0, y: 90 },
-      { x: 1300, y: 90 },
-      { x: 1300, y: 270 },
-      { x: 0, y: 270 },
-      { x: 0, y: 450 },
-      { x: 1300, y: 450 },
-      { x: 1300, y: 630 },
-      { x: 0, y: 630 },
+      { x: 0, y: 40 },
+      { x: 465, y: 40 },
+      { x: 465, y: 680 },
+      { x: 835, y: 680 },
+      { x: 835, y: 40 },
+      { x: 1300, y: 40 },
     ],
-    50,
-    { bg: "#161226", pathFill: "#3a2f52", pathBorder: "#8a6bc4", decoColor: "#c9a6f5", decoShape: "spark" },
+    [
+      { x: 280, y: 200 },
+      { x: 650, y: 200 },
+      { x: 1020, y: 200 },
+      { x: 280, y: 520 },
+      { x: 650, y: 520 },
+      { x: 1020, y: 520 },
+    ],
+    {
+      bg: "#191430",
+      tileAlt: "#1f1a3a",
+      pathFill: "#3a2f52",
+      pathBorder: "#8a6bc4",
+      decoColor: "#c9a6f5",
+      decoShape: "spark",
+    },
   ),
 ];
 
@@ -287,6 +314,7 @@ interface GameState {
   waveElement: Element;
   lives: number;
   gold: number;
+  selectTokens: number;
   slots: (TowerInstance | null)[];
   enemies: Enemy[];
   projectiles: Projectile[];
@@ -300,7 +328,6 @@ interface GameState {
   waveClearedAt: number | null;
   gameOver: boolean;
   won: boolean;
-  bossRewardPending: boolean;
 }
 
 function freshGameState(mapId: string): GameState {
@@ -311,6 +338,7 @@ function freshGameState(mapId: string): GameState {
     waveElement: "fire",
     lives: BASE_LIVES,
     gold: STARTING_GOLD,
+    selectTokens: 0,
     slots: Array(SLOT_COUNT).fill(null),
     enemies: [],
     projectiles: [],
@@ -324,7 +352,6 @@ function freshGameState(mapId: string): GameState {
     waveClearedAt: null,
     gameOver: false,
     won: false,
-    bossRewardPending: false,
   };
 }
 
@@ -333,7 +360,7 @@ function freshGameState(mapId: string): GameState {
 function buildWaveSpawns(wave: number): { hp: number; speed: number; isBoss: boolean }[] {
   const count = 5 + Math.min(wave, 30);
   const hp = 18 * (1 + wave * 0.05) * Math.pow(1.025, wave);
-  const speed = 32 + wave * 1.5;
+  const speed = (32 + wave * 1.5) * 1.5; // 이동속도 템포 1.5배
   const spawns = Array.from({ length: count }, () => ({ hp, speed, isBoss: false }));
   if (wave % BOSS_WAVE_INTERVAL === 0) {
     spawns.push({ hp: hp * 8, speed: speed * 0.7, isBoss: true });
@@ -346,13 +373,6 @@ function randomTowerByRarities(pool: TowerDef[], rarities: string[]): TowerDef |
   const candidates = pool.filter((t) => rarities.includes(t.rarity));
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
-}
-
-// 보스를 잡을수록 보상으로 제시되는 등급대도 같이 올라간다 (난이도 곡선과 함께 스케일)
-function bossRewardRarities(wave: number): string[] {
-  if (wave < 30) return ["uncommon", "rare", "epic"];
-  if (wave < 60) return ["rare", "epic", "legendary"];
-  return ["epic", "legendary", "mythic"];
 }
 
 function instantiateTower(def: TowerDef, slotIndex: number, tier: number): TowerInstance {
@@ -475,10 +495,12 @@ export default function TowerDefensePage() {
   const [hudWave, setHudWave] = useState(1);
   const [hudLives, setHudLives] = useState(BASE_LIVES);
   const [hudGold, setHudGold] = useState(STARTING_GOLD);
+  const [hudTokens, setHudTokens] = useState(0);
+  const [tokenGainFlash, setTokenGainFlash] = useState(false);
   const [bossWarning, setBossWarning] = useState(false);
   const [waveElement, setWaveElement] = useState<Element>("fire");
-  const [bossReward, setBossReward] = useState<TowerDef[] | null>(null);
   const [goldWarning, setGoldWarning] = useState(false);
+  const [tokenWarning, setTokenWarning] = useState(false);
   const [slotsVersion, setSlotsVersion] = useState(0);
   const [mergeFlash, setMergeFlash] = useState<number | null>(null);
 
@@ -567,6 +589,7 @@ export default function TowerDefensePage() {
       setHudWave(1);
       setHudLives(BASE_LIVES);
       setHudGold(STARTING_GOLD);
+      setHudTokens(0);
       setBossWarning(false);
       setWaveElement(gRef.current.waveElement);
       setSlotsVersion((v) => v + 1);
@@ -653,7 +676,7 @@ export default function TowerDefensePage() {
       if (e.dotUntil > now) e.hp -= (e.dotDmgPerTick * dt) / 1000;
       if (e.hp <= 0) {
         g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
-        if (e.isBoss) g.bossRewardPending = true;
+        if (e.isBoss) g.selectTokens += 1;
         return false;
       }
       if (e.dist >= totalLen) {
@@ -741,19 +764,10 @@ export default function TowerDefensePage() {
     g.enemies = g.enemies.filter((e) => {
       if (e.hp > 0) return true;
       g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
-      if (e.isBoss) g.bossRewardPending = true;
+      if (e.isBoss) g.selectTokens += 1;
       return false;
     });
     g.hitFx = g.hitFx.filter((fx) => now - fx.createdAt < 260);
-
-    if (g.bossRewardPending) {
-      g.bossRewardPending = false;
-      const rarities = bossRewardRarities(g.wave);
-      const choices = [0, 1, 2]
-        .map(() => randomTowerByRarities(towerPool, rarities))
-        .filter((c): c is TowerDef => c !== null);
-      if (choices.length > 0) setBossReward(choices);
-    }
 
     if (g.lives <= 0) {
       finishGame(false);
@@ -766,7 +780,7 @@ export default function TowerDefensePage() {
       g.wavesCompleted = g.wave;
       g.waveClearedAt = now;
     }
-    if (g.waveClearedAt !== null && now - g.waveClearedAt > 1800) {
+    if (g.waveClearedAt !== null && now - g.waveClearedAt > 1200) {
       g.waveClearedAt = null;
       if (g.wave >= WAVE_COUNT) {
         finishGame(true);
@@ -783,6 +797,14 @@ export default function TowerDefensePage() {
 
     setHudLives((prev) => (prev !== g.lives ? g.lives : prev));
     setHudGold((prev) => (prev !== g.gold ? g.gold : prev));
+    setHudTokens((prev) => {
+      if (g.selectTokens === prev) return prev;
+      if (g.selectTokens > prev) {
+        setTokenGainFlash(true);
+        setTimeout(() => setTokenGainFlash(false), 1800);
+      }
+      return g.selectTokens;
+    });
   };
 
   const draw = () => {
@@ -801,8 +823,26 @@ export default function TowerDefensePage() {
     }
 
     ctx.clearRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
-    ctx.fillStyle = theme.bg;
-    ctx.fillRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
+
+    // 타일 그리드 배경 — 참고 이미지(스타2 랜덤 디펜스류)의 체커보드 바닥 질감 재현
+    const TILE = 65;
+    for (let ty = -TILE; ty < CANVAS_H + TILE; ty += TILE) {
+      for (let tx = -TILE; tx < CANVAS_W + TILE; tx += TILE) {
+        const alt = (Math.round(tx / TILE) + Math.round(ty / TILE)) % 2 === 0;
+        ctx.fillStyle = alt ? theme.bg : theme.tileAlt;
+        ctx.fillRect(tx, ty, TILE, TILE);
+      }
+    }
+
+    // 블록(건설 패드 구역) 패널 — 참고 이미지처럼 통로 바닥과 구분되는 패널 바닥
+    for (const b of map.blocks) {
+      const half = b.size / 2;
+      ctx.fillStyle = `${theme.pathBorder}22`;
+      ctx.fillRect(b.x - half, b.y - half, b.size, b.size);
+      ctx.strokeStyle = `${theme.pathBorder}77`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x - half, b.y - half, b.size, b.size);
+    }
 
     // 맵 테마 배경 장식
     for (const d of map.decorations) {
@@ -892,17 +932,6 @@ export default function TowerDefensePage() {
       ctx.globalAlpha = 1;
     }
 
-    // 슬롯 테두리 (빈 슬롯 표시용 힌트)
-    for (let i = 0; i < SLOT_COUNT; i++) {
-      const pos = map.slots[i];
-      if (!g.slots[i]) {
-        ctx.strokeStyle = "#ffffff22";
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(pos.x - 24, pos.y - 24, 48, 48);
-        ctx.setLineDash([]);
-      }
-    }
-
     ctx.restore();
   };
 
@@ -914,6 +943,11 @@ export default function TowerDefensePage() {
   const warnGold = () => {
     setGoldWarning(true);
     setTimeout(() => setGoldWarning(false), 1200);
+  };
+
+  const warnTokens = () => {
+    setTokenWarning(true);
+    setTimeout(() => setTokenWarning(false), 1200);
   };
 
   // 배치 모드: 빈 슬롯 클릭 시 100골드로 최하등급 중 랜덤 1종을 배치. 라운드가 오를수록 2~3티어로도 등장한다
@@ -932,17 +966,19 @@ export default function TowerDefensePage() {
     setSlotsVersion((v) => v + 1);
   };
 
-  // 선택배치 모드: 빈 슬롯 클릭 시 220골드로 3종을 제안받아 하나를 골라 그 슬롯에 배치
+  // 선택배치 모드: 골드가 아니라 "토큰" 1개 소모 — 토큰은 보스를 잡을 때마다 1개씩 쌓인다.
+  // 빈 슬롯을 클릭하면 상위등급 3종을 제안받아 하나를 골라 그 슬롯에 배치한다.
   const openSelectPlace = (slotIndex: number) => {
     const g = gRef.current;
     if (g.slots[slotIndex] || towerPool.length === 0) return;
-    if (g.gold < SELECT_PLACE_COST) {
-      warnGold();
+    if (g.selectTokens < 1) {
+      warnTokens();
       return;
     }
+    const rarities = tokenPlaceRarities(g.wave);
     const choices = [0, 1, 2]
       .map(() => {
-        const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
+        const def = randomTowerByRarities(towerPool, rarities);
         return def ? { def, tier: rollPlacementTier(g.wave) } : null;
       })
       .filter((c): c is { def: TowerDef; tier: number } => c !== null);
@@ -954,12 +990,12 @@ export default function TowerDefensePage() {
   const confirmSelectPlace = (choice: { def: TowerDef; tier: number }) => {
     const g = gRef.current;
     if (selectPlaceTarget === null) return;
-    if (g.gold < SELECT_PLACE_COST) {
+    if (g.selectTokens < 1) {
       setSelectPlaceTarget(null);
       setSelectPlaceChoices([]);
       return;
     }
-    g.gold -= SELECT_PLACE_COST;
+    g.selectTokens -= 1;
     g.slots[selectPlaceTarget] = instantiateTower(choice.def, selectPlaceTarget, choice.tier);
     flashSlot(selectPlaceTarget);
     setSelectPlaceTarget(null);
@@ -971,20 +1007,6 @@ export default function TowerDefensePage() {
   const cancelSelectPlace = () => {
     setSelectPlaceTarget(null);
     setSelectPlaceChoices([]);
-  };
-
-  // 보스 처치 보상 — 상위등급 중 하나를 선택해 빈 슬롯에 배치. 빈 슬롯이 없으면 골드로 대신 지급
-  const pickBossReward = (def: TowerDef) => {
-    const g = gRef.current;
-    const emptyIdx = g.slots.findIndex((s) => !s);
-    if (emptyIdx === -1) {
-      g.gold += BOSS_REWARD_FALLBACK_GOLD;
-    } else {
-      g.slots[emptyIdx] = instantiateTower(def, emptyIdx, 1);
-      flashSlot(emptyIdx);
-    }
-    setBossReward(null);
-    setSlotsVersion((v) => v + 1);
   };
 
   // 판매 모드: 채워진 슬롯 클릭 시 즉시 판매하고 환불
@@ -1166,6 +1188,13 @@ export default function TowerDefensePage() {
             <p className="flex items-center gap-1 text-sm font-semibold text-amber-400">
               <Coins className="w-4 h-4" /> {hudGold}
             </p>
+            <p
+              className={`flex items-center gap-1 text-sm font-semibold text-sky-400 transition ${
+                tokenGainFlash ? "scale-125" : ""
+              }`}
+            >
+              <Ticket className="w-4 h-4" /> {hudTokens}
+            </p>
             <p className="flex items-center gap-1 text-sm font-semibold text-rose-400">
               <Heart className="w-4 h-4" /> {hudLives}
             </p>
@@ -1179,6 +1208,7 @@ export default function TowerDefensePage() {
           </p>
 
           {goldWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_gold")}</p>}
+          {tokenWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_tokens")}</p>}
 
           {bossWarning && (
             <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-400">
@@ -1206,9 +1236,13 @@ export default function TowerDefensePage() {
                   <button
                     key={i}
                     onClick={() => handleSlotClick(i)}
-                    className={`absolute flex items-center justify-center rounded-xl transition ${
+                    className={`absolute flex items-center justify-center rounded-full transition ${
                       mergeFlash === i ? "scale-125" : ""
-                    } ${def ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70` : "hover:bg-white/5"} ${
+                    } ${
+                      def
+                        ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70`
+                        : "border-2 border-[#8a6bc4]/50 bg-black/25 hover:bg-white/10"
+                    } ${
                       actionMode && targetable
                         ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse`
                         : ""
@@ -1241,11 +1275,19 @@ export default function TowerDefensePage() {
               {(
                 [
                   { mode: "place", icon: Plus, label: t("td.action_place"), cost: PLACE_COST, hotkey: "1" },
-                  { mode: "selectPlace", icon: Layers, label: t("td.action_select_place"), cost: SELECT_PLACE_COST, hotkey: "2" },
+                  { mode: "selectPlace", icon: Layers, label: t("td.action_select_place"), tokenCost: 1, hotkey: "2" },
                   { mode: "enhance", icon: Zap, label: t("td.action_enhance"), hotkey: "3" },
                   { mode: "sell", icon: Banknote, label: t("td.action_sell"), hotkey: "4" },
                   { mode: "merge", icon: GitMerge, label: t("td.action_merge"), disabled: !canMerge, hotkey: "5" },
-                ] as { mode: ActionMode; icon: LucideIcon; label: string; cost?: number; disabled?: boolean; hotkey: string }[]
+                ] as {
+                  mode: ActionMode;
+                  icon: LucideIcon;
+                  label: string;
+                  cost?: number;
+                  tokenCost?: number;
+                  disabled?: boolean;
+                  hotkey: string;
+                }[]
               ).map((a) => {
                 const Icon = a.icon;
                 const active = actionMode === a.mode;
@@ -1266,6 +1308,12 @@ export default function TowerDefensePage() {
                     <Icon className="w-4 h-4" />
                     <span>{a.label}</span>
                     {a.cost !== undefined && <span className="text-[9px] text-amber-300">{a.cost}G</span>}
+                    {a.tokenCost !== undefined && (
+                      <span className="flex items-center gap-0.5 text-[9px] text-sky-300">
+                        <Ticket className="w-2.5 h-2.5" />
+                        {a.tokenCost}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1276,36 +1324,6 @@ export default function TowerDefensePage() {
               </p>
             )}
           </div>
-
-          {bossReward !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-              <div className="bg-card rounded-2xl border-2 border-amber-400/60 p-4 w-full max-w-sm space-y-3">
-                <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-center text-amber-400">
-                  <Skull className="w-4 h-4" /> {t("td.boss_reward_title")}
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {bossReward.map((c, idx) => {
-                    const def = charById(c.characterId);
-                    if (!def) return null;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => pickBossReward(c)}
-                        className={`rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1`}
-                      >
-                        <PixelCharacter characterId={def.id} size={48} />
-                        <span className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}>
-                          {getCharName(def, lang)}
-                        </span>
-                        <span className={`text-[9px] ${RARITY_COLOR[def.rarity]}`}>{getRarityLabel(def.rarity, lang)}</span>
-                        <span className="text-[9px] text-muted-foreground">{archLabel(c.archetype)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
 
           {selectPlaceTarget !== null && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={cancelSelectPlace}>
