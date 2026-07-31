@@ -21,6 +21,7 @@ const rewardSelect = {
   bigEggs: true,
   goldenEggs: true,
   enhancementStones: true,
+  breedingEssence: true,
 } as const;
 
 const REWARD_FIELD_LABELS: Record<keyof typeof rewardSelect, string> = {
@@ -29,6 +30,7 @@ const REWARD_FIELD_LABELS: Record<keyof typeof rewardSelect, string> = {
   bigEggs: "왕알",
   goldenEggs: "황금 알",
   enhancementStones: "강화석",
+  breedingEssence: "교배 재화",
 };
 
 @Injectable()
@@ -304,6 +306,7 @@ export class AdminUsersService {
       bigEggs: clamp(current?.bigEggs ?? 0, dto.bigEggsDelta),
       goldenEggs: clamp(current?.goldenEggs ?? 0, dto.goldenEggsDelta),
       enhancementStones: clamp(current?.enhancementStones ?? 0, dto.enhancementStonesDelta),
+      breedingEssence: clamp(current?.breedingEssence ?? 0, dto.breedingEssenceDelta),
     };
 
     const updated = await this.prisma.userReward.upsert({

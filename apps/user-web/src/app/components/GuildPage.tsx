@@ -83,14 +83,22 @@ function ConfirmModal({ title, onConfirm, onCancel, busy, ko, ja }: {
           <button
             disabled={busy}
             onClick={onCancel}
-            className="flex-1 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            className={`flex-1 rounded-lg border py-2 text-sm transition-colors ${
+              busy
+                ? "border-border text-muted-foreground/50 cursor-not-allowed"
+                : "border-border text-muted-foreground hover:bg-muted"
+            }`}
           >
             {ko ? "취소" : ja ? "キャンセル" : "Cancel"}
           </button>
           <button
             disabled={busy}
             onClick={onConfirm}
-            className="flex-1 rounded-lg bg-destructive py-2 text-sm text-destructive-foreground hover:bg-destructive/80 transition-colors disabled:opacity-50"
+            className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
+              busy
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : "bg-destructive text-destructive-foreground hover:bg-destructive/80"
+            }`}
           >
             {ko ? "확인" : ja ? "確認" : "Confirm"}
           </button>
@@ -454,7 +462,11 @@ export default function GuildPage() {
                 <button
                   disabled={busy}
                   onClick={() => handleCancelApplication(a.id)}
-                  className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  className={`shrink-0 rounded-lg border px-2.5 py-1 text-xs transition-colors ${
+                    busy
+                      ? "border-border text-muted-foreground/50 cursor-not-allowed"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
                 >
                   {ko ? "취소" : ja ? "取消" : "Cancel"}
                 </button>
@@ -992,7 +1004,11 @@ export default function GuildPage() {
                     run: () => { setConfirmAction(null); handleLeave(); },
                   })
                 }
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-sm transition-colors ${
+                  busy
+                    ? "border-border text-muted-foreground/50 cursor-not-allowed"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
               >
                 <LogOut className="w-4 h-4" />
                 {ko ? "길드 탈퇴" : ja ? "ギルド脱退" : "Leave Guild"}
@@ -1007,7 +1023,11 @@ export default function GuildPage() {
                     run: () => { setConfirmAction(null); handleDisband(); },
                   })
                 }
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-destructive/40 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-sm transition-colors ${
+                  busy
+                    ? "border-border text-muted-foreground/50 cursor-not-allowed"
+                    : "border-destructive/40 text-destructive hover:bg-destructive/10"
+                }`}
               >
                 <X className="w-4 h-4" />
                 {ko ? "길드 해체" : ja ? "ギルド解体" : "Disband Guild"}

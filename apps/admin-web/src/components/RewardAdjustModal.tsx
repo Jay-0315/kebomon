@@ -9,6 +9,7 @@ export type RewardSummary = {
   bigEggs: number;
   goldenEggs: number;
   enhancementStones: number;
+  breedingEssence: number;
 } | null;
 
 const FIELDS: { key: keyof NonNullable<RewardSummary>; labelKey: TranslationKey | null; fallback: string }[] = [
@@ -17,6 +18,7 @@ const FIELDS: { key: keyof NonNullable<RewardSummary>; labelKey: TranslationKey 
   { key: "bigEggs", labelKey: "rewardModal.field_big_eggs", fallback: "" },
   { key: "goldenEggs", labelKey: "rewardModal.field_golden_eggs", fallback: "" },
   { key: "enhancementStones", labelKey: "rewardModal.field_enhancement_stones", fallback: "" },
+  { key: "breedingEssence", labelKey: "rewardModal.field_breeding_essence", fallback: "" },
 ];
 
 export default function RewardAdjustModal({

@@ -30,14 +30,32 @@ import {
 import type { TranslationKey } from "../lib/i18n";
 
 // ─── 클라이언트 전투 시뮬레이션 상수 (레이드 미니게임과 동일하게 서버는 결과만 검증) ───
-type Archetype = "warrior" | "rogue" | "mage" | "tank" | "nature" | "meka" | "cursed";
+type Archetype =
+  | "warrior"
+  | "rogue"
+  | "mage"
+  | "tank"
+  | "nature"
+  | "meka"
+  | "cursed";
 type Pattern = "single" | "aoe" | "dot";
-type Element = "fire" | "earth" | "ice" | "dark" | "nature" | "lightning" | "shadow" | "light";
+type Element =
+  | "fire"
+  | "earth"
+  | "ice"
+  | "dark"
+  | "nature"
+  | "lightning"
+  | "shadow"
+  | "light";
 
 // 공격속도는 /1.5로 나눠서 전체 템포를 1.5배 끌어올림.
 // range는 블록형 배치(패드가 경로와 최대 ~170px 떨어짐)에 맞춰 대폭 상향 — 기존 80~120은
 // 경로에 바로 붙어있던 이전 레이아웃 기준이라 블록 구석 슬롯은 사거리 밖이라 공격을 못 하고 있었다.
-const ARCHETYPE_STATS: Record<Archetype, { range: number; atkSpeedMs: number; damage: number; pattern: Pattern }> = {
+const ARCHETYPE_STATS: Record<
+  Archetype,
+  { range: number; atkSpeedMs: number; damage: number; pattern: Pattern }
+> = {
   warrior: { range: 190, atkSpeedMs: 467, damage: 12, pattern: "single" },
   rogue: { range: 175, atkSpeedMs: 300, damage: 7, pattern: "single" },
   tank: { range: 225, atkSpeedMs: 600, damage: 9, pattern: "single" },
@@ -72,7 +90,14 @@ const ELEMENT_BONUS = 1.15;
 // 순환으로 이뤄져 있다. "light"는 어떤 타워 계열의 공격 속성도 아니라서(콜로세움 all-폴백 전용)
 // light가 카운터인 "shadow"를 웨이브 속성으로 뽑으면 어떤 타워도 상성 보너스를 받을 수 없다 —
 // 그래서 light와 shadow 둘 다 웨이브 풀에서 제외하고, 실제로 카운터 가능한 6개만 사용한다.
-const WAVE_ELEMENTS: Element[] = ["fire", "earth", "ice", "dark", "nature", "lightning"];
+const WAVE_ELEMENTS: Element[] = [
+  "fire",
+  "earth",
+  "ice",
+  "dark",
+  "nature",
+  "lightning",
+];
 const COUNTERED_BY: Partial<Record<Element, Element>> = Object.fromEntries(
   Object.entries(ELEMENT_ADVANTAGE).map(([atk, def]) => [def, atk]),
 );
@@ -182,7 +207,7 @@ function pointAtDistance(path: Point[], dist: number): Point {
   return path[path.length - 1];
 }
 
-// 참고 이미지(스타2 랜덤 타워디펜스류)의 "플레이어별 사각 패널 안에 건설 패드 2x2가 뭉쳐있고,
+// "플레이어별 사각 패널 안에 건설 패드 2x2가 뭉쳐있고,
 // 그 패널들 사이 통로로 몬스터가 지나가는" 구조를 그대로 재현 — 블록 6개(3x2 그리드) x 패드 4개.
 const BLOCK_SIZE = 240;
 const PAD_OFFSET = 55; // 블록 중심에서 2x2 패드까지의 거리
@@ -226,10 +251,18 @@ interface MapDef {
 }
 
 function scatterDecorations(w: number, h: number, count: number): Point[] {
-  return Array.from({ length: count }, () => ({ x: Math.random() * w, y: Math.random() * h }));
+  return Array.from({ length: count }, () => ({
+    x: Math.random() * w,
+    y: Math.random() * h,
+  }));
 }
 
-function defineMap(id: string, path: Point[], blockCenters: Point[], theme: MapTheme): MapDef {
+function defineMap(
+  id: string,
+  path: Point[],
+  blockCenters: Point[],
+  theme: MapTheme,
+): MapDef {
   return {
     id,
     path,
@@ -240,8 +273,7 @@ function defineMap(id: string, path: Point[], blockCenters: Point[], theme: MapT
   };
 }
 
-// 맵을 하나로 통일 — 참고로 주신 스타2 랜덤 타워디펜스류 맵과 동일하게 3x2 블록 그리드 +
-// 블록 사이 통로를 지그재그로 지나가는 몬스터 진행 경로로 구성했다. 테마는 "밤의 성채".
+// 맵을 하나로 통일 — 3x2 블록 그리드 + 블록 사이 통로를 지그재그로 지나가는 몬스터 진행 경로로 구성
 const MAPS: MapDef[] = [
   defineMap(
     "castle",
@@ -363,11 +395,17 @@ function freshGameState(mapId: string): GameState {
 
 // 100라운드까지 버텨야 하므로 초반은 완만하다가 후반으로 갈수록 급격히 세지는 곡선(선형×지수 복합).
 // 적 마릿수는 30라운드 이후 늘리지 않고 체력/속도로만 난이도를 올려 후반 웨이브가 과도하게 늘어지지 않게 한다.
-function buildWaveSpawns(wave: number): { hp: number; speed: number; isBoss: boolean }[] {
+function buildWaveSpawns(
+  wave: number,
+): { hp: number; speed: number; isBoss: boolean }[] {
   const count = 5 + Math.min(wave, 30);
   const hp = 18 * (1 + wave * 0.05) * Math.pow(1.025, wave);
   const speed = (32 + wave * 1.5) * 2.2; // 여전히 느리다는 피드백 반영, 1.5배 → 2.2배로 재상향
-  const spawns = Array.from({ length: count }, () => ({ hp, speed, isBoss: false }));
+  const spawns = Array.from({ length: count }, () => ({
+    hp,
+    speed,
+    isBoss: false,
+  }));
   if (wave % BOSS_WAVE_INTERVAL === 0) {
     spawns.push({ hp: hp * 8, speed: speed * 0.7, isBoss: true });
   }
@@ -375,13 +413,20 @@ function buildWaveSpawns(wave: number): { hp: number; speed: number; isBoss: boo
 }
 
 // 지정된 등급들 중에서만 균등 랜덤 — 빈 슬롯 클릭(최하등급 전용)과 보스 보상(상위등급 전용) 둘 다 재사용
-function randomTowerByRarities(pool: TowerDef[], rarities: string[]): TowerDef | null {
+function randomTowerByRarities(
+  pool: TowerDef[],
+  rarities: string[],
+): TowerDef | null {
   const candidates = pool.filter((t) => rarities.includes(t.rarity));
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-function instantiateTower(def: TowerDef, slotIndex: number, tier: number): TowerInstance {
+function instantiateTower(
+  def: TowerDef,
+  slotIndex: number,
+  tier: number,
+): TowerInstance {
   return { ...def, tier, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
 }
 
@@ -465,7 +510,11 @@ interface RankingEntry {
   characterId: number | null;
 }
 
-const RANK_COLOR: Record<number, string> = { 1: "#f5c542", 2: "#c7ced8", 3: "#c98a4e" };
+const RANK_COLOR: Record<number, string> = {
+  1: "#f5c542",
+  2: "#c7ced8",
+  3: "#c98a4e",
+};
 
 // 하단 액션 패널에서 선택하는 모드 — 선택 후 게임 화면(캔버스 오버레이 슬롯)을 클릭해 대상에 적용한다
 type ActionMode = "place" | "selectPlace" | "enhance" | "sell" | "merge";
@@ -489,7 +538,9 @@ export default function TowerDefensePage() {
   const { t, lang } = useLang();
   const { refreshRewards } = useAppData();
 
-  const [phase, setPhase] = useState<"loading" | "lobby" | "playing" | "result">("loading");
+  const [phase, setPhase] = useState<
+    "loading" | "lobby" | "playing" | "result"
+  >("loading");
   const [attemptsLeft, setAttemptsLeft] = useState(0);
   const [bestWave, setBestWave] = useState(0);
   const [towerPool, setTowerPool] = useState<TowerDef[]>([]);
@@ -514,10 +565,18 @@ export default function TowerDefensePage() {
   const [mergeFlash, setMergeFlash] = useState<number | null>(null);
 
   const [actionMode, setActionMode] = useState<ActionMode | null>(null);
-  const [selectPlaceTarget, setSelectPlaceTarget] = useState<number | null>(null);
-  const [selectPlaceChoices, setSelectPlaceChoices] = useState<{ def: TowerDef; tier: number }[]>([]);
+  const [selectPlaceTarget, setSelectPlaceTarget] = useState<number | null>(
+    null,
+  );
+  const [selectPlaceChoices, setSelectPlaceChoices] = useState<
+    { def: TowerDef; tier: number }[]
+  >([]);
 
-  const [result, setResult] = useState<{ wavesCleared: number; isNewRecord: boolean; kpEarned: number } | null>(null);
+  const [result, setResult] = useState<{
+    wavesCleared: number;
+    isNewRecord: boolean;
+    kpEarned: number;
+  } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -596,10 +655,13 @@ export default function TowerDefensePage() {
   const handleStart = async () => {
     setError(null);
     try {
-      await api.post<{ ok: boolean; attemptsLeft: number }>("/tower-defense/start");
+      await api.post<{ ok: boolean; attemptsLeft: number }>(
+        "/tower-defense/start",
+      );
       gRef.current = freshGameState(MAPS[0].id);
       gRef.current.wave = 1;
-      gRef.current.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
+      gRef.current.waveElement =
+        WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
       gRef.current.spawnQueue = buildWaveSpawns(1);
       gRef.current.waveActive = true;
       setHudWave(1);
@@ -630,12 +692,18 @@ export default function TowerDefensePage() {
     }
     setSubmitting(true);
     api
-      .post<{ wavesCleared: number; isNewRecord: boolean; bestWave: number; kpEarned: number }>(
-        "/tower-defense/submit",
-        { wavesCleared: g.wavesCompleted },
-      )
+      .post<{
+        wavesCleared: number;
+        isNewRecord: boolean;
+        bestWave: number;
+        kpEarned: number;
+      }>("/tower-defense/submit", { wavesCleared: g.wavesCompleted })
       .then((res) => {
-        setResult({ wavesCleared: res.wavesCleared, isNewRecord: res.isNewRecord, kpEarned: res.kpEarned });
+        setResult({
+          wavesCleared: res.wavesCleared,
+          isNewRecord: res.isNewRecord,
+          kpEarned: res.kpEarned,
+        });
         setBestWave(res.bestWave);
         if (res.isNewRecord) setRankings(null); // 순위 갱신됐을 수 있으니 다음에 다시 불러오게
         if (res.kpEarned > 0) void refreshRewards();
@@ -644,7 +712,11 @@ export default function TowerDefensePage() {
       .catch((e) => {
         setError(e instanceof Error ? e.message : String(e));
         setPhase("result");
-        setResult({ wavesCleared: g.wavesCompleted, isNewRecord: false, kpEarned: 0 });
+        setResult({
+          wavesCleared: g.wavesCompleted,
+          isNewRecord: false,
+          kpEarned: 0,
+        });
       })
       .finally(() => setSubmitting(false));
   };
@@ -757,10 +829,16 @@ export default function TowerDefensePage() {
       const dy = tp.y - p.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= PROJECTILE_HIT_R) {
-        const elemMult = ELEMENT_ADVANTAGE[p.element] === target.element ? ELEMENT_BONUS : 1;
+        const elemMult =
+          ELEMENT_ADVANTAGE[p.element] === target.element ? ELEMENT_BONUS : 1;
         const dmg = p.damage * elemMult;
         target.flinchUntil = now + 110;
-        g.hitFx.push({ x: tp.x, y: tp.y, color: ELEMENT_COLOR[p.element], createdAt: now });
+        g.hitFx.push({
+          x: tp.x,
+          y: tp.y,
+          color: ELEMENT_COLOR[p.element],
+          createdAt: now,
+        });
         if (target.isBoss) g.shakeUntil = now + 140;
         if (p.pattern === "aoe") {
           for (const e of g.enemies) {
@@ -768,7 +846,8 @@ export default function TowerDefensePage() {
             const ddx = ep.x - tp.x;
             const ddy = ep.y - tp.y;
             if (Math.sqrt(ddx * ddx + ddy * ddy) <= AOE_RADIUS) {
-              const em = ELEMENT_ADVANTAGE[p.element] === e.element ? ELEMENT_BONUS : 1;
+              const em =
+                ELEMENT_ADVANTAGE[p.element] === e.element ? ELEMENT_BONUS : 1;
               e.hp -= p.damage * em;
               e.flinchUntil = now + 110;
             }
@@ -817,7 +896,8 @@ export default function TowerDefensePage() {
           return;
         }
         g.wave += 1;
-        g.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
+        g.waveElement =
+          WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
         g.spawnQueue = buildWaveSpawns(g.wave);
         g.waveActive = true;
         setHudWave(g.wave);
@@ -858,7 +938,7 @@ export default function TowerDefensePage() {
 
     ctx.clearRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
 
-    // 타일 그리드 배경 — 참고 이미지(스타2 랜덤 디펜스류)의 체커보드 바닥 질감 재현
+    // 타일 그리드 배경
     const TILE = 65;
     for (let ty = -TILE; ty < CANVAS_H + TILE; ty += TILE) {
       for (let tx = -TILE; tx < CANVAS_W + TILE; tx += TILE) {
@@ -889,14 +969,18 @@ export default function TowerDefensePage() {
         ctx.stroke();
       } else if (theme.decoShape === "ember") {
         const pulse = 0.5 + 0.5 * Math.sin(now / 400 + d.x);
-        ctx.fillStyle = `${theme.decoColor}${Math.round(30 + pulse * 50).toString(16).padStart(2, "0")}`;
+        ctx.fillStyle = `${theme.decoColor}${Math.round(30 + pulse * 50)
+          .toString(16)
+          .padStart(2, "0")}`;
         ctx.beginPath();
         ctx.arc(d.x, d.y, 1.5 + pulse * 1.5, 0, Math.PI * 2);
         ctx.fill();
       } else if (theme.decoShape === "spark") {
         const pulse = 0.5 + 0.5 * Math.sin(now / 600 + d.x * 0.7);
         const s = 2 + pulse * 2.2;
-        ctx.strokeStyle = `${theme.decoColor}${Math.round(25 + pulse * 60).toString(16).padStart(2, "0")}`;
+        ctx.strokeStyle = `${theme.decoColor}${Math.round(25 + pulse * 60)
+          .toString(16)
+          .padStart(2, "0")}`;
         ctx.lineWidth = 1.4;
         ctx.beginPath();
         ctx.moveTo(d.x - s, d.y);
@@ -942,7 +1026,12 @@ export default function TowerDefensePage() {
       ctx.fillStyle = "#00000066";
       ctx.fillRect(pos.x - barW / 2, pos.y - r - 12, barW, 4);
       ctx.fillStyle = "#4ade80";
-      ctx.fillRect(pos.x - barW / 2, pos.y - r - 12, barW * Math.max(0, e.hp / e.maxHp), 4);
+      ctx.fillRect(
+        pos.x - barW / 2,
+        pos.y - r - 12,
+        barW * Math.max(0, e.hp / e.maxHp),
+        4,
+      );
     }
 
     // 투사체
@@ -995,7 +1084,11 @@ export default function TowerDefensePage() {
     const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
     if (!def) return;
     g.gold -= PLACE_COST;
-    g.slots[slotIndex] = instantiateTower(def, slotIndex, rollPlacementTier(g.wave));
+    g.slots[slotIndex] = instantiateTower(
+      def,
+      slotIndex,
+      rollPlacementTier(g.wave),
+    );
     flashSlot(slotIndex);
     setSlotsVersion((v) => v + 1);
   };
@@ -1030,7 +1123,11 @@ export default function TowerDefensePage() {
       return;
     }
     g.selectTokens -= 1;
-    g.slots[selectPlaceTarget] = instantiateTower(choice.def, selectPlaceTarget, choice.tier);
+    g.slots[selectPlaceTarget] = instantiateTower(
+      choice.def,
+      selectPlaceTarget,
+      choice.tier,
+    );
     flashSlot(selectPlaceTarget);
     setSelectPlaceTarget(null);
     setSelectPlaceChoices([]);
@@ -1048,7 +1145,9 @@ export default function TowerDefensePage() {
     const g = gRef.current;
     const tower = g.slots[slotIndex];
     if (!tower) return;
-    g.gold += TIER_SELL_GOLD[tower.tier] + tower.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL;
+    g.gold +=
+      TIER_SELL_GOLD[tower.tier] +
+      tower.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL;
     g.slots[slotIndex] = null;
     setSlotsVersion((v) => v + 1);
   };
@@ -1076,15 +1175,27 @@ export default function TowerDefensePage() {
     if (!tower || tower.tier >= MAX_TIER) return;
     const matches = g.slots
       .map((s, idx) => ({ s, idx }))
-      .filter((e) => e.s && e.s.characterId === tower.characterId && e.s.tier === tower.tier);
+      .filter(
+        (e) =>
+          e.s &&
+          e.s.characterId === tower.characterId &&
+          e.s.tier === tower.tier,
+      );
     if (matches.length < 2) return;
     const clicked = matches.find((m) => m.idx === slotIndex)!;
     const other = matches.find((m) => m.idx !== slotIndex)!;
-    const carryEnhance = Math.max(clicked.s!.enhanceLevel, other.s!.enhanceLevel);
+    const carryEnhance = Math.max(
+      clicked.s!.enhanceLevel,
+      other.s!.enhanceLevel,
+    );
     const resultDef = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
     g.slots[other.idx] = null;
     if (resultDef) {
-      g.slots[clicked.idx] = instantiateTower(resultDef, clicked.idx, tower.tier + 1);
+      g.slots[clicked.idx] = instantiateTower(
+        resultDef,
+        clicked.idx,
+        tower.tier + 1,
+      );
       g.slots[clicked.idx]!.enhanceLevel = carryEnhance;
     } else {
       g.slots[clicked.idx] = null;
@@ -1118,15 +1229,19 @@ export default function TowerDefensePage() {
     loadSummary();
   };
 
-  const archLabel = (arch: Archetype): string => t(`td.arch_${arch}` as TranslationKey);
-  const elemLabel = (elem: Element): string => (elem === "light" ? "" : t(`td.elem_${elem}` as TranslationKey));
+  const archLabel = (arch: Archetype): string =>
+    t(`td.arch_${arch}` as TranslationKey);
+  const elemLabel = (elem: Element): string =>
+    elem === "light" ? "" : t(`td.elem_${elem}` as TranslationKey);
 
   const counterArch = ELEMENT_TO_ARCH[COUNTERED_BY[waveElement] ?? "fire"];
 
   void slotsVersion;
   const mergeableSlots = findMergeableSlots(gRef.current.slots);
   const canMerge = mergeableSlots.size > 0;
-  const hpPct = Math.round((1 + hudWave * 0.05) * Math.pow(1.025, hudWave) * 100);
+  const hpPct = Math.round(
+    (1 + hudWave * 0.05) * Math.pow(1.025, hudWave) * 100,
+  );
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-4">
@@ -1147,12 +1262,19 @@ export default function TowerDefensePage() {
 
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
-      {phase === "loading" && <p className="text-sm text-muted-foreground text-center py-10">{t("td.loading")}</p>}
+      {phase === "loading" && (
+        <p className="text-sm text-muted-foreground text-center py-10">
+          {t("td.loading")}
+        </p>
+      )}
 
       {phase === "lobby" && (
         <div
           className="relative overflow-hidden rounded-2xl border border-[#8a6bc4]/40 p-6 flex flex-col items-center gap-4"
-          style={{ background: "radial-gradient(ellipse 130% 90% at 50% -15%, #3a2f52 0%, #161226 55%, #0d0a17 100%)" }}
+          style={{
+            background:
+              "radial-gradient(ellipse 130% 90% at 50% -15%, #3a2f52 0%, #161226 55%, #0d0a17 100%)",
+          }}
         >
           <style>{`@keyframes td-sparkle-twinkle { 0%,100%{opacity:0.15} 50%{opacity:0.9} }`}</style>
           {LOBBY_SPARKLES.map((s, i) => (
@@ -1177,11 +1299,17 @@ export default function TowerDefensePage() {
 
           <div className="relative flex gap-3 w-full">
             <div className="flex-1 rounded-xl bg-black/25 border border-[#8a6bc4]/30 py-2 text-center">
-              <p className="text-[10px] text-[#c9a6f5]/80">{t("td.best_wave")}</p>
-              <p className="text-lg font-bold text-[#f1e8fc]">{bestWave}/{WAVE_COUNT}</p>
+              <p className="text-[10px] text-[#c9a6f5]/80">
+                {t("td.best_wave")}
+              </p>
+              <p className="text-lg font-bold text-[#f1e8fc]">
+                {bestWave}/{WAVE_COUNT}
+              </p>
             </div>
             <div className="flex-1 rounded-xl bg-black/25 border border-[#8a6bc4]/30 py-2 text-center">
-              <p className="text-[10px] text-[#c9a6f5]/80">{t("td.attempts_left")}</p>
+              <p className="text-[10px] text-[#c9a6f5]/80">
+                {t("td.attempts_left")}
+              </p>
               <p className="text-lg font-bold text-[#f1e8fc]">{attemptsLeft}</p>
             </div>
           </div>
@@ -1189,15 +1317,21 @@ export default function TowerDefensePage() {
           <div className="relative grid grid-cols-3 gap-2 w-full">
             <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
               <Sparkles className="w-4 h-4 text-[#c9a6f5]" />
-              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_merge")}</p>
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">
+                {t("td.hint_merge")}
+              </p>
             </div>
             <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
               <Skull className="w-4 h-4 text-amber-400" />
-              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_boss")}</p>
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">
+                {t("td.hint_boss")}
+              </p>
             </div>
             <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
               <Coins className="w-4 h-4 text-amber-400" />
-              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_enhance")}</p>
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">
+                {t("td.hint_enhance")}
+              </p>
             </div>
           </div>
 
@@ -1212,14 +1346,18 @@ export default function TowerDefensePage() {
           >
             {attemptsLeft > 0 ? t("td.start") : t("td.no_attempts")}
           </button>
-          <p className="relative text-[11px] text-[#c9a6f5]/70 text-center">{t("td.desc")}</p>
+          <p className="relative text-[11px] text-[#c9a6f5]/70 text-center">
+            {t("td.desc")}
+          </p>
         </div>
       )}
 
       {phase === "playing" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-2">
-            <p className="text-sm font-semibold">{t("td.wave_label")} {hudWave}/{WAVE_COUNT}</p>
+            <p className="text-sm font-semibold">
+              {t("td.wave_label")} {hudWave}/{WAVE_COUNT}
+            </p>
             <p className="flex items-center gap-1 text-sm font-semibold text-amber-400">
               <Coins className="w-4 h-4" /> {hudGold}
             </p>
@@ -1236,7 +1374,9 @@ export default function TowerDefensePage() {
             <button
               onClick={toggleSpeed}
               className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition ${
-                hudSpeed === 2 ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                hudSpeed === 2
+                  ? "bg-primary text-white"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
               }`}
             >
               <FastForward className="w-3.5 h-3.5" /> {hudSpeed}x
@@ -1244,14 +1384,28 @@ export default function TowerDefensePage() {
           </div>
 
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: ELEMENT_COLOR[waveElement] }} />
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-full"
+              style={{ background: ELEMENT_COLOR[waveElement] }}
+            />
             {t("td.wave_element_hint")
               .replace("{element}", elemLabel(waveElement))
-              .replace("{archetype}", counterArch ? archLabel(counterArch) : "")}
+              .replace(
+                "{archetype}",
+                counterArch ? archLabel(counterArch) : "",
+              )}
           </p>
 
-          {goldWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_gold")}</p>}
-          {tokenWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_tokens")}</p>}
+          {goldWarning && (
+            <p className="text-center text-[11px] text-rose-400 font-semibold">
+              {t("td.not_enough_gold")}
+            </p>
+          )}
+          {tokenWarning && (
+            <p className="text-center text-[11px] text-rose-400 font-semibold">
+              {t("td.not_enough_tokens")}
+            </p>
+          )}
 
           {bossWarning && (
             <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-400">
@@ -1260,25 +1414,41 @@ export default function TowerDefensePage() {
           )}
 
           <div className="overflow-x-auto">
-            <div className="relative mx-auto" style={{ width: CANVAS_W, height: CANVAS_H }}>
-              <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="absolute inset-0 rounded-xl" />
+            <div
+              className="relative mx-auto"
+              style={{ width: CANVAS_W, height: CANVAS_H }}
+            >
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_W}
+                height={CANVAS_H}
+                className="absolute inset-0 rounded-xl"
+              />
 
               {/* 상태창 — 참고 이미지의 플레이어 목록 박스를 솔로 플레이용으로 단계/킬수/목숨/체력배율만 남겨 재구성 */}
               <div className="absolute top-2 right-2 rounded-lg border border-[#8a6bc4]/40 bg-black/70 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">{t("td.status_stage")}</span>
+                  <span className="text-muted-foreground">
+                    {t("td.status_stage")}
+                  </span>
                   <span className="font-bold text-foreground">{hudWave}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">{t("td.status_kills")}</span>
+                  <span className="text-muted-foreground">
+                    {t("td.status_kills")}
+                  </span>
                   <span className="font-bold text-foreground">{hudKills}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">{t("td.status_lives")}</span>
+                  <span className="text-muted-foreground">
+                    {t("td.status_lives")}
+                  </span>
                   <span className="font-bold text-rose-400">{hudLives}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">{t("td.status_hp_pct")}</span>
+                  <span className="text-muted-foreground">
+                    {t("td.status_hp_pct")}
+                  </span>
                   <span className="font-bold text-amber-300">{hpPct}%</span>
                 </div>
               </div>
@@ -1317,7 +1487,12 @@ export default function TowerDefensePage() {
                         ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse`
                         : ""
                     } ${actionMode && !targetable ? "opacity-35" : ""}`}
-                    style={{ left: pos.x - 26, top: pos.y - 26, width: 52, height: 52 }}
+                    style={{
+                      left: pos.x - 26,
+                      top: pos.y - 26,
+                      width: 52,
+                      height: 52,
+                    }}
                   >
                     {def && tower && (
                       <div className="relative">
@@ -1344,11 +1519,39 @@ export default function TowerDefensePage() {
             <div className="grid grid-cols-5 gap-1.5">
               {(
                 [
-                  { mode: "place", icon: Plus, label: t("td.action_place"), cost: PLACE_COST, hotkey: "1" },
-                  { mode: "selectPlace", icon: Layers, label: t("td.action_select_place"), tokenCost: 1, hotkey: "2" },
-                  { mode: "enhance", icon: Zap, label: t("td.action_enhance"), hotkey: "3" },
-                  { mode: "sell", icon: Banknote, label: t("td.action_sell"), hotkey: "4" },
-                  { mode: "merge", icon: GitMerge, label: t("td.action_merge"), disabled: !canMerge, hotkey: "5" },
+                  {
+                    mode: "place",
+                    icon: Plus,
+                    label: t("td.action_place"),
+                    cost: PLACE_COST,
+                    hotkey: "1",
+                  },
+                  {
+                    mode: "selectPlace",
+                    icon: Layers,
+                    label: t("td.action_select_place"),
+                    tokenCost: 1,
+                    hotkey: "2",
+                  },
+                  {
+                    mode: "enhance",
+                    icon: Zap,
+                    label: t("td.action_enhance"),
+                    hotkey: "3",
+                  },
+                  {
+                    mode: "sell",
+                    icon: Banknote,
+                    label: t("td.action_sell"),
+                    hotkey: "4",
+                  },
+                  {
+                    mode: "merge",
+                    icon: GitMerge,
+                    label: t("td.action_merge"),
+                    disabled: !canMerge,
+                    hotkey: "5",
+                  },
                 ] as {
                   mode: ActionMode;
                   icon: LucideIcon;
@@ -1374,10 +1577,16 @@ export default function TowerDefensePage() {
                           : "bg-secondary/60 text-foreground hover:bg-secondary"
                     }`}
                   >
-                    <span className="absolute top-0.5 left-1 text-[8px] opacity-60">{a.hotkey}</span>
+                    <span className="absolute top-0.5 left-1 text-[8px] opacity-60">
+                      {a.hotkey}
+                    </span>
                     <Icon className="w-4 h-4" />
                     <span>{a.label}</span>
-                    {a.cost !== undefined && <span className="text-[9px] text-amber-300">{a.cost}G</span>}
+                    {a.cost !== undefined && (
+                      <span className="text-[9px] text-amber-300">
+                        {a.cost}G
+                      </span>
+                    )}
                     {a.tokenCost !== undefined && (
                       <span className="flex items-center gap-0.5 text-[9px] text-sky-300">
                         <Ticket className="w-2.5 h-2.5" />
@@ -1396,12 +1605,17 @@ export default function TowerDefensePage() {
           </div>
 
           {selectPlaceTarget !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={cancelSelectPlace}>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+              onClick={cancelSelectPlace}
+            >
               <div
                 className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm space-y-3"
                 onClick={(e) => e.stopPropagation()}
               >
-                <p className="text-sm font-semibold text-center">{t("td.select_place_title")}</p>
+                <p className="text-sm font-semibold text-center">
+                  {t("td.select_place_title")}
+                </p>
                 <div className="grid grid-cols-3 gap-2">
                   {selectPlaceChoices.map((c, idx) => {
                     const def = charById(c.def.characterId);
@@ -1418,11 +1632,19 @@ export default function TowerDefensePage() {
                           </span>
                         )}
                         <PixelCharacter characterId={def.id} size={48} />
-                        <span className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}>
+                        <span
+                          className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}
+                        >
                           {getCharName(def, lang)}
                         </span>
-                        <span className={`text-[9px] ${RARITY_COLOR[def.rarity]}`}>{getRarityLabel(def.rarity, lang)}</span>
-                        <span className="text-[9px] text-muted-foreground">{archLabel(c.def.archetype)}</span>
+                        <span
+                          className={`text-[9px] ${RARITY_COLOR[def.rarity]}`}
+                        >
+                          {getRarityLabel(def.rarity, lang)}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {archLabel(c.def.archetype)}
+                        </span>
                       </button>
                     );
                   })}
@@ -1442,18 +1664,32 @@ export default function TowerDefensePage() {
       {phase === "result" && (
         <div className="bg-card rounded-2xl border-2 border-primary/40 p-6 flex flex-col items-center gap-3">
           {submitting ? (
-            <p className="text-sm text-muted-foreground py-8">{t("td.submitting")}</p>
+            <p className="text-sm text-muted-foreground py-8">
+              {t("td.submitting")}
+            </p>
           ) : (
             result && (
               <>
-                <p className={`text-lg font-bold ${result.wavesCleared >= WAVE_COUNT ? "text-emerald-400" : "text-rose-400"}`}>
-                  {result.wavesCleared >= WAVE_COUNT ? t("td.victory") : t("td.defeat")}
+                <p
+                  className={`text-lg font-bold ${result.wavesCleared >= WAVE_COUNT ? "text-emerald-400" : "text-rose-400"}`}
+                >
+                  {result.wavesCleared >= WAVE_COUNT
+                    ? t("td.victory")
+                    : t("td.defeat")}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {t("td.wave_reached")} {result.wavesCleared}/{WAVE_COUNT}
                 </p>
-                {result.isNewRecord && <p className="text-xs font-semibold text-amber-400">{t("td.new_record")}</p>}
-                {result.kpEarned > 0 && <p className="text-sm font-bold text-primary">+{result.kpEarned}KP</p>}
+                {result.isNewRecord && (
+                  <p className="text-xs font-semibold text-amber-400">
+                    {t("td.new_record")}
+                  </p>
+                )}
+                {result.kpEarned > 0 && (
+                  <p className="text-sm font-bold text-primary">
+                    +{result.kpEarned}KP
+                  </p>
+                )}
                 <button
                   onClick={backToLobby}
                   className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold bg-primary text-white hover:bg-primary/90"
@@ -1467,7 +1703,10 @@ export default function TowerDefensePage() {
       )}
 
       {showRankings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setShowRankings(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setShowRankings(false)}
+        >
           <div
             className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm max-h-[70vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
@@ -1479,23 +1718,34 @@ export default function TowerDefensePage() {
               </button>
             </div>
             {rankings === null ? (
-              <p className="text-xs text-muted-foreground text-center py-6">{t("td.loading")}</p>
+              <p className="text-xs text-muted-foreground text-center py-6">
+                {t("td.loading")}
+              </p>
             ) : rankings.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-6">{t("td.rankings_empty")}</p>
+              <p className="text-xs text-muted-foreground text-center py-6">
+                {t("td.rankings_empty")}
+              </p>
             ) : (
               <ul className="space-y-1.5">
                 {rankings.map((r) => (
-                  <li key={r.userId} className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
+                  <li
+                    key={r.userId}
+                    className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+                  >
                     <span
                       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                       style={{
-                        background: RANK_COLOR[r.rank] ? `${RANK_COLOR[r.rank]}22` : "var(--muted)",
+                        background: RANK_COLOR[r.rank]
+                          ? `${RANK_COLOR[r.rank]}22`
+                          : "var(--muted)",
                         color: RANK_COLOR[r.rank] ?? "var(--muted-foreground)",
                       }}
                     >
                       {r.rank}
                     </span>
-                    <span className="flex-1 truncate font-medium">{r.nickname}</span>
+                    <span className="flex-1 truncate font-medium">
+                      {r.nickname}
+                    </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {t("td.wave_label")} {r.bestWave}
                     </span>

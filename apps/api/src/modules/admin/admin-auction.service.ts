@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { logAdminAction } from "./admin-action-log.util";
+import { CHARACTER_NAMES } from "./character-names.constant";
 
 const PAGE_SIZE = 20;
 
@@ -25,7 +26,15 @@ export class AdminAuctionService {
       }),
       this.prisma.auctionListing.count({ where }),
     ]);
-    return { listings, total, page, totalPages: Math.ceil(total / PAGE_SIZE) };
+    return {
+      listings: listings.map((l) => ({
+        ...l,
+        characterName: CHARACTER_NAMES[l.characterId]?.korName ?? `캐릭터 #${l.characterId}`,
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / PAGE_SIZE),
+    };
   }
 
   /** 강제취소 — 입찰이 있었으면 입찰자에게 환불, 캐릭터는 판매자에게 반환 */

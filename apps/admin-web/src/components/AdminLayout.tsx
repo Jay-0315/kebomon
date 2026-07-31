@@ -16,6 +16,8 @@ const navItems = [
   { to: "/gacha-config", key: "nav.gacha_config" },
   { to: "/characters", key: "nav.characters" },
   { to: "/battles", key: "nav.battles" },
+  { to: "/auction", key: "nav.auction" },
+  { to: "/tower-defense", key: "nav.tower_defense" },
   { to: "/guilds", key: "nav.guilds" },
   { to: "/notifications", key: "nav.notifications" },
   { to: "/banners", key: "nav.banners" },

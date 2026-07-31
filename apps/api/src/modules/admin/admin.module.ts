@@ -9,6 +9,8 @@ import { AdminAuctionController } from "./admin-auction.controller";
 import { AdminAuctionService } from "./admin-auction.service";
 import { AdminSeasonController } from "./admin-season.controller";
 import { AdminSeasonService } from "./admin-season.service";
+import { AdminTowerDefenseController } from "./admin-tower-defense.controller";
+import { AdminTowerDefenseService } from "./admin-tower-defense.service";
 import { AdminBannersController } from "./admin-banners.controller";
 import { AdminBannersService } from "./admin-banners.service";
 import { AdminBattlesController } from "./admin-battles.controller";
@@ -52,6 +54,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminActionLogController,
     AdminSeasonController,
     AdminAuctionController,
+    AdminTowerDefenseController,
   ],
   providers: [
     AdminUsersService,
@@ -69,6 +72,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminActionLogService,
     AdminSeasonService,
     AdminAuctionService,
+    AdminTowerDefenseService,
   ],
 })
 export class AdminModule {}

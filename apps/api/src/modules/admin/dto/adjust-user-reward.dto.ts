@@ -22,6 +22,10 @@ export class AdjustUserRewardDto {
   enhancementStonesDelta?: number;
 
   @IsOptional()
+  @IsInt()
+  breedingEssenceDelta?: number;
+
+  @IsOptional()
   @IsString()
   @MaxLength(255)
   reason?: string;

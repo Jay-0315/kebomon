@@ -361,7 +361,11 @@ export default function AuctionPage() {
           <button
             onClick={() => void handleCancel(listing)}
             disabled={busyId === listing.id}
-            className="w-full mt-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold py-1.5 disabled:opacity-50"
+            className={`w-full mt-2 rounded-lg text-xs font-semibold py-1.5 ${
+              busyId === listing.id
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
           >
             {t("auction.cancel_btn")}
           </button>

@@ -23,6 +23,8 @@ import GuildDetailPage from "./pages/GuildDetailPage";
 import AdminAccountsPage from "./pages/AdminAccountsPage";
 import AdminActionLogPage from "./pages/AdminActionLogPage";
 import SeasonPage from "./pages/SeasonPage";
+import AuctionPage from "./pages/AuctionPage";
+import TowerDefensePage from "./pages/TowerDefensePage";
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
@@ -73,6 +75,8 @@ export default function App() {
             <Route path="/community/comments" element={<CommunityCommentsPage />} />
             <Route path="/gacha-config" element={<GachaConfigPage />} />
             <Route path="/battles" element={<BattlesPage />} />
+            <Route path="/auction" element={<AuctionPage />} />
+            <Route path="/tower-defense" element={<TowerDefensePage />} />
             <Route path="/guilds" element={<GuildsPage />} />
             <Route path="/guilds/:id" element={<GuildDetailPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
