@@ -1,5 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Castle, Coins, Heart, Skull, Sparkles, Trophy, X } from "lucide-react";
+import {
+  Banknote,
+  Castle,
+  Coins,
+  GitMerge,
+  Heart,
+  Layers,
+  Plus,
+  Skull,
+  Sparkles,
+  Trophy,
+  X,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { api } from "../lib/api";
@@ -83,15 +97,25 @@ const RARITY_POWER_MULT: Record<string, number> = {
 const MERGE_TIER_MULT = [1, 1.8, 3.2];
 const MAX_TIER = 3;
 
-// ─── 골드 경제: 빈 슬롯 배치는 무료(최하등급 랜덤)이므로 골드는 오직 강화에만 쓰인다 ───
-// 티어1(합성 안 된 갓 배치된 타워) 판매 환불은 0으로 둬서 "무료 배치→즉시 판매"로 골드를 무한
-// 생성하는 구멍을 막는다. 합성으로 만든 티어2/3만 실제 투자가 있었다고 보고 환불해준다.
-const STARTING_GOLD = 30;
+// ─── 골드 경제: 배치/선택배치는 유료, 판매는 티어별 환불 ───
+const STARTING_GOLD = 300;
+const PLACE_COST = 100; // 빈 슬롯에 최하등급 랜덤 1종 배치
+const SELECT_PLACE_COST = 220; // 3종 중 골라서 배치 (배치보다 비싼 프리미엄 선택지)
 const KILL_GOLD = 6;
 const BOSS_KILL_GOLD = 30;
-const TIER_SELL_GOLD = [0, 0, 40, 85]; // index = tower.tier (1~3)
+const TIER_SELL_GOLD = [0, 50, 130, 300]; // index = tower.tier (1~3), 판매는 항상 원가보다 낮게
 const LOWEST_RARITY = "common";
 const BOSS_REWARD_FALLBACK_GOLD = 150; // 보상 선택 시 빈 슬롯이 하나도 없으면 골드로 대신 지급
+
+// ─── 티어(합성 단계) 등장 확률: 20라운드까지는 1티어만, 이후로 2~3티어가 점진적으로 섞여 나온다 ───
+function rollPlacementTier(wave: number): number {
+  const tier3Chance = Math.min(0.15, Math.max(0, (wave - 50) / 80));
+  const tier2Chance = Math.min(0.35, Math.max(0, (wave - 20) / 60));
+  const roll = Math.random();
+  if (roll < tier3Chance) return 3;
+  if (roll < tier3Chance + tier2Chance) return 2;
+  return 1;
+}
 
 // ─── 강화(Enhance): 골드를 소모해 배치된 타워를 직접 강하게 만드는 시스템 ───
 // 100라운드까지 이어지는 긴 세션에서 골드를 계속 투자할 곳이 필요해서 합성(티어업)과 별개로 추가.
@@ -107,15 +131,15 @@ function enhanceCost(level: number): number {
 
 const WAVE_COUNT = 100;
 const BOSS_WAVE_INTERVAL = 10;
-const SLOT_COUNT = 12;
+const SLOT_COUNT = 20;
 const BASE_LIVES = 20;
 const SPAWN_INTERVAL_MS = 450;
 const AOE_RADIUS = 46;
 const PROJECTILE_SPEED = 340; // px/sec
 const PROJECTILE_HIT_R = 14;
 
-const CANVAS_W = 980;
-const CANVAS_H = 520;
+const CANVAS_W = 1300;
+const CANVAS_H = 720;
 
 // ─── 경로 기하 헬퍼 — 웨이포인트 배열만 주면 어떤 모양의 맵이든 동작 ───
 interface Point {
@@ -193,24 +217,26 @@ function defineMap(id: string, path: Point[], slotOffset: number, theme: MapThem
     path,
     slots: buildSlots(path, SLOT_COUNT, slotOffset),
     theme,
-    decorations: scatterDecorations(CANVAS_W, CANVAS_H, 46),
+    decorations: scatterDecorations(CANVAS_W, CANVAS_H, 90),
   };
 }
 
-// 맵을 하나로 통일 — 대신 100라운드 긴 세션에 맞게 캔버스를 키우고, 굴곡을 늘려 슬롯 12개가
-// 고르게 배치될 공간을 확보했다. 테마는 Castle 아이콘과 어울리는 "밤의 성채".
+// 맵을 하나로 통일 — 참고 이미지(스타2 랜덤 디펜스류)처럼 맵을 훨씬 크게 키우고, 경로를 4줄
+// 지그재그로 늘려서 슬롯 20개가 넓게 깔릴 공간을 확보했다. 테마는 Castle 아이콘과 어울리는 "밤의 성채".
 const MAPS: MapDef[] = [
   defineMap(
     "castle",
     [
-      { x: 0, y: 80 },
-      { x: 760, y: 80 },
-      { x: 760, y: 260 },
-      { x: 120, y: 260 },
-      { x: 120, y: 440 },
-      { x: 980, y: 440 },
+      { x: 0, y: 90 },
+      { x: 1300, y: 90 },
+      { x: 1300, y: 270 },
+      { x: 0, y: 270 },
+      { x: 0, y: 450 },
+      { x: 1300, y: 450 },
+      { x: 1300, y: 630 },
+      { x: 0, y: 630 },
     ],
-    46,
+    50,
     { bg: "#161226", pathFill: "#3a2f52", pathBorder: "#8a6bc4", decoColor: "#c9a6f5", decoShape: "spark" },
   ),
 ];
@@ -329,6 +355,27 @@ function bossRewardRarities(wave: number): string[] {
   return ["epic", "legendary", "mythic"];
 }
 
+function instantiateTower(def: TowerDef, slotIndex: number, tier: number): TowerInstance {
+  return { ...def, tier, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
+}
+
+// 필드에서 "같은 캐릭터 + 같은 티어"가 2개 이상인 슬롯들을 모두 찾는다 (합성 대상 하이라이트/활성화용)
+function findMergeableSlots(slots: (TowerInstance | null)[]): Set<number> {
+  const groups = new Map<string, number[]>();
+  slots.forEach((s, idx) => {
+    if (!s || s.tier >= MAX_TIER) return;
+    const key = `${s.characterId}:${s.tier}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(idx);
+    groups.set(key, arr);
+  });
+  const result = new Set<number>();
+  for (const arr of groups.values()) {
+    if (arr.length >= 2) arr.forEach((i) => result.add(i));
+  }
+  return result;
+}
+
 /** 원형 대신 실제 몬스터처럼 보이는 블롭 실루엣 — 속성색으로 물들이고 보스는 뿔을 추가 */
 function drawMonster(
   ctx: CanvasRenderingContext2D,
@@ -394,6 +441,16 @@ interface RankingEntry {
 
 const RANK_COLOR: Record<number, string> = { 1: "#f5c542", 2: "#c7ced8", 3: "#c98a4e" };
 
+// 하단 액션 패널에서 선택하는 모드 — 선택 후 게임 화면(캔버스 오버레이 슬롯)을 클릭해 대상에 적용한다
+type ActionMode = "place" | "selectPlace" | "enhance" | "sell" | "merge";
+const ACTION_MODE_RING: Record<ActionMode, string> = {
+  place: "ring-emerald-400",
+  selectPlace: "ring-emerald-400",
+  enhance: "ring-sky-400",
+  sell: "ring-rose-400",
+  merge: "ring-fuchsia-400",
+};
+
 // 로비 배경 장식 — 인게임 맵 테마("밤의 성채" 보라색 반짝임)와 통일감을 주기 위한 고정 좌표 반짝임
 const LOBBY_SPARKLES = Array.from({ length: 16 }, (_, i) => ({
   left: `${(i * 37) % 100}%`,
@@ -421,10 +478,13 @@ export default function TowerDefensePage() {
   const [bossWarning, setBossWarning] = useState(false);
   const [waveElement, setWaveElement] = useState<Element>("fire");
   const [bossReward, setBossReward] = useState<TowerDef[] | null>(null);
-  const [manageSlot, setManageSlot] = useState<number | null>(null);
   const [goldWarning, setGoldWarning] = useState(false);
   const [slotsVersion, setSlotsVersion] = useState(0);
   const [mergeFlash, setMergeFlash] = useState<number | null>(null);
+
+  const [actionMode, setActionMode] = useState<ActionMode | null>(null);
+  const [selectPlaceTarget, setSelectPlaceTarget] = useState<number | null>(null);
+  const [selectPlaceChoices, setSelectPlaceChoices] = useState<{ def: TowerDef; tier: number }[]>([]);
 
   const [result, setResult] = useState<{ wavesCleared: number; isNewRecord: boolean; kpEarned: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -462,6 +522,28 @@ export default function TowerDefensePage() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
+
+  // 하단 액션 패널 단축키 — 1~5로 모드 전환, Esc로 취소
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const handler = (e: KeyboardEvent) => {
+      const modeByKey: Record<string, ActionMode> = {
+        "1": "place",
+        "2": "selectPlace",
+        "3": "enhance",
+        "4": "sell",
+        "5": "merge",
+      };
+      const mode = modeByKey[e.key];
+      if (mode) {
+        setActionMode((prev) => (prev === mode ? null : mode));
+      } else if (e.key === "Escape") {
+        setActionMode(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [phase]);
 
   const openRankings = () => {
     setShowRankings(true);
@@ -824,17 +906,71 @@ export default function TowerDefensePage() {
     ctx.restore();
   };
 
-  // 빈 슬롯 클릭 = 무료, 최하등급 중 랜덤 1종 즉시 배치 (스타2 랜덤 디펜스 스타일)
+  const flashSlot = (idx: number) => {
+    setMergeFlash(idx);
+    setTimeout(() => setMergeFlash(null), 400);
+  };
+
+  const warnGold = () => {
+    setGoldWarning(true);
+    setTimeout(() => setGoldWarning(false), 1200);
+  };
+
+  // 배치 모드: 빈 슬롯 클릭 시 100골드로 최하등급 중 랜덤 1종을 배치. 라운드가 오를수록 2~3티어로도 등장한다
   const placeRandomTower = (slotIndex: number) => {
     const g = gRef.current;
     if (g.slots[slotIndex] || towerPool.length === 0) return;
+    if (g.gold < PLACE_COST) {
+      warnGold();
+      return;
+    }
     const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
     if (!def) return;
-    g.slots[slotIndex] = { ...def, tier: 1, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
-    mergeCheck(def.characterId, 1);
-    setMergeFlash(slotIndex);
-    setTimeout(() => setMergeFlash(null), 400);
+    g.gold -= PLACE_COST;
+    g.slots[slotIndex] = instantiateTower(def, slotIndex, rollPlacementTier(g.wave));
+    flashSlot(slotIndex);
     setSlotsVersion((v) => v + 1);
+  };
+
+  // 선택배치 모드: 빈 슬롯 클릭 시 220골드로 3종을 제안받아 하나를 골라 그 슬롯에 배치
+  const openSelectPlace = (slotIndex: number) => {
+    const g = gRef.current;
+    if (g.slots[slotIndex] || towerPool.length === 0) return;
+    if (g.gold < SELECT_PLACE_COST) {
+      warnGold();
+      return;
+    }
+    const choices = [0, 1, 2]
+      .map(() => {
+        const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
+        return def ? { def, tier: rollPlacementTier(g.wave) } : null;
+      })
+      .filter((c): c is { def: TowerDef; tier: number } => c !== null);
+    if (choices.length === 0) return;
+    setSelectPlaceChoices(choices);
+    setSelectPlaceTarget(slotIndex);
+  };
+
+  const confirmSelectPlace = (choice: { def: TowerDef; tier: number }) => {
+    const g = gRef.current;
+    if (selectPlaceTarget === null) return;
+    if (g.gold < SELECT_PLACE_COST) {
+      setSelectPlaceTarget(null);
+      setSelectPlaceChoices([]);
+      return;
+    }
+    g.gold -= SELECT_PLACE_COST;
+    g.slots[selectPlaceTarget] = instantiateTower(choice.def, selectPlaceTarget, choice.tier);
+    flashSlot(selectPlaceTarget);
+    setSelectPlaceTarget(null);
+    setSelectPlaceChoices([]);
+    setActionMode(null);
+    setSlotsVersion((v) => v + 1);
+  };
+
+  const cancelSelectPlace = () => {
+    setSelectPlaceTarget(null);
+    setSelectPlaceChoices([]);
   };
 
   // 보스 처치 보상 — 상위등급 중 하나를 선택해 빈 슬롯에 배치. 빈 슬롯이 없으면 골드로 대신 지급
@@ -844,38 +980,31 @@ export default function TowerDefensePage() {
     if (emptyIdx === -1) {
       g.gold += BOSS_REWARD_FALLBACK_GOLD;
     } else {
-      g.slots[emptyIdx] = { ...def, tier: 1, slotIndex: emptyIdx, lastAttackAt: 0, enhanceLevel: 0 };
-      mergeCheck(def.characterId, 1);
-      setMergeFlash(emptyIdx);
-      setTimeout(() => setMergeFlash(null), 400);
+      g.slots[emptyIdx] = instantiateTower(def, emptyIdx, 1);
+      flashSlot(emptyIdx);
     }
     setBossReward(null);
     setSlotsVersion((v) => v + 1);
   };
 
-  const sellTower = () => {
-    if (manageSlot === null) return;
+  // 판매 모드: 채워진 슬롯 클릭 시 즉시 판매하고 환불
+  const sellTowerAt = (slotIndex: number) => {
     const g = gRef.current;
-    const tower = g.slots[manageSlot];
-    if (!tower) {
-      setManageSlot(null);
-      return;
-    }
+    const tower = g.slots[slotIndex];
+    if (!tower) return;
     g.gold += TIER_SELL_GOLD[tower.tier] + tower.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL;
-    g.slots[manageSlot] = null;
-    setManageSlot(null);
+    g.slots[slotIndex] = null;
     setSlotsVersion((v) => v + 1);
   };
 
-  const enhanceTower = () => {
-    if (manageSlot === null) return;
+  // 강화 모드: 채워진 슬롯 클릭 시 골드를 소모해 그 자리에서 즉시 강화
+  const enhanceTowerAt = (slotIndex: number) => {
     const g = gRef.current;
-    const tower = g.slots[manageSlot];
+    const tower = g.slots[slotIndex];
     if (!tower || tower.enhanceLevel >= MAX_ENHANCE) return;
     const cost = enhanceCost(tower.enhanceLevel);
     if (g.gold < cost) {
-      setGoldWarning(true);
-      setTimeout(() => setGoldWarning(false), 1200);
+      warnGold();
       return;
     }
     g.gold -= cost;
@@ -883,32 +1012,48 @@ export default function TowerDefensePage() {
     setSlotsVersion((v) => v + 1);
   };
 
-  const closeManage = () => setManageSlot(null);
-
-  const mergeCheck = (characterId: number, tier: number) => {
-    if (tier >= MAX_TIER) return;
+  // 합성 모드: 같은 캐릭터+같은 티어가 필드에 2개 이상이면 클릭한 쪽을 포함해 둘을 소모하고
+  // 그 자리에 랜덤 캐릭터를 한 단계 위 티어로 배치한다 (합성 결과 캐릭터는 원래 캐릭터와 무관)
+  const mergeTowerAt = (slotIndex: number) => {
     const g = gRef.current;
+    const tower = g.slots[slotIndex];
+    if (!tower || tower.tier >= MAX_TIER) return;
     const matches = g.slots
       .map((s, idx) => ({ s, idx }))
-      .filter((e) => e.s && e.s.characterId === characterId && e.s.tier === tier);
-    if (matches.length < 3) return;
-    const [a, b, c] = matches.slice(0, 3);
-    const base = g.slots[c.idx]!;
-    const carryEnhance = Math.max(a.s!.enhanceLevel, b.s!.enhanceLevel, c.s!.enhanceLevel);
-    g.slots[a.idx] = null;
-    g.slots[b.idx] = null;
-    g.slots[c.idx] = {
-      characterId,
-      archetype: base.archetype,
-      rarity: base.rarity,
-      tier: tier + 1,
-      slotIndex: c.idx,
-      lastAttackAt: 0,
-      enhanceLevel: carryEnhance,
-    };
-    setMergeFlash(c.idx);
-    setTimeout(() => setMergeFlash(null), 600);
-    mergeCheck(characterId, tier + 1);
+      .filter((e) => e.s && e.s.characterId === tower.characterId && e.s.tier === tower.tier);
+    if (matches.length < 2) return;
+    const clicked = matches.find((m) => m.idx === slotIndex)!;
+    const other = matches.find((m) => m.idx !== slotIndex)!;
+    const carryEnhance = Math.max(clicked.s!.enhanceLevel, other.s!.enhanceLevel);
+    const resultDef = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
+    g.slots[other.idx] = null;
+    if (resultDef) {
+      g.slots[clicked.idx] = instantiateTower(resultDef, clicked.idx, tower.tier + 1);
+      g.slots[clicked.idx]!.enhanceLevel = carryEnhance;
+    } else {
+      g.slots[clicked.idx] = null;
+    }
+    flashSlot(clicked.idx);
+    setSlotsVersion((v) => v + 1);
+  };
+
+  const handleSlotClick = (slotIndex: number) => {
+    const tower = gRef.current.slots[slotIndex];
+    if (actionMode === "place") {
+      if (!tower) placeRandomTower(slotIndex);
+    } else if (actionMode === "selectPlace") {
+      if (!tower) openSelectPlace(slotIndex);
+    } else if (actionMode === "sell") {
+      if (tower) sellTowerAt(slotIndex);
+    } else if (actionMode === "enhance") {
+      if (tower) enhanceTowerAt(slotIndex);
+    } else if (actionMode === "merge") {
+      if (tower) mergeTowerAt(slotIndex);
+    }
+  };
+
+  const toggleMode = (mode: ActionMode) => {
+    setActionMode((prev) => (prev === mode ? null : mode));
   };
 
   const backToLobby = () => {
@@ -923,11 +1068,11 @@ export default function TowerDefensePage() {
   const counterArch = ELEMENT_TO_ARCH[COUNTERED_BY[waveElement] ?? "fire"];
 
   void slotsVersion;
-  const manageTowerInstance = manageSlot !== null ? gRef.current.slots[manageSlot] : null;
-  const manageDef = manageTowerInstance ? charById(manageTowerInstance.characterId) : null;
+  const mergeableSlots = findMergeableSlots(gRef.current.slots);
+  const canMerge = mergeableSlots.size > 0;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
+    <div className="mx-auto max-w-[1360px] space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Castle className="w-6 h-6 text-primary" />
@@ -1049,13 +1194,25 @@ export default function TowerDefensePage() {
                 const tower = gRef.current.slots[i];
                 void slotsVersion;
                 const def = tower ? charById(tower.characterId) : null;
+                const targetable =
+                  actionMode === "place" || actionMode === "selectPlace"
+                    ? !tower
+                    : actionMode === "sell" || actionMode === "enhance"
+                      ? !!tower
+                      : actionMode === "merge"
+                        ? mergeableSlots.has(i)
+                        : false;
                 return (
                   <button
                     key={i}
-                    onClick={() => (tower ? setManageSlot(i) : placeRandomTower(i))}
+                    onClick={() => handleSlotClick(i)}
                     className={`absolute flex items-center justify-center rounded-xl transition ${
                       mergeFlash === i ? "scale-125" : ""
-                    } ${def ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70` : "hover:bg-white/5"}`}
+                    } ${def ? `${RARITY_BORDER[def.rarity]} border-2 bg-card/70` : "hover:bg-white/5"} ${
+                      actionMode && targetable
+                        ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse`
+                        : ""
+                    } ${actionMode && !targetable ? "opacity-35" : ""}`}
                     style={{ left: pos.x - 26, top: pos.y - 26, width: 52, height: 52 }}
                   >
                     {def && tower && (
@@ -1077,6 +1234,47 @@ export default function TowerDefensePage() {
                 );
               })}
             </div>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border p-3 space-y-2">
+            <div className="grid grid-cols-5 gap-1.5">
+              {(
+                [
+                  { mode: "place", icon: Plus, label: t("td.action_place"), cost: PLACE_COST, hotkey: "1" },
+                  { mode: "selectPlace", icon: Layers, label: t("td.action_select_place"), cost: SELECT_PLACE_COST, hotkey: "2" },
+                  { mode: "enhance", icon: Zap, label: t("td.action_enhance"), hotkey: "3" },
+                  { mode: "sell", icon: Banknote, label: t("td.action_sell"), hotkey: "4" },
+                  { mode: "merge", icon: GitMerge, label: t("td.action_merge"), disabled: !canMerge, hotkey: "5" },
+                ] as { mode: ActionMode; icon: LucideIcon; label: string; cost?: number; disabled?: boolean; hotkey: string }[]
+              ).map((a) => {
+                const Icon = a.icon;
+                const active = actionMode === a.mode;
+                return (
+                  <button
+                    key={a.mode}
+                    onClick={() => toggleMode(a.mode)}
+                    disabled={a.disabled}
+                    className={`relative flex flex-col items-center gap-0.5 rounded-lg py-2 px-1 text-[10px] font-semibold transition ${
+                      a.disabled
+                        ? "bg-secondary text-muted-foreground opacity-50 cursor-not-allowed"
+                        : active
+                          ? "bg-primary text-white"
+                          : "bg-secondary/60 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <span className="absolute top-0.5 left-1 text-[8px] opacity-60">{a.hotkey}</span>
+                    <Icon className="w-4 h-4" />
+                    <span>{a.label}</span>
+                    {a.cost !== undefined && <span className="text-[9px] text-amber-300">{a.cost}G</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {actionMode && (
+              <p className="text-center text-[10px] text-muted-foreground">
+                {t(`td.hint_mode_${actionMode}` as TranslationKey)}
+              </p>
+            )}
           </div>
 
           {bossReward !== null && (
@@ -1109,42 +1307,40 @@ export default function TowerDefensePage() {
             </div>
           )}
 
-          {manageSlot !== null && manageTowerInstance && manageDef && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={closeManage}>
+          {selectPlaceTarget !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={cancelSelectPlace}>
               <div
-                className="bg-card rounded-2xl border border-border p-4 w-full max-w-xs space-y-3 flex flex-col items-center"
+                className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm space-y-3"
                 onClick={(e) => e.stopPropagation()}
               >
-                <PixelCharacter characterId={manageDef.id} size={56} />
-                <span className={`text-xs font-semibold ${RARITY_COLOR[manageDef.rarity]}`}>
-                  {getCharName(manageDef, lang)} · Tier {manageTowerInstance.tier} · {t("td.enhance_lv")} {manageTowerInstance.enhanceLevel}
-                </span>
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={enhanceTower}
-                    disabled={manageTowerInstance.enhanceLevel >= MAX_ENHANCE}
-                    className={`flex-1 rounded-lg text-xs font-semibold py-2 ${
-                      manageTowerInstance.enhanceLevel >= MAX_ENHANCE
-                        ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                        : "bg-primary text-white hover:bg-primary/90"
-                    }`}
-                  >
-                    {manageTowerInstance.enhanceLevel >= MAX_ENHANCE
-                      ? t("td.enhance_maxed")
-                      : t("td.enhance_btn").replace("{cost}", String(enhanceCost(manageTowerInstance.enhanceLevel)))}
-                  </button>
-                  <button
-                    onClick={sellTower}
-                    className="flex-1 rounded-lg bg-amber-500 text-black text-xs font-semibold py-2 hover:bg-amber-400"
-                  >
-                    {t("td.sell_btn").replace(
-                      "{gold}",
-                      String(TIER_SELL_GOLD[manageTowerInstance.tier] + manageTowerInstance.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL),
-                    )}
-                  </button>
+                <p className="text-sm font-semibold text-center">{t("td.select_place_title")}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {selectPlaceChoices.map((c, idx) => {
+                    const def = charById(c.def.characterId);
+                    if (!def) return null;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => confirmSelectPlace(c)}
+                        className={`relative rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1`}
+                      >
+                        {c.tier > 1 && (
+                          <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-amber-400 text-black rounded-full w-4 h-4 flex items-center justify-center">
+                            {c.tier}
+                          </span>
+                        )}
+                        <PixelCharacter characterId={def.id} size={48} />
+                        <span className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}>
+                          {getCharName(def, lang)}
+                        </span>
+                        <span className={`text-[9px] ${RARITY_COLOR[def.rarity]}`}>{getRarityLabel(def.rarity, lang)}</span>
+                        <span className="text-[9px] text-muted-foreground">{archLabel(c.def.archetype)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
-                  onClick={closeManage}
+                  onClick={cancelSelectPlace}
                   className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2 hover:bg-white/5"
                 >
                   {t("td.cancel_offer")}
