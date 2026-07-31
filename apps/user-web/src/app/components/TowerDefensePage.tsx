@@ -3,6 +3,7 @@ import {
   Banknote,
   Castle,
   Coins,
+  FastForward,
   GitMerge,
   Heart,
   Layers,
@@ -33,15 +34,17 @@ type Archetype = "warrior" | "rogue" | "mage" | "tank" | "nature" | "meka" | "cu
 type Pattern = "single" | "aoe" | "dot";
 type Element = "fire" | "earth" | "ice" | "dark" | "nature" | "lightning" | "shadow" | "light";
 
-// 공격속도는 /1.5로 나눠서 전체 템포를 1.5배 끌어올림
+// 공격속도는 /1.5로 나눠서 전체 템포를 1.5배 끌어올림.
+// range는 블록형 배치(패드가 경로와 최대 ~170px 떨어짐)에 맞춰 대폭 상향 — 기존 80~120은
+// 경로에 바로 붙어있던 이전 레이아웃 기준이라 블록 구석 슬롯은 사거리 밖이라 공격을 못 하고 있었다.
 const ARCHETYPE_STATS: Record<Archetype, { range: number; atkSpeedMs: number; damage: number; pattern: Pattern }> = {
-  warrior: { range: 90, atkSpeedMs: 467, damage: 12, pattern: "single" },
-  rogue: { range: 80, atkSpeedMs: 300, damage: 7, pattern: "single" },
-  tank: { range: 110, atkSpeedMs: 600, damage: 9, pattern: "single" },
-  mage: { range: 120, atkSpeedMs: 667, damage: 16, pattern: "aoe" },
-  meka: { range: 100, atkSpeedMs: 567, damage: 13, pattern: "aoe" },
-  nature: { range: 95, atkSpeedMs: 800, damage: 6, pattern: "dot" },
-  cursed: { range: 95, atkSpeedMs: 800, damage: 6, pattern: "dot" },
+  warrior: { range: 190, atkSpeedMs: 467, damage: 12, pattern: "single" },
+  rogue: { range: 175, atkSpeedMs: 300, damage: 7, pattern: "single" },
+  tank: { range: 225, atkSpeedMs: 600, damage: 9, pattern: "single" },
+  mage: { range: 245, atkSpeedMs: 667, damage: 16, pattern: "aoe" },
+  meka: { range: 210, atkSpeedMs: 567, damage: 13, pattern: "aoe" },
+  nature: { range: 200, atkSpeedMs: 800, damage: 6, pattern: "dot" },
+  cursed: { range: 200, atkSpeedMs: 800, damage: 6, pattern: "dot" },
 };
 
 // 콜로세움(arena.service.ts)의 원소 상성 시스템을 그대로 이식
@@ -145,6 +148,7 @@ const SPAWN_INTERVAL_MS = 300; // 450 → 300 (스폰 템포 1.5배)
 const AOE_RADIUS = 46;
 const PROJECTILE_SPEED = 510; // px/sec, 340 → 510 (1.5배)
 const PROJECTILE_HIT_R = 14;
+const WAVE_PREP_MS = 5000; // 웨이브 클리어 후 다음 웨이브까지 정비 시간
 
 const CANVAS_W = 1300;
 const CANVAS_H = 720;
@@ -315,6 +319,7 @@ interface GameState {
   lives: number;
   gold: number;
   selectTokens: number;
+  kills: number;
   slots: (TowerInstance | null)[];
   enemies: Enemy[];
   projectiles: Projectile[];
@@ -339,6 +344,7 @@ function freshGameState(mapId: string): GameState {
     lives: BASE_LIVES,
     gold: STARTING_GOLD,
     selectTokens: 0,
+    kills: 0,
     slots: Array(SLOT_COUNT).fill(null),
     enemies: [],
     projectiles: [],
@@ -360,7 +366,7 @@ function freshGameState(mapId: string): GameState {
 function buildWaveSpawns(wave: number): { hp: number; speed: number; isBoss: boolean }[] {
   const count = 5 + Math.min(wave, 30);
   const hp = 18 * (1 + wave * 0.05) * Math.pow(1.025, wave);
-  const speed = (32 + wave * 1.5) * 1.5; // 이동속도 템포 1.5배
+  const speed = (32 + wave * 1.5) * 2.2; // 여전히 느리다는 피드백 반영, 1.5배 → 2.2배로 재상향
   const spawns = Array.from({ length: count }, () => ({ hp, speed, isBoss: false }));
   if (wave % BOSS_WAVE_INTERVAL === 0) {
     spawns.push({ hp: hp * 8, speed: speed * 0.7, isBoss: true });
@@ -496,6 +502,9 @@ export default function TowerDefensePage() {
   const [hudLives, setHudLives] = useState(BASE_LIVES);
   const [hudGold, setHudGold] = useState(STARTING_GOLD);
   const [hudTokens, setHudTokens] = useState(0);
+  const [hudKills, setHudKills] = useState(0);
+  const [hudPrepLeft, setHudPrepLeft] = useState(0);
+  const [hudSpeed, setHudSpeed] = useState(1);
   const [tokenGainFlash, setTokenGainFlash] = useState(false);
   const [bossWarning, setBossWarning] = useState(false);
   const [waveElement, setWaveElement] = useState<Element>("fire");
@@ -514,6 +523,7 @@ export default function TowerDefensePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const gRef = useRef<GameState>(freshGameState(MAPS[0].id));
+  const speedMultiplierRef = useRef(1);
 
   const charById = (id: number) => CHARACTERS.find((c) => c.id === id);
   const currentMap = MAPS[0];
@@ -567,6 +577,12 @@ export default function TowerDefensePage() {
     return () => window.removeEventListener("keydown", handler);
   }, [phase]);
 
+  const toggleSpeed = () => {
+    const next = speedMultiplierRef.current === 1 ? 2 : 1;
+    speedMultiplierRef.current = next;
+    setHudSpeed(next);
+  };
+
   const openRankings = () => {
     setShowRankings(true);
     if (!rankings) {
@@ -590,6 +606,10 @@ export default function TowerDefensePage() {
       setHudLives(BASE_LIVES);
       setHudGold(STARTING_GOLD);
       setHudTokens(0);
+      setHudKills(0);
+      setHudPrepLeft(0);
+      speedMultiplierRef.current = 1;
+      setHudSpeed(1);
       setBossWarning(false);
       setWaveElement(gRef.current.waveElement);
       setSlotsVersion((v) => v + 1);
@@ -629,13 +649,18 @@ export default function TowerDefensePage() {
       .finally(() => setSubmitting(false));
   };
 
+  // 2배속 토글이 게임 내 모든 시간 기반 로직(이동/공격쿨/이펙트/웨이브 전환 대기)에 일관되게
+  // 적용되도록, 실시간이 아니라 배속이 곱해진 "가상 시계"를 tick/draw 양쪽에 동일하게 넘긴다.
   const startLoop = () => {
     let last = performance.now();
-    const loop = (now: number) => {
-      const dt = Math.min(now - last, 50);
-      last = now;
-      tick(dt, now);
-      draw();
+    let virtualNow = last;
+    const loop = (real: number) => {
+      const realDt = Math.min(real - last, 50);
+      last = real;
+      const dt = realDt * speedMultiplierRef.current;
+      virtualNow += dt;
+      tick(dt, virtualNow);
+      draw(virtualNow);
       if (!gRef.current.gameOver) {
         rafRef.current = requestAnimationFrame(loop);
       }
@@ -676,6 +701,7 @@ export default function TowerDefensePage() {
       if (e.dotUntil > now) e.hp -= (e.dotDmgPerTick * dt) / 1000;
       if (e.hp <= 0) {
         g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+        g.kills += 1;
         if (e.isBoss) g.selectTokens += 1;
         return false;
       }
@@ -764,6 +790,7 @@ export default function TowerDefensePage() {
     g.enemies = g.enemies.filter((e) => {
       if (e.hp > 0) return true;
       g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+      g.kills += 1;
       if (e.isBoss) g.selectTokens += 1;
       return false;
     });
@@ -780,23 +807,31 @@ export default function TowerDefensePage() {
       g.wavesCompleted = g.wave;
       g.waveClearedAt = now;
     }
-    if (g.waveClearedAt !== null && now - g.waveClearedAt > 1200) {
-      g.waveClearedAt = null;
-      if (g.wave >= WAVE_COUNT) {
-        finishGame(true);
-        return;
+    if (g.waveClearedAt !== null) {
+      const elapsed = now - g.waveClearedAt;
+      if (elapsed > WAVE_PREP_MS) {
+        g.waveClearedAt = null;
+        setHudPrepLeft(0);
+        if (g.wave >= WAVE_COUNT) {
+          finishGame(true);
+          return;
+        }
+        g.wave += 1;
+        g.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
+        g.spawnQueue = buildWaveSpawns(g.wave);
+        g.waveActive = true;
+        setHudWave(g.wave);
+        setWaveElement(g.waveElement);
+        setBossWarning(g.wave % BOSS_WAVE_INTERVAL === 0);
+      } else {
+        const secLeft = Math.ceil((WAVE_PREP_MS - elapsed) / 1000);
+        setHudPrepLeft((prev) => (prev !== secLeft ? secLeft : prev));
       }
-      g.wave += 1;
-      g.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
-      g.spawnQueue = buildWaveSpawns(g.wave);
-      g.waveActive = true;
-      setHudWave(g.wave);
-      setWaveElement(g.waveElement);
-      setBossWarning(g.wave % BOSS_WAVE_INTERVAL === 0);
     }
 
     setHudLives((prev) => (prev !== g.lives ? g.lives : prev));
     setHudGold((prev) => (prev !== g.gold ? g.gold : prev));
+    setHudKills((prev) => (prev !== g.kills ? g.kills : prev));
     setHudTokens((prev) => {
       if (g.selectTokens === prev) return prev;
       if (g.selectTokens > prev) {
@@ -807,14 +842,13 @@ export default function TowerDefensePage() {
     });
   };
 
-  const draw = () => {
+  const draw = (now: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const g = gRef.current;
     const map = MAPS.find((m) => m.id === g.mapId) ?? MAPS[0];
-    const now = performance.now();
     const theme = map.theme;
 
     ctx.save();
@@ -1092,6 +1126,7 @@ export default function TowerDefensePage() {
   void slotsVersion;
   const mergeableSlots = findMergeableSlots(gRef.current.slots);
   const canMerge = mergeableSlots.size > 0;
+  const hpPct = Math.round((1 + hudWave * 0.05) * Math.pow(1.025, hudWave) * 100);
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-4">
@@ -1198,6 +1233,14 @@ export default function TowerDefensePage() {
             <p className="flex items-center gap-1 text-sm font-semibold text-rose-400">
               <Heart className="w-4 h-4" /> {hudLives}
             </p>
+            <button
+              onClick={toggleSpeed}
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition ${
+                hudSpeed === 2 ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+              }`}
+            >
+              <FastForward className="w-3.5 h-3.5" /> {hudSpeed}x
+            </button>
           </div>
 
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
@@ -1219,6 +1262,33 @@ export default function TowerDefensePage() {
           <div className="overflow-x-auto">
             <div className="relative mx-auto" style={{ width: CANVAS_W, height: CANVAS_H }}>
               <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="absolute inset-0 rounded-xl" />
+
+              {/* 상태창 — 참고 이미지의 플레이어 목록 박스를 솔로 플레이용으로 단계/킬수/목숨/체력배율만 남겨 재구성 */}
+              <div className="absolute top-2 right-2 rounded-lg border border-[#8a6bc4]/40 bg-black/70 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{t("td.status_stage")}</span>
+                  <span className="font-bold text-foreground">{hudWave}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{t("td.status_kills")}</span>
+                  <span className="font-bold text-foreground">{hudKills}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{t("td.status_lives")}</span>
+                  <span className="font-bold text-rose-400">{hudLives}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{t("td.status_hp_pct")}</span>
+                  <span className="font-bold text-amber-300">{hpPct}%</span>
+                </div>
+              </div>
+
+              {/* 정비 시간 카운트다운 — 웨이브 클리어 후 5초 동안 표시 */}
+              <div className="absolute bottom-2 left-2 rounded-lg border border-[#8a6bc4]/40 bg-black/70 px-3 py-1.5 text-[11px] font-semibold pointer-events-none">
+                {hudPrepLeft > 0
+                  ? t("td.prep_countdown").replace("{sec}", String(hudPrepLeft))
+                  : `${t("td.status_stage")} ${hudWave}`}
+              </div>
               {Array.from({ length: SLOT_COUNT }, (_, i) => {
                 const pos = currentMap.slots[i];
                 const tower = gRef.current.slots[i];
