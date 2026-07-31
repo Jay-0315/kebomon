@@ -83,8 +83,16 @@ jobs:
               PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
             "
 
+          # web/admin/api를 한 번에 --build로 올리면 docker compose가 세 이미지를 동시에 빌드해서
+          # (각각 npm install + vite build/tsc) 러너 메모리를 순간적으로 크게 잡아먹는다 —
+          # 인스턴스가 작으면 이 시점(OOM)에 빌드가 원인 로그도 없이 그냥 취소된 것처럼 죽는다.
+          # 하나씩 순차로 빌드해서 동시 메모리 사용량을 줄인다.
+          docker compose -f docker-compose.prod.yml build web
+          docker compose -f docker-compose.prod.yml build admin
+          docker compose -f docker-compose.prod.yml build api
+
           # api는 mysql이 healthy해야 뜨므로(depends_on), 위 스키마 보정이 끝난 뒤에만 기동됨
-          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
           docker image prune -f
 
       - name: Health check
