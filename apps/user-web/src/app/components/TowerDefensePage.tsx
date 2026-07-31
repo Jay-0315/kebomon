@@ -50,19 +50,21 @@ type Element =
   | "light";
 
 // 공격속도는 /1.5로 나눠서 전체 템포를 1.5배 끌어올림.
-// range는 블록형 배치(패드가 경로와 최대 ~170px 떨어짐)에 맞춰 대폭 상향 — 기존 80~120은
-// 경로에 바로 붙어있던 이전 레이아웃 기준이라 블록 구석 슬롯은 사거리 밖이라 공격을 못 하고 있었다.
+// range는 블록형 배치에 맞춰 상향 — 중앙 블록(예: 가운데 위 섹션)은 좌우 양쪽에 경로가
+// 하나씩 붙어있는데, 패드가 가까운 쪽 경로와는 130px 떨어져 있지만 반대쪽(먼) 경로와는
+// BLOCK_SIZE/2 + PAD_OFFSET = 240px나 떨어진다. 이전엔 최대 거리를 ~170px로 잘못 추정해서
+// 반대편 루트를 커버 못 하는 슬롯이 있었다 — 실제 최악값 240px를 넉넉히 넘도록 재조정.
 const ARCHETYPE_STATS: Record<
   Archetype,
   { range: number; atkSpeedMs: number; damage: number; pattern: Pattern }
 > = {
-  warrior: { range: 190, atkSpeedMs: 467, damage: 12, pattern: "single" },
-  rogue: { range: 175, atkSpeedMs: 300, damage: 7, pattern: "single" },
-  tank: { range: 225, atkSpeedMs: 600, damage: 9, pattern: "single" },
-  mage: { range: 245, atkSpeedMs: 667, damage: 16, pattern: "aoe" },
-  meka: { range: 210, atkSpeedMs: 567, damage: 13, pattern: "aoe" },
-  nature: { range: 200, atkSpeedMs: 800, damage: 6, pattern: "dot" },
-  cursed: { range: 200, atkSpeedMs: 800, damage: 6, pattern: "dot" },
+  warrior: { range: 275, atkSpeedMs: 467, damage: 12, pattern: "single" },
+  rogue: { range: 260, atkSpeedMs: 300, damage: 7, pattern: "single" },
+  tank: { range: 310, atkSpeedMs: 600, damage: 9, pattern: "single" },
+  mage: { range: 330, atkSpeedMs: 667, damage: 16, pattern: "aoe" },
+  meka: { range: 295, atkSpeedMs: 567, damage: 13, pattern: "aoe" },
+  nature: { range: 285, atkSpeedMs: 800, damage: 6, pattern: "dot" },
+  cursed: { range: 285, atkSpeedMs: 800, damage: 6, pattern: "dot" },
 };
 
 // 콜로세움(arena.service.ts)의 원소 상성 시스템을 그대로 이식
@@ -114,6 +116,54 @@ const ELEMENT_COLOR: Record<Element, string> = {
   shadow: "#64748b",
   light: "#f8fafc",
 };
+
+// ─── 에셋(CC0) 로딩 — 몬스터 슬라임 스프라이트/공격 이펙트/바닥 타일. 원소별로 색조가 미리
+// 입혀진 PNG를 /public/td 에서 불러온다. 브라우저가 비동기로 로드하므로 draw 시점엔
+// img.complete 체크 후 그린다 (첫 프레임 몇 개는 스킵될 수 있음).
+function loadTdImage(path: string): HTMLImageElement {
+  const img = new Image();
+  img.src = `/td/${path}`;
+  return img;
+}
+const ELEMENTS: Element[] = [
+  "fire",
+  "earth",
+  "ice",
+  "dark",
+  "nature",
+  "lightning",
+  "shadow",
+  "light",
+];
+const MONSTER_WALK_IMG = Object.fromEntries(
+  ELEMENTS.map((e) => [e, loadTdImage(`monsters/slime_${e}_walk.png`)]),
+) as Record<Element, HTMLImageElement>;
+const MONSTER_HURT_IMG = Object.fromEntries(
+  ELEMENTS.map((e) => [e, loadTdImage(`monsters/slime_${e}_hurt.png`)]),
+) as Record<Element, HTMLImageElement>;
+const EFFECT_ORB_IMG = Object.fromEntries(
+  ELEMENTS.map((e) => [e, loadTdImage(`effects/orb_${e}.png`)]),
+) as Record<Element, HTMLImageElement>;
+const EFFECT_BURST_IMG = Object.fromEntries(
+  ELEMENTS.map((e) => [e, loadTdImage(`effects/burst_${e}.png`)]),
+) as Record<Element, HTMLImageElement>;
+const FLOOR_BG_IMG = loadTdImage("tiles/floor_bg.png");
+const FLOOR_ALT_IMG = loadTdImage("tiles/floor_alt.png");
+
+const MONSTER_FRAME_SIZE = 64;
+const MONSTER_WALK_COLS = 8;
+const MONSTER_ANIM_MS = 110; // 프레임당 재생 시간
+
+function drawIfLoaded(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, x, y, w, h);
+}
 
 const RARITY_POWER_MULT: Record<string, number> = {
   common: 1,
@@ -331,6 +381,7 @@ interface HitFx {
   x: number;
   y: number;
   color: string;
+  element: Element;
   createdAt: number;
 }
 interface Projectile {
@@ -445,61 +496,6 @@ function findMergeableSlots(slots: (TowerInstance | null)[]): Set<number> {
     if (arr.length >= 2) arr.forEach((i) => result.add(i));
   }
   return result;
-}
-
-/** 원형 대신 실제 몬스터처럼 보이는 블롭 실루엣 — 속성색으로 물들이고 보스는 뿔을 추가 */
-function drawMonster(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  r: number,
-  bodyColor: string,
-  flinch: boolean,
-  isBoss: boolean,
-) {
-  const scale = flinch ? 1.18 : 1;
-  const rr = r * scale;
-
-  if (isBoss) {
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.moveTo(x - rr * 0.55, y - rr * 1.1);
-    ctx.lineTo(x - rr * 0.85, y - rr * 1.85);
-    ctx.lineTo(x - rr * 0.15, y - rr * 1.05);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(x + rr * 0.55, y - rr * 1.1);
-    ctx.lineTo(x + rr * 0.85, y - rr * 1.85);
-    ctx.lineTo(x + rr * 0.15, y - rr * 1.05);
-    ctx.fill();
-  }
-
-  // 몸통 (블롭)
-  ctx.fillStyle = flinch ? "#ffffff" : bodyColor;
-  ctx.beginPath();
-  ctx.moveTo(x - rr, y);
-  ctx.quadraticCurveTo(x - rr, y - rr * 1.3, x, y - rr * 1.3);
-  ctx.quadraticCurveTo(x + rr, y - rr * 1.3, x + rr, y);
-  ctx.quadraticCurveTo(x + rr, y + rr * 0.9, x, y + rr * 1.15);
-  ctx.quadraticCurveTo(x - rr, y + rr * 0.9, x - rr, y);
-  ctx.closePath();
-  ctx.fill();
-
-  // 눈
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(x - rr * 0.34, y - rr * 0.15, rr * 0.24, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x + rr * 0.34, y - rr * 0.15, rr * 0.24, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#181818";
-  ctx.beginPath();
-  ctx.arc(x - rr * 0.34, y - rr * 0.1, rr * 0.11, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x + rr * 0.34, y - rr * 0.1, rr * 0.11, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 interface RankingEntry {
@@ -837,6 +833,7 @@ export default function TowerDefensePage() {
           x: tp.x,
           y: tp.y,
           color: ELEMENT_COLOR[p.element],
+          element: p.element,
           createdAt: now,
         });
         if (target.isBoss) g.shakeUntil = now + 140;
@@ -937,14 +934,14 @@ export default function TowerDefensePage() {
     }
 
     ctx.clearRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
+    ctx.imageSmoothingEnabled = false;
 
-    // 타일 그리드 배경
+    // 타일 그리드 배경 — CC0 던전 바닥 텍스처(색조는 테마에 맞춰 미리 보정)를 체크무늬로 타일링
     const TILE = 65;
     for (let ty = -TILE; ty < CANVAS_H + TILE; ty += TILE) {
       for (let tx = -TILE; tx < CANVAS_W + TILE; tx += TILE) {
         const alt = (Math.round(tx / TILE) + Math.round(ty / TILE)) % 2 === 0;
-        ctx.fillStyle = alt ? theme.bg : theme.tileAlt;
-        ctx.fillRect(tx, ty, TILE, TILE);
+        drawIfLoaded(ctx, alt ? FLOOR_BG_IMG : FLOOR_ALT_IMG, tx, ty, TILE, TILE);
       }
     }
 
@@ -1014,13 +1011,49 @@ export default function TowerDefensePage() {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 적 (몬스터 실루엣)
+    // 적 (슬라임 스프라이트 — 원소별로 색조 보정된 CC0 에셋)
     for (const e of g.enemies) {
       const pos = pointAtDistance(map.path, e.dist);
       const r = e.isBoss ? 19 : 11;
       const flinch = now < e.flinchUntil;
-      const bodyColor = e.dotUntil > now ? "#84cc16" : ELEMENT_COLOR[e.element];
-      drawMonster(ctx, pos.x, pos.y, r, bodyColor, flinch, e.isBoss);
+      const drawSize = r * 3.2;
+      const sheet = flinch ? MONSTER_HURT_IMG[e.element] : MONSTER_WALK_IMG[e.element];
+      const frame = flinch ? 0 : Math.floor(now / MONSTER_ANIM_MS) % MONSTER_WALK_COLS;
+      if (sheet.complete && sheet.naturalWidth > 0) {
+        ctx.drawImage(
+          sheet,
+          frame * MONSTER_FRAME_SIZE,
+          0,
+          MONSTER_FRAME_SIZE,
+          MONSTER_FRAME_SIZE,
+          pos.x - drawSize / 2,
+          pos.y - drawSize / 2,
+          drawSize,
+          drawSize,
+        );
+      }
+      if (e.isBoss) {
+        // 보스 표식 — 스프라이트 위에 작은 뿔 실루엣만 얹어서 일반 개체와 구분
+        ctx.fillStyle = "#ffd700";
+        ctx.beginPath();
+        ctx.moveTo(pos.x - drawSize * 0.3, pos.y - drawSize * 0.5);
+        ctx.lineTo(pos.x - drawSize * 0.42, pos.y - drawSize * 0.86);
+        ctx.lineTo(pos.x - drawSize * 0.08, pos.y - drawSize * 0.46);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(pos.x + drawSize * 0.3, pos.y - drawSize * 0.5);
+        ctx.lineTo(pos.x + drawSize * 0.42, pos.y - drawSize * 0.86);
+        ctx.lineTo(pos.x + drawSize * 0.08, pos.y - drawSize * 0.46);
+        ctx.fill();
+      }
+      if (e.dotUntil > now) {
+        // 도트뎀지(중독) 표식 — 발밑 링
+        ctx.strokeStyle = "#84cc16";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, drawSize * 0.58, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       // hp bar
       const barW = r * 2.2;
       ctx.fillStyle = "#00000066";
@@ -1034,24 +1067,20 @@ export default function TowerDefensePage() {
       );
     }
 
-    // 투사체
+    // 투사체 (원소별 색조를 입힌 글로우 오브 스프라이트)
     for (const p of g.projectiles) {
-      ctx.fillStyle = ELEMENT_COLOR[p.element];
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+      const orb = EFFECT_ORB_IMG[p.element];
+      drawIfLoaded(ctx, orb, p.x - 9, p.y - 9, 18, 18);
     }
 
-    // 타격 이펙트 (히트스파크)
+    // 타격 이펙트 (히트스파크 — 원소별 색조의 버스트 스프라이트, 커지면서 페이드)
     for (const fx of g.hitFx) {
       const age = now - fx.createdAt;
       const life = Math.max(0, 1 - age / 260);
-      ctx.strokeStyle = fx.color;
+      const size = 26 + (1 - life) * 40;
+      const burst = EFFECT_BURST_IMG[fx.element];
       ctx.globalAlpha = life;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(fx.x, fx.y, 6 + (1 - life) * 16, 0, Math.PI * 2);
-      ctx.stroke();
+      drawIfLoaded(ctx, burst, fx.x - size / 2, fx.y - size / 2, size, size);
       ctx.globalAlpha = 1;
     }
 
