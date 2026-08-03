@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { TowerDefenseService } from "./tower-defense.service";
+import { SubmitResultDto } from "./dto/submit-result.dto";
 
 @UseGuards(JwtAuthGuard)
 @Controller("tower-defense")
@@ -24,7 +25,7 @@ export class TowerDefenseController {
   }
 
   @Post("submit")
-  submitResult(@CurrentUser() user: { sub: string }, @Body() body: { wavesCleared: number }) {
+  submitResult(@CurrentUser() user: { sub: string }, @Body() body: SubmitResultDto) {
     return this.towerDefenseService.submitResult(user.sub, body.wavesCleared);
   }
 }

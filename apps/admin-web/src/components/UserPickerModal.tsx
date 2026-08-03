@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import Modal from "./Modal";
 
 export type PickedUser = { id: string; name: string; email: string };
 
@@ -63,8 +64,7 @@ export default function UserPickerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
-      <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6">
+    <Modal onClose={onClose} maxWidth="lg" flexCol>
         <h2 className="mb-1 text-base font-semibold">{t("userPicker.title")}</h2>
         <p className="mb-3 text-xs text-[var(--fg-faint)]">{t("userPicker.selected_count", { count: selected.size })}</p>
 
@@ -154,7 +154,6 @@ export default function UserPickerModal({
             {t("userPicker.apply")}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

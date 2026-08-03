@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
+import Modal from "./Modal";
 
 export type RewardSummary = {
   missionPoints: number;
@@ -69,11 +70,7 @@ export default function RewardAdjustModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
-      >
+    <Modal onClose={onClose} onSubmit={handleSubmit} maxWidth="md">
         <h2 className="mb-1 text-base font-semibold">{t("users.adjust_reward")}</h2>
         <p className="mb-4 text-sm text-[var(--fg-faint)]">{userLabel}</p>
 
@@ -125,7 +122,6 @@ export default function RewardAdjustModal({
             {saving ? t("rewardModal.saving") : t("rewardModal.apply")}
           </button>
         </div>
-      </form>
-    </div>
+    </Modal>
   );
 }

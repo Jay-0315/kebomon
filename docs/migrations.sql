@@ -205,3 +205,26 @@ CREATE TABLE IF NOT EXISTS character_master (
   spd_mult         FLOAT    NOT NULL DEFAULT 1,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- Migration: push_subscriptions에 (user_id, endpoint) 유니크 제약 추가
+-- Applied: 2026-08-03
+-- 배경: notifications.service.ts의 subscribe()가 원래 "ON DUPLICATE KEY UPDATE"로
+-- upsert를 의도했지만 정작 유니크 제약이 테이블에 없어서 매번 새 행이 쌓이기만 했다
+-- (같은 사용자의 같은 구독으로 푸시가 중복 발송될 수 있었음). 제약을 추가하기 전에
+-- 기존에 쌓인 중복 행부터 정리한다 — endpoint는 TEXT라 인덱스엔 255자 접두사만 사용.
+-- ============================================================
+DELETE t1 FROM push_subscriptions t1
+INNER JOIN push_subscriptions t2
+  ON t1.user_id = t2.user_id
+  AND t1.endpoint = t2.endpoint
+  AND t1.id < t2.id;
+
+SET @idx_exists = (
+  SELECT COUNT(*) FROM information_schema.statistics
+  WHERE table_schema = DATABASE() AND table_name = 'push_subscriptions' AND index_name = 'uq_push_user_endpoint'
+);
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE push_subscriptions ADD UNIQUE INDEX uq_push_user_endpoint (user_id, endpoint(255))',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

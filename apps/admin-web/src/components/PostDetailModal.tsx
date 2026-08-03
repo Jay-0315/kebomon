@@ -1,4 +1,5 @@
 import { useLang } from "../context/LangContext";
+import Modal from "./Modal";
 
 export type PostDetail = {
   id: string;
@@ -19,14 +20,7 @@ export default function PostDetailModal({
 }) {
   const { t } = useLang();
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} maxWidth="lg" scrollable closeOnBackdrop>
         <div className="mb-4 flex items-start justify-between gap-2">
           <div>
             <h2 className="text-base font-semibold">
@@ -60,7 +54,6 @@ export default function PostDetailModal({
             className="max-h-[50vh] w-full rounded-lg border border-[var(--border)] object-contain"
           />
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

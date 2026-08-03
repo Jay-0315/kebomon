@@ -37,6 +37,8 @@ function kstDateStr(d: Date): string {
 @Injectable()
 export class GuildService {
   private readonly logger = new Logger(GuildService.name);
+  // 정산이 다음 주 월요일 tick 전에 안 끝났을 경우의 재진입 방지 (매우 오래 걸릴 때 대비)
+  private settlingBossRuns = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -579,14 +581,28 @@ export class GuildService {
   }
 
   // 매주 월요일 00:00 KST — 직전 주 보스전 랭킹 보상 정산
+  // 주의: settleRun이 도중에 크래시하면(보상 지급 루프 중간) rewardsGranted가 아직 false라
+  // 다음 재시도 때 이미 받은 유저에게 중복 지급될 수 있음 — 드문 케이스라 지금은 로그로만
+  // 감지하고 수동 확인하는 걸로 두되, 재발하면 컨트리뷰션 단위 지급 여부 컬럼을 추가할 것.
   @Cron("0 0 * * 1", { timeZone: "Asia/Seoul" })
   async settleWeeklyBossRuns() {
-    const currentWeekKey = getIsoWeekKey(new Date());
-    const pending = await this.prisma.guildBossRun.findMany({
-      where: { rewardsGranted: false, weekKey: { not: currentWeekKey } },
-    });
-    for (const run of pending) {
-      await this.settleRun(run.id).catch((err) => this.logger.error(`길드 보스 정산 실패 runId=${run.id}`, err));
+    if (this.settlingBossRuns) {
+      this.logger.warn("이전 길드 보스 정산이 아직 진행 중 — 이번 tick은 건너뜀");
+      return;
+    }
+    this.settlingBossRuns = true;
+    try {
+      const currentWeekKey = getIsoWeekKey(new Date());
+      const pending = await this.prisma.guildBossRun.findMany({
+        where: { rewardsGranted: false, weekKey: { not: currentWeekKey } },
+      });
+      for (const run of pending) {
+        await this.settleRun(run.id).catch((err) => this.logger.error(`길드 보스 정산 실패 runId=${run.id}`, err));
+      }
+    } catch (err) {
+      this.logger.error("길드 보스 주간 정산 배치 실패", err);
+    } finally {
+      this.settlingBossRuns = false;
     }
   }
 }

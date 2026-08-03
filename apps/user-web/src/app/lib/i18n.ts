@@ -1,7 +1,10 @@
 export type Lang = "ko" | "ja" | "en";
 
-const dict = {
-  ko: {
+// ko가 기준(source of truth) — TranslationKey를 여기서 파생시키고, ja/en은 satisfies로
+// ko와 정확히 같은 키 집합을 갖도록 강제한다. 하나라도 빠지거나 오타가 나면 빌드가 깨진다
+// (예전엔 이 검증이 없어서 notification.season_border_* 키가 ja/en에서만 빠졌는데도
+// 빌드가 통과했고, 화면엔 번역 대신 원문 키가 그대로 노출됐었다).
+const ko = {
     // Nav
     "nav.home": "홈",
     "nav.community": "커뮤니티",
@@ -846,8 +849,11 @@ const dict = {
     "expedition.count": "회",
     "expedition.no_record": "아직 원정 기록이 없어요",
     "expedition.keep_going": "다시 출발해볼까요?",
-  },
-  ja: {
+} as const;
+
+export type TranslationKey = keyof typeof ko;
+
+const ja = {
     // Comments
     "comment.count": "コメント",
     "comment.count_suffix": "件",
@@ -1693,8 +1699,9 @@ const dict = {
     "expedition.count": "回",
     "expedition.no_record": "まだ遠征記録がありません",
     "expedition.keep_going": "また出発しましょう！",
-  },
-  en: {
+} satisfies Record<TranslationKey, string>;
+
+const en = {
     // Nav
     "nav.home": "Home",
     "nav.community": "Community",
@@ -2539,10 +2546,9 @@ const dict = {
     "expedition.count": "x",
     "expedition.no_record": "No expedition records yet",
     "expedition.keep_going": "Ready to set out again?",
-  },
-} as const;
+} satisfies Record<TranslationKey, string>;
 
-export type TranslationKey = keyof typeof dict.ko;
+const dict = { ko, ja, en };
 
 export function translate(lang: Lang, key: TranslationKey): string {
   const langDict = dict[lang] as Record<string, string>;

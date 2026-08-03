@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -14,6 +14,10 @@ const MIN_START_PRICE = 10;
 
 @Injectable()
 export class AuctionService {
+  private readonly logger = new Logger(AuctionService.name);
+  // 정산이 1분(크론 주기)보다 오래 걸리면 다음 tick이 겹쳐 들어올 수 있어 재진입 방지
+  private settlingAuctions = false;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
@@ -329,12 +333,25 @@ export class AuctionService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async settleExpiredAuctions() {
-    const expired = await this.prisma.auctionListing.findMany({
-      where: { status: "active", endsAt: { lte: new Date() } },
-      select: { id: true },
-    });
-    for (const { id } of expired) {
-      await this.settleListing(id).catch(() => undefined);
+    if (this.settlingAuctions) {
+      this.logger.warn("이전 경매 정산이 아직 진행 중 — 이번 tick은 건너뜀");
+      return;
+    }
+    this.settlingAuctions = true;
+    try {
+      const expired = await this.prisma.auctionListing.findMany({
+        where: { status: "active", endsAt: { lte: new Date() } },
+        select: { id: true },
+      });
+      for (const { id } of expired) {
+        await this.settleListing(id).catch((err) =>
+          this.logger.error(`경매 ${id} 정산 실패`, err),
+        );
+      }
+    } catch (err) {
+      this.logger.error("경매 만료 정산 배치 실패", err);
+    } finally {
+      this.settlingAuctions = false;
     }
   }
 }

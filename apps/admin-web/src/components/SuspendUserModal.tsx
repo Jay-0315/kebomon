@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import Modal from "./Modal";
 
 const PRESET_DAYS = [1, 3, 7, 30];
 
@@ -56,11 +57,7 @@ export default function SuspendUserModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
-      >
+    <Modal onClose={onClose} onSubmit={handleSubmit} maxWidth="md">
         <h2 className="mb-1 text-base font-semibold">{t("suspendModal.title")}</h2>
         <p className="mb-4 text-sm text-[var(--fg-faint)]">{userLabel}</p>
 
@@ -155,7 +152,6 @@ export default function SuspendUserModal({
             {saving ? t("suspendModal.saving") : t("users.suspend")}
           </button>
         </div>
-      </form>
-    </div>
+    </Modal>
   );
 }

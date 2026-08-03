@@ -126,6 +126,10 @@ model PushSubscription {
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // endpoint는 TEXT라 인덱스에 전체 길이를 못 써서 접두사 255자로 제한 — subscribe()가
+  // 원래 "ON DUPLICATE KEY UPDATE"로 upsert를 의도했지만 이 제약이 없어서 실제로는 매번
+  // 새 행이 쌓이고 있었다 (docs/migrations.sql의 중복 정리 마이그레이션 참조)
+  @@unique([userId, endpoint(length: 255)], map: "uq_push_user_endpoint")
   @@index([userId])
   @@map("push_subscriptions")
 }

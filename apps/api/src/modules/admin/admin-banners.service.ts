@@ -36,13 +36,17 @@ export class AdminBannersService {
     return { id };
   }
 
-  // 매일 00:00 KST — 종료 시각이 지난 배너 자동 삭제
+  // 매일 00:00 KST — 종료 시각이 지난 배너 자동 삭제 (deleteMany라 중복 실행돼도 안전)
   @Cron("0 0 * * *", { timeZone: "Asia/Seoul" })
   async deleteExpiredBanners() {
-    const { count } = await this.prisma.banner.deleteMany({
-      where: { endsAt: { lt: new Date() } },
-    });
-    if (count > 0) this.logger.log(`기간 만료 배너 ${count}개 자동 삭제`);
+    try {
+      const { count } = await this.prisma.banner.deleteMany({
+        where: { endsAt: { lt: new Date() } },
+      });
+      if (count > 0) this.logger.log(`기간 만료 배너 ${count}개 자동 삭제`);
+    } catch (err) {
+      this.logger.error("만료 배너 자동 삭제 실패", err);
+    }
   }
 
   private toData(dto: UpsertBannerDto) {

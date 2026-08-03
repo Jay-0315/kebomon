@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../lib/api";
 import { compressImage } from "../lib/image";
 import { useLang } from "../context/LangContext";
+import Modal from "./Modal";
 
 export type BannerRow = {
   id: string;
@@ -102,11 +103,7 @@ export default function BannerFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
-      >
+    <Modal onClose={onClose} onSubmit={handleSubmit} maxWidth="lg" scrollable>
         <h2 className="mb-4 text-base font-semibold">{banner ? t("bannerModal.title_edit") : t("bannerModal.title_new")}</h2>
 
         <label className="mb-1 block text-xs text-[var(--fg-muted)]">
@@ -258,7 +255,6 @@ export default function BannerFormModal({
             {saving ? t("gacha.saving") : t("common.save")}
           </button>
         </div>
-      </form>
-    </div>
+    </Modal>
   );
 }

@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from "@nest
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { ArenaService } from "./arena.service";
+import { SaveDeckDto } from "./dto/save-deck.dto";
+import { AttackNpcDto } from "./dto/attack-npc.dto";
 
 @Controller("arena")
 export class ArenaController {
@@ -26,7 +28,7 @@ export class ArenaController {
   @Put("deck")
   saveDeck(
     @CurrentUser() user: { sub: string },
-    @Body() body: { deckType: "attack" | "defense"; slots: number[] },
+    @Body() body: SaveDeckDto,
   ) {
     return this.arena.saveDeck(user.sub, body.deckType, body.slots);
   }
@@ -47,7 +49,7 @@ export class ArenaController {
   /** NPC 전투 실행 — NPC 스탯/보상은 서버가 npcId로 직접 조회 (클라이언트 값 신뢰 안 함) */
   @UseGuards(JwtAuthGuard)
   @Post("attack-npc")
-  attackNpc(@CurrentUser() user: { sub: string }, @Body() body: { npcId: string }) {
+  attackNpc(@CurrentUser() user: { sub: string }, @Body() body: AttackNpcDto) {
     return this.arena.attackNpc(user.sub, body.npcId);
   }
 

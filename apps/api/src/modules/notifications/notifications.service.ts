@@ -21,25 +21,17 @@ export class NotificationsService implements OnModuleInit {
 
   /** 푸시 구독 저장 (기존 endpoint 중복 방지) */
   async subscribe(userId: string, sub: { endpoint: string; keys: { p256dh: string; auth: string } }) {
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE p256dh = VALUES(p256dh), auth = VALUES(auth)`,
-      userId,
-      sub.endpoint,
-      sub.keys.p256dh,
-      sub.keys.auth,
-    );
+    await this.prisma.pushSubscription.upsert({
+      where: { userId_endpoint: { userId, endpoint: sub.endpoint } },
+      create: { userId, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+      update: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+    });
     return { ok: true };
   }
 
   /** 푸시 구독 해제 */
   async unsubscribe(userId: string, endpoint: string) {
-    await this.prisma.$executeRawUnsafe(
-      `DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?`,
-      userId,
-      endpoint,
-    );
+    await this.prisma.pushSubscription.deleteMany({ where: { userId, endpoint } });
     return { ok: true };
   }
 
@@ -93,10 +85,10 @@ export class NotificationsService implements OnModuleInit {
   }
 
   private async sendPush(userId: string, title: string, body: string, url?: string) {
-    const subs = await this.prisma.$queryRawUnsafe<{ endpoint: string; p256dh: string; auth: string }[]>(
-      `SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?`,
-      userId,
-    );
+    const subs = await this.prisma.pushSubscription.findMany({
+      where: { userId },
+      select: { endpoint: true, p256dh: true, auth: true },
+    });
     const payload = JSON.stringify({ title, body, url: url ?? "/" });
     await Promise.allSettled(
       subs.map((s) =>
@@ -106,10 +98,7 @@ export class NotificationsService implements OnModuleInit {
         ).catch((err: { statusCode?: number }) => {
           // 만료된 구독 자동 삭제
           if (err.statusCode === 410 || err.statusCode === 404) {
-            return this.prisma.$executeRawUnsafe(
-              `DELETE FROM push_subscriptions WHERE endpoint = ?`,
-              s.endpoint,
-            );
+            return this.prisma.pushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
           }
         }),
       ),

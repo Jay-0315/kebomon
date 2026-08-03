@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import Modal from "./Modal";
 
 export type CharacterRow = {
   id: number;
@@ -64,11 +65,7 @@ export default function CharacterEditModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6"
-      >
+    <Modal onClose={onClose} onSubmit={handleSubmit} maxWidth="md">
         <h2 className="mb-1 text-base font-semibold">
           #{character.id} {character.korName}
         </h2>
@@ -165,7 +162,6 @@ export default function CharacterEditModal({
             {saving ? t("gacha.saving") : t("common.save")}
           </button>
         </div>
-      </form>
-    </div>
+    </Modal>
   );
 }

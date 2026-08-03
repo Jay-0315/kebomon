@@ -2,6 +2,14 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuard
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { GuildService } from "./guild.service";
+import { CreateGuildDto } from "./dto/create-guild.dto";
+import { TargetUserDto } from "./dto/target-user.dto";
+import { UpdateMemberRoleDto } from "./dto/update-member-role.dto";
+import { UpdateNoticeDto } from "./dto/update-notice.dto";
+import { UpdateIconDto } from "./dto/update-icon.dto";
+import { ApplyGuildDto } from "./dto/apply-guild.dto";
+import { SaveRaidDeckDto } from "./dto/save-raid-deck.dto";
+import { CreateBoardPostDto } from "./dto/create-board-post.dto";
 
 @Controller("guild")
 export class GuildController {
@@ -22,7 +30,7 @@ export class GuildController {
   @Post("create")
   createGuild(
     @CurrentUser() user: { sub: string },
-    @Body() body: { name: string; notice?: string; iconId?: string },
+    @Body() body: CreateGuildDto,
   ) {
     return this.guildService.createGuild(user.sub, body.name, body.notice, body.iconId);
   }
@@ -41,13 +49,13 @@ export class GuildController {
 
   @UseGuards(JwtAuthGuard)
   @Post("transfer-ownership")
-  transferOwnership(@CurrentUser() user: { sub: string }, @Body() body: { targetUserId: string }) {
+  transferOwnership(@CurrentUser() user: { sub: string }, @Body() body: TargetUserDto) {
     return this.guildService.transferOwnership(user.sub, body.targetUserId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post("kick")
-  kickMember(@CurrentUser() user: { sub: string }, @Body() body: { targetUserId: string }) {
+  kickMember(@CurrentUser() user: { sub: string }, @Body() body: TargetUserDto) {
     return this.guildService.kickMember(user.sub, body.targetUserId);
   }
 
@@ -55,20 +63,20 @@ export class GuildController {
   @Patch("member-role")
   setMemberRole(
     @CurrentUser() user: { sub: string },
-    @Body() body: { targetUserId: string; role: "officer" | "member" },
+    @Body() body: UpdateMemberRoleDto,
   ) {
     return this.guildService.setMemberRole(user.sub, body.targetUserId, body.role);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch("notice")
-  updateNotice(@CurrentUser() user: { sub: string }, @Body() body: { notice: string }) {
+  updateNotice(@CurrentUser() user: { sub: string }, @Body() body: UpdateNoticeDto) {
     return this.guildService.updateNotice(user.sub, body.notice);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch("icon")
-  updateIcon(@CurrentUser() user: { sub: string }, @Body() body: { iconId: string }) {
+  updateIcon(@CurrentUser() user: { sub: string }, @Body() body: UpdateIconDto) {
     return this.guildService.updateIcon(user.sub, body.iconId);
   }
 
@@ -77,7 +85,7 @@ export class GuildController {
   @Post("apply")
   applyToGuild(
     @CurrentUser() user: { sub: string },
-    @Body() body: { guildId: string; message?: string },
+    @Body() body: ApplyGuildDto,
   ) {
     return this.guildService.applyToGuild(user.sub, body.guildId, body.message);
   }
@@ -133,7 +141,7 @@ export class GuildController {
 
   @UseGuards(JwtAuthGuard)
   @Put("raid-deck")
-  saveRaidDeck(@CurrentUser() user: { sub: string }, @Body() body: { slots: number[] }) {
+  saveRaidDeck(@CurrentUser() user: { sub: string }, @Body() body: SaveRaidDeckDto) {
     return this.guildService.saveRaidDeck(user.sub, body.slots);
   }
 
@@ -147,7 +155,7 @@ export class GuildController {
   @Post("board")
   createBoardPost(
     @CurrentUser() user: { sub: string },
-    @Body() body: { content: string; imageUrl?: string },
+    @Body() body: CreateBoardPostDto,
   ) {
     return this.guildService.createBoardPost(user.sub, body.content, body.imageUrl);
   }

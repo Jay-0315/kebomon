@@ -135,6 +135,7 @@ CREATE TABLE push_subscriptions (
   p256dh     TEXT          NOT NULL,
   auth       TEXT          NOT NULL,
   created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_push_user_endpoint (user_id, endpoint(255)),
   INDEX idx_push_user_id (user_id),
   CONSTRAINT fk_push_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
