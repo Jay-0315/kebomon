@@ -14,11 +14,11 @@ const SIZE_PX: Record<string, number> = { xs: 24, sm: 32, md: 36, lg: 56 };
 export default function UserAvatar({ authorId, authorName, size = "md", photoUrl, borderId }: UserAvatarProps) {
   const { profile, profilePhoto } = useAppData();
 
-  const sizeClass = {
-    xs: "w-6 h-6 text-[10px]",
-    sm: "w-8 h-8 text-xs",
-    md: "w-9 h-9 text-sm",
-    lg: "w-14 h-14 text-xl",
+  const textSizeClass = {
+    xs: "text-[10px]",
+    sm: "text-xs",
+    md: "text-sm",
+    lg: "text-xl",
   }[size];
 
   const displayPhoto = authorId === profile.id ? profilePhoto : photoUrl;
@@ -27,29 +27,40 @@ export default function UserAvatar({ authorId, authorName, size = "md", photoUrl
     : borderId;
   const border = activeBorderId ? BORDER_STYLES[activeBorderId] : null;
 
+  // 컨테이너는 항상 SIZE_PX 고정 — 프레임 PNG 캔버스 비율이 제각각이라 프레임 크기에 맞춰
+  // 늘리면(예전 방식) 댓글/채팅 등 좁은 레이아웃에서 아바타 크기가 테두리별로 들쭉날쭉해진다.
+  const containerSize = SIZE_PX[size];
+  const layout = border ? getBorderLayout(border.image, containerSize) : null;
+  const photoSize = layout ? layout.photoSize : containerSize;
+
   const inner = displayPhoto ? (
-    <img src={displayPhoto} alt={authorName} className={`${sizeClass} rounded-full object-cover shrink-0`} />
+    <img
+      src={displayPhoto}
+      alt={authorName}
+      className="rounded-full object-cover shrink-0"
+      style={{ width: photoSize, height: photoSize }}
+    />
   ) : (
-    <div className={`${sizeClass} rounded-full bg-gradient-to-br from-primary/60 to-accent/70 flex items-center justify-center text-white font-bold shrink-0`}>
+    <div
+      className={`${textSizeClass} rounded-full bg-gradient-to-br from-primary/60 to-accent/70 flex items-center justify-center text-white font-bold shrink-0`}
+      style={{ width: photoSize, height: photoSize }}
+    >
       {authorName[0]}
     </div>
   );
 
-  if (!border) return inner;
-
-  const photoSize = SIZE_PX[size];
-  const layout = getBorderLayout(border.image, photoSize);
+  if (!border || !layout) return inner;
 
   return (
-    <div className="relative shrink-0" style={{ width: layout.frameW, height: layout.frameH }}>
+    <div className="relative shrink-0" style={{ width: containerSize, height: containerSize }}>
       <div className="absolute" style={{ top: layout.photoTop, left: layout.photoLeft }}>
         {inner}
       </div>
       <img
         src={border.image}
         alt=""
-        className="absolute inset-0 pointer-events-none"
-        style={{ width: layout.frameW, height: layout.frameH }}
+        className="absolute pointer-events-none"
+        style={{ width: layout.frameW, height: layout.frameH, left: layout.frameLeft, top: layout.frameTop }}
       />
     </div>
   );

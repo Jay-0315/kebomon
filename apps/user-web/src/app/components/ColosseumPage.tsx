@@ -102,25 +102,54 @@ const BORDER_HOLE_GEOMETRY: Record<
 };
 
 export interface BorderLayout {
+  /** the fixed box every border renders into, regardless of the source PNG's own aspect ratio */
+  containerSize: number;
+  /** frame image is letterboxed ("contain") inside containerSize, so it never overflows it */
   frameW: number;
   frameH: number;
+  frameLeft: number;
+  frameTop: number;
+  /** photo size/position that lines up with this specific frame's hole at the resulting scale */
+  photoSize: number;
   photoLeft: number;
   photoTop: number;
 }
 
-// Scales the frame image so its hole matches photoSize, and returns where the photo
-// must sit within the frame's bounding box for the two to line up.
-export function getBorderLayout(imagePath: string, photoSize: number): BorderLayout {
+// Frames have wildly different native canvas sizes/aspect ratios (511x488 square-ish vs
+// 184x204 challenger), so sizing the outer box to "whatever fits the hole" (old behavior)
+// made the equipped-border box balloon to a different size per tier — visually breaking
+// layouts that assumed a fixed avatar slot. Instead we fix containerSize once, letterbox
+// the frame image to fit inside it (like object-fit: contain), and derive the photo's
+// size/position from that same scale so it still lines up with the frame's actual hole.
+export function getBorderLayout(imagePath: string, containerSize: number): BorderLayout {
   const g = BORDER_HOLE_GEOMETRY[imagePath];
   if (!g) {
-    return { frameW: photoSize, frameH: photoSize, photoLeft: 0, photoTop: 0 };
+    return {
+      containerSize,
+      frameW: containerSize,
+      frameH: containerSize,
+      frameLeft: 0,
+      frameTop: 0,
+      photoSize: containerSize,
+      photoLeft: 0,
+      photoTop: 0,
+    };
   }
-  const scale = photoSize / ((g.holeW + g.holeH) / 2);
+  const scale = Math.min(containerSize / g.canvasW, containerSize / g.canvasH);
+  const frameW = g.canvasW * scale;
+  const frameH = g.canvasH * scale;
+  const frameLeft = (containerSize - frameW) / 2;
+  const frameTop = (containerSize - frameH) / 2;
+  const photoSize = ((g.holeW + g.holeH) / 2) * scale;
   return {
-    frameW: g.canvasW * scale,
-    frameH: g.canvasH * scale,
-    photoLeft: g.holeCx * scale - photoSize / 2,
-    photoTop: g.holeCy * scale - photoSize / 2,
+    containerSize,
+    frameW,
+    frameH,
+    frameLeft,
+    frameTop,
+    photoSize,
+    photoLeft: frameLeft + g.holeCx * scale - photoSize / 2,
+    photoTop: frameTop + g.holeCy * scale - photoSize / 2,
   };
 }
 

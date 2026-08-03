@@ -74,10 +74,12 @@ export default function PublicProfilePage() {
     ? (CHARACTERS.find((c) => c.id === profile.equippedCharacterId) ?? null)
     : null;
   const border = profile.equippedBorderId ? BORDER_STYLES[profile.equippedBorderId] : null;
+  // 프레임을 끼든 안 끼든 아바타 슬롯 크기는 항상 고정 — 프레임 PNG마다 원본 캔버스 비율이
+  // 달라서(예: challenger.png는 세로로 김) 이 값을 프레임 크기에 맞춰 늘리면 테두리별로
+  // 박스 크기가 들쭉날쭉해진다.
   const AVATAR_SIZE = 84;
   const borderLayout = border ? getBorderLayout(border.image, AVATAR_SIZE) : null;
-  const containerW = borderLayout ? borderLayout.frameW : AVATAR_SIZE;
-  const containerH = borderLayout ? borderLayout.frameH : AVATAR_SIZE;
+  const photoSize = borderLayout ? borderLayout.photoSize : AVATAR_SIZE;
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
@@ -102,12 +104,12 @@ export default function PublicProfilePage() {
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-4">
-          <div className="relative shrink-0" style={{ width: containerW, height: containerH }}>
+          <div className="relative shrink-0" style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }}>
             <div
               className="rounded-full border-2 border-primary/40 flex items-center justify-center overflow-hidden bg-primary/10"
               style={{
-                width: AVATAR_SIZE,
-                height: AVATAR_SIZE,
+                width: photoSize,
+                height: photoSize,
                 position: borderLayout ? "absolute" : "relative",
                 top: borderLayout ? borderLayout.photoTop : undefined,
                 left: borderLayout ? borderLayout.photoLeft : undefined,
@@ -116,7 +118,7 @@ export default function PublicProfilePage() {
               {profile.profilePhoto ? (
                 <img src={profile.profilePhoto} alt={profile.name} className="w-full h-full object-cover" />
               ) : char ? (
-                <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={AVATAR_SIZE - 8} />
+                <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={photoSize - 8} />
               ) : (
                 <span className="text-2xl font-bold text-primary">{profile.name[0]}</span>
               )}
@@ -125,8 +127,14 @@ export default function PublicProfilePage() {
               <img
                 src={border.image}
                 alt=""
-                className="absolute inset-0 pointer-events-none"
-                style={{ width: borderLayout.frameW, height: borderLayout.frameH, zIndex: 10 }}
+                className="absolute pointer-events-none"
+                style={{
+                  width: borderLayout.frameW,
+                  height: borderLayout.frameH,
+                  left: borderLayout.frameLeft,
+                  top: borderLayout.frameTop,
+                  zIndex: 10,
+                }}
               />
             )}
           </div>

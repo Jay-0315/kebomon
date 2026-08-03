@@ -195,28 +195,30 @@ export default function MyPage() {
           const equippedBorder = rewardSummary.equippedBorderId
             ? BORDER_STYLES[rewardSummary.equippedBorderId]
             : null;
-          const PHOTO_SIZE = 76;
+          // 프레임을 끼든 안 끼든 헤더 아바타 슬롯 크기는 항상 고정 — 프레임 PNG마다
+          // 원본 캔버스 비율이 달라서(예: challenger.png는 세로로 김) 사진 크기를 고정하고
+          // 프레임을 그에 맞춰 키우면 테두리별로 박스 크기가 들쭉날쭉해진다.
+          const CONTAINER_SIZE = 84;
           const layout = equippedBorder
-            ? getBorderLayout(equippedBorder.image, PHOTO_SIZE)
+            ? getBorderLayout(equippedBorder.image, CONTAINER_SIZE)
             : null;
-          const containerW = layout ? layout.frameW : PHOTO_SIZE;
-          const containerH = layout ? layout.frameH : PHOTO_SIZE;
-          const photoRight = layout ? layout.photoLeft + PHOTO_SIZE : 0;
-          const photoBottom = layout ? layout.photoTop + PHOTO_SIZE : 0;
+          const photoSize = layout ? layout.photoSize : CONTAINER_SIZE;
+          const photoLeft = layout ? layout.photoLeft : 0;
+          const photoTop = layout ? layout.photoTop : 0;
           return (
             <div
               className="relative shrink-0"
-              style={{ width: containerW, height: containerH }}
+              style={{ width: CONTAINER_SIZE, height: CONTAINER_SIZE }}
             >
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="rounded-full border-2 border-primary/40 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden bg-primary/10"
                 style={{
-                  width: PHOTO_SIZE,
-                  height: PHOTO_SIZE,
+                  width: photoSize,
+                  height: photoSize,
                   position: layout ? "absolute" : "relative",
-                  top: layout ? layout.photoTop : undefined,
-                  left: layout ? layout.photoLeft : undefined,
+                  top: layout ? photoTop : undefined,
+                  left: layout ? photoLeft : undefined,
                 }}
               >
                 {profilePhoto ? (
@@ -235,8 +237,14 @@ export default function MyPage() {
                 <img
                   src={equippedBorder.image}
                   alt=""
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ width: layout.frameW, height: layout.frameH, zIndex: 10 }}
+                  className="absolute pointer-events-none"
+                  style={{
+                    width: layout.frameW,
+                    height: layout.frameH,
+                    left: layout.frameLeft,
+                    top: layout.frameTop,
+                    zIndex: 10,
+                  }}
                 />
               )}
               {profilePhoto && (
@@ -244,8 +252,8 @@ export default function MyPage() {
                   onClick={() => updateProfilePhoto(null)}
                   className="absolute w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center hover:bg-destructive/80 transition-colors"
                   style={{
-                    top: layout ? layout.photoTop - 4 : -4,
-                    right: layout ? containerW - photoRight - 4 : -4,
+                    top: photoTop - 4,
+                    right: CONTAINER_SIZE - (photoLeft + photoSize) - 4,
                     zIndex: 20,
                   }}
                 >
@@ -256,8 +264,8 @@ export default function MyPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors"
                 style={{
-                  bottom: layout ? containerH - photoBottom - 4 : -4,
-                  right: layout ? containerW - photoRight - 4 : -4,
+                  bottom: CONTAINER_SIZE - (photoTop + photoSize) - 4,
+                  right: CONTAINER_SIZE - (photoLeft + photoSize) - 4,
                   zIndex: 20,
                 }}
               >
