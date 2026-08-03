@@ -247,13 +247,16 @@ export default function MyPage() {
                   }}
                 />
               )}
+              {/* 두 버튼 다 사진 모서리가 아니라 컨테이너(고정 슬롯) 모서리 바깥쪽에 고정 —
+                  테두리 장식 이미지가 사진보다 크게 그려지는 프레임(챌린저 등)을 꼈을 때
+                  사진 모서리 기준으로 붙이면 버튼이 프레임 장식 위에 얹혀서 겹쳐 보였다. */}
               {profilePhoto && (
                 <button
                   onClick={() => updateProfilePhoto(null)}
                   className="absolute w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center hover:bg-destructive/80 transition-colors"
                   style={{
-                    top: photoTop - 4,
-                    right: CONTAINER_SIZE - (photoLeft + photoSize) - 4,
+                    top: -6,
+                    right: -6,
                     zIndex: 20,
                   }}
                 >
@@ -264,8 +267,8 @@ export default function MyPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors"
                 style={{
-                  bottom: CONTAINER_SIZE - (photoTop + photoSize) - 4,
-                  right: CONTAINER_SIZE - (photoLeft + photoSize) - 4,
+                  bottom: -6,
+                  right: -6,
                   zIndex: 20,
                 }}
               >
