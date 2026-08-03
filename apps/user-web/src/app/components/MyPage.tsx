@@ -30,7 +30,7 @@ import {
 } from "../data/characters";
 import TitleBadge, { TitleSelector } from "./TitleBadge";
 import { MessageCircle } from "lucide-react";
-import { BORDER_STYLES, BORDER_NAMES } from "./ColosseumPage";
+import { BORDER_STYLES, BORDER_NAMES, getBorderLayout } from "./ColosseumPage";
 
 export default function MyPage() {
   const navigate = useNavigate();
@@ -195,17 +195,18 @@ export default function MyPage() {
           const equippedBorder = rewardSummary.equippedBorderId
             ? BORDER_STYLES[rewardSummary.equippedBorderId]
             : null;
-          // 프레임 이미지의 투명 구멍이 캔버스의 절반 정도만 차지해서, 사진을 너무 작게
-          // 잡으면(FRAME_PAD가 크면) 사진과 링 사이에 배경색 틈이 보인다 — 실측해서 보정.
-          const FRAME_PAD = 4;
           const PHOTO_SIZE = 76;
-          const containerSize = equippedBorder
-            ? PHOTO_SIZE + FRAME_PAD * 2
-            : PHOTO_SIZE;
+          const layout = equippedBorder
+            ? getBorderLayout(equippedBorder.image, PHOTO_SIZE)
+            : null;
+          const containerW = layout ? layout.frameW : PHOTO_SIZE;
+          const containerH = layout ? layout.frameH : PHOTO_SIZE;
+          const photoRight = layout ? layout.photoLeft + PHOTO_SIZE : 0;
+          const photoBottom = layout ? layout.photoTop + PHOTO_SIZE : 0;
           return (
             <div
               className="relative shrink-0"
-              style={{ width: containerSize, height: containerSize }}
+              style={{ width: containerW, height: containerH }}
             >
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -213,9 +214,9 @@ export default function MyPage() {
                 style={{
                   width: PHOTO_SIZE,
                   height: PHOTO_SIZE,
-                  position: equippedBorder ? "absolute" : "relative",
-                  top: equippedBorder ? FRAME_PAD : undefined,
-                  left: equippedBorder ? FRAME_PAD : undefined,
+                  position: layout ? "absolute" : "relative",
+                  top: layout ? layout.photoTop : undefined,
+                  left: layout ? layout.photoLeft : undefined,
                 }}
               >
                 {profilePhoto ? (
@@ -230,12 +231,12 @@ export default function MyPage() {
                   </span>
                 )}
               </div>
-              {equippedBorder && (
+              {equippedBorder && layout && (
                 <img
                   src={equippedBorder.image}
                   alt=""
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  style={{ objectFit: "contain", zIndex: 10 }}
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ width: layout.frameW, height: layout.frameH, zIndex: 10 }}
                 />
               )}
               {profilePhoto && (
@@ -243,8 +244,8 @@ export default function MyPage() {
                   onClick={() => updateProfilePhoto(null)}
                   className="absolute w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center hover:bg-destructive/80 transition-colors"
                   style={{
-                    top: equippedBorder ? FRAME_PAD - 4 : -4,
-                    right: equippedBorder ? FRAME_PAD - 4 : -4,
+                    top: layout ? layout.photoTop - 4 : -4,
+                    right: layout ? containerW - photoRight - 4 : -4,
                     zIndex: 20,
                   }}
                 >
@@ -255,8 +256,8 @@ export default function MyPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors"
                 style={{
-                  bottom: equippedBorder ? FRAME_PAD - 4 : -4,
-                  right: equippedBorder ? FRAME_PAD - 4 : -4,
+                  bottom: layout ? containerH - photoBottom - 4 : -4,
+                  right: layout ? containerW - photoRight - 4 : -4,
                   zIndex: 20,
                 }}
               >
@@ -544,7 +545,12 @@ export default function MyPage() {
         {!showFavoriteSelector && favoriteIds.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {favoriteIds.map((id) => (
-              <PixelCharacter key={id} characterId={id} size={40} />
+              <div
+                key={id}
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30"
+              >
+                <PixelCharacter characterId={id} size={40} />
+              </div>
             ))}
           </div>
         )}

@@ -1879,6 +1879,60 @@ export class RewardsService {
     return { granted: grants.length };
   }
 
+  // 시즌 티어 칭호 base ID: 시즌1=66(실버66~챌린저71), 시즌2=72~77, 시즌N=66+(N-1)*6
+  // (프론트 data/titles.ts의 TIER_ORDER/TitleDef 66~83과 반드시 동일하게 유지)
+  private static readonly SEASON_TIER_TITLE_BASE = 66;
+  private static readonly TIER_KEY_ORDER = ["silver", "gold", "platinum", "diamond", "master", "challenger"];
+
+  /** 시즌 티어 테두리와 별개로, 영구 기록용 칭호도 함께 지급 — 테두리는 다음 시즌 것으로
+   *  바뀌어도(장착 기준) 칭호는 "시즌N 실버" 식으로 영원히 남아 예전 시즌 성과를 증명한다 */
+  async grantSeasonTierTitles(seasonId: number) {
+    const rows = await this.prisma.battleStats.findMany({
+      where: { tierPoints: { gte: 3000 } },
+      select: { userId: true, tierPoints: true },
+    });
+
+    const grants = rows
+      .map((r) => {
+        const tierKey = getArenaTierKey(r.tierPoints);
+        const tierIndex = tierKey ? RewardsService.TIER_KEY_ORDER.indexOf(tierKey) : -1;
+        if (tierIndex < 0) return null;
+        const titleId = RewardsService.SEASON_TIER_TITLE_BASE + (seasonId - 1) * 6 + tierIndex;
+        return { userId: r.userId, titleId };
+      })
+      .filter((g): g is { userId: string; titleId: number } => g !== null);
+
+    if (grants.length === 0) return { granted: 0 };
+
+    await this.prisma.$transaction(
+      grants.map(({ userId, titleId }) =>
+        this.prisma.userTitle.upsert({
+          where: { userId_titleId: { userId, titleId } },
+          create: { userId, titleId },
+          update: {},
+        }),
+      ),
+    );
+
+    for (const { userId } of grants) {
+      void this.notifications.create({
+        userId,
+        type: "achievement",
+        title: `시즌 ${seasonId} 티어 칭호 획득!`,
+        body: "시즌 종료 보상으로 티어 칭호가 지급되었습니다. 칭호 목록에서 확인하세요.",
+        titleKey: "notification.season_tier_title_title",
+        bodyKey: "notification.season_tier_title_body",
+        titleJa: `シーズン${seasonId} ティア称号獲得！`,
+        bodyJa: "シーズン終了報酬としてティア称号が付与されました。称号一覧で確認してください。",
+        titleEn: `Season ${seasonId} Tier Title Earned!`,
+        bodyEn: "Tier title awarded as season-end reward. Check your titles!",
+        link: "/mypage?titles=1",
+      }).catch(() => undefined);
+    }
+
+    return { granted: grants.length };
+  }
+
   // 시즌 종료 티어 KP 보너스 — 티어 임계값/보너스액은 arena.constants.ts의 ARENA_TIERS 하나로 관리
   // (프론트 ColosseumPage.tsx의 SEASON_REWARDS와는 별도 패키지라 값 동기화는 여전히 수동)
   async grantSeasonKpBonus(seasonId: number) {
@@ -1956,6 +2010,7 @@ export class RewardsService {
     const { topRankers } = await this.grantSeasonRankTitles(seasonId);
     await this.snapshotSeasonHallOfFame(seasonId, topRankers);
     await this.grantSeasonTierBorders(seasonId);
+    await this.grantSeasonTierTitles(seasonId);
     await this.grantSeasonKpBonus(seasonId);
     await this.resetSeasonStats();
     this.logger.log(`시즌 ${seasonId} 종료 처리 완료`);

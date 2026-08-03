@@ -81,6 +81,49 @@ export const BORDER_STYLES: Record<string, { image: string }> = {
   s3_challenger: { image: "/challenger.png" },
   gm: { image: "/GM.png" },
 };
+
+// Alpha-channel-measured transparent "hole" geometry for each border frame PNG.
+// Canvas size and hole size/position differ per asset (511x488 for silver/gold/
+// platinum/GM, 501x381 diamond, 225x204 master, 184x204 challenger), so sizing every
+// frame into a fixed square with a single hardcoded padding misaligned the smaller/
+// wider tiers. This table lets the photo be sized and positioned to match each
+// frame's actual hole instead.
+const BORDER_HOLE_GEOMETRY: Record<
+  string,
+  { canvasW: number; canvasH: number; holeW: number; holeH: number; holeCx: number; holeCy: number }
+> = {
+  "/silver.png": { canvasW: 511, canvasH: 488, holeW: 231, holeH: 244, holeCx: 255, holeCy: 241.5 },
+  "/gold.png": { canvasW: 511, canvasH: 488, holeW: 231, holeH: 244, holeCx: 255, holeCy: 241.5 },
+  "/platinum.png": { canvasW: 511, canvasH: 488, holeW: 231, holeH: 245, holeCx: 255, holeCy: 242 },
+  "/diamond.png": { canvasW: 501, canvasH: 381, holeW: 198, holeH: 198, holeCx: 253.5, holeCy: 193.5 },
+  "/master.png": { canvasW: 225, canvasH: 204, holeW: 94, holeH: 102, holeCx: 114.5, holeCy: 100.5 },
+  "/challenger.png": { canvasW: 184, canvasH: 204, holeW: 90, holeH: 92, holeCx: 92.5, holeCy: 98.5 },
+  "/GM.png": { canvasW: 511, canvasH: 488, holeW: 231, holeH: 247, holeCx: 255, holeCy: 240 },
+};
+
+export interface BorderLayout {
+  frameW: number;
+  frameH: number;
+  photoLeft: number;
+  photoTop: number;
+}
+
+// Scales the frame image so its hole matches photoSize, and returns where the photo
+// must sit within the frame's bounding box for the two to line up.
+export function getBorderLayout(imagePath: string, photoSize: number): BorderLayout {
+  const g = BORDER_HOLE_GEOMETRY[imagePath];
+  if (!g) {
+    return { frameW: photoSize, frameH: photoSize, photoLeft: 0, photoTop: 0 };
+  }
+  const scale = photoSize / ((g.holeW + g.holeH) / 2);
+  return {
+    frameW: g.canvasW * scale,
+    frameH: g.canvasH * scale,
+    photoLeft: g.holeCx * scale - photoSize / 2,
+    photoTop: g.holeCy * scale - photoSize / 2,
+  };
+}
+
 export const BORDER_NAMES: Record<
   string,
   { ko: string; ja: string; en: string }

@@ -1,5 +1,5 @@
 import { useAppData } from "../context/AppDataContext";
-import { BORDER_STYLES } from "./ColosseumPage";
+import { BORDER_STYLES, getBorderLayout } from "./ColosseumPage";
 
 interface UserAvatarProps {
   authorId: string;
@@ -10,7 +10,6 @@ interface UserAvatarProps {
 }
 
 const SIZE_PX: Record<string, number> = { xs: 24, sm: 32, md: 36, lg: 56 };
-const BORDER_PAD: Record<string, number> = { xs: 12, sm: 16, md: 20, lg: 32 };
 
 export default function UserAvatar({ authorId, authorName, size = "md", photoUrl, borderId }: UserAvatarProps) {
   const { profile, profilePhoto } = useAppData();
@@ -38,19 +37,19 @@ export default function UserAvatar({ authorId, authorName, size = "md", photoUrl
 
   if (!border) return inner;
 
-  const pad = BORDER_PAD[size];
-  const sz = SIZE_PX[size] + pad * 2;
+  const photoSize = SIZE_PX[size];
+  const layout = getBorderLayout(border.image, photoSize);
 
   return (
-    <div className="relative shrink-0" style={{ width: sz, height: sz }}>
-      <div className="absolute inset-0 flex items-center justify-center">
+    <div className="relative shrink-0" style={{ width: layout.frameW, height: layout.frameH }}>
+      <div className="absolute" style={{ top: layout.photoTop, left: layout.photoLeft }}>
         {inner}
       </div>
       <img
         src={border.image}
         alt=""
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ objectFit: "contain" }}
+        className="absolute inset-0 pointer-events-none"
+        style={{ width: layout.frameW, height: layout.frameH }}
       />
     </div>
   );

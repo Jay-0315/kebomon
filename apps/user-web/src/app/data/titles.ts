@@ -1,5 +1,8 @@
 export type TitleGrade = "common" | "rare" | "epic" | "legendary" | "mythic" | "limited";
-export type TitleConditionType = "raid_count" | "attendance" | "streak" | "post_count" | "points" | "col_wins" | "col_streak" | "col_points" | "season_rank" | "rogue_clears" | "expedition_count";
+export type TitleConditionType = "raid_count" | "attendance" | "streak" | "post_count" | "points" | "col_wins" | "col_streak" | "col_points" | "season_rank" | "season_tier" | "rogue_clears" | "expedition_count";
+
+export type TierKey = "silver" | "gold" | "platinum" | "diamond" | "master" | "challenger";
+export type TierVariant = `tier_${TierKey}`;
 
 export interface TitleDef {
   id: number;
@@ -9,8 +12,20 @@ export interface TitleDef {
   conditionValue: number;
   description: string;
   hidden?: boolean;
-  variant?: "season_neon" | "season_fire" | "season_venom"; // 시즌 한정 스타일
+  variant?: "season_neon" | "season_fire" | "season_venom" | TierVariant; // 시즌 한정 스타일
 }
+
+// 콜로세움 티어 색상(ColosseumPage.tsx의 TIERS와 동일하게 맞춤) — 시즌 티어 칭호가
+// "실버 칭호 = 실버 색상 + 실버 테두리"처럼 실제 티어 프레임과 같은 톤으로 보이게 한다
+export const TIER_COLORS: Record<TierKey, { color: string; glow: string }> = {
+  silver:     { color: "#c0c0c0", glow: "#708090" },
+  gold:       { color: "#ffd700", glow: "#b8860b" },
+  platinum:   { color: "#40e0d0", glow: "#008b8b" },
+  diamond:    { color: "#b9f2ff", glow: "#4169e1" },
+  master:     { color: "#da70d6", glow: "#800080" },
+  challenger: { color: "#ff4500", glow: "#8b0000" },
+};
+export const TIER_ORDER: TierKey[] = ["silver", "gold", "platinum", "diamond", "master", "challenger"];
 
 
 export const TITLE_GRADE_COLOR: Record<TitleGrade, string> = {
@@ -97,6 +112,25 @@ export const TITLES: TitleDef[] = [
   { id: 63, name: "시즌3 TOP2",  grade: "limited",   conditionType: "season_rank", conditionValue: 2,     description: "시즌 3 최종 2위 달성",    hidden: true, variant: "season_venom" },
   { id: 64, name: "시즌3 TOP3",  grade: "limited",   conditionType: "season_rank", conditionValue: 3,     description: "시즌 3 최종 3위 달성",    hidden: true, variant: "season_venom" },
   { id: 65, name: "시즌3 TOP10", grade: "limited",   conditionType: "season_rank", conditionValue: 10,    description: "시즌 3 최종 TOP 10 달성", hidden: true, variant: "season_venom" },
+  // ── 시즌 티어 칭호 (한정) — 콜로세움 시즌 종료 시 도달한 최고 티어에 지급 ──
+  { id: 66, name: "시즌1 실버",     grade: "limited", conditionType: "season_tier", conditionValue: 3000,  description: "시즌 1 실버 티어 달성",     hidden: true, variant: "tier_silver" },
+  { id: 67, name: "시즌1 골드",     grade: "limited", conditionType: "season_tier", conditionValue: 6000,  description: "시즌 1 골드 티어 달성",     hidden: true, variant: "tier_gold" },
+  { id: 68, name: "시즌1 플레티넘", grade: "limited", conditionType: "season_tier", conditionValue: 9000,  description: "시즌 1 플레티넘 티어 달성", hidden: true, variant: "tier_platinum" },
+  { id: 69, name: "시즌1 다이아몬드", grade: "limited", conditionType: "season_tier", conditionValue: 12000, description: "시즌 1 다이아몬드 티어 달성", hidden: true, variant: "tier_diamond" },
+  { id: 70, name: "시즌1 마스터",   grade: "limited", conditionType: "season_tier", conditionValue: 15000, description: "시즌 1 마스터 티어 달성",   hidden: true, variant: "tier_master" },
+  { id: 71, name: "시즌1 챌린저",   grade: "limited", conditionType: "season_tier", conditionValue: 18000, description: "시즌 1 챌린저 티어 달성",   hidden: true, variant: "tier_challenger" },
+  { id: 72, name: "시즌2 실버",     grade: "limited", conditionType: "season_tier", conditionValue: 3000,  description: "시즌 2 실버 티어 달성",     hidden: true, variant: "tier_silver" },
+  { id: 73, name: "시즌2 골드",     grade: "limited", conditionType: "season_tier", conditionValue: 6000,  description: "시즌 2 골드 티어 달성",     hidden: true, variant: "tier_gold" },
+  { id: 74, name: "시즌2 플레티넘", grade: "limited", conditionType: "season_tier", conditionValue: 9000,  description: "시즌 2 플레티넘 티어 달성", hidden: true, variant: "tier_platinum" },
+  { id: 75, name: "시즌2 다이아몬드", grade: "limited", conditionType: "season_tier", conditionValue: 12000, description: "시즌 2 다이아몬드 티어 달성", hidden: true, variant: "tier_diamond" },
+  { id: 76, name: "시즌2 마스터",   grade: "limited", conditionType: "season_tier", conditionValue: 15000, description: "시즌 2 마스터 티어 달성",   hidden: true, variant: "tier_master" },
+  { id: 77, name: "시즌2 챌린저",   grade: "limited", conditionType: "season_tier", conditionValue: 18000, description: "시즌 2 챌린저 티어 달성",   hidden: true, variant: "tier_challenger" },
+  { id: 78, name: "시즌3 실버",     grade: "limited", conditionType: "season_tier", conditionValue: 3000,  description: "시즌 3 실버 티어 달성",     hidden: true, variant: "tier_silver" },
+  { id: 79, name: "시즌3 골드",     grade: "limited", conditionType: "season_tier", conditionValue: 6000,  description: "시즌 3 골드 티어 달성",     hidden: true, variant: "tier_gold" },
+  { id: 80, name: "시즌3 플레티넘", grade: "limited", conditionType: "season_tier", conditionValue: 9000,  description: "시즌 3 플레티넘 티어 달성", hidden: true, variant: "tier_platinum" },
+  { id: 81, name: "시즌3 다이아몬드", grade: "limited", conditionType: "season_tier", conditionValue: 12000, description: "시즌 3 다이아몬드 티어 달성", hidden: true, variant: "tier_diamond" },
+  { id: 82, name: "시즌3 마스터",   grade: "limited", conditionType: "season_tier", conditionValue: 15000, description: "시즌 3 마스터 티어 달성",   hidden: true, variant: "tier_master" },
+  { id: 83, name: "시즌3 챌린저",   grade: "limited", conditionType: "season_tier", conditionValue: 18000, description: "시즌 3 챌린저 티어 달성",   hidden: true, variant: "tier_challenger" },
   // ── 로그라이크 ──
   { id: 48, name: "덱의 입문자",     grade: "common",    conditionType: "rogue_clears",    conditionValue: 1,   description: "로그라이크 첫 클리어" },
   { id: 49, name: "탐험의 첫걸음",   grade: "common",    conditionType: "expedition_count",conditionValue: 1,   description: "원정 첫 완료" },

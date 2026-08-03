@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
-import { TITLES, TITLE_BY_ID, TITLE_GLOW, TITLE_GRADE_BG, TITLE_GRADE_COLOR } from "../data/titles";
-import type { TitleGrade } from "../data/titles";
+import { TITLES, TITLE_BY_ID, TITLE_GLOW, TITLE_GRADE_BG, TITLE_GRADE_COLOR, TIER_COLORS } from "../data/titles";
+import type { TitleGrade, TierKey } from "../data/titles";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
 
@@ -24,12 +24,17 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
   const isSeasonNeon = isLimited && variant === "season_neon";
   const isSeasonFire = isLimited && variant === "season_fire";
   const isSeasonVenom = isLimited && variant === "season_venom";
+  const tierKey = isLimited && variant?.startsWith("tier_")
+    ? (variant.slice("tier_".length) as TierKey)
+    : null;
 
   const fontSizeClass = size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm";
   const paddingClass = size === "xs" ? "px-1 py-px" : size === "sm" ? "px-1.5 py-0.5" : "px-2 py-1";
 
   const baseStyle: React.CSSProperties = {
-    backgroundColor: isSeasonNeon
+    backgroundColor: tierKey
+      ? `${TIER_COLORS[tierKey].glow}26`
+      : isSeasonNeon
       ? "rgba(0,20,50,0.88)"
       : isSeasonFire
       ? "rgba(30,10,0,0.88)"
@@ -37,7 +42,9 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
       ? "rgba(6,26,14,0.88)"
       : TITLE_GRADE_BG[grade],
     borderRadius: "4px",
-    border: isSeasonNeon
+    border: tierKey
+      ? `1.5px solid ${TIER_COLORS[tierKey].color}99`
+      : isSeasonNeon
       ? "1.5px solid rgba(0,160,255,0.45)"
       : isSeasonFire
       ? "1.5px solid rgba(255,60,0,0.6)"
@@ -61,7 +68,9 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
 
   return (
     <span style={baseStyle} className={`${fontSizeClass} ${paddingClass}`}>
-      {isMythic ? (
+      {tierKey ? (
+        <TierText text={name} tierKey={tierKey} size={size} />
+      ) : isMythic ? (
         <MythicAnimatedText text={name} size={size} />
       ) : isSeasonNeon ? (
         <SeasonNeonText text={name} size={size} />
@@ -79,6 +88,25 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
           [{t(`title.grade.${grade}` as TranslationKey)}]
         </span>
       )}
+    </span>
+  );
+}
+
+// 시즌 티어 칭호: 랭킹 칭호(애니메이션 그라데이션)와 구분되게 콜로세움 티어 색상을
+// 그대로 입힌 단색 + 은은한 글로우로만 표시 — 실버=은색, 챌린저=주황 등 테두리 프레임과 톤을 맞춘다
+function TierText({ text, tierKey, size }: { text: string; tierKey: TierKey; size: "xs" | "sm" | "md" }) {
+  const fontSize = size === "xs" ? "10px" : size === "sm" ? "12px" : "14px";
+  const { color, glow } = TIER_COLORS[tierKey];
+  return (
+    <span
+      style={{
+        fontSize,
+        fontWeight: 700,
+        color,
+        textShadow: `0 0 6px ${glow}cc, 0 0 12px ${glow}66`,
+      }}
+    >
+      {text}
     </span>
   );
 }

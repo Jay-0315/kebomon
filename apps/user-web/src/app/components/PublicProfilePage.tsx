@@ -8,7 +8,7 @@ import { CHARACTERS } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
 import ReportModal from "./ReportModal";
 import TitleBadge from "./TitleBadge";
-import { BORDER_STYLES } from "./ColosseumPage";
+import { BORDER_STYLES, getBorderLayout } from "./ColosseumPage";
 
 interface PublicProfile {
   id: string;
@@ -74,11 +74,10 @@ export default function PublicProfilePage() {
     ? (CHARACTERS.find((c) => c.id === profile.equippedCharacterId) ?? null)
     : null;
   const border = profile.equippedBorderId ? BORDER_STYLES[profile.equippedBorderId] : null;
-  // 프레임 이미지(GM.png 등)의 투명 구멍은 캔버스의 절반 정도만 차지해서, 안쪽 아바타를
-  // 너무 작게 잡으면(FRAME_PAD가 크면) 사진과 링 사이에 배경색 틈이 보인다 — 실측해서 보정.
-  const FRAME_PAD = 4;
   const AVATAR_SIZE = 84;
-  const containerSize = border ? AVATAR_SIZE + FRAME_PAD * 2 : AVATAR_SIZE;
+  const borderLayout = border ? getBorderLayout(border.image, AVATAR_SIZE) : null;
+  const containerW = borderLayout ? borderLayout.frameW : AVATAR_SIZE;
+  const containerH = borderLayout ? borderLayout.frameH : AVATAR_SIZE;
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
@@ -103,15 +102,15 @@ export default function PublicProfilePage() {
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-4">
-          <div className="relative shrink-0" style={{ width: containerSize, height: containerSize }}>
+          <div className="relative shrink-0" style={{ width: containerW, height: containerH }}>
             <div
               className="rounded-full border-2 border-primary/40 flex items-center justify-center overflow-hidden bg-primary/10"
               style={{
                 width: AVATAR_SIZE,
                 height: AVATAR_SIZE,
-                position: border ? "absolute" : "relative",
-                top: border ? FRAME_PAD : undefined,
-                left: border ? FRAME_PAD : undefined,
+                position: borderLayout ? "absolute" : "relative",
+                top: borderLayout ? borderLayout.photoTop : undefined,
+                left: borderLayout ? borderLayout.photoLeft : undefined,
               }}
             >
               {profile.profilePhoto ? (
@@ -122,12 +121,12 @@ export default function PublicProfilePage() {
                 <span className="text-2xl font-bold text-primary">{profile.name[0]}</span>
               )}
             </div>
-            {border && (
+            {border && borderLayout && (
               <img
                 src={border.image}
                 alt=""
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{ objectFit: "contain", zIndex: 10 }}
+                className="absolute inset-0 pointer-events-none"
+                style={{ width: borderLayout.frameW, height: borderLayout.frameH, zIndex: 10 }}
               />
             )}
           </div>
@@ -186,7 +185,7 @@ export default function PublicProfilePage() {
                 return (
                   <div
                     key={id}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/30"
+                    className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30"
                   >
                     <PixelSprite type={fc.type} colors={fc.colors} characterId={fc.id} rarity={fc.rarity} size={36} />
                   </div>
