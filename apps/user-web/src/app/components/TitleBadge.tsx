@@ -59,6 +59,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
     fontWeight: 700,
     letterSpacing: "0.02em",
     whiteSpace: "nowrap" as const,
+    position: tierKey ? ("relative" as const) : undefined,
   };
 
   const textStyle: React.CSSProperties = {
@@ -68,6 +69,7 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
 
   return (
     <span style={baseStyle} className={`${fontSizeClass} ${paddingClass}`}>
+      {tierKey && <TierSparkles tierKey={tierKey} />}
       {tierKey ? (
         <TierText text={name} tierKey={tierKey} size={size} />
       ) : isMythic ? (
@@ -89,6 +91,42 @@ export default function TitleBadge({ titleId, size = "sm", showGrade = false }: 
         </span>
       )}
     </span>
+  );
+}
+
+// 티어 칭호 전용 반짝임 파티클 — 배지 테두리 위 4개 지점에 별 글리프를 흩뿌리고
+// 각기 다른 delay/duration으로 깜빡여서 기계적으로 똑같이 반짝이지 않게 한다
+const SPARKLE_SPOTS = [
+  { top: "-15%", left: "6%", delay: "0s", duration: "1.8s", size: "1em" },
+  { top: "10%", left: "92%", delay: "0.5s", duration: "2.2s", size: "0.7em" },
+  { top: "70%", left: "18%", delay: "1s", duration: "2s", size: "0.6em" },
+  { top: "60%", left: "80%", delay: "1.4s", duration: "1.9s", size: "0.85em" },
+];
+
+function TierSparkles({ tierKey }: { tierKey: TierKey }) {
+  const { color } = TIER_COLORS[tierKey];
+  return (
+    <>
+      {SPARKLE_SPOTS.map((spot, i) => (
+        <span
+          key={i}
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: spot.top,
+            left: spot.left,
+            fontSize: spot.size,
+            color,
+            lineHeight: 1,
+            pointerEvents: "none",
+            animation: `tierSparkle ${spot.duration} ease-in-out ${spot.delay} infinite`,
+            filter: `drop-shadow(0 0 3px ${color})`,
+          }}
+        >
+          ✦
+        </span>
+      ))}
+    </>
   );
 }
 
