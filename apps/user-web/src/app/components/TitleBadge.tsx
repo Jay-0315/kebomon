@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
-import { TITLES, TITLE_BY_ID, TITLE_GLOW, TITLE_GRADE_BG, TITLE_GRADE_COLOR, TIER_COLORS } from "../data/titles";
-import type { TitleGrade, TierKey } from "../data/titles";
+import { TITLES, TITLE_BY_ID, TITLE_GLOW, TITLE_GRADE_BG, TITLE_GRADE_COLOR, TIER_COLORS, TIER_ORDER } from "../data/titles";
+import type { TitleGrade, TierKey, TitleDef } from "../data/titles";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
 
@@ -309,9 +309,18 @@ export function TitleSelector({
   const ownedSet = new Set(ownedTitleIds);
 
   const gradeOrder: TitleGrade[] = ["common", "rare", "epic", "legendary", "mythic", "limited"];
+  // 시즌 티어 칭호(실버~챌린저)는 TITLES 배열 선언 순서가 아니라 TIER_ORDER 기준으로 명시적으로
+  // 정렬한다 — 배열 순서에만 의존하면 나중에 항목이 추가/재배치될 때 조용히 순서가 깨질 수 있음
+  const tierRank = (tt: TitleDef) =>
+    tt.variant?.startsWith("tier_") ? TIER_ORDER.indexOf(tt.variant.slice("tier_".length) as TierKey) : -1;
   const byGrade = gradeOrder.map((grade) => ({
     grade,
-    titles: TITLES.filter((tt) => tt.grade === grade && (!tt.hidden || ownedSet.has(tt.id))),
+    titles: TITLES.filter((tt) => tt.grade === grade && (!tt.hidden || ownedSet.has(tt.id))).slice().sort((a, b) => {
+      const at = tierRank(a);
+      const bt = tierRank(b);
+      if (at === -1 || bt === -1) return 0;
+      return at - bt;
+    }),
   })).filter(({ titles }) => titles.length > 0);
 
   const [openGrades, setOpenGrades] = useState<Set<TitleGrade>>(new Set(gradeOrder));
