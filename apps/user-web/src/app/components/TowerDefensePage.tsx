@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Banknote,
   Castle,
-  Coins,
   FastForward,
   GitMerge,
   Heart,
-  Layers,
-  Plus,
+  Shield,
   Skull,
   Sparkles,
-  Ticket,
+  Swords,
   Trophy,
   X,
   Zap,
@@ -29,7 +26,12 @@ import {
 } from "../data/characters";
 import type { TranslationKey } from "../lib/i18n";
 
-// ─── 클라이언트 전투 시뮬레이션 상수 (레이드 미니게임과 동일하게 서버는 결과만 검증) ───
+// ═══════════════════════════════════════════════════════════════════════════
+// 명일방주식 타워디펜스 — 클라이언트 전투 시뮬레이션 (서버는 최종 wavesCleared만 검증)
+// 클래식 TD(경로 밖 고정 슬롯)에서 "타일 그리드 + 물리적 블로킹 + DP 실시간 배치 경제"로
+// 전면 교체. 기존 7아키타입/원소 상성/등급 합성 체계는 그대로 재사용하고 역할만 재해석했다.
+// ═══════════════════════════════════════════════════════════════════════════
+
 type Archetype =
   | "warrior"
   | "rogue"
@@ -39,6 +41,7 @@ type Archetype =
   | "meka"
   | "cursed";
 type Pattern = "single" | "aoe" | "dot";
+type DmgType = "physical" | "magic" | "true";
 type Element =
   | "fire"
   | "earth"
@@ -49,22 +52,27 @@ type Element =
   | "shadow"
   | "light";
 
-// 공격속도는 /1.5로 나눠서 전체 템포를 1.5배 끌어올림.
-// range는 블록형 배치에 맞춰 상향 — 중앙 블록(예: 가운데 위 섹션)은 좌우 양쪽에 경로가
-// 하나씩 붙어있는데, 패드가 가까운 쪽 경로와는 130px 떨어져 있지만 반대쪽(먼) 경로와는
-// BLOCK_SIZE/2 + PAD_OFFSET = 240px나 떨어진다. 이전엔 최대 거리를 ~170px로 잘못 추정해서
-// 반대편 루트를 커버 못 하는 슬롯이 있었다 — 실제 최악값 240px를 넉넉히 넘도록 재조정.
-const ARCHETYPE_STATS: Record<
-  Archetype,
-  { range: number; atkSpeedMs: number; damage: number; pattern: Pattern }
-> = {
-  warrior: { range: 275, atkSpeedMs: 467, damage: 12, pattern: "single" },
-  rogue: { range: 260, atkSpeedMs: 300, damage: 7, pattern: "single" },
-  tank: { range: 310, atkSpeedMs: 600, damage: 9, pattern: "single" },
-  mage: { range: 330, atkSpeedMs: 667, damage: 16, pattern: "aoe" },
-  meka: { range: 295, atkSpeedMs: 567, damage: 13, pattern: "aoe" },
-  nature: { range: 285, atkSpeedMs: 800, damage: 6, pattern: "dot" },
-  cursed: { range: 285, atkSpeedMs: 800, damage: 6, pattern: "dot" },
+// 아키타입 역할 재해석표 — 전사/도적/수호자는 경로 타일에 직접 서서 적을 막는 근접
+// 블로커, 나머지 4종은 고지대 전용 원거리 딜러. blockCount는 동시에 막을 수 있는 적 수.
+interface ArchetypeRole {
+  isBlocker: boolean;
+  blockCount: number;
+  range: number;
+  atkSpeedMs: number;
+  damage: number;
+  pattern: Pattern;
+  dmgType: DmgType;
+  hp: number;
+  spPerAttack: number;
+}
+const ARCHETYPE_STATS: Record<Archetype, ArchetypeRole> = {
+  warrior: { isBlocker: true, blockCount: 1, range: 70, atkSpeedMs: 500, damage: 15, pattern: "single", dmgType: "physical", hp: 150, spPerAttack: 22 },
+  rogue: { isBlocker: true, blockCount: 1, range: 70, atkSpeedMs: 320, damage: 9, pattern: "single", dmgType: "physical", hp: 95, spPerAttack: 22 },
+  tank: { isBlocker: true, blockCount: 2, range: 70, atkSpeedMs: 650, damage: 9, pattern: "single", dmgType: "physical", hp: 280, spPerAttack: 20 },
+  mage: { isBlocker: false, blockCount: 0, range: 260, atkSpeedMs: 700, damage: 20, pattern: "aoe", dmgType: "magic", hp: 60, spPerAttack: 25 },
+  meka: { isBlocker: false, blockCount: 0, range: 240, atkSpeedMs: 550, damage: 15, pattern: "aoe", dmgType: "magic", hp: 65, spPerAttack: 25 },
+  nature: { isBlocker: false, blockCount: 0, range: 250, atkSpeedMs: 800, damage: 7, pattern: "dot", dmgType: "true", hp: 55, spPerAttack: 25 },
+  cursed: { isBlocker: false, blockCount: 0, range: 250, atkSpeedMs: 800, damage: 7, pattern: "dot", dmgType: "true", hp: 55, spPerAttack: 25 },
 };
 
 // 콜로세움(arena.service.ts)의 원소 상성 시스템을 그대로 이식
@@ -88,18 +96,7 @@ const ELEMENT_ADVANTAGE: Record<Element, Element> = {
   earth: "lightning",
 };
 const ELEMENT_BONUS = 1.15;
-// ELEMENT_ADVANTAGE는 (fire→nature→ice→fire)/(dark→light→shadow→dark)/(lightning⇄earth) 세 개의
-// 순환으로 이뤄져 있다. "light"는 어떤 타워 계열의 공격 속성도 아니라서(콜로세움 all-폴백 전용)
-// light가 카운터인 "shadow"를 웨이브 속성으로 뽑으면 어떤 타워도 상성 보너스를 받을 수 없다 —
-// 그래서 light와 shadow 둘 다 웨이브 풀에서 제외하고, 실제로 카운터 가능한 6개만 사용한다.
-const WAVE_ELEMENTS: Element[] = [
-  "fire",
-  "earth",
-  "ice",
-  "dark",
-  "nature",
-  "lightning",
-];
+const WAVE_ELEMENTS: Element[] = ["fire", "earth", "ice", "dark", "nature", "lightning"];
 const COUNTERED_BY: Partial<Record<Element, Element>> = Object.fromEntries(
   Object.entries(ELEMENT_ADVANTAGE).map(([atk, def]) => [def, atk]),
 );
@@ -117,24 +114,13 @@ const ELEMENT_COLOR: Record<Element, string> = {
   light: "#f8fafc",
 };
 
-// ─── 에셋(CC0) 로딩 — 몬스터 슬라임 스프라이트/공격 이펙트/바닥 타일. 원소별로 색조가 미리
-// 입혀진 PNG를 /public/td 에서 불러온다. 브라우저가 비동기로 로드하므로 draw 시점엔
-// img.complete 체크 후 그린다 (첫 프레임 몇 개는 스킵될 수 있음).
+// ─── 에셋(CC0) 로딩 — 몬스터 슬라임 스프라이트/공격 이펙트/바닥 타일 ───
 function loadTdImage(path: string): HTMLImageElement {
   const img = new Image();
   img.src = `/td/${path}`;
   return img;
 }
-const ELEMENTS: Element[] = [
-  "fire",
-  "earth",
-  "ice",
-  "dark",
-  "nature",
-  "lightning",
-  "shadow",
-  "light",
-];
+const ELEMENTS: Element[] = ["fire", "earth", "ice", "dark", "nature", "lightning", "shadow", "light"];
 const MONSTER_WALK_IMG = Object.fromEntries(
   ELEMENTS.map((e) => [e, loadTdImage(`monsters/slime_${e}_walk.png`)]),
 ) as Record<Element, HTMLImageElement>;
@@ -150,15 +136,18 @@ const EFFECT_BURST_IMG = Object.fromEntries(
 const FLOOR_BG_IMG = loadTdImage("tiles/floor_bg.png");
 const FLOOR_ALT_IMG = loadTdImage("tiles/floor_alt.png");
 
-// 원본 스프라이트는 프레임 안에 여백이 많아서(실제 캐릭터가 64x64 중 절반 정도만 차지) 그
-// 여백까지 그대로 그리면 실제로 보이는 크기가 확 작아진다 — 에셋을 캐릭터 외곽선에 맞춰
-// 미리 잘라뒀으므로(walk 35x32, hurt 31x28) 그 크기를 그대로 슬라이싱 기준으로 쓴다.
 const MONSTER_WALK_FRAME_W = 35;
 const MONSTER_WALK_FRAME_H = 32;
 const MONSTER_HURT_FRAME_W = 31;
 const MONSTER_HURT_FRAME_H = 28;
 const MONSTER_WALK_COLS = 8;
-const MONSTER_ANIM_MS = 110; // 프레임당 재생 시간
+const MONSTER_ANIM_MS = 110;
+
+function hpBarColor(pct: number): string {
+  if (pct > 0.5) return "#4ade80";
+  if (pct > 0.25) return "#facc15";
+  return "#f87171";
+}
 
 function drawIfLoaded(
   ctx: CanvasRenderingContext2D,
@@ -180,215 +169,155 @@ const RARITY_POWER_MULT: Record<string, number> = {
   mythic: 3.6,
 };
 
-// ─── 등급(rarity) 사다리 — 합성은 "같은 등급 2개 → 다음 등급 1개(랜덤 캐릭터)"로 진행된다.
-// 캐릭터 종류/티어는 더 이상 별도 축이 아니라 이 등급 하나로 통일.
-const RARITY_ORDER = [
-  "common",
-  "uncommon",
-  "rare",
-  "epic",
-  "legendary",
-  "mythic",
-] as const;
+// ─── 등급(rarity) 사다리 — 합성은 "같은 등급 2개 → 다음 등급 1개(랜덤 캐릭터)" ───
+const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
 function nextRarity(rarity: string): string | null {
   const idx = RARITY_ORDER.indexOf(rarity as (typeof RARITY_ORDER)[number]);
   if (idx < 0 || idx >= RARITY_ORDER.length - 1) return null;
   return RARITY_ORDER[idx + 1];
 }
 
-// ─── 골드 경제: 배치는 유료, 판매는 등급별 환불 ───
-const STARTING_GOLD = 300;
-const PLACE_COST = 100; // 빈 슬롯에 최하등급 랜덤 1종 배치
-const KILL_GOLD = 6;
-const BOSS_KILL_GOLD = 30;
-const RARITY_SELL_GOLD: Record<string, number> = {
-  common: 50,
-  uncommon: 90,
-  rare: 150,
-  epic: 240,
-  legendary: 370,
-  mythic: 560,
+// ─── DP(배치 포인트) 경제 — 골드/강화/판매를 전부 대체. 실시간으로 차오르는 자원 하나로
+// "언제 누구를 배치할지" 판단이 계속 필요하게 만든다 ───
+const DP_MAX = 30;
+const DP_START = 10;
+const DP_REGEN_PER_SEC = 1;
+const RARITY_DP_COST: Record<string, number> = {
+  common: 6,
+  uncommon: 8,
+  rare: 10,
+  epic: 13,
+  legendary: 17,
+  mythic: 22,
 };
-const LOWEST_RARITY = "common";
+const RETREAT_REFUND_RATIO = 0.6; // 죽기 전에 철수하면 DP 비용의 60% 환급
+const RETREAT_COOLDOWN_MS = 5000; // 철수한 타일 재배치 쿨다운
+const DEATH_COOLDOWN_MS = 15000; // 전사한 타일 재배치 쿨다운 (환급 없음)
+const BOSS_DP_BONUS = 8; // 보스 처치 시 즉시 DP 보너스 (기존 "토큰" 시스템을 대체)
 
-// ─── 강화(Enhance): 골드를 소모해 배치된 타워를 직접 강하게 만드는 시스템 ───
-// 100라운드까지 이어지는 긴 세션에서 골드를 계속 투자할 곳이 필요해서 합성(티어업)과 별개로 추가.
-const MAX_ENHANCE = 12;
-const ENHANCE_BASE_COST = 20;
-const ENHANCE_COST_GROWTH = 1.28;
-const ENHANCE_DMG_BONUS = 0.12; // 레벨당 공격력 +12%
-const ENHANCE_SELL_REFUND_PER_LEVEL = 10;
-
-function enhanceCost(level: number): number {
-  return Math.round(ENHANCE_BASE_COST * Math.pow(ENHANCE_COST_GROWTH, level));
-}
+// ─── SP 게이지 + 수동 스킬 — 공격할 때마다 충전되고(offensive recovery), 꽉 차면
+// 클릭으로 즉시 발동. 정예화/스킬 마스터리 같은 런 밖 성장은 이번 범위에서 제외 ───
+const SP_MAX = 100;
 
 const WAVE_COUNT = 100;
 const BOSS_WAVE_INTERVAL = 10;
-const SLOT_COUNT = 24; // 블록 6개 × 패드 4개(2x2)
 const BASE_LIVES = 20;
-const SPAWN_INTERVAL_MS = 300; // 450 → 300 (스폰 템포 1.5배)
-const AOE_RADIUS = 46;
-const PROJECTILE_SPEED = 510; // px/sec, 340 → 510 (1.5배)
+const SPAWN_INTERVAL_MS = 500;
+const AOE_RADIUS = 130;
+const PROJECTILE_SPEED = 620;
 const PROJECTILE_HIT_R = 14;
-const WAVE_PREP_MS = 5000; // 웨이브 클리어 후 다음 웨이브까지 정비 시간
+const WAVE_PREP_MS = 5000;
 
 const CANVAS_W = 1300;
 const CANVAS_H = 720;
 
-// ─── 경로 기하 헬퍼 — 웨이포인트 배열만 주면 어떤 모양의 맵이든 동작 ───
-interface Point {
-  x: number;
-  y: number;
+// ─── 타일 그리드 — 경로(path, 근접 블로커 배치 가능) + 고지대(highground, 원거리 전용) ───
+type TileType = "path" | "highground" | "empty";
+interface TileCoord {
+  col: number;
+  row: number;
 }
+const GRID_COLS = 11;
+const GRID_ROWS = 6;
+const TILE = 100;
+const GRID_OFFSET_X = (CANVAS_W - GRID_COLS * TILE) / 2;
+const GRID_OFFSET_Y = (CANVAS_H - GRID_ROWS * TILE) / 2;
 
-function pathTotalLength(path: Point[]): number {
-  let len = 0;
-  for (let i = 1; i < path.length; i++) {
-    len += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
-  }
-  return len;
+function tileKey(col: number, row: number): string {
+  return `${col},${row}`;
 }
-
-function pointAtDistance(path: Point[], dist: number): Point {
-  let remaining = Math.max(0, dist);
-  for (let i = 1; i < path.length; i++) {
-    const a = path[i - 1];
-    const b = path[i];
-    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
-    if (remaining <= segLen || i === path.length - 1) {
-      const t = segLen === 0 ? 0 : Math.min(1, remaining / segLen);
-      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
-    }
-    remaining -= segLen;
-  }
-  return path[path.length - 1];
-}
-
-// "플레이어별 사각 패널 안에 건설 패드 2x2가 뭉쳐있고,
-// 그 패널들 사이 통로로 몬스터가 지나가는" 구조를 그대로 재현 — 블록 6개(3x2 그리드) x 패드 4개.
-const BLOCK_SIZE = 240;
-const PAD_OFFSET = 55; // 블록 중심에서 2x2 패드까지의 거리
-
-interface BlockRect {
-  x: number;
-  y: number;
-  size: number;
-}
-
-function buildBlockSlots(centers: Point[]): Point[] {
-  const slots: Point[] = [];
-  for (const c of centers) {
-    for (const sx of [-1, 1]) {
-      for (const sy of [-1, 1]) {
-        slots.push({ x: c.x + sx * PAD_OFFSET, y: c.y + sy * PAD_OFFSET });
-      }
-    }
-  }
-  return slots;
-}
-
-type DecoShape = "grass" | "ember" | "snow" | "spark";
-
-interface MapTheme {
-  bg: string;
-  tileAlt: string;
-  pathFill: string;
-  pathBorder: string;
-  decoColor: string;
-  decoShape: DecoShape;
-}
-
-interface MapDef {
-  id: string;
-  path: Point[];
-  blocks: BlockRect[];
-  slots: Point[];
-  theme: MapTheme;
-  decorations: Point[];
-}
-
-function scatterDecorations(w: number, h: number, count: number): Point[] {
-  return Array.from({ length: count }, () => ({
-    x: Math.random() * w,
-    y: Math.random() * h,
-  }));
-}
-
-function defineMap(
-  id: string,
-  path: Point[],
-  blockCenters: Point[],
-  theme: MapTheme,
-): MapDef {
+function tileCenter(col: number, row: number): { x: number; y: number } {
   return {
-    id,
-    path,
-    blocks: blockCenters.map((c) => ({ x: c.x, y: c.y, size: BLOCK_SIZE })),
-    slots: buildBlockSlots(blockCenters),
-    theme,
-    decorations: scatterDecorations(CANVAS_W, CANVAS_H, 90),
+    x: GRID_OFFSET_X + col * TILE + TILE / 2,
+    y: GRID_OFFSET_Y + row * TILE + TILE / 2,
   };
 }
 
-// 맵을 하나로 통일 — 3x2 블록 그리드 + 블록 사이 통로를 지그재그로 지나가는 몬스터 진행 경로로 구성
-const MAPS: MapDef[] = [
-  defineMap(
-    "castle",
-    [
-      { x: 0, y: 40 },
-      { x: 465, y: 40 },
-      { x: 465, y: 680 },
-      { x: 835, y: 680 },
-      { x: 835, y: 40 },
-      { x: 1300, y: 40 },
-    ],
-    [
-      { x: 280, y: 200 },
-      { x: 650, y: 200 },
-      { x: 1020, y: 200 },
-      { x: 280, y: 520 },
-      { x: 650, y: 520 },
-      { x: 1020, y: 520 },
-    ],
-    {
-      bg: "#191430",
-      tileAlt: "#1f1a3a",
-      pathFill: "#3a2f52",
-      pathBorder: "#8a6bc4",
-      decoColor: "#c9a6f5",
-      decoShape: "spark",
-    },
-  ),
+// 입구(왼쪽)에서 출구(오른쪽)까지 지그재그로 지나가는 고정 경로
+const PATH_TILES: TileCoord[] = [
+  { col: 0, row: 1 }, { col: 1, row: 1 }, { col: 2, row: 1 }, { col: 3, row: 1 }, { col: 4, row: 1 }, { col: 5, row: 1 },
+  { col: 5, row: 2 }, { col: 5, row: 3 }, { col: 5, row: 4 },
+  { col: 6, row: 4 }, { col: 7, row: 4 }, { col: 8, row: 4 }, { col: 9, row: 4 },
+  { col: 9, row: 3 }, { col: 9, row: 2 }, { col: 9, row: 1 },
+  { col: 10, row: 1 },
 ];
+
+// 경로 타일에 인접한 칸을 자동으로 "고지대"로 지정 — 맵을 손으로 한 칸씩 안 그려도 됨
+function buildTileGrid(): Map<string, TileType> {
+  const grid = new Map<string, TileType>();
+  const pathSet = new Set(PATH_TILES.map((p) => tileKey(p.col, p.row)));
+  for (const k of pathSet) grid.set(k, "path");
+  for (const p of PATH_TILES) {
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nc = p.col + dc;
+      const nr = p.row + dr;
+      if (nc < 0 || nc >= GRID_COLS || nr < 0 || nr >= GRID_ROWS) continue;
+      const nk = tileKey(nc, nr);
+      if (!pathSet.has(nk) && grid.get(nk) !== "path") grid.set(nk, "highground");
+    }
+  }
+  return grid;
+}
+const TILE_GRID = buildTileGrid();
 
 interface TowerDef {
   characterId: number;
   archetype: Archetype;
   rarity: string;
 }
-interface TowerInstance extends TowerDef {
-  slotIndex: number;
+interface Operator extends TowerDef {
+  tileKey: string;
+  hp: number;
+  maxHp: number;
   lastAttackAt: number;
-  enhanceLevel: number;
+  sp: number;
+  blockedEnemyIds: number[];
+  shieldUntil: number; // 수호자 스킬(피해 감소) 등 임시 버프 만료 시각
+  hitFlashUntil: number; // 피격 시 DOM 테두리 플래시 만료 시각
+  deployedAt: number; // 배치 등장 애니메이션용
 }
 interface Enemy {
   id: number;
-  dist: number;
+  pathIdx: number; // 현재 위치한 PATH_TILES 인덱스
+  moveT: number; // 다음 타일로의 진행률(0~1), 블로킹되면 0에서 멈춤
+  blockedByTileKey: string | null;
   hp: number;
   maxHp: number;
-  speed: number;
+  speed: number; // px/sec
+  atk: number;
+  atkIntervalMs: number;
+  lastAttackAt: number;
+  def: number;
+  res: number;
   isBoss: boolean;
   element: Element;
   dotUntil: number;
   dotDmgPerTick: number;
   flinchUntil: number;
+  slowUntil: number;
 }
 interface HitFx {
   x: number;
   y: number;
   color: string;
   element: Element;
+  createdAt: number;
+}
+interface Spark {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  createdAt: number;
+}
+interface DamageText {
+  x: number;
+  y: number;
+  value: number;
+  color: string;
+  weak: boolean;
+  trueDmg: boolean;
   createdAt: number;
 }
 interface Projectile {
@@ -398,26 +327,29 @@ interface Projectile {
   targetId: number;
   damage: number;
   pattern: Pattern;
+  dmgType: DmgType;
   element: Element;
 }
 
 interface GameState {
-  mapId: string;
   wave: number;
   wavesCompleted: number;
   waveElement: Element;
   lives: number;
-  gold: number;
-  selectTokens: number;
+  dp: number;
+  dpAccum: number; // 초당 회복량 누적용 (정수 DP만 실제로 씀)
   kills: number;
-  slots: (TowerInstance | null)[];
+  operators: Map<string, Operator>; // key: tileKey
+  tileCooldowns: Map<string, number>; // key: tileKey, value: 재배치 가능 시각
   enemies: Enemy[];
   projectiles: Projectile[];
   hitFx: HitFx[];
+  sparks: Spark[];
+  dmgTexts: DamageText[];
   shakeUntil: number;
   nextEnemyId: number;
   nextProjectileId: number;
-  spawnQueue: { hp: number; speed: number; isBoss: boolean }[];
+  spawnQueue: { hp: number; speed: number; atk: number; def: number; res: number; isBoss: boolean }[];
   spawnTimer: number;
   waveActive: boolean;
   waveClearedAt: number | null;
@@ -425,20 +357,22 @@ interface GameState {
   won: boolean;
 }
 
-function freshGameState(mapId: string): GameState {
+function freshGameState(): GameState {
   return {
-    mapId,
     wave: 0,
     wavesCompleted: 0,
     waveElement: "fire",
     lives: BASE_LIVES,
-    gold: STARTING_GOLD,
-    selectTokens: 0,
+    dp: DP_START,
+    dpAccum: 0,
     kills: 0,
-    slots: Array(SLOT_COUNT).fill(null),
+    operators: new Map(),
+    tileCooldowns: new Map(),
     enemies: [],
     projectiles: [],
     hitFx: [],
+    sparks: [],
+    dmgTexts: [],
     shakeUntil: 0,
     nextEnemyId: 1,
     nextProjectileId: 1,
@@ -451,52 +385,59 @@ function freshGameState(mapId: string): GameState {
   };
 }
 
-// 100라운드까지 버텨야 하므로 초반은 완만하다가 후반으로 갈수록 급격히 세지는 곡선(선형×지수 복합).
-// 적 마릿수는 30라운드 이후 늘리지 않고 체력/속도로만 난이도를 올려 후반 웨이브가 과도하게 늘어지지 않게 한다.
+// 100라운드까지 버텨야 하므로 초반은 완만하다가 후반으로 갈수록 급격히 세지는 곡선.
+// def/res는 방어형이 아닌 딜러를 계속 쓰면 후반에 데미지가 안 박히도록 만드는 축 —
+// 물리(def, 고정 경감)와 마법(res, %경감)을 둘 다 올려서 한 속성만 파면 손해 보게 한다.
 function buildWaveSpawns(
   wave: number,
-): { hp: number; speed: number; isBoss: boolean }[] {
+): { hp: number; speed: number; atk: number; def: number; res: number; isBoss: boolean }[] {
   const count = 5 + Math.min(wave, 30);
   const hp = 18 * (1 + wave * 0.05) * Math.pow(1.025, wave);
-  const speed = (32 + wave * 1.5) * 2.2; // 여전히 느리다는 피드백 반영, 1.5배 → 2.2배로 재상향
-  const spawns = Array.from({ length: count }, () => ({
-    hp,
-    speed,
-    isBoss: false,
-  }));
+  const speed = (32 + wave * 1.5) * 2.2;
+  const atk = 4 + wave * 0.4;
+  const def = 2 + wave * 0.3;
+  const res = Math.min(0.45, 0.05 + wave * 0.0035);
+  const spawns = Array.from({ length: count }, () => ({ hp, speed, atk, def, res, isBoss: false }));
   if (wave % BOSS_WAVE_INTERVAL === 0) {
-    spawns.push({ hp: hp * 8, speed: speed * 0.7, isBoss: true });
+    spawns.push({ hp: hp * 8, speed: speed * 0.7, atk: atk * 2, def: def * 1.5, res: Math.min(0.6, res + 0.1), isBoss: true });
   }
   return spawns;
 }
 
-// 지정된 등급들 중에서만 균등 랜덤 — 빈 슬롯 클릭(최하등급 전용)과 보스 보상(상위등급 전용) 둘 다 재사용
-function randomTowerByRarities(
-  pool: TowerDef[],
-  rarities: string[],
-): TowerDef | null {
+function randomTowerByRarities(pool: TowerDef[], rarities: string[]): TowerDef | null {
   const candidates = pool.filter((t) => rarities.includes(t.rarity));
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-function instantiateTower(def: TowerDef, slotIndex: number): TowerInstance {
-  return { ...def, slotIndex, lastAttackAt: 0, enhanceLevel: 0 };
+function instantiateOperator(def: TowerDef, tileKey: string): Operator {
+  const hp = ARCHETYPE_STATS[def.archetype].hp * RARITY_POWER_MULT[def.rarity];
+  return {
+    ...def,
+    tileKey,
+    hp,
+    maxHp: hp,
+    lastAttackAt: 0,
+    sp: 0,
+    blockedEnemyIds: [],
+    shieldUntil: 0,
+    hitFlashUntil: 0,
+    deployedAt: performance.now(),
+  };
 }
 
-// 필드에서 "같은 등급"이 2개 이상인 슬롯들을 모두 찾는다 (합성 대상 하이라이트/활성화용) —
-// 캐릭터 종류는 안 따진다: 같은 rarity면 무엇이든 합성 재료가 될 수 있다.
-function findMergeableSlots(slots: (TowerInstance | null)[]): Set<number> {
-  const groups = new Map<string, number[]>();
-  slots.forEach((s, idx) => {
-    if (!s || !nextRarity(s.rarity)) return;
-    const arr = groups.get(s.rarity) ?? [];
-    arr.push(idx);
-    groups.set(s.rarity, arr);
-  });
-  const result = new Set<number>();
+// 필드에서 "같은 등급"이 2개 이상 배치돼 있으면 합성 가능 (캐릭터 종류는 무관)
+function findMergeableTiles(operators: Map<string, Operator>): Set<string> {
+  const groups = new Map<string, string[]>();
+  for (const [key, op] of operators) {
+    if (!nextRarity(op.rarity)) continue;
+    const arr = groups.get(op.rarity) ?? [];
+    arr.push(key);
+    groups.set(op.rarity, arr);
+  }
+  const result = new Set<string>();
   for (const arr of groups.values()) {
-    if (arr.length >= 2) arr.forEach((i) => result.add(i));
+    if (arr.length >= 2) arr.forEach((k) => result.add(k));
   }
   return result;
 }
@@ -508,24 +449,19 @@ interface RankingEntry {
   bestWave: number;
   characterId: number | null;
 }
-
 const RANK_COLOR: Record<number, string> = {
   1: "#f5c542",
   2: "#c7ced8",
   3: "#c98a4e",
 };
 
-// 하단 액션 패널에서 선택하는 모드 — 선택 후 게임 화면(캔버스 오버레이 슬롯)을 클릭해 대상에 적용한다
-type ActionMode = "place" | "selectPlace" | "enhance" | "sell" | "merge";
+type ActionMode = "deploy" | "retreat" | "merge";
 const ACTION_MODE_RING: Record<ActionMode, string> = {
-  place: "ring-emerald-400",
-  selectPlace: "ring-emerald-400",
-  enhance: "ring-sky-400",
-  sell: "ring-rose-400",
+  deploy: "ring-emerald-400",
+  retreat: "ring-rose-400",
   merge: "ring-fuchsia-400",
 };
 
-// 로비 배경 장식 — 인게임 맵 테마("밤의 성채" 보라색 반짝임)와 통일감을 주기 위한 고정 좌표 반짝임
 const LOBBY_SPARKLES = Array.from({ length: 16 }, (_, i) => ({
   left: `${(i * 37) % 100}%`,
   top: `${(i * 53) % 100}%`,
@@ -537,9 +473,7 @@ export default function TowerDefensePage() {
   const { t, lang } = useLang();
   const { refreshRewards } = useAppData();
 
-  const [phase, setPhase] = useState<
-    "loading" | "lobby" | "playing" | "result"
-  >("loading");
+  const [phase, setPhase] = useState<"loading" | "lobby" | "playing" | "result">("loading");
   const [attemptsLeft, setAttemptsLeft] = useState(0);
   const [bestWave, setBestWave] = useState(0);
   const [towerPool, setTowerPool] = useState<TowerDef[]>([]);
@@ -550,42 +484,32 @@ export default function TowerDefensePage() {
 
   const [hudWave, setHudWave] = useState(1);
   const [hudLives, setHudLives] = useState(BASE_LIVES);
-  const [hudGold, setHudGold] = useState(STARTING_GOLD);
-  const [hudTokens, setHudTokens] = useState(0);
+  const [hudDp, setHudDp] = useState(DP_START);
   const [hudKills, setHudKills] = useState(0);
+  const [hudEnemiesLeft, setHudEnemiesLeft] = useState(0);
   const [hudPrepLeft, setHudPrepLeft] = useState(0);
   const [hudSpeed, setHudSpeed] = useState(1);
-  const [tokenGainFlash, setTokenGainFlash] = useState(false);
+  const [dpGainFlash, setDpGainFlash] = useState(false);
   const [bossWarning, setBossWarning] = useState(false);
   const [waveElement, setWaveElement] = useState<Element>("fire");
-  const [goldWarning, setGoldWarning] = useState(false);
-  const [tokenWarning, setTokenWarning] = useState(false);
-  const [slotsVersion, setSlotsVersion] = useState(0);
-  const [mergeFlash, setMergeFlash] = useState<number | null>(null);
+  const [dpWarning, setDpWarning] = useState(false);
+  const [opsVersion, setOpsVersion] = useState(0);
+  const [actionFlash, setActionFlash] = useState<string | null>(null);
 
   const [actionMode, setActionMode] = useState<ActionMode | null>(null);
-  const [selectPlaceTarget, setSelectPlaceTarget] = useState<number | null>(
-    null,
-  );
-  const [selectPlaceChoices, setSelectPlaceChoices] = useState<TowerDef[]>(
-    [],
-  );
+  const [deployTarget, setDeployTarget] = useState<string | null>(null);
+  const [deployChoices, setDeployChoices] = useState<TowerDef[]>([]);
 
-  const [result, setResult] = useState<{
-    wavesCleared: number;
-    isNewRecord: boolean;
-    kpEarned: number;
-  } | null>(null);
+  const [result, setResult] = useState<{ wavesCleared: number; isNewRecord: boolean; kpEarned: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
-  const gRef = useRef<GameState>(freshGameState(MAPS[0].id));
+  const gRef = useRef<GameState>(freshGameState());
   const speedMultiplierRef = useRef(1);
 
   // 모바일 대응 — 보드는 내부적으로 항상 CANVAS_W x CANVAS_H 해상도로 그리고,
-  // 화면 폭에 맞춰 CSS transform으로만 축소한다 (그려지는 좌표 로직은 그대로 유지).
-  // 너무 작은 화면에서 슬롯이 탭 하기 힘들 정도로 쪼그라들지 않도록 최소 배율은 둔다.
+  // 화면 폭에 맞춰 CSS transform으로만 축소한다.
   const BOARD_MIN_SCALE = 0.5;
   const boardWrapRef = useRef<HTMLDivElement>(null);
   const [boardScale, setBoardScale] = useState(1);
@@ -593,10 +517,7 @@ export default function TowerDefensePage() {
     const el = boardWrapRef.current;
     if (!el) return;
     const update = () => {
-      const scale = Math.max(
-        BOARD_MIN_SCALE,
-        Math.min(1, el.clientWidth / CANVAS_W),
-      );
+      const scale = Math.max(BOARD_MIN_SCALE, Math.min(1, el.clientWidth / CANVAS_W));
       setBoardScale(scale);
     };
     update();
@@ -606,16 +527,12 @@ export default function TowerDefensePage() {
   }, []);
 
   const charById = (id: number) => CHARACTERS.find((c) => c.id === id);
-  const currentMap = MAPS[0];
 
   const loadSummary = () => {
     api
-      .get<{
-        attemptsLeft: number;
-        bestWave: number;
-        towerPool: TowerDef[];
-        waveCount: number;
-      }>("/tower-defense/summary")
+      .get<{ attemptsLeft: number; bestWave: number; towerPool: TowerDef[]; waveCount: number }>(
+        "/tower-defense/summary",
+      )
       .then((s) => {
         setAttemptsLeft(s.attemptsLeft);
         setBestWave(s.bestWave);
@@ -635,17 +552,11 @@ export default function TowerDefensePage() {
     };
   }, []);
 
-  // 하단 액션 패널 단축키 — 1~5로 모드 전환, Esc로 취소
+  // 하단 액션 패널 단축키 — 1~3으로 모드 전환, Esc로 취소
   useEffect(() => {
     if (phase !== "playing") return;
     const handler = (e: KeyboardEvent) => {
-      const modeByKey: Record<string, ActionMode> = {
-        "1": "place",
-        "2": "selectPlace",
-        "3": "enhance",
-        "4": "sell",
-        "5": "merge",
-      };
+      const modeByKey: Record<string, ActionMode> = { "1": "deploy", "2": "retreat", "3": "merge" };
       const mode = modeByKey[e.key];
       if (mode) {
         setActionMode((prev) => (prev === mode ? null : mode));
@@ -666,36 +577,29 @@ export default function TowerDefensePage() {
   const openRankings = () => {
     setShowRankings(true);
     if (!rankings) {
-      api
-        .get<RankingEntry[]>("/tower-defense/rankings")
-        .then(setRankings)
-        .catch(() => setRankings([]));
+      api.get<RankingEntry[]>("/tower-defense/rankings").then(setRankings).catch(() => setRankings([]));
     }
   };
 
   const handleStart = async () => {
     setError(null);
     try {
-      await api.post<{ ok: boolean; attemptsLeft: number }>(
-        "/tower-defense/start",
-      );
-      gRef.current = freshGameState(MAPS[0].id);
+      await api.post<{ ok: boolean; attemptsLeft: number }>("/tower-defense/start");
+      gRef.current = freshGameState();
       gRef.current.wave = 1;
-      gRef.current.waveElement =
-        WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
+      gRef.current.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
       gRef.current.spawnQueue = buildWaveSpawns(1);
       gRef.current.waveActive = true;
       setHudWave(1);
       setHudLives(BASE_LIVES);
-      setHudGold(STARTING_GOLD);
-      setHudTokens(0);
+      setHudDp(DP_START);
       setHudKills(0);
       setHudPrepLeft(0);
       speedMultiplierRef.current = 1;
       setHudSpeed(1);
       setBossWarning(false);
       setWaveElement(gRef.current.waveElement);
-      setSlotsVersion((v) => v + 1);
+      setOpsVersion((v) => v + 1);
       setPhase("playing");
       startLoop();
     } catch (e) {
@@ -713,37 +617,25 @@ export default function TowerDefensePage() {
     }
     setSubmitting(true);
     api
-      .post<{
-        wavesCleared: number;
-        isNewRecord: boolean;
-        bestWave: number;
-        kpEarned: number;
-      }>("/tower-defense/submit", { wavesCleared: g.wavesCompleted })
+      .post<{ wavesCleared: number; isNewRecord: boolean; bestWave: number; kpEarned: number }>(
+        "/tower-defense/submit",
+        { wavesCleared: g.wavesCompleted },
+      )
       .then((res) => {
-        setResult({
-          wavesCleared: res.wavesCleared,
-          isNewRecord: res.isNewRecord,
-          kpEarned: res.kpEarned,
-        });
+        setResult({ wavesCleared: res.wavesCleared, isNewRecord: res.isNewRecord, kpEarned: res.kpEarned });
         setBestWave(res.bestWave);
-        if (res.isNewRecord) setRankings(null); // 순위 갱신됐을 수 있으니 다음에 다시 불러오게
+        if (res.isNewRecord) setRankings(null);
         if (res.kpEarned > 0) void refreshRewards();
         setPhase("result");
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : String(e));
         setPhase("result");
-        setResult({
-          wavesCleared: g.wavesCompleted,
-          isNewRecord: false,
-          kpEarned: 0,
-        });
+        setResult({ wavesCleared: g.wavesCompleted, isNewRecord: false, kpEarned: 0 });
       })
       .finally(() => setSubmitting(false));
   };
 
-  // 2배속 토글이 게임 내 모든 시간 기반 로직(이동/공격쿨/이펙트/웨이브 전환 대기)에 일관되게
-  // 적용되도록, 실시간이 아니라 배속이 곱해진 "가상 시계"를 tick/draw 양쪽에 동일하게 넘긴다.
   const startLoop = () => {
     let last = performance.now();
     let virtualNow = last;
@@ -761,11 +653,44 @@ export default function TowerDefensePage() {
     rafRef.current = requestAnimationFrame(loop);
   };
 
+  // 물리(def, 고정 경감) / 마법(res, %경감) / 고정피해(true, 무시) — 아키타입별 dmgType에 따라
+  // 적의 방어 스탯을 다르게 적용한다. 한 속성만 밀어붙이면 후반에 안 통하게 만드는 축.
+  const applyMitigation = (raw: number, dmgType: DmgType, enemy: Enemy): number => {
+    if (dmgType === "physical") return Math.max(1, raw - enemy.def);
+    if (dmgType === "magic") return raw * (1 - enemy.res);
+    return raw; // true
+  };
+
+  // 타격 피드백 — 데미지 숫자 팝업 + 스파크 파티클을 한 번에 생성 (오퍼레이터 공격/스킬/역공 공용)
+  const spawnHitFeedback = (
+    g: GameState,
+    x: number,
+    y: number,
+    value: number,
+    color: string,
+    now: number,
+    opts?: { weak?: boolean; trueDmg?: boolean },
+  ) => {
+    g.dmgTexts.push({ x, y, value: Math.round(value), color, weak: !!opts?.weak, trueDmg: !!opts?.trueDmg, createdAt: now });
+    const count = 5 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 120;
+      g.sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color, createdAt: now });
+    }
+  };
+
   const tick = (dt: number, now: number) => {
     const g = gRef.current;
     if (g.gameOver) return;
-    const map = MAPS.find((m) => m.id === g.mapId) ?? MAPS[0];
-    const totalLen = pathTotalLength(map.path);
+
+    // DP 실시간 회복
+    g.dpAccum += (DP_REGEN_PER_SEC * dt) / 1000;
+    while (g.dpAccum >= 1 && g.dp < DP_MAX) {
+      g.dp += 1;
+      g.dpAccum -= 1;
+    }
+    if (g.dp > DP_MAX) g.dp = DP_MAX;
 
     // 웨이브 스폰
     if (g.spawnQueue.length > 0) {
@@ -774,111 +699,170 @@ export default function TowerDefensePage() {
         const spec = g.spawnQueue.shift()!;
         g.enemies.push({
           id: g.nextEnemyId++,
-          dist: 0,
+          pathIdx: 0,
+          moveT: 0,
+          blockedByTileKey: null,
           hp: spec.hp,
           maxHp: spec.hp,
           speed: spec.speed,
+          atk: spec.atk,
+          atkIntervalMs: 700,
+          lastAttackAt: 0,
+          def: spec.def,
+          res: spec.res,
           isBoss: spec.isBoss,
           element: g.waveElement,
           dotUntil: 0,
           dotDmgPerTick: 0,
           flinchUntil: 0,
+          slowUntil: 0,
         });
         g.spawnTimer = SPAWN_INTERVAL_MS;
       }
     }
 
-    // 적 이동 + 도트뎀지 + 도달 판정
-    g.enemies = g.enemies.filter((e) => {
-      e.dist += (e.speed * dt) / 1000;
+    // ─── 적 이동 + 블로킹 판정 ───
+    for (const e of g.enemies) {
       if (e.dotUntil > now) e.hp -= (e.dotDmgPerTick * dt) / 1000;
-      if (e.hp <= 0) {
-        g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
-        g.kills += 1;
-        if (e.isBoss) g.selectTokens += 1;
-        return false;
-      }
-      if (e.dist >= totalLen) {
-        g.lives -= e.isBoss ? 3 : 1;
-        return false;
-      }
-      return true;
-    });
+      if (e.hp <= 0) continue;
 
-    // 타워 공격
-    for (const tower of g.slots) {
-      if (!tower) continue;
-      const stats = ARCHETYPE_STATS[tower.archetype];
-      if (now - tower.lastAttackAt < stats.atkSpeedMs) continue;
-      const pos = map.slots[tower.slotIndex];
-      let nearest: Enemy | null = null;
-      let nearestDist = Infinity;
-      for (const e of g.enemies) {
-        const ep = pointAtDistance(map.path, e.dist);
-        const dx = ep.x - pos.x;
-        const dy = ep.y - pos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= stats.range && dist < nearestDist) {
-          nearest = e;
-          nearestDist = dist;
+      if (e.blockedByTileKey) {
+        // 블로킹된 적은 이동하지 않고 자기 공격 주기에 맞춰 블로커를 공격
+        const blocker = g.operators.get(e.blockedByTileKey);
+        if (!blocker) {
+          e.blockedByTileKey = null; // 블로커가 사라졌으면(전사/철수) 풀어줌
+        } else if (now - e.lastAttackAt >= e.atkIntervalMs) {
+          e.lastAttackAt = now;
+          const shielded = now < blocker.shieldUntil;
+          const dmgToBlocker = shielded ? e.atk * 0.4 : e.atk; // 수호자 스킬 방어막 중엔 40%만
+          blocker.hp -= dmgToBlocker;
+          blocker.hitFlashUntil = now + 160;
+          const bp = tileCenter(...(e.blockedByTileKey.split(",").map(Number) as [number, number]));
+          spawnHitFeedback(g, bp.x, bp.y - 20, dmgToBlocker, shielded ? "#60a5fa" : "#f87171", now);
+        }
+        continue;
+      }
+
+      const speedMult = now < e.slowUntil ? 0.5 : 1;
+      const tileTimeMs = (TILE / (e.speed * speedMult)) * 1000;
+      e.moveT += dt / tileTimeMs;
+      if (e.moveT >= 1) {
+        e.moveT = 0;
+        e.pathIdx += 1;
+        if (e.pathIdx >= PATH_TILES.length - 1) {
+          e.pathIdx = PATH_TILES.length - 1;
+          g.lives -= e.isBoss ? 3 : 1;
+          e.hp = 0; // 도달한 적은 제거 대상으로 표시
+          continue;
+        }
+        const nextTile = PATH_TILES[e.pathIdx];
+        const nextKey = tileKey(nextTile.col, nextTile.row);
+        const blocker = g.operators.get(nextKey);
+        if (blocker && blocker.blockedEnemyIds.length < ARCHETYPE_STATS[blocker.archetype].blockCount) {
+          blocker.blockedEnemyIds.push(e.id);
+          e.blockedByTileKey = nextKey;
         }
       }
-      if (!nearest) continue;
-      tower.lastAttackAt = now;
-      const dmg =
-        stats.damage *
-        RARITY_POWER_MULT[tower.rarity] *
-        (1 + tower.enhanceLevel * ENHANCE_DMG_BONUS);
+    }
+    g.enemies = g.enemies.filter((e) => {
+      if (e.hp > 0) return true;
+      if (e.pathIdx >= PATH_TILES.length - 1 && e.moveT === 0 && e.blockedByTileKey === null) {
+        // 이미 위에서 lives 처리된 도달 케이스는 그대로 제거
+      } else {
+        g.dp = Math.min(DP_MAX, g.dp + (e.isBoss ? BOSS_DP_BONUS : 0));
+        g.kills += 1;
+      }
+      for (const op of g.operators.values()) {
+        op.blockedEnemyIds = op.blockedEnemyIds.filter((id) => id !== e.id);
+      }
+      return false;
+    });
+
+    // ─── 오퍼레이터 공격 (근접 블로커는 자기가 막은 적만, 원거리는 사거리 내 최근접) ───
+    for (const [key, op] of g.operators) {
+      if (op.hp <= 0) continue;
+      const stats = ARCHETYPE_STATS[op.archetype];
+      if (now - op.lastAttackAt < stats.atkSpeedMs) continue;
+      const pos = tileCenter(...(key.split(",").map(Number) as [number, number]));
+
+      let target: Enemy | null = null;
+      if (stats.isBlocker) {
+        target = g.enemies.find((e) => op.blockedEnemyIds.includes(e.id)) ?? null;
+      } else {
+        let nearestDist = Infinity;
+        for (const e of g.enemies) {
+          const ep = enemyPos(e);
+          const dist = Math.hypot(ep.x - pos.x, ep.y - pos.y);
+          if (dist <= stats.range && dist < nearestDist) {
+            target = e;
+            nearestDist = dist;
+          }
+        }
+      }
+      if (!target) continue;
+      op.lastAttackAt = now;
+      op.sp = Math.min(SP_MAX, op.sp + stats.spPerAttack);
+      const dmg = stats.damage * RARITY_POWER_MULT[op.rarity];
       g.projectiles.push({
         id: g.nextProjectileId++,
         x: pos.x,
         y: pos.y,
-        targetId: nearest.id,
+        targetId: target.id,
         damage: dmg,
         pattern: stats.pattern,
-        element: ARCH_ELEMENT[tower.archetype],
+        dmgType: stats.dmgType,
+        element: ARCH_ELEMENT[op.archetype],
       });
     }
 
-    // 투사체 이동 + 충돌 (원소 상성 보너스 적용)
+    // 오퍼레이터 전사 처리
+    for (const [key, op] of g.operators) {
+      if (op.hp <= 0) {
+        for (const eid of op.blockedEnemyIds) {
+          const e = g.enemies.find((en) => en.id === eid);
+          if (e) e.blockedByTileKey = null;
+        }
+        g.operators.delete(key);
+        g.tileCooldowns.set(key, now + DEATH_COOLDOWN_MS);
+        setOpsVersion((v) => v + 1);
+      }
+    }
+
+    // 투사체 이동 + 충돌
     g.projectiles = g.projectiles.filter((p) => {
       const target = g.enemies.find((e) => e.id === p.targetId);
       if (!target) return false;
-      const tp = pointAtDistance(map.path, target.dist);
+      const tp = enemyPos(target);
       const dx = tp.x - p.x;
       const dy = tp.y - p.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= PROJECTILE_HIT_R) {
-        const elemMult =
-          ELEMENT_ADVANTAGE[p.element] === target.element ? ELEMENT_BONUS : 1;
-        const dmg = p.damage * elemMult;
+        const weak = ELEMENT_ADVANTAGE[p.element] === target.element;
+        const elemMult = weak ? ELEMENT_BONUS : 1;
+        const dmg = applyMitigation(p.damage * elemMult, p.dmgType, target);
         target.flinchUntil = now + 110;
-        g.hitFx.push({
-          x: tp.x,
-          y: tp.y,
-          color: ELEMENT_COLOR[p.element],
-          element: p.element,
-          createdAt: now,
-        });
+        g.hitFx.push({ x: tp.x, y: tp.y, color: ELEMENT_COLOR[p.element], element: p.element, createdAt: now });
         if (target.isBoss) g.shakeUntil = now + 140;
         if (p.pattern === "aoe") {
           for (const e of g.enemies) {
-            const ep = pointAtDistance(map.path, e.dist);
-            const ddx = ep.x - tp.x;
-            const ddy = ep.y - tp.y;
-            if (Math.sqrt(ddx * ddx + ddy * ddy) <= AOE_RADIUS) {
-              const em =
-                ELEMENT_ADVANTAGE[p.element] === e.element ? ELEMENT_BONUS : 1;
-              e.hp -= p.damage * em;
+            const ep = enemyPos(e);
+            if (Math.hypot(ep.x - tp.x, ep.y - tp.y) <= AOE_RADIUS) {
+              const em = ELEMENT_ADVANTAGE[p.element] === e.element ? ELEMENT_BONUS : 1;
+              const aoeDmg = applyMitigation(p.damage * em, p.dmgType, e);
+              e.hp -= aoeDmg;
               e.flinchUntil = now + 110;
+              spawnHitFeedback(g, ep.x, ep.y - 16, aoeDmg, ELEMENT_COLOR[p.element], now, { weak: em > 1, trueDmg: p.dmgType === "true" });
             }
           }
         } else if (p.pattern === "dot") {
-          target.hp -= dmg * 0.4;
+          const tick0 = dmg * 0.4;
+          target.hp -= tick0;
           target.dotUntil = now + 2500;
           target.dotDmgPerTick = dmg * 0.3;
+          spawnHitFeedback(g, tp.x, tp.y - 16, tick0, ELEMENT_COLOR[p.element], now, { weak, trueDmg: true });
         } else {
           target.hp -= dmg;
+          spawnHitFeedback(g, tp.x, tp.y - 16, dmg, ELEMENT_COLOR[p.element], now, { weak, trueDmg: p.dmgType === "true" });
         }
         return false;
       }
@@ -889,19 +873,35 @@ export default function TowerDefensePage() {
     });
     g.enemies = g.enemies.filter((e) => {
       if (e.hp > 0) return true;
-      g.gold += e.isBoss ? BOSS_KILL_GOLD : KILL_GOLD;
+      g.dp = Math.min(DP_MAX, g.dp + (e.isBoss ? BOSS_DP_BONUS : 0));
       g.kills += 1;
-      if (e.isBoss) g.selectTokens += 1;
+      for (const op of g.operators.values()) {
+        op.blockedEnemyIds = op.blockedEnemyIds.filter((id) => id !== e.id);
+      }
+      const dp = enemyPos(e);
+      const burst = e.isBoss ? 18 : 8;
+      for (let i = 0; i < burst; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 160;
+        g.sparks.push({ x: dp.x, y: dp.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color: ELEMENT_COLOR[e.element], createdAt: now });
+      }
       return false;
     });
     g.hitFx = g.hitFx.filter((fx) => now - fx.createdAt < 260);
+    for (const s of g.sparks) {
+      s.x += (s.vx * dt) / 1000;
+      s.y += (s.vy * dt) / 1000;
+      s.vx *= 0.92;
+      s.vy *= 0.92;
+    }
+    g.sparks = g.sparks.filter((s) => now - s.createdAt < 420);
+    g.dmgTexts = g.dmgTexts.filter((d) => now - d.createdAt < 700);
 
     if (g.lives <= 0) {
       finishGame(false);
       return;
     }
 
-    // 웨이브 클리어 판정
     if (g.waveActive && g.spawnQueue.length === 0 && g.enemies.length === 0) {
       g.waveActive = false;
       g.wavesCompleted = g.wave;
@@ -917,8 +917,7 @@ export default function TowerDefensePage() {
           return;
         }
         g.wave += 1;
-        g.waveElement =
-          WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
+        g.waveElement = WAVE_ELEMENTS[Math.floor(Math.random() * WAVE_ELEMENTS.length)];
         g.spawnQueue = buildWaveSpawns(g.wave);
         g.waveActive = true;
         setHudWave(g.wave);
@@ -931,17 +930,31 @@ export default function TowerDefensePage() {
     }
 
     setHudLives((prev) => (prev !== g.lives ? g.lives : prev));
-    setHudGold((prev) => (prev !== g.gold ? g.gold : prev));
     setHudKills((prev) => (prev !== g.kills ? g.kills : prev));
-    setHudTokens((prev) => {
-      if (g.selectTokens === prev) return prev;
-      if (g.selectTokens > prev) {
-        setTokenGainFlash(true);
-        setTimeout(() => setTokenGainFlash(false), 1800);
+    const enemiesLeft = g.spawnQueue.length + g.enemies.length;
+    setHudEnemiesLeft((prev) => (prev !== enemiesLeft ? enemiesLeft : prev));
+    setHudDp((prev) => {
+      const cur = Math.floor(g.dp);
+      if (cur === prev) return prev;
+      if (cur > prev) {
+        setDpGainFlash(true);
+        setTimeout(() => setDpGainFlash(false), 500);
       }
-      return g.selectTokens;
+      return cur;
     });
   };
+
+  // 적의 현재 픽셀 위치 — 블로킹 중이면 블로커가 서있는 타일 중심에 고정, 아니면 두 타일 사이 보간
+  function enemyPos(e: Enemy): { x: number; y: number } {
+    const cur = PATH_TILES[e.pathIdx];
+    if (e.blockedByTileKey || e.pathIdx >= PATH_TILES.length - 1) {
+      return tileCenter(cur.col, cur.row);
+    }
+    const nxt = PATH_TILES[e.pathIdx + 1];
+    const a = tileCenter(cur.col, cur.row);
+    const b = tileCenter(nxt.col, nxt.row);
+    return { x: a.x + (b.x - a.x) * e.moveT, y: a.y + (b.y - a.y) * e.moveT };
+  }
 
   const draw = (now: number) => {
     const canvas = canvasRef.current;
@@ -949,312 +962,395 @@ export default function TowerDefensePage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const g = gRef.current;
-    const map = MAPS.find((m) => m.id === g.mapId) ?? MAPS[0];
-    const theme = map.theme;
 
     ctx.save();
     if (now < g.shakeUntil) {
       ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     }
-
     ctx.clearRect(-8, -8, CANVAS_W + 16, CANVAS_H + 16);
     ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = "#0d0a17";
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // 타일 그리드 배경 — CC0 던전 바닥 텍스처(색조는 테마에 맞춰 미리 보정)를 체크무늬로 타일링
-    const TILE = 65;
-    for (let ty = -TILE; ty < CANVAS_H + TILE; ty += TILE) {
-      for (let tx = -TILE; tx < CANVAS_W + TILE; tx += TILE) {
-        const alt = (Math.round(tx / TILE) + Math.round(ty / TILE)) % 2 === 0;
-        drawIfLoaded(ctx, alt ? FLOOR_BG_IMG : FLOOR_ALT_IMG, tx, ty, TILE, TILE);
+    // 배틀필드 바깥 은은한 보라 글로우 프레임 — 여러 겹 stroke로 발광 효과를 흉내낸다
+    const gridW = GRID_COLS * TILE;
+    const gridH = GRID_ROWS * TILE;
+    for (let i = 4; i >= 0; i--) {
+      ctx.strokeStyle = `rgba(201, 166, 245, ${0.05 + i * 0.02})`;
+      ctx.lineWidth = 2 + i * 2.5;
+      ctx.strokeRect(GRID_OFFSET_X - 6, GRID_OFFSET_Y - 6, gridW + 12, gridH + 12);
+    }
+
+    // 그리드 타일 — path는 바닥 텍스처 체크무늬 + 흐름 화살표, highground는 같은 텍스처 위에
+    // 채도 높은 하이라이트+명암을 얹어 "한 단 높은 지형"처럼 보이게 한다. empty는 배경만.
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        const type = TILE_GRID.get(tileKey(col, row));
+        if (!type) continue;
+        const x = GRID_OFFSET_X + col * TILE;
+        const y = GRID_OFFSET_Y + row * TILE;
+        const alt = (col + row) % 2 === 0;
+        drawIfLoaded(ctx, alt ? FLOOR_BG_IMG : FLOOR_ALT_IMG, x, y, TILE, TILE);
+        if (type === "highground") {
+          const grad = ctx.createLinearGradient(x, y, x, y + TILE);
+          grad.addColorStop(0, "rgba(201, 166, 245, 0.22)");
+          grad.addColorStop(1, "rgba(30, 20, 50, 0.22)");
+          ctx.fillStyle = grad;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = "rgba(255,255,255,0.22)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x + 2, y + TILE - 2);
+          ctx.lineTo(x + 2, y + 2);
+          ctx.lineTo(x + TILE - 2, y + 2);
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(0,0,0,0.28)";
+          ctx.beginPath();
+          ctx.moveTo(x + TILE - 2, y + 2);
+          ctx.lineTo(x + TILE - 2, y + TILE - 2);
+          ctx.lineTo(x + 2, y + TILE - 2);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = type === "path" ? "#8a6bc477" : "#8a6bc433";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 0.75, y + 0.75, TILE - 1.5, TILE - 1.5);
       }
     }
 
-    // 블록(건설 패드 구역) 패널 — 참고 이미지처럼 통로 바닥과 구분되는 패널 바닥
-    for (const b of map.blocks) {
-      const half = b.size / 2;
-      ctx.fillStyle = `${theme.pathBorder}22`;
-      ctx.fillRect(b.x - half, b.y - half, b.size, b.size);
-      ctx.strokeStyle = `${theme.pathBorder}77`;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(b.x - half, b.y - half, b.size, b.size);
+    // 경로 진행 방향 화살표 — 적이 어느 쪽으로 흐르는지 은은하게 안내
+    ctx.save();
+    const arrowPulse = 0.35 + 0.25 * Math.sin(now / 500);
+    ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse})`;
+    for (let i = 0; i < PATH_TILES.length - 1; i++) {
+      const a = tileCenter(PATH_TILES[i].col, PATH_TILES[i].row);
+      const b = tileCenter(PATH_TILES[i + 1].col, PATH_TILES[i + 1].row);
+      if (g.operators.has(tileKey(PATH_TILES[i].col, PATH_TILES[i].row))) continue;
+      const angle = Math.atan2(b.y - a.y, b.x - a.x);
+      ctx.save();
+      ctx.translate(a.x, a.y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-8, -9);
+      ctx.lineTo(-8, 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // 재배치 쿨다운 오버레이
+    for (const [key, readyAt] of g.tileCooldowns) {
+      if (readyAt <= now) continue;
+      const [col, row] = key.split(",").map(Number);
+      const x = GRID_OFFSET_X + col * TILE;
+      const y = GRID_OFFSET_Y + row * TILE;
+      ctx.fillStyle = "#00000088";
+      ctx.fillRect(x, y, TILE, TILE);
     }
 
-    // 맵 테마 배경 장식
-    for (const d of map.decorations) {
-      if (theme.decoShape === "grass") {
-        ctx.strokeStyle = `${theme.decoColor}55`;
+    // 오퍼레이터
+    for (const [key, op] of g.operators) {
+      const [col, row] = key.split(",").map(Number);
+      const pos = tileCenter(col, row);
+      const def = charById(op.characterId);
+      if (def) {
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        // PixelCharacter는 React 컴포넌트라 캔버스엔 자리 표시만 — 실제 아이콘은 DOM 오버레이로 그림
+        ctx.restore();
+      }
+      if (now < op.hitFlashUntil) {
+        const t = 1 - (now - (op.hitFlashUntil - 160)) / 160;
+        ctx.strokeStyle = `rgba(255, 90, 90, ${Math.max(0, t) * 0.9})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 30 + (1 - t) * 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      const barW = 46;
+      ctx.fillStyle = "#00000066";
+      ctx.fillRect(pos.x - barW / 2, pos.y - 42, barW, 5);
+      ctx.fillStyle = now < op.shieldUntil ? "#60a5fa" : hpBarColor(op.hp / op.maxHp);
+      ctx.fillRect(pos.x - barW / 2, pos.y - 42, barW * Math.max(0, op.hp / op.maxHp), 5);
+      if (op.sp >= SP_MAX) {
+        const pulse = 0.6 + 0.4 * Math.sin(now / 150);
+        ctx.fillStyle = `rgba(250, 204, 21, ${pulse})`;
+        ctx.beginPath();
+        ctx.arc(pos.x + 24, pos.y - 24, 7, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (op.sp > 0) {
+        ctx.strokeStyle = "#facc1599";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(d.x, d.y + 5);
-        ctx.lineTo(d.x, d.y - 5);
+        ctx.arc(pos.x + 24, pos.y - 24, 6, -Math.PI / 2, -Math.PI / 2 + (op.sp / SP_MAX) * Math.PI * 2);
         ctx.stroke();
-      } else if (theme.decoShape === "ember") {
-        const pulse = 0.5 + 0.5 * Math.sin(now / 400 + d.x);
-        ctx.fillStyle = `${theme.decoColor}${Math.round(30 + pulse * 50)
-          .toString(16)
-          .padStart(2, "0")}`;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 1.5 + pulse * 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (theme.decoShape === "spark") {
-        const pulse = 0.5 + 0.5 * Math.sin(now / 600 + d.x * 0.7);
-        const s = 2 + pulse * 2.2;
-        ctx.strokeStyle = `${theme.decoColor}${Math.round(25 + pulse * 60)
-          .toString(16)
-          .padStart(2, "0")}`;
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(d.x - s, d.y);
-        ctx.lineTo(d.x + s, d.y);
-        ctx.moveTo(d.x, d.y - s);
-        ctx.lineTo(d.x, d.y + s);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = `${theme.decoColor}66`;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 1.6, 0, Math.PI * 2);
-        ctx.fill();
       }
     }
 
-    // 경로 (웨이포인트 폴리라인)
-    const drawPathLine = () => {
-      ctx.beginPath();
-      ctx.moveTo(map.path[0].x, map.path[0].y);
-      for (const pt of map.path.slice(1)) ctx.lineTo(pt.x, pt.y);
-    };
-    ctx.strokeStyle = theme.pathFill;
-    ctx.lineWidth = 46;
-    ctx.lineJoin = "round";
-    drawPathLine();
-    ctx.stroke();
-    ctx.strokeStyle = theme.pathBorder;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 8]);
-    drawPathLine();
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // 적 (슬라임 스프라이트 — 원소별로 색조 보정된 CC0 에셋)
+    // 적
     for (const e of g.enemies) {
-      const pos = pointAtDistance(map.path, e.dist);
+      const pos = enemyPos(e);
       const r = e.isBoss ? 19 : 11;
       const flinch = now < e.flinchUntil;
       const frameW = flinch ? MONSTER_HURT_FRAME_W : MONSTER_WALK_FRAME_W;
       const frameH = flinch ? MONSTER_HURT_FRAME_H : MONSTER_WALK_FRAME_H;
       const drawH = r * 4.2;
       const drawW = drawH * (frameW / frameH);
-      const drawSize = drawH; // 뿔/중독링 등 장식 요소의 기준 크기
       const sheet = flinch ? MONSTER_HURT_IMG[e.element] : MONSTER_WALK_IMG[e.element];
       const frame = flinch ? 0 : Math.floor(now / MONSTER_ANIM_MS) % MONSTER_WALK_COLS;
       if (sheet.complete && sheet.naturalWidth > 0) {
-        ctx.drawImage(
-          sheet,
-          frame * frameW,
-          0,
-          frameW,
-          frameH,
-          pos.x - drawW / 2,
-          pos.y - drawH / 2,
-          drawW,
-          drawH,
-        );
+        ctx.drawImage(sheet, frame * frameW, 0, frameW, frameH, pos.x - drawW / 2, pos.y - drawH / 2, drawW, drawH);
       }
       if (e.isBoss) {
-        // 보스 표식 — 스프라이트 위에 작은 뿔 실루엣만 얹어서 일반 개체와 구분
         ctx.fillStyle = "#ffd700";
         ctx.beginPath();
-        ctx.moveTo(pos.x - drawSize * 0.3, pos.y - drawSize * 0.5);
-        ctx.lineTo(pos.x - drawSize * 0.42, pos.y - drawSize * 0.86);
-        ctx.lineTo(pos.x - drawSize * 0.08, pos.y - drawSize * 0.46);
+        ctx.moveTo(pos.x - drawH * 0.3, pos.y - drawH * 0.5);
+        ctx.lineTo(pos.x - drawH * 0.42, pos.y - drawH * 0.86);
+        ctx.lineTo(pos.x - drawH * 0.08, pos.y - drawH * 0.46);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(pos.x + drawSize * 0.3, pos.y - drawSize * 0.5);
-        ctx.lineTo(pos.x + drawSize * 0.42, pos.y - drawSize * 0.86);
-        ctx.lineTo(pos.x + drawSize * 0.08, pos.y - drawSize * 0.46);
+        ctx.moveTo(pos.x + drawH * 0.3, pos.y - drawH * 0.5);
+        ctx.lineTo(pos.x + drawH * 0.42, pos.y - drawH * 0.86);
+        ctx.lineTo(pos.x + drawH * 0.08, pos.y - drawH * 0.46);
         ctx.fill();
       }
+      if (e.blockedByTileKey) {
+        ctx.strokeStyle = "#ff6b6b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, drawH * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       if (e.dotUntil > now) {
-        // 도트뎀지(중독) 표식 — 발밑 링
         ctx.strokeStyle = "#84cc16";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, drawSize * 0.58, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, drawH * 0.5, 0, Math.PI * 2);
         ctx.stroke();
       }
-      // hp bar
       const barW = r * 2.2;
+      const hpPct = Math.max(0, e.hp / e.maxHp);
       ctx.fillStyle = "#00000066";
       ctx.fillRect(pos.x - barW / 2, pos.y - r - 12, barW, 4);
-      ctx.fillStyle = "#4ade80";
-      ctx.fillRect(
-        pos.x - barW / 2,
-        pos.y - r - 12,
-        barW * Math.max(0, e.hp / e.maxHp),
-        4,
-      );
+      ctx.fillStyle = hpBarColor(hpPct);
+      ctx.fillRect(pos.x - barW / 2, pos.y - r - 12, barW * hpPct, 4);
     }
 
-    // 투사체 (원소별 색조를 입힌 글로우 오브 스프라이트) — 발광 효과라 additive 블렌딩으로 그려야
-    // 어두운 바닥 위에서 은은하게 묻히지 않고 또렷하게 도드라진다
     ctx.globalCompositeOperation = "lighter";
     for (const p of g.projectiles) {
-      const orb = EFFECT_ORB_IMG[p.element];
-      drawIfLoaded(ctx, orb, p.x - 14, p.y - 14, 28, 28);
+      ctx.globalAlpha = 0.5;
+      drawIfLoaded(ctx, EFFECT_ORB_IMG[p.element], p.x - 20, p.y - 20, 40, 40);
+      ctx.globalAlpha = 1;
+      drawIfLoaded(ctx, EFFECT_ORB_IMG[p.element], p.x - 14, p.y - 14, 28, 28);
     }
-
-    // 타격 이펙트 (히트스파크 — 원소별 색조의 버스트 스프라이트, 커지면서 페이드)
     for (const fx of g.hitFx) {
       const age = now - fx.createdAt;
       const life = Math.max(0, 1 - age / 260);
       const size = 38 + (1 - life) * 54;
-      const burst = EFFECT_BURST_IMG[fx.element];
       ctx.globalAlpha = Math.min(1, life * 1.4);
-      drawIfLoaded(ctx, burst, fx.x - size / 2, fx.y - size / 2, size, size);
+      drawIfLoaded(ctx, EFFECT_BURST_IMG[fx.element], fx.x - size / 2, fx.y - size / 2, size, size);
+      ctx.globalAlpha = 1;
+    }
+    for (const s of g.sparks) {
+      const age = now - s.createdAt;
+      const life = Math.max(0, 1 - age / 420);
+      ctx.globalAlpha = life;
+      ctx.fillStyle = s.color;
+      const sz = 2.5 + life * 2.5;
+      ctx.fillRect(s.x - sz / 2, s.y - sz / 2, sz, sz);
       ctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = "source-over";
 
+    // 데미지 숫자 팝업 — 가산 블렌딩 없이 또렷하게, 위로 떠오르며 페이드
+    ctx.textAlign = "center";
+    ctx.font = "bold 15px sans-serif";
+    for (const d of g.dmgTexts) {
+      const age = now - d.createdAt;
+      const life = Math.max(0, 1 - age / 700);
+      const riseY = d.y - age * 0.045;
+      ctx.globalAlpha = Math.min(1, life * 1.6);
+      const label = d.trueDmg ? `${d.value}` : d.weak ? `${d.value}!` : `${d.value}`;
+      const scale = d.weak ? 1.25 : 1;
+      ctx.save();
+      ctx.translate(d.x, riseY);
+      ctx.scale(scale, scale);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.65)";
+      ctx.strokeText(label, 0, 0);
+      ctx.fillStyle = d.weak ? "#fde047" : d.color;
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
   };
 
-  const flashSlot = (idx: number) => {
-    setMergeFlash(idx);
-    setTimeout(() => setMergeFlash(null), 400);
+  const flashTile = (key: string) => {
+    setActionFlash(key);
+    setTimeout(() => setActionFlash(null), 400);
+  };
+  const warnDp = () => {
+    setDpWarning(true);
+    setTimeout(() => setDpWarning(false), 1200);
   };
 
-  const warnGold = () => {
-    setGoldWarning(true);
-    setTimeout(() => setGoldWarning(false), 1200);
-  };
-
-  const warnTokens = () => {
-    setTokenWarning(true);
-    setTimeout(() => setTokenWarning(false), 1200);
-  };
-
-  // 배치 모드: 빈 슬롯 클릭 시 100골드로 최하등급 중 랜덤 1종을 배치
-  const placeRandomTower = (slotIndex: number) => {
+  // 스킬 발동 — 아키타입당 1개, SP 100% 찼을 때 오퍼레이터를 클릭하면 즉시 발동 (모드 무관, 최우선)
+  const triggerSkill = (key: string) => {
     const g = gRef.current;
-    if (g.slots[slotIndex] || towerPool.length === 0) return;
-    if (g.gold < PLACE_COST) {
-      warnGold();
-      return;
+    const op = g.operators.get(key);
+    if (!op || op.sp < SP_MAX) return false;
+    op.sp = 0;
+    const now = performance.now();
+    const pos = tileCenter(...(key.split(",").map(Number) as [number, number]));
+    const stats = ARCHETYPE_STATS[op.archetype];
+    const basePower = stats.damage * RARITY_POWER_MULT[op.rarity];
+    const inRange = (e: Enemy) => Math.hypot(enemyPos(e).x - pos.x, enemyPos(e).y - pos.y) <= stats.range;
+    const skillColor = ELEMENT_COLOR[ARCH_ELEMENT[op.archetype]];
+    const hitEnemy = (e: Enemy, dmg: number, trueDmg: boolean) => {
+      e.hp -= dmg;
+      e.flinchUntil = now + 110;
+      const ep = enemyPos(e);
+      spawnHitFeedback(g, ep.x, ep.y - 16, dmg, skillColor, now, { trueDmg });
+    };
+
+    switch (op.archetype) {
+      case "warrior": {
+        const target = g.enemies.find((e) => op.blockedEnemyIds.includes(e.id));
+        if (target) hitEnemy(target, applyMitigation(basePower * 3, stats.dmgType, target), false);
+        break;
+      }
+      case "rogue": {
+        const target = g.enemies.find((e) => op.blockedEnemyIds.includes(e.id));
+        if (target) for (let i = 0; i < 3; i++) hitEnemy(target, applyMitigation(basePower, stats.dmgType, target), false);
+        break;
+      }
+      case "tank": {
+        op.hp = Math.min(op.maxHp, op.hp + op.maxHp * 0.5);
+        op.shieldUntil = now + 4000;
+        spawnHitFeedback(g, pos.x, pos.y - 20, op.maxHp * 0.5, "#60a5fa", now);
+        break;
+      }
+      case "mage": {
+        for (const e of g.enemies) {
+          if (inRange(e)) hitEnemy(e, applyMitigation(basePower * 2, stats.dmgType, e), false);
+        }
+        break;
+      }
+      case "meka": {
+        for (const e of g.enemies) {
+          if (inRange(e)) {
+            hitEnemy(e, applyMitigation(basePower * 1.2, stats.dmgType, e), false);
+            e.slowUntil = now + 3000;
+          }
+        }
+        break;
+      }
+      case "nature":
+      case "cursed": {
+        for (const e of g.enemies) {
+          if (inRange(e)) {
+            hitEnemy(e, basePower * 0.9, true); // true damage
+            e.dotUntil = now + 3000;
+            e.dotDmgPerTick = basePower * 0.3;
+          }
+        }
+        break;
+      }
     }
-    const def = randomTowerByRarities(towerPool, [LOWEST_RARITY]);
-    if (!def) return;
-    g.gold -= PLACE_COST;
-    g.slots[slotIndex] = instantiateTower(def, slotIndex);
-    flashSlot(slotIndex);
-    setSlotsVersion((v) => v + 1);
+    g.hitFx.push({ x: pos.x, y: pos.y, color: skillColor, element: ARCH_ELEMENT[op.archetype], createdAt: now });
+    flashTile(key);
+    setOpsVersion((v) => v + 1);
+    return true;
   };
 
-  // 선택배치 모드: 골드가 아니라 "토큰" 1개 소모 — 토큰은 보스를 잡을 때마다 1개씩 쌓인다.
-  // 빈 슬롯을 클릭하면 에픽 등급 캐릭터 전체 목록을 보여주고, 그중 원하는 걸 직접 골라 배치한다.
-  const openSelectPlace = (slotIndex: number) => {
+  // 배치 모드: 빈 타일 클릭 → 그 타일에 맞는(근접=경로, 원거리=고지대) 캐릭터 중 DP로
+  // 감당 가능한 것들을 보여주고 직접 골라 배치한다 (명일방주처럼 항상 직접 선택)
+  const openDeploy = (key: string) => {
     const g = gRef.current;
-    if (g.slots[slotIndex] || towerPool.length === 0) return;
-    if (g.selectTokens < 1) {
-      warnTokens();
-      return;
-    }
-    const choices = towerPool.filter((d) => d.rarity === "epic");
+    if (g.operators.has(key) || towerPool.length === 0) return;
+    const readyAt = g.tileCooldowns.get(key);
+    if (readyAt && readyAt > performance.now()) return;
+    const type = TILE_GRID.get(key);
+    const wantBlocker = type === "path";
+    const choices = towerPool.filter((d) => ARCHETYPE_STATS[d.archetype].isBlocker === wantBlocker);
     if (choices.length === 0) return;
-    setSelectPlaceChoices(choices);
-    setSelectPlaceTarget(slotIndex);
+    setDeployChoices(choices);
+    setDeployTarget(key);
   };
 
-  const confirmSelectPlace = (def: TowerDef) => {
+  const confirmDeploy = (def: TowerDef) => {
     const g = gRef.current;
-    if (selectPlaceTarget === null) return;
-    if (g.selectTokens < 1) {
-      setSelectPlaceTarget(null);
-      setSelectPlaceChoices([]);
+    if (deployTarget === null) return;
+    const cost = RARITY_DP_COST[def.rarity];
+    if (g.dp < cost) {
+      warnDp();
       return;
     }
-    g.selectTokens -= 1;
-    g.slots[selectPlaceTarget] = instantiateTower(def, selectPlaceTarget);
-    flashSlot(selectPlaceTarget);
-    setSelectPlaceTarget(null);
-    setSelectPlaceChoices([]);
-    setActionMode(null);
-    setSlotsVersion((v) => v + 1);
+    g.dp -= cost;
+    g.operators.set(deployTarget, instantiateOperator(def, deployTarget));
+    flashTile(deployTarget);
+    setDeployTarget(null);
+    setDeployChoices([]);
+    setOpsVersion((v) => v + 1);
   };
 
-  const cancelSelectPlace = () => {
-    setSelectPlaceTarget(null);
-    setSelectPlaceChoices([]);
+  const cancelDeploy = () => {
+    setDeployTarget(null);
+    setDeployChoices([]);
   };
 
-  // 판매 모드: 채워진 슬롯 클릭 시 즉시 판매하고 환불
-  const sellTowerAt = (slotIndex: number) => {
+  // 철수 모드: 배치된 오퍼레이터 클릭 시 즉시 회수, DP 일부 환급 + 짧은 재배치 쿨다운
+  const retreatAt = (key: string) => {
     const g = gRef.current;
-    const tower = g.slots[slotIndex];
-    if (!tower) return;
-    g.gold +=
-      RARITY_SELL_GOLD[tower.rarity] +
-      tower.enhanceLevel * ENHANCE_SELL_REFUND_PER_LEVEL;
-    g.slots[slotIndex] = null;
-    setSlotsVersion((v) => v + 1);
-  };
-
-  // 강화 모드: 채워진 슬롯 클릭 시 골드를 소모해 그 자리에서 즉시 강화
-  const enhanceTowerAt = (slotIndex: number) => {
-    const g = gRef.current;
-    const tower = g.slots[slotIndex];
-    if (!tower || tower.enhanceLevel >= MAX_ENHANCE) return;
-    const cost = enhanceCost(tower.enhanceLevel);
-    if (g.gold < cost) {
-      warnGold();
-      return;
+    const op = g.operators.get(key);
+    if (!op) return;
+    g.dp = Math.min(DP_MAX, g.dp + Math.round(RARITY_DP_COST[op.rarity] * RETREAT_REFUND_RATIO));
+    for (const eid of op.blockedEnemyIds) {
+      const e = g.enemies.find((en) => en.id === eid);
+      if (e) e.blockedByTileKey = null;
     }
-    g.gold -= cost;
-    tower.enhanceLevel += 1;
-    setSlotsVersion((v) => v + 1);
+    g.operators.delete(key);
+    g.tileCooldowns.set(key, performance.now() + RETREAT_COOLDOWN_MS);
+    setOpsVersion((v) => v + 1);
   };
 
-  // 합성 모드: 같은 등급이 필드에 2개 이상이면(캐릭터 종류는 무관) 클릭한 쪽을 포함해 둘을
-  // 소모하고 그 자리에 한 단계 위 등급의 랜덤 캐릭터를 배치한다
-  const mergeTowerAt = (slotIndex: number) => {
+  // 합성 모드: 같은 등급 2기를 소모해 한 단계 위 등급의 랜덤 캐릭터를 배치
+  const mergeAt = (key: string) => {
     const g = gRef.current;
-    const tower = g.slots[slotIndex];
-    if (!tower) return;
-    const promoted = nextRarity(tower.rarity);
+    const op = g.operators.get(key);
+    if (!op) return;
+    const promoted = nextRarity(op.rarity);
     if (!promoted) return;
-    const matches = g.slots
-      .map((s, idx) => ({ s, idx }))
-      .filter((e) => e.s && e.s.rarity === tower.rarity);
+    const matches = [...g.operators.entries()].filter(([, o]) => o.rarity === op.rarity);
     if (matches.length < 2) return;
-    const clicked = matches.find((m) => m.idx === slotIndex)!;
-    const other = matches.find((m) => m.idx !== slotIndex)!;
-    const carryEnhance = Math.max(
-      clicked.s!.enhanceLevel,
-      other.s!.enhanceLevel,
-    );
+    const [, other] = matches.find(([k]) => k !== key)!;
     const resultDef = randomTowerByRarities(towerPool, [promoted]);
-    g.slots[other.idx] = null;
+    const otherKey = matches.find(([k]) => k !== key)![0];
+    g.operators.delete(otherKey);
     if (resultDef) {
-      g.slots[clicked.idx] = instantiateTower(resultDef, clicked.idx);
-      g.slots[clicked.idx]!.enhanceLevel = carryEnhance;
+      const merged = instantiateOperator(resultDef, key);
+      merged.hp = Math.max(merged.hp, other.hp); // 합성 직전 체력 중 더 높은 쪽 승계
+      g.operators.set(key, merged);
     } else {
-      g.slots[clicked.idx] = null;
+      g.operators.delete(key);
     }
-    flashSlot(clicked.idx);
-    setSlotsVersion((v) => v + 1);
+    flashTile(key);
+    setOpsVersion((v) => v + 1);
   };
 
-  const handleSlotClick = (slotIndex: number) => {
-    const tower = gRef.current.slots[slotIndex];
-    if (actionMode === "place") {
-      if (!tower) placeRandomTower(slotIndex);
-    } else if (actionMode === "selectPlace") {
-      if (!tower) openSelectPlace(slotIndex);
-    } else if (actionMode === "sell") {
-      if (tower) sellTowerAt(slotIndex);
-    } else if (actionMode === "enhance") {
-      if (tower) enhanceTowerAt(slotIndex);
+  const handleTileClick = (key: string) => {
+    const g = gRef.current;
+    const op = g.operators.get(key);
+    if (op && triggerSkill(key)) return; // SP 꽉 찬 오퍼레이터는 모드 무관 최우선 발동
+    if (actionMode === "deploy") {
+      if (!op) openDeploy(key);
+    } else if (actionMode === "retreat") {
+      if (op) retreatAt(key);
     } else if (actionMode === "merge") {
-      if (tower) mergeTowerAt(slotIndex);
+      if (op) mergeAt(key);
     }
   };
 
@@ -1268,19 +1364,15 @@ export default function TowerDefensePage() {
     loadSummary();
   };
 
-  const archLabel = (arch: Archetype): string =>
-    t(`td.arch_${arch}` as TranslationKey);
-  const elemLabel = (elem: Element): string =>
-    elem === "light" ? "" : t(`td.elem_${elem}` as TranslationKey);
-
+  const archLabel = (arch: Archetype): string => t(`td.arch_${arch}` as TranslationKey);
+  const elemLabel = (elem: Element): string => (elem === "light" ? "" : t(`td.elem_${elem}` as TranslationKey));
   const counterArch = ELEMENT_TO_ARCH[COUNTERED_BY[waveElement] ?? "fire"];
 
-  void slotsVersion;
-  const mergeableSlots = findMergeableSlots(gRef.current.slots);
-  const canMerge = mergeableSlots.size > 0;
-  const hpPct = Math.round(
-    (1 + hudWave * 0.05) * Math.pow(1.025, hudWave) * 100,
-  );
+  void opsVersion;
+  const mergeableTiles = findMergeableTiles(gRef.current.operators);
+  const canMerge = mergeableTiles.size > 0;
+  const hpPct = Math.round((1 + hudWave * 0.05) * Math.pow(1.025, hudWave) * 100);
+  const allTileKeys = [...TILE_GRID.keys()].filter((k) => TILE_GRID.get(k) !== "empty");
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-4">
@@ -1302,32 +1394,20 @@ export default function TowerDefensePage() {
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
       {phase === "loading" && (
-        <p className="text-sm text-muted-foreground text-center py-10">
-          {t("td.loading")}
-        </p>
+        <p className="text-sm text-muted-foreground text-center py-10">{t("td.loading")}</p>
       )}
 
       {phase === "lobby" && (
         <div
           className="relative overflow-hidden rounded-2xl border border-[#8a6bc4]/40 p-6 flex flex-col items-center gap-4"
-          style={{
-            background:
-              "radial-gradient(ellipse 130% 90% at 50% -15%, #3a2f52 0%, #161226 55%, #0d0a17 100%)",
-          }}
+          style={{ background: "radial-gradient(ellipse 130% 90% at 50% -15%, #3a2f52 0%, #161226 55%, #0d0a17 100%)" }}
         >
           <style>{`@keyframes td-sparkle-twinkle { 0%,100%{opacity:0.15} 50%{opacity:0.9} }`}</style>
           {LOBBY_SPARKLES.map((s, i) => (
             <span
               key={i}
               className="pointer-events-none absolute rounded-full bg-[#c9a6f5]"
-              style={{
-                left: s.left,
-                top: s.top,
-                width: s.size,
-                height: s.size,
-                animation: `td-sparkle-twinkle 2.4s ease-in-out infinite`,
-                animationDelay: s.delay,
-              }}
+              style={{ left: s.left, top: s.top, width: s.size, height: s.size, animation: `td-sparkle-twinkle 2.4s ease-in-out infinite`, animationDelay: s.delay }}
             />
           ))}
 
@@ -1338,39 +1418,27 @@ export default function TowerDefensePage() {
 
           <div className="relative flex gap-3 w-full">
             <div className="flex-1 rounded-xl bg-black/25 border border-[#8a6bc4]/30 py-2 text-center">
-              <p className="text-[10px] text-[#c9a6f5]/80">
-                {t("td.best_wave")}
-              </p>
-              <p className="text-lg font-bold text-[#f1e8fc]">
-                {bestWave}/{WAVE_COUNT}
-              </p>
+              <p className="text-[10px] text-[#c9a6f5]/80">{t("td.best_wave")}</p>
+              <p className="text-lg font-bold text-[#f1e8fc]">{bestWave}/{WAVE_COUNT}</p>
             </div>
             <div className="flex-1 rounded-xl bg-black/25 border border-[#8a6bc4]/30 py-2 text-center">
-              <p className="text-[10px] text-[#c9a6f5]/80">
-                {t("td.attempts_left")}
-              </p>
+              <p className="text-[10px] text-[#c9a6f5]/80">{t("td.attempts_left")}</p>
               <p className="text-lg font-bold text-[#f1e8fc]">{attemptsLeft}</p>
             </div>
           </div>
 
           <div className="relative grid grid-cols-3 gap-2 w-full">
             <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
+              <Shield className="w-4 h-4 text-[#c9a6f5]" />
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_block")}</p>
+            </div>
+            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_dp")}</p>
+            </div>
+            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
               <Sparkles className="w-4 h-4 text-[#c9a6f5]" />
-              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">
-                {t("td.hint_merge")}
-              </p>
-            </div>
-            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
-              <Skull className="w-4 h-4 text-amber-400" />
-              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">
-                {t("td.hint_boss")}
-              </p>
-            </div>
-            <div className="rounded-lg bg-black/20 border border-[#8a6bc4]/20 py-2 px-1 flex flex-col items-center gap-1">
-              <Coins className="w-4 h-4 text-amber-400" />
-              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">
-                {t("td.hint_enhance")}
-              </p>
+              <p className="text-[9px] text-[#c9a6f5]/80 text-center leading-tight">{t("td.hint_merge")}</p>
             </div>
           </div>
 
@@ -1385,37 +1453,32 @@ export default function TowerDefensePage() {
           >
             {attemptsLeft > 0 ? t("td.start") : t("td.no_attempts")}
           </button>
-          <p className="relative text-[11px] text-[#c9a6f5]/70 text-center">
-            {t("td.desc")}
-          </p>
+          <p className="relative text-[11px] text-[#c9a6f5]/70 text-center">{t("td.desc")}</p>
         </div>
       )}
 
       {phase === "playing" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-2">
-            <p className="text-sm font-semibold">
-              {t("td.wave_label")} {hudWave}/{WAVE_COUNT}
-            </p>
-            <p className="flex items-center gap-1 text-sm font-semibold text-amber-400">
-              <Coins className="w-4 h-4" /> {hudGold}
-            </p>
-            <p
-              className={`flex items-center gap-1 text-sm font-semibold text-sky-400 transition ${
-                tokenGainFlash ? "scale-125" : ""
-              }`}
-            >
-              <Ticket className="w-4 h-4" /> {hudTokens}
-            </p>
+            <p className="text-sm font-semibold">{t("td.wave_label")} {hudWave}/{WAVE_COUNT}</p>
+            <div className={`flex flex-col items-center gap-0.5 transition ${dpGainFlash ? "scale-110" : ""}`}>
+              <p className="flex items-center gap-1 text-sm font-semibold text-amber-400">
+                <Zap className="w-4 h-4" /> {hudDp}/{DP_MAX}
+              </p>
+              <div className="w-20 h-1.5 rounded-full bg-black/30 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all"
+                  style={{ width: `${(hudDp / DP_MAX) * 100}%` }}
+                />
+              </div>
+            </div>
             <p className="flex items-center gap-1 text-sm font-semibold text-rose-400">
               <Heart className="w-4 h-4" /> {hudLives}
             </p>
             <button
               onClick={toggleSpeed}
               className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition ${
-                hudSpeed === 2
-                  ? "bg-primary text-white"
-                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                hudSpeed === 2 ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
               }`}
             >
               <FastForward className="w-3.5 h-3.5" /> {hudSpeed}x
@@ -1423,212 +1486,116 @@ export default function TowerDefensePage() {
           </div>
 
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-            <span
-              className="inline-block w-2.5 h-2.5 rounded-full"
-              style={{ background: ELEMENT_COLOR[waveElement] }}
-            />
-            {t("td.wave_element_hint")
-              .replace("{element}", elemLabel(waveElement))
-              .replace(
-                "{archetype}",
-                counterArch ? archLabel(counterArch) : "",
-              )}
+            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: ELEMENT_COLOR[waveElement] }} />
+            {t("td.wave_element_hint").replace("{element}", elemLabel(waveElement)).replace("{archetype}", counterArch ? archLabel(counterArch) : "")}
           </p>
 
-          {goldWarning && (
-            <p className="text-center text-[11px] text-rose-400 font-semibold">
-              {t("td.not_enough_gold")}
-            </p>
-          )}
-          {tokenWarning && (
-            <p className="text-center text-[11px] text-rose-400 font-semibold">
-              {t("td.not_enough_tokens")}
-            </p>
-          )}
-
+          {dpWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_dp")}</p>}
           {bossWarning && (
             <p
               className="flex items-center justify-center gap-1.5 text-xs font-bold text-white py-2"
-              style={{
-                backgroundImage: "url(/td/ui/ribbon.png)",
-                backgroundSize: "100% 100%",
-                imageRendering: "pixelated",
-              }}
+              style={{ backgroundImage: "url(/td/ui/ribbon.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
             >
               <Skull className="w-4 h-4" /> {t("td.boss_warning")}
             </p>
           )}
 
           <div ref={boardWrapRef} className="w-full overflow-x-auto">
-            <div
-              className="mx-auto"
-              style={{ width: CANVAS_W * boardScale, height: CANVAS_H * boardScale }}
-            >
+            <div className="mx-auto" style={{ width: CANVAS_W * boardScale, height: CANVAS_H * boardScale }}>
               <div
                 className="relative"
-                style={{
-                  width: CANVAS_W,
-                  height: CANVAS_H,
-                  transform: `scale(${boardScale})`,
-                  transformOrigin: "top left",
-                }}
+                style={{ width: CANVAS_W, height: CANVAS_H, transform: `scale(${boardScale})`, transformOrigin: "top left" }}
               >
-              <canvas
-                ref={canvasRef}
-                width={CANVAS_W}
-                height={CANVAS_H}
-                className="absolute inset-0 rounded-xl"
-              />
+                <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="absolute inset-0 rounded-xl" />
 
-              {/* 상태창 — 참고 이미지의 플레이어 목록 박스를 솔로 플레이용으로 단계/킬수/목숨/체력배율만 남겨 재구성 */}
-              <div
-                className="absolute top-2 right-2 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none"
-                style={{
-                  backgroundImage: "url(/td/ui/plate.png)",
-                  backgroundSize: "100% 100%",
-                  imageRendering: "pixelated",
-                }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {t("td.status_stage")}
-                  </span>
-                  <span className="font-bold text-foreground">{hudWave}</span>
+                <div
+                  className="absolute top-2 right-2 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none"
+                  style={{ backgroundImage: "url(/td/ui/plate.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{t("td.status_stage")}</span>
+                    <span className="font-bold text-foreground">{hudWave}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{t("td.status_kills")}</span>
+                    <span className="font-bold text-foreground">{hudKills}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{t("td.status_remaining")}</span>
+                    <span className="font-bold text-foreground">{hudEnemiesLeft}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{t("td.status_lives")}</span>
+                    <span className="font-bold text-rose-400">{hudLives}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{t("td.status_hp_pct")}</span>
+                    <span className="font-bold text-amber-300">{hpPct}%</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {t("td.status_kills")}
-                  </span>
-                  <span className="font-bold text-foreground">{hudKills}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {t("td.status_lives")}
-                  </span>
-                  <span className="font-bold text-rose-400">{hudLives}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {t("td.status_hp_pct")}
-                  </span>
-                  <span className="font-bold text-amber-300">{hpPct}%</span>
-                </div>
-              </div>
 
-              {/* 정비 시간 카운트다운 — 웨이브 클리어 후 5초 동안 표시 */}
-              <div
-                className="absolute bottom-2 left-2 px-3 py-1.5 text-[11px] font-semibold text-white pointer-events-none"
-                style={{
-                  backgroundImage: "url(/td/ui/plate.png)",
-                  backgroundSize: "100% 100%",
-                  imageRendering: "pixelated",
-                }}
-              >
-                {hudPrepLeft > 0
-                  ? t("td.prep_countdown").replace("{sec}", String(hudPrepLeft))
-                  : `${t("td.status_stage")} ${hudWave}`}
-              </div>
-              {Array.from({ length: SLOT_COUNT }, (_, i) => {
-                const pos = currentMap.slots[i];
-                const tower = gRef.current.slots[i];
-                void slotsVersion;
-                const def = tower ? charById(tower.characterId) : null;
-                const targetable =
-                  actionMode === "place" || actionMode === "selectPlace"
-                    ? !tower
-                    : actionMode === "sell" || actionMode === "enhance"
-                      ? !!tower
-                      : actionMode === "merge"
-                        ? mergeableSlots.has(i)
-                        : false;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleSlotClick(i)}
-                    className={`absolute flex items-center justify-center rounded-full transition active:scale-90 ${
-                      mergeFlash === i ? "scale-125" : ""
-                    } ${
-                      def
-                        ? `${RARITY_BORDER[def.rarity]} border-2`
-                        : "border-2 border-[#8a6bc4]/50 hover:brightness-125"
-                    } ${
-                      actionMode && targetable
-                        ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse`
-                        : ""
-                    } ${actionMode && !targetable ? "opacity-35" : ""}`}
-                    style={{
-                      left: pos.x - 30,
-                      top: pos.y - 30,
-                      width: 60,
-                      height: 60,
-                      backgroundImage: "url(/td/ui/circle.png)",
-                      backgroundSize: "100% 100%",
-                      imageRendering: "pixelated",
-                    }}
-                  >
-                    {def && tower && (
-                      <div className="relative">
-                        <PixelCharacter characterId={def.id} size={44} />
-                        {tower.enhanceLevel > 0 && (
-                          <span className="absolute -bottom-1 -right-1 text-[8px] font-bold bg-emerald-400 text-black rounded-full px-1">
-                            +{tower.enhanceLevel}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+                <div
+                  className="absolute bottom-2 left-2 px-3 py-1.5 text-[11px] font-semibold text-white pointer-events-none"
+                  style={{ backgroundImage: "url(/td/ui/plate.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
+                >
+                  {hudPrepLeft > 0 ? t("td.prep_countdown").replace("{sec}", String(hudPrepLeft)) : `${t("td.status_stage")} ${hudWave}`}
+                </div>
+
+                {allTileKeys.map((key) => {
+                  const [col, row] = key.split(",").map(Number);
+                  const pos = tileCenter(col, row);
+                  const type = TILE_GRID.get(key);
+                  const op = gRef.current.operators.get(key);
+                  void opsVersion;
+                  const def = op ? charById(op.characterId) : null;
+                  const onCooldown = (gRef.current.tileCooldowns.get(key) ?? 0) > performance.now();
+                  const targetable = onCooldown
+                    ? false
+                    : actionMode === "deploy"
+                      ? !op
+                      : actionMode === "retreat"
+                        ? !!op
+                        : actionMode === "merge"
+                          ? mergeableTiles.has(key)
+                          : false;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleTileClick(key)}
+                      disabled={onCooldown && !op}
+                      className={`absolute flex items-center justify-center rounded-lg transition active:scale-90 ${
+                        actionFlash === key ? "scale-110" : ""
+                      } ${
+                        def
+                          ? `${RARITY_BORDER[def.rarity]} border-2`
+                          : type === "path"
+                            ? "border-2 border-dashed border-[#8a6bc4]/40 hover:brightness-125"
+                            : "border-2 border-dotted border-[#c9a6f5]/40 hover:brightness-125"
+                      } ${
+                        actionMode && targetable ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse` : ""
+                      } ${actionMode && !targetable ? "opacity-35" : ""}`}
+                      style={{ left: pos.x - 38, top: pos.y - 38, width: 76, height: 76 }}
+                    >
+                      {def && op && (
+                        <div className="relative">
+                          <PixelCharacter characterId={def.id} size={52} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           <div className="bg-card rounded-xl border border-border p-3 space-y-2">
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {(
                 [
-                  {
-                    mode: "place",
-                    icon: Plus,
-                    label: t("td.action_place"),
-                    cost: PLACE_COST,
-                    hotkey: "1",
-                  },
-                  {
-                    mode: "selectPlace",
-                    icon: Layers,
-                    label: t("td.action_select_place"),
-                    tokenCost: 1,
-                    hotkey: "2",
-                  },
-                  {
-                    mode: "enhance",
-                    icon: Zap,
-                    label: t("td.action_enhance"),
-                    hotkey: "3",
-                  },
-                  {
-                    mode: "sell",
-                    icon: Banknote,
-                    label: t("td.action_sell"),
-                    hotkey: "4",
-                  },
-                  {
-                    mode: "merge",
-                    icon: GitMerge,
-                    label: t("td.action_merge"),
-                    disabled: !canMerge,
-                    hotkey: "5",
-                  },
-                ] as {
-                  mode: ActionMode;
-                  icon: LucideIcon;
-                  label: string;
-                  cost?: number;
-                  tokenCost?: number;
-                  disabled?: boolean;
-                  hotkey: string;
-                }[]
+                  { mode: "deploy", icon: Swords, label: t("td.action_deploy"), hotkey: "1" },
+                  { mode: "retreat", icon: Shield, label: t("td.action_retreat"), hotkey: "2" },
+                  { mode: "merge", icon: GitMerge, label: t("td.action_merge"), disabled: !canMerge, hotkey: "3" },
+                ] as { mode: ActionMode; icon: LucideIcon; label: string; disabled?: boolean; hotkey: string }[]
               ).map((a) => {
                 const Icon = a.icon;
                 const active = actionMode === a.mode;
@@ -1638,87 +1605,53 @@ export default function TowerDefensePage() {
                     onClick={() => toggleMode(a.mode)}
                     disabled={a.disabled}
                     className={`relative flex flex-col items-center gap-0.5 rounded-lg py-2.5 px-1 text-[10px] font-semibold transition active:scale-95 text-white ${
-                      a.disabled
-                        ? "grayscale opacity-50 cursor-not-allowed"
-                        : active
-                          ? "brightness-125 saturate-150"
-                          : "hover:brightness-110"
+                      a.disabled ? "grayscale opacity-50 cursor-not-allowed" : active ? "brightness-125 saturate-150" : "hover:brightness-110"
                     }`}
-                    style={{
-                      backgroundImage: "url(/td/ui/plate.png)",
-                      backgroundSize: "100% 100%",
-                      imageRendering: "pixelated",
-                    }}
+                    style={{ backgroundImage: "url(/td/ui/plate.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
                   >
-                    <span className="absolute top-0.5 left-1 text-[8px] opacity-60">
-                      {a.hotkey}
-                    </span>
+                    <span className="absolute top-0.5 left-1 text-[8px] opacity-60">{a.hotkey}</span>
                     <Icon className="w-4 h-4" />
                     <span>{a.label}</span>
-                    {a.cost !== undefined && (
-                      <span className="text-[9px] text-amber-300">
-                        {a.cost}G
-                      </span>
-                    )}
-                    {a.tokenCost !== undefined && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-sky-300">
-                        <Ticket className="w-2.5 h-2.5" />
-                        {a.tokenCost}
-                      </span>
-                    )}
                   </button>
                 );
               })}
             </div>
             {actionMode && (
-              <p className="text-center text-[10px] text-muted-foreground">
-                {t(`td.hint_mode_${actionMode}` as TranslationKey)}
-              </p>
+              <p className="text-center text-[10px] text-muted-foreground">{t(`td.hint_mode_${actionMode}` as TranslationKey)}</p>
             )}
+            <p className="text-center text-[9px] text-muted-foreground/70">{t("td.hint_skill")}</p>
           </div>
 
-          {selectPlaceTarget !== null && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-              onClick={cancelSelectPlace}
-            >
-              <div
-                className="bg-card rounded-2xl border border-border p-4 w-full max-w-md space-y-3"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-sm font-semibold text-center">
-                  {t("td.select_place_title")}
-                </p>
+          {deployTarget !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={cancelDeploy}>
+              <div className="bg-card rounded-2xl border border-border p-4 w-full max-w-md space-y-3" onClick={(e) => e.stopPropagation()}>
+                <p className="text-sm font-semibold text-center">{t("td.deploy_title")}</p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[60vh] overflow-y-auto">
-                  {selectPlaceChoices.map((c) => {
+                  {deployChoices.map((c) => {
                     const def = charById(c.characterId);
                     if (!def) return null;
+                    const cost = RARITY_DP_COST[c.rarity];
+                    const affordable = gRef.current.dp >= cost;
                     return (
                       <button
                         key={c.characterId}
-                        onClick={() => confirmSelectPlace(c)}
-                        className={`relative rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1 min-h-[88px] active:scale-95 transition-transform`}
+                        onClick={() => confirmDeploy(c)}
+                        disabled={!affordable}
+                        className={`relative rounded-xl border-2 ${RARITY_BORDER[def.rarity]} p-2 flex flex-col items-center gap-1 min-h-[92px] active:scale-95 transition-transform ${!affordable ? "opacity-40" : ""}`}
                       >
                         <PixelCharacter characterId={def.id} size={48} />
-                        <span
-                          className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}
-                        >
-                          {getCharName(def, lang)}
-                        </span>
-                        <span
-                          className={`text-[9px] ${RARITY_COLOR[def.rarity]}`}
-                        >
-                          {getRarityLabel(def.rarity, lang)}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground">
-                          {archLabel(c.archetype)}
+                        <span className={`text-[10px] font-semibold ${RARITY_COLOR[def.rarity]}`}>{getCharName(def, lang)}</span>
+                        <span className={`text-[9px] ${RARITY_COLOR[def.rarity]}`}>{getRarityLabel(def.rarity, lang)}</span>
+                        <span className="text-[9px] text-muted-foreground">{archLabel(c.archetype)}</span>
+                        <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-300">
+                          <Zap className="w-2.5 h-2.5" /> {cost}
                         </span>
                       </button>
                     );
                   })}
                 </div>
                 <button
-                  onClick={cancelSelectPlace}
+                  onClick={cancelDeploy}
                   className="w-full rounded-lg border border-border text-foreground text-xs font-semibold py-2.5 hover:bg-white/5 active:scale-95 transition-transform"
                 >
                   {t("td.cancel_offer")}
@@ -1732,36 +1665,17 @@ export default function TowerDefensePage() {
       {phase === "result" && (
         <div className="bg-card rounded-2xl border-2 border-primary/40 p-6 flex flex-col items-center gap-3">
           {submitting ? (
-            <p className="text-sm text-muted-foreground py-8">
-              {t("td.submitting")}
-            </p>
+            <p className="text-sm text-muted-foreground py-8">{t("td.submitting")}</p>
           ) : (
             result && (
               <>
-                <p
-                  className={`text-lg font-bold ${result.wavesCleared >= WAVE_COUNT ? "text-emerald-400" : "text-rose-400"}`}
-                >
-                  {result.wavesCleared >= WAVE_COUNT
-                    ? t("td.victory")
-                    : t("td.defeat")}
+                <p className={`text-lg font-bold ${result.wavesCleared >= WAVE_COUNT ? "text-emerald-400" : "text-rose-400"}`}>
+                  {result.wavesCleared >= WAVE_COUNT ? t("td.victory") : t("td.defeat")}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("td.wave_reached")} {result.wavesCleared}/{WAVE_COUNT}
-                </p>
-                {result.isNewRecord && (
-                  <p className="text-xs font-semibold text-amber-400">
-                    {t("td.new_record")}
-                  </p>
-                )}
-                {result.kpEarned > 0 && (
-                  <p className="text-sm font-bold text-primary">
-                    +{result.kpEarned}KP
-                  </p>
-                )}
-                <button
-                  onClick={backToLobby}
-                  className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold bg-primary text-white hover:bg-primary/90"
-                >
+                <p className="text-sm text-muted-foreground">{t("td.wave_reached")} {result.wavesCleared}/{WAVE_COUNT}</p>
+                {result.isNewRecord && <p className="text-xs font-semibold text-amber-400">{t("td.new_record")}</p>}
+                {result.kpEarned > 0 && <p className="text-sm font-bold text-primary">+{result.kpEarned}KP</p>}
+                <button onClick={backToLobby} className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold bg-primary text-white hover:bg-primary/90">
                   {t("td.back_to_lobby")}
                 </button>
               </>
@@ -1771,14 +1685,8 @@ export default function TowerDefensePage() {
       )}
 
       {showRankings && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-          onClick={() => setShowRankings(false)}
-        >
-          <div
-            className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm max-h-[70vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setShowRankings(false)}>
+          <div className="bg-card rounded-2xl border border-border p-4 w-full max-w-sm max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold">{t("td.rankings_title")}</p>
               <button onClick={() => setShowRankings(false)}>
@@ -1786,37 +1694,21 @@ export default function TowerDefensePage() {
               </button>
             </div>
             {rankings === null ? (
-              <p className="text-xs text-muted-foreground text-center py-6">
-                {t("td.loading")}
-              </p>
+              <p className="text-xs text-muted-foreground text-center py-6">{t("td.loading")}</p>
             ) : rankings.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-6">
-                {t("td.rankings_empty")}
-              </p>
+              <p className="text-xs text-muted-foreground text-center py-6">{t("td.rankings_empty")}</p>
             ) : (
               <ul className="space-y-1.5">
                 {rankings.map((r) => (
-                  <li
-                    key={r.userId}
-                    className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                  >
+                  <li key={r.userId} className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
                     <span
                       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                      style={{
-                        background: RANK_COLOR[r.rank]
-                          ? `${RANK_COLOR[r.rank]}22`
-                          : "var(--muted)",
-                        color: RANK_COLOR[r.rank] ?? "var(--muted-foreground)",
-                      }}
+                      style={{ background: RANK_COLOR[r.rank] ? `${RANK_COLOR[r.rank]}22` : "var(--muted)", color: RANK_COLOR[r.rank] ?? "var(--muted-foreground)" }}
                     >
                       {r.rank}
                     </span>
-                    <span className="flex-1 truncate font-medium">
-                      {r.nickname}
-                    </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {t("td.wave_label")} {r.bestWave}
-                    </span>
+                    <span className="flex-1 truncate font-medium">{r.nickname}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{t("td.wave_label")} {r.bestWave}</span>
                   </li>
                 ))}
               </ul>
