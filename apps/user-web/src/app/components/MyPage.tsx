@@ -20,7 +20,6 @@ import { useNavigate, useLocation } from "react-router";
 import PixelCharacter from "./PixelCharacter";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
-import { getCountryByCode } from "../data/currency";
 import { compressImage } from "../lib/image";
 import {
   CHARACTERS,
@@ -178,7 +177,6 @@ export default function MyPage() {
   };
 
   const myPosts = posts.filter((post) => post.authorId === profile.id);
-  const country = getCountryByCode(profile.baseCountryCode);
 
   const ownedSet = new Set(rewardSummary.ownedCharacterIds);
   const displayChar = rewardSummary.equippedCharacterId
@@ -329,9 +327,6 @@ export default function MyPage() {
               </button>
             </div>
           )}
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {country.flag} {country.name}
-          </p>
           {editingBio ? (
             <div className="flex items-center gap-1.5 mt-1.5">
               <input

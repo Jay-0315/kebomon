@@ -37,7 +37,7 @@ import {
 const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
 const _ACHIEVEMENT_CHAR_IDS = new Set(_ACHIEVEMENTS.map((a) => a.characterId));
 const initialAppData = {
-  profile: { id: "", name: "", email: "", baseCountryCode: "KR", baseCurrency: "KRW" as const },
+  profile: { id: "", name: "", email: "" },
   settings: { notifications: true, darkMode: false, themeColor: "default", language: "ko" as const },
 };
 import { applyThemePreset } from "../lib/theme-presets";
@@ -293,8 +293,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           id: string;
           name: string;
           email: string;
-          baseCountryCode: string;
-          baseCurrency: string;
           profilePhoto?: string | null;
           hasPassword?: boolean;
           bio?: string | null;
@@ -323,8 +321,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         id: p.id,
         name: p.name,
         email: p.email,
-        baseCountryCode: p.baseCountryCode,
-        baseCurrency: p.baseCurrency as UserProfile["baseCurrency"],
         hasPassword: p.hasPassword ?? false,
         bio: p.bio ?? null,
         favoriteCharacterIds: p.favoriteCharacterIds ?? [],

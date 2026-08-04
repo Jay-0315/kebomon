@@ -24,8 +24,6 @@ export class UsersService {
       name: user.name,
       email: user.email,
       role: user.role,
-      baseCountryCode: user.baseCountryCode,
-      baseCurrency: user.baseCurrency,
       profilePhoto: user.profilePhoto ?? null,
       hasPassword: user.hasPassword,
       bio: user.bio ?? null,
@@ -155,8 +153,6 @@ export class UsersService {
       where: { id: userId },
       data: {
         ...(dto.name ? { name: dto.name } : {}),
-        ...(dto.baseCountryCode ? { baseCountryCode: dto.baseCountryCode } : {}),
-        ...(dto.baseCurrency ? { baseCurrency: dto.baseCurrency } : {}),
         ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
         ...(favoriteCharacterIds !== undefined ? { favoriteCharacterIds } : {}),
       },
@@ -167,8 +163,6 @@ export class UsersService {
       name: user.name,
       email: user.email,
       role: user.role,
-      baseCountryCode: user.baseCountryCode,
-      baseCurrency: user.baseCurrency,
       bio: user.bio ?? null,
       favoriteCharacterIds: (user.favoriteCharacterIds as number[] | null) ?? [],
     };

@@ -1,14 +1,5 @@
 import type { BattleEvent, CharInfo } from "../components/BattleReplay";
 
-export type CurrencyCode = "KRW" | "JPY";
-
-export interface CountryOption {
-  code: string;
-  name: string;
-  currency: CurrencyCode;
-  flag: string;
-}
-
 export type PostCategory = "brag" | "tip" | "chat";
 
 export interface Comment {
@@ -137,8 +128,6 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  baseCountryCode: string;
-  baseCurrency: CurrencyCode;
   hasPassword?: boolean;
   bio?: string | null;
   favoriteCharacterIds?: number[];

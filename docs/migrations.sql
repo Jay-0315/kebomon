@@ -228,3 +228,15 @@ SET @sql = IF(@idx_exists = 0,
   'ALTER TABLE push_subscriptions ADD UNIQUE INDEX uq_push_user_endpoint (user_id, endpoint(255))',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- Migration: 환율(국가/통화) 기능 제거 — users.base_country_code / base_currency 컬럼 삭제
+-- Applied: 2026-08-04
+-- 배경: 가격을 국가별 통화로 환산해 보여주던 기능을 앱에서 이미 전부 걷어냈고, 가입 시
+-- 국가 선택 UI도 없어져 신규 유저는 항상 base_country_code='KR', base_currency='KRW'로만
+-- 생성되고 있었다(코드에 하드코딩됨). 실제로 값이 바뀌거나 조회되는 곳이 없는 죽은 컬럼이라
+-- 스키마에서 완전히 제거한다.
+-- ============================================================
+ALTER TABLE users
+  DROP COLUMN base_country_code,
+  DROP COLUMN base_currency;

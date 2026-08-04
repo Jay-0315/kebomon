@@ -7,14 +7,6 @@ export class UpdateUserProfileDto {
 
   @IsOptional()
   @IsString()
-  baseCountryCode?: string;
-
-  @IsOptional()
-  @IsString()
-  baseCurrency?: "KRW" | "JPY";
-
-  @IsOptional()
-  @IsString()
   @MaxLength(200)
   bio?: string;
 

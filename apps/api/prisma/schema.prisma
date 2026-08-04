@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum CurrencyCode {
-  KRW
-  JPY
-}
-
 enum AuthProvider {
   GOOGLE
 }
@@ -73,8 +68,6 @@ model User {
   status                 String                  @default("ACTIVE") @db.VarChar(12)
   suspendedReason        String?                 @map("suspended_reason") @db.VarChar(255)
   suspendedUntil         DateTime?               @map("suspended_until")
-  baseCountryCode        String                  @map("base_country_code") @db.Char(2)
-  baseCurrency           CurrencyCode            @map("base_currency")
   profilePhoto           String?                 @map("profile_photo") @db.LongText
   hasPassword            Boolean                 @default(false) @map("has_password")
   bio                    String?                 @db.VarChar(200)

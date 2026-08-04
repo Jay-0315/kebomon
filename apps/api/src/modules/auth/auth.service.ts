@@ -174,8 +174,6 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         hasPassword: true,
-        baseCountryCode: "KR",
-        baseCurrency: "KRW",
         settings: {
           create: { welcomeGiftSeen: false },
         },
@@ -265,8 +263,6 @@ export class AuthService {
         name: profile.name,
         email: profile.email,
         passwordHash: null,
-        baseCountryCode: "KR",
-        baseCurrency: "KRW",
         settings: {
           create: { welcomeGiftSeen: false },
         },
@@ -479,8 +475,6 @@ export class AuthService {
       role: string;
       status?: string;
       suspendedUntil?: Date | null;
-      baseCountryCode: string;
-      baseCurrency: string;
       hasPassword?: boolean;
     },
     needsStarterOverride?: boolean,
@@ -512,8 +506,6 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
-        baseCountryCode: user.baseCountryCode,
-        baseCurrency: user.baseCurrency,
         hasPassword: user.hasPassword ?? false,
       },
       needsStarter,

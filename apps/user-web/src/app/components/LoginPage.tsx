@@ -5,7 +5,6 @@ import { api } from "../lib/api";
 import { setAuthSession } from "../lib/auth";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
-import { type CurrencyCode } from "../types/domain";
 
 type AuthResponse = {
   accessToken: string;
@@ -13,8 +12,6 @@ type AuthResponse = {
     id: string;
     name: string;
     email: string;
-    baseCountryCode: string;
-    baseCurrency: CurrencyCode;
   };
   needsStarter: boolean;
 };
