@@ -456,10 +456,16 @@ const RANK_COLOR: Record<number, string> = {
 };
 
 type ActionMode = "deploy" | "retreat" | "merge";
-const ACTION_MODE_RING: Record<ActionMode, string> = {
-  deploy: "ring-emerald-400",
-  retreat: "ring-rose-400",
-  merge: "ring-fuchsia-400",
+// 모드별 액센트 — 타일 위 타겟팅 표시(은은한 인셋 링+글로우)와 하단 액션 버튼(활성 시 그라데이션)에 공용으로 사용
+const ACTION_MODE_TARGET: Record<ActionMode, string> = {
+  deploy: "ring-1 ring-inset ring-emerald-400/80 shadow-[0_0_14px_-3px_rgba(52,211,153,0.8)]",
+  retreat: "ring-1 ring-inset ring-rose-400/80 shadow-[0_0_14px_-3px_rgba(251,113,133,0.8)]",
+  merge: "ring-1 ring-inset ring-fuchsia-400/80 shadow-[0_0_14px_-3px_rgba(232,121,249,0.8)]",
+};
+const ACTION_MODE_BUTTON_ACTIVE: Record<ActionMode, string> = {
+  deploy: "bg-gradient-to-b from-emerald-500 to-emerald-600 border-emerald-300/40 shadow-[0_0_16px_-4px_rgba(16,185,129,0.7)]",
+  retreat: "bg-gradient-to-b from-rose-500 to-rose-600 border-rose-300/40 shadow-[0_0_16px_-4px_rgba(244,63,94,0.7)]",
+  merge: "bg-gradient-to-b from-fuchsia-500 to-fuchsia-600 border-fuchsia-300/40 shadow-[0_0_16px_-4px_rgba(217,70,239,0.7)]",
 };
 
 const LOBBY_SPARKLES = Array.from({ length: 16 }, (_, i) => ({
@@ -1492,12 +1498,9 @@ export default function TowerDefensePage() {
 
           {dpWarning && <p className="text-center text-[11px] text-rose-400 font-semibold">{t("td.not_enough_dp")}</p>}
           {bossWarning && (
-            <p
-              className="flex items-center justify-center gap-1.5 text-xs font-bold text-white py-2"
-              style={{ backgroundImage: "url(/td/ui/ribbon.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
-            >
+            <div className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold text-white bg-gradient-to-r from-rose-600/90 via-rose-500 to-rose-600/90 shadow-[0_0_16px_-2px_rgba(244,63,94,0.6)] animate-pulse">
               <Skull className="w-4 h-4" /> {t("td.boss_warning")}
-            </p>
+            </div>
           )}
 
           <div ref={boardWrapRef} className="w-full overflow-x-auto">
@@ -1508,43 +1511,36 @@ export default function TowerDefensePage() {
               >
                 <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="absolute inset-0 rounded-xl" />
 
-                <div
-                  className="absolute top-2 right-2 px-3 py-2 text-[11px] space-y-1 min-w-[130px] pointer-events-none"
-                  style={{ backgroundImage: "url(/td/ui/plate.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
-                >
+                <div className="absolute top-2 right-2 rounded-lg bg-black/55 backdrop-blur-sm border border-white/10 shadow-lg px-3 py-2 text-[11px] space-y-1 min-w-[132px] pointer-events-none tabular-nums">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{t("td.status_stage")}</span>
-                    <span className="font-bold text-foreground">{hudWave}</span>
+                    <span className="text-white/50 uppercase tracking-wide text-[9px]">{t("td.status_stage")}</span>
+                    <span className="font-bold text-white">{hudWave}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{t("td.status_kills")}</span>
-                    <span className="font-bold text-foreground">{hudKills}</span>
+                    <span className="text-white/50 uppercase tracking-wide text-[9px]">{t("td.status_kills")}</span>
+                    <span className="font-bold text-white">{hudKills}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{t("td.status_remaining")}</span>
-                    <span className="font-bold text-foreground">{hudEnemiesLeft}</span>
+                    <span className="text-white/50 uppercase tracking-wide text-[9px]">{t("td.status_remaining")}</span>
+                    <span className="font-bold text-white">{hudEnemiesLeft}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{t("td.status_lives")}</span>
+                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/10">
+                    <span className="text-white/50 uppercase tracking-wide text-[9px]">{t("td.status_lives")}</span>
                     <span className="font-bold text-rose-400">{hudLives}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{t("td.status_hp_pct")}</span>
+                    <span className="text-white/50 uppercase tracking-wide text-[9px]">{t("td.status_hp_pct")}</span>
                     <span className="font-bold text-amber-300">{hpPct}%</span>
                   </div>
                 </div>
 
-                <div
-                  className="absolute bottom-2 left-2 px-3 py-1.5 text-[11px] font-semibold text-white pointer-events-none"
-                  style={{ backgroundImage: "url(/td/ui/plate.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
-                >
+                <div className="absolute bottom-2 left-2 rounded-lg bg-black/55 backdrop-blur-sm border border-white/10 shadow-lg px-3 py-1.5 text-[11px] font-semibold text-white pointer-events-none">
                   {hudPrepLeft > 0 ? t("td.prep_countdown").replace("{sec}", String(hudPrepLeft)) : `${t("td.status_stage")} ${hudWave}`}
                 </div>
 
                 {allTileKeys.map((key) => {
                   const [col, row] = key.split(",").map(Number);
                   const pos = tileCenter(col, row);
-                  const type = TILE_GRID.get(key);
                   const op = gRef.current.operators.get(key);
                   void opsVersion;
                   const def = op ? charById(op.characterId) : null;
@@ -1563,16 +1559,14 @@ export default function TowerDefensePage() {
                       key={key}
                       onClick={() => handleTileClick(key)}
                       disabled={onCooldown && !op}
-                      className={`absolute flex items-center justify-center rounded-lg transition active:scale-90 ${
+                      className={`absolute flex items-center justify-center rounded-lg transition-all active:scale-90 ${
                         actionFlash === key ? "scale-110" : ""
                       } ${
                         def
-                          ? `${RARITY_BORDER[def.rarity]} border-2`
-                          : type === "path"
-                            ? "border-2 border-dashed border-[#8a6bc4]/40 hover:brightness-125"
-                            : "border-2 border-dotted border-[#c9a6f5]/40 hover:brightness-125"
+                          ? `border-[1.5px] ${RARITY_BORDER[def.rarity]} bg-black/10`
+                          : "border border-transparent hover:bg-white/10 hover:border-white/20"
                       } ${
-                        actionMode && targetable ? `ring-2 ring-offset-1 ring-offset-background ${ACTION_MODE_RING[actionMode]} animate-pulse` : ""
+                        actionMode && targetable ? `${ACTION_MODE_TARGET[actionMode]} animate-pulse` : ""
                       } ${actionMode && !targetable ? "opacity-35" : ""}`}
                       style={{ left: pos.x - 38, top: pos.y - 38, width: 76, height: 76 }}
                     >
@@ -1604,10 +1598,13 @@ export default function TowerDefensePage() {
                     key={a.mode}
                     onClick={() => toggleMode(a.mode)}
                     disabled={a.disabled}
-                    className={`relative flex flex-col items-center gap-0.5 rounded-lg py-2.5 px-1 text-[10px] font-semibold transition active:scale-95 text-white ${
-                      a.disabled ? "grayscale opacity-50 cursor-not-allowed" : active ? "brightness-125 saturate-150" : "hover:brightness-110"
+                    className={`relative flex flex-col items-center gap-0.5 rounded-lg py-2.5 px-1 text-[10px] font-semibold border transition-all active:scale-95 ${
+                      a.disabled
+                        ? "bg-secondary/40 border-border text-muted-foreground opacity-50 cursor-not-allowed"
+                        : active
+                          ? `${ACTION_MODE_BUTTON_ACTIVE[a.mode]} text-white`
+                          : "bg-secondary/80 border-border text-foreground hover:bg-secondary"
                     }`}
-                    style={{ backgroundImage: "url(/td/ui/plate.png)", backgroundSize: "100% 100%", imageRendering: "pixelated" }}
                   >
                     <span className="absolute top-0.5 left-1 text-[8px] opacity-60">{a.hotkey}</span>
                     <Icon className="w-4 h-4" />
