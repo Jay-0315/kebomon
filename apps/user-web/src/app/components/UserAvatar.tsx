@@ -1,5 +1,5 @@
 import { useAppData } from "../context/AppDataContext";
-import { BORDER_STYLES, getBorderLayout } from "./ColosseumPage";
+import { BORDER_STYLES, getBorderLayout } from "./ColosseumContent";
 
 interface UserAvatarProps {
   authorId: string;

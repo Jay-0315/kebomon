@@ -2,6 +2,9 @@ import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/c
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { NotificationsService } from "./notifications.service";
+import { SubscribeDto } from "./dto/subscribe.dto";
+import { UnsubscribeDto } from "./dto/unsubscribe.dto";
+import { MarkReadDto } from "./dto/mark-read.dto";
 
 @Controller("notifications")
 export class NotificationsController {
@@ -11,14 +14,14 @@ export class NotificationsController {
   @Post("push/subscribe")
   subscribe(
     @CurrentUser() user: { sub: string },
-    @Body() body: { subscription: { endpoint: string; keys: { p256dh: string; auth: string } } },
+    @Body() body: SubscribeDto,
   ) {
     return this.notifications.subscribe(user.sub, body.subscription);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post("push/unsubscribe")
-  unsubscribe(@CurrentUser() user: { sub: string }, @Body() body: { endpoint: string }) {
+  unsubscribe(@CurrentUser() user: { sub: string }, @Body() body: UnsubscribeDto) {
     return this.notifications.unsubscribe(user.sub, body.endpoint);
   }
 
@@ -41,7 +44,7 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Post("read")
-  markRead(@CurrentUser() user: { sub: string }, @Body() body: { id: string }) {
+  markRead(@CurrentUser() user: { sub: string }, @Body() body: MarkReadDto) {
     return this.notifications.markRead(user.sub, body.id);
   }
 

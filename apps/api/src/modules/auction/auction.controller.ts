@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/co
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { AuctionService } from "./auction.service";
+import { ListCharacterDto } from "./dto/list-character.dto";
+import { PlaceBidDto } from "./dto/place-bid.dto";
 
 @UseGuards(JwtAuthGuard)
 @Controller("auction")
@@ -26,8 +28,7 @@ export class AuctionController {
   @Post("list")
   listCharacter(
     @CurrentUser() user: { sub: string },
-    @Body()
-    body: { characterId: number; startPrice: number; buyoutPrice?: number; durationHours: number },
+    @Body() body: ListCharacterDto,
   ) {
     return this.auctionService.listCharacter(user.sub, body);
   }
@@ -36,7 +37,7 @@ export class AuctionController {
   placeBid(
     @CurrentUser() user: { sub: string },
     @Param("id") id: string,
-    @Body() body: { amount: number },
+    @Body() body: PlaceBidDto,
   ) {
     return this.auctionService.placeBid(user.sub, id, body.amount);
   }

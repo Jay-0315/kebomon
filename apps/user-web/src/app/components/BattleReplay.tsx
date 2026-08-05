@@ -67,7 +67,7 @@ function renderFloatContent(prefix: string, val: number, color: string): React.R
   return val > 0 ? `${prefix}${val}` : prefix;
 }
 
-const RARITY_THEME: Record<
+export const RARITY_THEME: Record<
   CharacterRarity,
   { color: string; glow: string; border: string; bg: string }
 > = {
@@ -217,7 +217,7 @@ const CSS = `
 @media(max-width:480px){.col-deck-wrap{flex-direction:column}}
 `;
 
-const ELEMENT_COLOR: Record<string, string> = {
+export const ELEMENT_COLOR: Record<string, string> = {
   fire: "#f97316",
   ice: "#93c5fd",
   earth: "#a16207",

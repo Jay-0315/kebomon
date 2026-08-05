@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { envValidationSchema } from "../config/env.validation";
 import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { CommunityModule } from "./community/community.module";
@@ -25,6 +26,7 @@ import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validationSchema: envValidationSchema,
     }),
     ScheduleModule.forRoot(),
     PrismaModule,

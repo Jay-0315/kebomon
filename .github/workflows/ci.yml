@@ -21,6 +21,8 @@ jobs:
           DATABASE_URL: "mysql://user:pass@localhost:3306/kebo"
       - name: Typecheck
         run: npx tsc --noEmit -p apps/api
+      - name: Test
+        run: npm test --workspace apps/api
       - name: Build
         run: npm run build:api
 

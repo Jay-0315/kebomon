@@ -5,6 +5,7 @@ import {
   NotImplementedException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { AuthProvider } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -34,6 +35,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly rewardsService: RewardsService,
     private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async sendVerificationCode(
@@ -448,7 +450,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
       },
-      process.env.JWT_SECRET || "kebo-dev-secret",
+      this.configService.get<string>("JWT_SECRET")!,
       {
         expiresIn: JWT_EXPIRES_IN,
       },

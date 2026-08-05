@@ -14,7 +14,7 @@ import {
   rarityAtLeast,
   rollExpeditionRiskyMult,
 } from "./expedition.constants";
-import { EggType, eggRatesFor, resolveGachaConfig } from "./gacha-config.util";
+import { EggType, eggRatesFor, resolveGachaConfig, GachaConfigValues } from "./gacha-config.util";
 import { CharacterMasterRow, loadCharacterMasterMap, RARITIES } from "./character-master.util";
 import { getTodayKTC, getYesterdayKTC } from "./date.util";
 import { getIsoWeekKey } from "../guild/guild.constants";
@@ -76,7 +76,7 @@ const TITLE_ACHIEVEMENTS: { titleId: number; type: string; value: number }[] = [
 
 // Character rarity duplicate point values (mirrors frontend constants)
 // 기존 값의 일부를 교배의 정수(breedingEssence)로 대체 — 중복 획득이 합성 재료로도 쌓이게 함
-const RARITY_DUPLICATE_POINTS: Record<string, number> = {
+export const RARITY_DUPLICATE_POINTS: Record<string, number> = {
   common: 3,
   uncommon: 6,
   rare: 12,
@@ -85,7 +85,7 @@ const RARITY_DUPLICATE_POINTS: Record<string, number> = {
   mythic: 70,
 };
 
-const RARITY_DUPLICATE_ESSENCE: Record<string, number> = {
+export const RARITY_DUPLICATE_ESSENCE: Record<string, number> = {
   common: 1,
   uncommon: 2,
   rare: 3,
@@ -265,7 +265,7 @@ const ACHIEVEMENTS: { characterId: number; type: string; value: number }[] = [
   { characterId: 393, type: "raid_count", value: 180 },
 ];
 
-function pickGachaRarity(
+export function pickGachaRarity(
   gachaRates: Record<string, number>,
   forceRareOrAbove = false,
   forceLegendaryOrAbove = false,
@@ -279,7 +279,7 @@ function pickGachaRarity(
   return weightedRandom(gachaRates);
 }
 
-function weightedRandom(weights: Record<string, number>): string {
+export function weightedRandom(weights: Record<string, number>): string {
   const total = Object.values(weights).reduce((s, v) => s + v, 0);
   let rand = Math.random() * total;
   for (const [key, weight] of Object.entries(weights)) {
@@ -293,6 +293,85 @@ function pickFromPool(rarity: string, masterMap: Map<number, CharacterMasterRow>
   const pool = GACHA_POOL_IDS.filter((id) => (masterMap.get(id)?.rarity ?? "common") === rarity);
   const id = pool[Math.floor(Math.random() * pool.length)];
   return { id, rarity };
+}
+
+export interface GachaPullResult {
+  characterId: number;
+  rarity: string;
+  isDuplicate: boolean;
+  bonusPoints: number;
+  bonusEssence: number;
+}
+
+export interface GachaSimulationResult {
+  results: GachaPullResult[];
+  pity: number;
+  legendaryPity: number;
+  totalBonusPoints: number;
+  totalBonusEssence: number;
+}
+
+/**
+ * 가챠 확률/천장(pity) 핵심 로직 — 실제 재화 지급과 분리된 순수 함수라 DB 없이 유닛테스트 가능.
+ * performGacha()가 조회한 상태(reward, 보유 캐릭터, 설정)를 그대로 넘겨받아 count번 굴리고
+ * 최종 pity 상태와 결과 목록만 돌려준다. 여기 로직이 바뀌면 확률/천장 동작이 바뀌므로
+ * rewards.service.spec.ts의 회귀 테스트가 반드시 커버해야 하는 지점.
+ */
+export function simulateGachaPulls(
+  count: 1 | 10,
+  config: GachaConfigValues,
+  startPity: number,
+  startLegendaryPity: number,
+  ownedIds: ReadonlySet<number>,
+  masterMap: Map<number, CharacterMasterRow>,
+): GachaSimulationResult {
+  const ownedSet = new Set(ownedIds);
+  const results: GachaPullResult[] = [];
+  let totalBonusPoints = 0;
+  let totalBonusEssence = 0;
+  let pity = startPity; // rare+ 보장 카운터 (consecutive non-rare)
+  let legendaryPity = startLegendaryPity; // 천장 카운터 (관리자 설정 회차 후 레전더리+ 보장)
+
+  for (let i = 0; i < count; i++) {
+    const isLastInTen = count === 10 && i === 9;
+    const hasRarePlus = results.some((r) =>
+      ["rare", "epic", "legendary", "mythic"].includes(r.rarity),
+    );
+    // 10연: 마지막 자리에서 레어+ 없으면 강제 / 단일: 누적 pity가 설정 임계값 이상이면 다음 뽑기에서 강제
+    const forceRare =
+      (isLastInTen && !hasRarePlus) || (count === 1 && pity >= config.pityRareThreshold);
+    // 천장: 설정 회차 누적 시 다음 뽑기에서 레전더리+ 확정
+    const forceLegendary = legendaryPity >= config.pityLegendaryThreshold;
+
+    const rarity = pickGachaRarity(config.gachaRates, forceRare, forceLegendary);
+    const char = pickFromPool(rarity, masterMap);
+    const isDuplicate = ownedSet.has(char.id);
+    const bonusPoints = isDuplicate
+      ? (RARITY_DUPLICATE_POINTS[rarity] ?? 0)
+      : 0;
+    const bonusEssence = isDuplicate
+      ? (RARITY_DUPLICATE_ESSENCE[rarity] ?? 0)
+      : 0;
+
+    results.push({ characterId: char.id, rarity, isDuplicate, bonusPoints, bonusEssence });
+    totalBonusPoints += bonusPoints;
+    totalBonusEssence += bonusEssence;
+
+    if (!isDuplicate) ownedSet.add(char.id);
+
+    if (["legendary", "mythic"].includes(rarity)) {
+      pity = 0;
+      legendaryPity = 0; // 천장 리셋
+    } else if (["rare", "epic"].includes(rarity)) {
+      pity = 0;
+      legendaryPity += 1;
+    } else {
+      pity += 1;
+      legendaryPity += 1;
+    }
+  }
+
+  return { results, pity, legendaryPity, totalBonusPoints, totalBonusEssence };
 }
 
 function eggDelta(eggType: EggType, delta: number) {
@@ -1352,56 +1431,13 @@ export class RewardsService {
     const config = await resolveGachaConfig(this.prisma);
     const masterMap = await loadCharacterMasterMap(this.prisma);
 
-    const results: {
-      characterId: number;
-      rarity: string;
-      isDuplicate: boolean;
-      bonusPoints: number;
-      bonusEssence: number;
-    }[] = [];
-    let totalBonusPoints = 0;
-    let totalBonusEssence = 0;
-    let pity = reward.gachaPityCount; // rare+ 보장 카운터 (consecutive non-rare)
-    let legendaryPity = reward.legendaryPityCount; // 천장 카운터 (관리자 설정 회차 후 레전더리+ 보장)
-
-    for (let i = 0; i < count; i++) {
-      const isLastInTen = count === 10 && i === 9;
-      const hasRarePlus = results.some((r) =>
-        ["rare", "epic", "legendary", "mythic"].includes(r.rarity),
-      );
-      // 10연: 마지막 자리에서 레어+ 없으면 강제 / 단일: 누적 pity가 설정 임계값 이상이면 다음 뽑기에서 강제
-      const forceRare =
-        (isLastInTen && !hasRarePlus) || (count === 1 && pity >= config.pityRareThreshold);
-      // 천장: 설정 회차 누적 시 다음 뽑기에서 레전더리+ 확정
-      const forceLegendary = legendaryPity >= config.pityLegendaryThreshold;
-
-      const rarity = pickGachaRarity(config.gachaRates, forceRare, forceLegendary);
-      const char = pickFromPool(rarity, masterMap);
-      const isDuplicate = ownedSet.has(char.id);
-      const bonusPoints = isDuplicate
-        ? (RARITY_DUPLICATE_POINTS[rarity] ?? 0)
-        : 0;
-      const bonusEssence = isDuplicate
-        ? (RARITY_DUPLICATE_ESSENCE[rarity] ?? 0)
-        : 0;
-
-      results.push({ characterId: char.id, rarity, isDuplicate, bonusPoints, bonusEssence });
-      totalBonusPoints += bonusPoints;
-      totalBonusEssence += bonusEssence;
-
-      if (!isDuplicate) ownedSet.add(char.id);
-
-      if (["legendary", "mythic"].includes(rarity)) {
-        pity = 0;
-        legendaryPity = 0; // 천장 리셋
-      } else if (["rare", "epic"].includes(rarity)) {
-        pity = 0;
-        legendaryPity += 1;
-      } else {
-        pity += 1;
-        legendaryPity += 1;
-      }
-    }
+    const {
+      results,
+      pity,
+      legendaryPity,
+      totalBonusPoints,
+      totalBonusEssence,
+    } = simulateGachaPulls(count, config, reward.gachaPityCount, reward.legendaryPityCount, ownedSet, masterMap);
 
     // Persist new characters and point changes in a transaction
     const newChars = results.filter((r) => !r.isDuplicate);

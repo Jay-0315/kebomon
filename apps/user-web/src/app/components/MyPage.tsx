@@ -29,7 +29,7 @@ import {
 } from "../data/characters";
 import TitleBadge, { TitleSelector } from "./TitleBadge";
 import { MessageCircle } from "lucide-react";
-import { BORDER_STYLES, BORDER_NAMES, getBorderLayout } from "./ColosseumPage";
+import { BORDER_STYLES, BORDER_NAMES, getBorderLayout } from "./ColosseumContent";
 
 export default function MyPage() {
   const navigate = useNavigate();
