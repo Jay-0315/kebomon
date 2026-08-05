@@ -20,8 +20,8 @@ import {
 // ─── 에셋 — 낚시용 물고기 스프라이트(OpenGameArt "Cute Fish Sprites" by chips8688, OGA-BY 3.0)
 // + 물결/기척 이펙트("Pixel Art Lake Assets", CC0). 등급별 색상이 기존 FISH_RARITY_HEX 팔레트와
 // 자연스럽게 맞아떨어지는 색상만 골라 각 등급에 매핑했다.
-const RISEUP_SHEET = "/fishing/riseup_sheet.png";
-const RIPPLE_SHEET = "/fishing/ripple_sheet.png";
+const RISEUP_SHEET = "/fishing-assets/riseup_sheet.png";
+const RIPPLE_SHEET = "/fishing-assets/ripple_sheet.png";
 const RISEUP_FRAMES = 8;
 const RIPPLE_FRAMES = 4;
 
@@ -33,7 +33,7 @@ function SwimIcon({ rarity, frame = 0, size = 40 }: { rarity: string; size?: num
       style={{
         width: size,
         height: size,
-        backgroundImage: `url(/fishing/swim_${rarity}.png)`,
+        backgroundImage: `url(/fishing-assets/swim_${rarity}.png)`,
         backgroundSize: "400% 100%",
         backgroundPosition: `${(frame / 3) * 100}% 0`,
         imageRendering: "pixelated",
@@ -484,7 +484,7 @@ export default function FishingPage() {
                       style={{ background: hex, opacity: 0.5, animation: "fishGlowPulse 1.8s ease-in-out infinite" }}
                     />
                     <img
-                      src={`/fishing/win_${rarity}.png`}
+                      src={`/fishing-assets/win_${rarity}.png`}
                       alt=""
                       className="relative w-20 h-20"
                       style={{ imageRendering: "pixelated", animation: "fishIconPop 0.5s 0.05s ease-out both" }}
