@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Fish as FishIcon } from "lucide-react";
+import { Fish as FishIcon, Sparkles, BookOpen, Zap } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { api } from "../lib/api";
@@ -8,7 +8,7 @@ import {
   FISH_BY_ID,
   FISH_DEX_MILESTONES,
   FISH_RARITY_BG,
-  FISH_RARITY_GLOW,
+  FISH_RARITY_HEX,
   getFishName,
 } from "../data/fish";
 import {
@@ -319,14 +319,18 @@ export default function FishingPage() {
 
       {tab === "fish" && (
         <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center gap-4">
-          <p className="text-xs text-muted-foreground">
-            {t("fishing.dex_count")} {distinctCount}/{FISH.length}
-          </p>
-          <p className="text-[11px] text-muted-foreground/70">
-            {t("fishing.daily_cap")
-              .replace("{earned}", String(dailyEarned))
-              .replace("{cap}", String(dailyCap))}
-          </p>
+          <div className="flex items-center gap-2 text-xs flex-wrap justify-center">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 text-muted-foreground font-medium">
+              <BookOpen className="w-3 h-3" />
+              {t("fishing.dex_count")} {distinctCount}/{FISH.length}
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400/10 text-amber-400 font-semibold">
+              <Zap className="w-3 h-3" />
+              {t("fishing.daily_cap")
+                .replace("{earned}", String(dailyEarned))
+                .replace("{cap}", String(dailyCap))}
+            </span>
+          </div>
 
           {/* 물탱크 — idle/waiting/catching 전 구간에서 항상 보이는 공용 배경 */}
           <div
@@ -434,13 +438,14 @@ export default function FishingPage() {
             )}
 
             {phase === "missed" && (
-              <p className="absolute inset-0 flex items-center justify-center text-sm text-white/90">
+              <p className="absolute inset-0 flex items-center justify-center text-sm font-medium text-white/90 drop-shadow">
                 {t("fishing.miss")}
               </p>
             )}
 
             {phase === "success" && (
-              <p className="absolute inset-0 flex items-center justify-center text-sm text-white/90">
+              <p className="absolute inset-0 flex items-center justify-center gap-1.5 text-sm font-medium text-white/90 drop-shadow">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
                 {t("fishing.reeling")}
               </p>
             )}
@@ -450,49 +455,71 @@ export default function FishingPage() {
             const fishDef = FISH_BY_ID.get(catchResult.fishId);
             if (!fishDef) return null;
             const rarity = fishDef.rarity;
+            const hex = FISH_RARITY_HEX[rarity];
             return (
-              <div className="flex flex-col items-center gap-2 py-2 w-full">
+              <div
+                className="flex flex-col items-center gap-3 py-1 w-full"
+                style={{ animation: "fishRevealIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}
+              >
                 {lastGrade && (
-                  <p className="text-xs font-bold text-primary uppercase">
+                  <p
+                    className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide"
+                    style={{ color: lastGrade === "perfect" ? "#fbbf24" : "#60a5fa" }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
                     {t(`fishing.${lastGrade}`)}
                   </p>
                 )}
                 <div
-                  className={`rounded-2xl border-2 ${RARITY_BORDER[rarity]} ${FISH_RARITY_BG[rarity]} ${FISH_RARITY_GLOW[rarity]} p-6 flex flex-col items-center gap-2 w-full`}
+                  className="relative rounded-2xl p-6 flex flex-col items-center gap-2 w-full overflow-hidden"
+                  style={{
+                    border: `1.5px solid ${hex}66`,
+                    background: `radial-gradient(circle at 50% 25%, ${hex}2e 0%, ${hex}0a 55%, transparent 100%)`,
+                    boxShadow: `0 0 28px ${hex}3d, inset 0 0 32px ${hex}14`,
+                  }}
                 >
-                  <img
-                    src={`/fishing/win_${rarity}.png`}
-                    alt=""
-                    className="w-16 h-16"
-                    style={{ imageRendering: "pixelated" }}
-                  />
+                  <div className="relative flex items-center justify-center">
+                    <div
+                      className="absolute inset-0 rounded-full blur-xl"
+                      style={{ background: hex, opacity: 0.5, animation: "fishGlowPulse 1.8s ease-in-out infinite" }}
+                    />
+                    <img
+                      src={`/fishing/win_${rarity}.png`}
+                      alt=""
+                      className="relative w-20 h-20"
+                      style={{ imageRendering: "pixelated", animation: "fishIconPop 0.5s 0.05s ease-out both" }}
+                    />
+                  </div>
                   <span
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${FISH_RARITY_BG[rarity]} ${RARITY_COLOR[rarity]}`}
+                    className="text-xs font-bold px-3 py-1 rounded-full"
+                    style={{ color: hex, background: `${hex}22`, border: `1px solid ${hex}55` }}
                   >
                     {getRarityLabel(rarity, lang)}
                   </span>
-                  <p className={`text-lg font-bold ${RARITY_COLOR[rarity]}`}>
+                  <p className="text-xl font-extrabold" style={{ color: hex }}>
                     {getFishName(fishDef, lang)}
                   </p>
-                  {catchResult.isNew ? (
-                    <span className="text-[10px] text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded-full font-semibold">
-                      {t("fishing.new_badge")}
+                  <div className="flex items-center gap-2">
+                    {catchResult.isNew ? (
+                      <span className="text-[10px] text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded-full font-semibold">
+                        {t("fishing.new_badge")}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground bg-white/5 px-2 py-0.5 rounded-full">
+                        x{catchResult.totalCaught}
+                      </span>
+                    )}
+                    <span className="text-xs font-semibold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-full">
+                      +{catchResult.points}KP
                     </span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">
-                      x{catchResult.totalCaught}
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    +{catchResult.points}KP
-                  </span>
+                  </div>
                   {catchResult.dailyCapReached && (
                     <p className="text-[10px] text-amber-400">{t("fishing.daily_cap_reached")}</p>
                   )}
                 </div>
                 <button
                   onClick={closeReveal}
-                  className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold bg-primary text-white hover:bg-primary/90"
+                  className="w-full rounded-2xl py-3 text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition"
                 >
                   {t("fishing.continue")}
                 </button>

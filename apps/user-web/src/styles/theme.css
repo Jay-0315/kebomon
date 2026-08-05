@@ -91,6 +91,20 @@
   0%, 60% { opacity: 1; }
   100%    { opacity: 0; }
 }
+/* 낚시 포획 성공 리빌 카드 — 카드 팝인 + 아이콘 통통 튀는 등장 */
+@keyframes fishRevealIn {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fishIconPop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes fishGlowPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
 @keyframes capsuleFloat {
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-6px); }
