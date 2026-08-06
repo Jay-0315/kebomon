@@ -76,9 +76,6 @@ const dict = {
     "dashboard.total_comments": "총 댓글",
     "dashboard.signup_trend": "최근 14일 가입 추이",
     "dashboard.post_trend": "최근 14일 게시글 추이",
-    "dashboard.retention_d1": "D1 리텐션",
-    "dashboard.retention_d7": "D7 리텐션",
-    "dashboard.retention_empty": "데이터 부족",
     "dashboard.points_earned_trend": "최근 14일 KP 획득 추이",
     "dashboard.points_spent_trend": "최근 14일 KP 소모 추이",
 
@@ -637,9 +634,6 @@ const dict = {
     "dashboard.total_comments": "コメント総数",
     "dashboard.signup_trend": "直近14日間の登録推移",
     "dashboard.post_trend": "直近14日間の投稿推移",
-    "dashboard.retention_d1": "D1リテンション",
-    "dashboard.retention_d7": "D7リテンション",
-    "dashboard.retention_empty": "データ不足",
     "dashboard.points_earned_trend": "直近14日間のKP獲得推移",
     "dashboard.points_spent_trend": "直近14日間のKP消費推移",
 
@@ -1198,9 +1192,6 @@ const dict = {
     "dashboard.total_comments": "Total Comments",
     "dashboard.signup_trend": "Signups — Last 14 Days",
     "dashboard.post_trend": "Posts — Last 14 Days",
-    "dashboard.retention_d1": "D1 Retention",
-    "dashboard.retention_d7": "D7 Retention",
-    "dashboard.retention_empty": "Not enough data",
     "dashboard.points_earned_trend": "KP Earned — Last 14 Days",
     "dashboard.points_spent_trend": "KP Spent — Last 14 Days",
 

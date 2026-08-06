@@ -21,7 +21,6 @@ type DashboardSummary = {
   dau: number;
   signupTrend: TrendPoint[];
   postTrend: TrendPoint[];
-  retention: { d1: number | null; d7: number | null };
   pointsTrend: PointsTrendPoint[];
 };
 
@@ -30,15 +29,6 @@ function StatTile({ label, value }: { label: string; value: number }) {
     <div className="rounded-lg border border-[var(--border)] p-4">
       <p className="mb-1 text-xs text-[var(--fg-muted)]">{label}</p>
       <p className="text-2xl font-semibold">{value.toLocaleString()}</p>
-    </div>
-  );
-}
-
-function PercentTile({ label, value, emptyLabel }: { label: string; value: number | null; emptyLabel: string }) {
-  return (
-    <div className="rounded-lg border border-[var(--border)] p-4">
-      <p className="mb-1 text-xs text-[var(--fg-muted)]">{label}</p>
-      <p className="text-2xl font-semibold">{value === null ? emptyLabel : `${(value * 100).toFixed(1)}%`}</p>
     </div>
   );
 }
@@ -140,19 +130,6 @@ export default function DashboardPage() {
         <StatTile label={t("dashboard.dau")} value={data.dau} />
         <StatTile label={t("dashboard.total_posts")} value={data.totalPosts} />
         <StatTile label={t("dashboard.total_comments")} value={data.totalComments} />
-      </div>
-
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <PercentTile
-          label={t("dashboard.retention_d1")}
-          value={data.retention.d1}
-          emptyLabel={t("dashboard.retention_empty")}
-        />
-        <PercentTile
-          label={t("dashboard.retention_d7")}
-          value={data.retention.d7}
-          emptyLabel={t("dashboard.retention_empty")}
-        />
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">

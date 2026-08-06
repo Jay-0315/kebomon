@@ -36,12 +36,6 @@ function fillDualTrend(
   return days.map((date) => ({ date, ...(byDate.get(date) ?? { earned: 0, spent: 0 }) }));
 }
 
-/** 코호트가 0이면 비율 계산이 무의미하므로 null 반환 */
-function ratio(retained: bigint | number, cohort: bigint | number): number | null {
-  const c = Number(cohort);
-  return c > 0 ? Number(retained) / c : null;
-}
-
 @Injectable()
 export class AdminDashboardService {
   constructor(private readonly prisma: PrismaService) {}
@@ -49,7 +43,7 @@ export class AdminDashboardService {
   async getSummary() {
     const days = lastNDates(TREND_DAYS);
 
-    const [totalUsers, totalPosts, totalComments, dau, signupRows, postRows, retentionRows, pointsRows] =
+    const [totalUsers, totalPosts, totalComments, dau, signupRows, postRows, pointsRows] =
       await Promise.all([
         this.prisma.user.count(),
         this.prisma.communityPost.count(),
@@ -71,16 +65,6 @@ export class AdminDashboardService {
         GROUP BY DATE(created_at)
         ORDER BY date ASC
       `,
-        this.prisma.$queryRaw<
-          { d1Cohort: bigint; d1Retained: bigint; d7Cohort: bigint; d7Retained: bigint }[]
-        >`
-        SELECT
-          SUM(CASE WHEN created_at <= NOW() - INTERVAL 1 DAY THEN 1 ELSE 0 END) AS d1Cohort,
-          SUM(CASE WHEN created_at <= NOW() - INTERVAL 1 DAY AND last_login_at >= created_at + INTERVAL 1 DAY THEN 1 ELSE 0 END) AS d1Retained,
-          SUM(CASE WHEN created_at <= NOW() - INTERVAL 7 DAY THEN 1 ELSE 0 END) AS d7Cohort,
-          SUM(CASE WHEN created_at <= NOW() - INTERVAL 7 DAY AND last_login_at >= created_at + INTERVAL 7 DAY THEN 1 ELSE 0 END) AS d7Retained
-        FROM users
-      `,
         this.prisma.$queryRaw<{ date: Date; earned: bigint; spent: bigint }[]>`
         SELECT DATE(created_at) as date,
           SUM(CASE WHEN delta > 0 THEN delta ELSE 0 END) as earned,
@@ -92,8 +76,6 @@ export class AdminDashboardService {
       `,
       ]);
 
-    const retentionSummary = retentionRows[0];
-
     return {
       totalUsers,
       totalPosts,
@@ -101,10 +83,6 @@ export class AdminDashboardService {
       dau,
       signupTrend: fillTrend(signupRows, days),
       postTrend: fillTrend(postRows, days),
-      retention: {
-        d1: retentionSummary ? ratio(retentionSummary.d1Retained, retentionSummary.d1Cohort) : null,
-        d7: retentionSummary ? ratio(retentionSummary.d7Retained, retentionSummary.d7Cohort) : null,
-      },
       pointsTrend: fillDualTrend(pointsRows, days),
     };
   }
