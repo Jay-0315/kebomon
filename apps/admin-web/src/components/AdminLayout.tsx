@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { Menu, PanelLeft, PanelLeftClose, X } from "lucide-react";
-import { clearAuthSession, getStoredUser } from "../lib/auth";
+import { clearAuthSession, getStoredUser, isSuperAdmin } from "../lib/auth";
 import { getTheme, toggleTheme } from "../lib/theme";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
@@ -13,25 +13,31 @@ const navItems = [
   { to: "/community/comments", key: "nav.community_comments" },
   { to: "/reports", key: "nav.reports" },
   { to: "/inquiries", key: "nav.inquiries" },
-  { to: "/gacha-config", key: "nav.gacha_config" },
-  { to: "/characters", key: "nav.characters" },
+  { to: "/gacha-config", key: "nav.gacha_config", superAdminOnly: true },
+  { to: "/characters", key: "nav.characters", superAdminOnly: true },
   { to: "/battles", key: "nav.battles" },
   { to: "/auction", key: "nav.auction" },
   { to: "/tower-defense", key: "nav.tower_defense" },
+  { to: "/fishing", key: "nav.fishing" },
+  { to: "/rogue", key: "nav.rogue" },
+  { to: "/expedition", key: "nav.expedition" },
   { to: "/guilds", key: "nav.guilds" },
   { to: "/notifications", key: "nav.notifications" },
   { to: "/banners", key: "nav.banners" },
-  { to: "/season", key: "nav.season" },
-  { to: "/maintenance", key: "nav.maintenance" },
-  { to: "/admin-accounts", key: "nav.admin_accounts" },
+  { to: "/season", key: "nav.season", superAdminOnly: true },
+  { to: "/maintenance", key: "nav.maintenance", superAdminOnly: true },
+  { to: "/admin-accounts", key: "nav.admin_accounts", superAdminOnly: true },
   { to: "/action-log", key: "nav.action_log" },
-] satisfies { to: string; key: TranslationKey }[];
+] satisfies { to: string; key: TranslationKey; superAdminOnly?: boolean }[];
 
 function NavList({ onNav }: { onNav?: () => void }) {
   const { t } = useLang();
+  const showSuperAdminItems = isSuperAdmin();
   return (
     <nav className="flex flex-col gap-1">
-      {navItems.map((item) => (
+      {navItems
+        .filter((item) => !item.superAdminOnly || showSuperAdminItems)
+        .map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

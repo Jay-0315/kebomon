@@ -19,8 +19,12 @@ import { SendVerificationDto } from "./dto/send-verification.dto";
 import { SocialLoginDto, SocialProvider } from "./dto/social-login.dto";
 import { SignupDto } from "./dto/signup.dto";
 import { isSuspensionExpired, reactivateIfExpired } from "./suspension.util";
+import { isAdminRole } from "./roles.constants";
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10분
+// 관리자 계정 브루트포스 방지 — 일반 유저 로그인에는 적용하지 않음
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 // 로그인 유지 시간 — 짧게 잡는 대신 프론트가 활동 중(ping)일 때마다 /auth/refresh로
 // 슬라이딩 갱신해서, 계속 접속 중인 유저는 로그인이 끊기지 않고 방치된 세션만 만료됨
 const JWT_EXPIRES_IN = "4h";
@@ -200,11 +204,42 @@ export class AuthService {
       );
     }
 
+    const isAdmin = isAdminRole(user.role);
+
+    if (isAdmin && user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingMin = Math.ceil(
+        (user.lockedUntil.getTime() - Date.now()) / 60000,
+      );
+      throw new UnauthorizedException(
+        `로그인 시도가 많아 계정이 잠겼습니다. ${remainingMin}분 후 다시 시도해주세요.`,
+      );
+    }
+
     const matched = await compare(dto.password, user.passwordHash);
     if (!matched) {
+      if (isAdmin) {
+        const nextAttempts = user.failedLoginAttempts + 1;
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data:
+            nextAttempts >= MAX_LOGIN_ATTEMPTS
+              ? {
+                  failedLoginAttempts: 0,
+                  lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MS),
+                }
+              : { failedLoginAttempts: nextAttempts },
+        });
+      }
       throw new UnauthorizedException(
         "이메일 또는 비밀번호가 올바르지 않습니다.",
       );
+    }
+
+    if (isAdmin && (user.failedLoginAttempts > 0 || user.lockedUntil)) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
     }
 
     return this.buildAuthResponse(user);

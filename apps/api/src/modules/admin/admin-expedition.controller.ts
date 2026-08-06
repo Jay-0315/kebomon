@@ -3,16 +3,16 @@ import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { ADMIN_ROLES } from "../auth/roles.constants";
-import { AdminDashboardService } from "./admin-dashboard.service";
+import { AdminExpeditionService } from "./admin-expedition.service";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(...ADMIN_ROLES)
-@Controller("admin/dashboard")
-export class AdminDashboardController {
-  constructor(private readonly adminDashboardService: AdminDashboardService) {}
+@Controller("admin/expedition")
+export class AdminExpeditionController {
+  constructor(private readonly adminExpeditionService: AdminExpeditionService) {}
 
-  @Get()
-  getSummary() {
-    return this.adminDashboardService.getSummary();
+  @Get("active")
+  getActive() {
+    return this.adminExpeditionService.getActive();
   }
 }

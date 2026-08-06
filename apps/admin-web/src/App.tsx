@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import AdminLayout from "./components/AdminLayout";
-import { isAdminAuthenticated, setAuthToken } from "./lib/auth";
+import { isAdminAuthenticated, isSuperAdmin, setAuthToken } from "./lib/auth";
 import { api } from "./lib/api";
 import { LangProvider } from "./context/LangContext";
 import LoginPage from "./pages/LoginPage";
@@ -25,9 +25,17 @@ import AdminActionLogPage from "./pages/AdminActionLogPage";
 import SeasonPage from "./pages/SeasonPage";
 import AuctionPage from "./pages/AuctionPage";
 import TowerDefensePage from "./pages/TowerDefensePage";
+import FishingPage from "./pages/FishingPage";
+import RoguePage from "./pages/RoguePage";
+import ExpeditionPage from "./pages/ExpeditionPage";
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdminAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  if (!isAdminAuthenticated()) return <Navigate to="/login" replace />;
+  return isSuperAdmin() ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 
 // 프로덕션에서는 web 컨테이너가 /admin/ 하위 경로로 프록시하므로 라우터도 그 경로를 기준으로 매칭.
@@ -73,20 +81,58 @@ export default function App() {
             <Route path="/users/:id" element={<UserDetailPage />} />
             <Route path="/community/posts" element={<CommunityPostsPage />} />
             <Route path="/community/comments" element={<CommunityCommentsPage />} />
-            <Route path="/gacha-config" element={<GachaConfigPage />} />
+            <Route
+              path="/gacha-config"
+              element={
+                <SuperAdminRoute>
+                  <GachaConfigPage />
+                </SuperAdminRoute>
+              }
+            />
             <Route path="/battles" element={<BattlesPage />} />
             <Route path="/auction" element={<AuctionPage />} />
             <Route path="/tower-defense" element={<TowerDefensePage />} />
+            <Route path="/fishing" element={<FishingPage />} />
+            <Route path="/rogue" element={<RoguePage />} />
+            <Route path="/expedition" element={<ExpeditionPage />} />
             <Route path="/guilds" element={<GuildsPage />} />
             <Route path="/guilds/:id" element={<GuildDetailPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/characters" element={<CharactersPage />} />
+            <Route
+              path="/characters"
+              element={
+                <SuperAdminRoute>
+                  <CharactersPage />
+                </SuperAdminRoute>
+              }
+            />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/inquiries" element={<InquiriesPage />} />
-            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route
+              path="/maintenance"
+              element={
+                <SuperAdminRoute>
+                  <MaintenancePage />
+                </SuperAdminRoute>
+              }
+            />
             <Route path="/banners" element={<BannersPage />} />
-            <Route path="/season" element={<SeasonPage />} />
-            <Route path="/admin-accounts" element={<AdminAccountsPage />} />
+            <Route
+              path="/season"
+              element={
+                <SuperAdminRoute>
+                  <SeasonPage />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/admin-accounts"
+              element={
+                <SuperAdminRoute>
+                  <AdminAccountsPage />
+                </SuperAdminRoute>
+              }
+            />
             <Route path="/action-log" element={<AdminActionLogPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

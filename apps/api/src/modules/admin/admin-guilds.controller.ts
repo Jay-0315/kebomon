@@ -3,10 +3,11 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { ADMIN_ROLES } from "../auth/roles.constants";
 import { AdminGuildsService } from "./admin-guilds.service";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("ADMIN")
+@Roles(...ADMIN_ROLES)
 @Controller("admin/guilds")
 export class AdminGuildsController {
   constructor(private readonly adminGuildsService: AdminGuildsService) {}

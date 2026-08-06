@@ -2,10 +2,11 @@ import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { ADMIN_ROLES } from "../auth/roles.constants";
 import { AdminBattlesService } from "./admin-battles.service";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("ADMIN")
+@Roles(...ADMIN_ROLES)
 @Controller("admin/battles")
 export class AdminBattlesController {
   constructor(private readonly adminBattlesService: AdminBattlesService) {}

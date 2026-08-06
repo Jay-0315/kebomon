@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../lib/api";
+import { isSuperAdmin } from "../lib/auth";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
 import { useLang } from "../context/LangContext";
@@ -157,24 +158,28 @@ export default function UserDetailPage() {
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button
-            onClick={toggleRole}
-            className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
-          >
-            {user.role === "ADMIN" ? t("users.demote") : t("users.promote")}
-          </button>
+          {isSuperAdmin() && user.role !== "SUPER_ADMIN" && (
+            <button
+              onClick={toggleRole}
+              className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
+            >
+              {user.role === "ADMIN" ? t("users.demote") : t("users.promote")}
+            </button>
+          )}
           <button
             onClick={() => (user.status === "SUSPENDED" ? unsuspend() : setShowSuspend(true))}
             className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
           >
             {user.status === "SUSPENDED" ? t("users.unsuspend") : t("users.suspend")}
           </button>
-          <button
-            onClick={() => setShowReward(true)}
-            className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
-          >
-            {t("users.adjust_reward")}
-          </button>
+          {isSuperAdmin() && (
+            <button
+              onClick={() => setShowReward(true)}
+              className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
+            >
+              {t("users.adjust_reward")}
+            </button>
+          )}
         </div>
       </div>
 

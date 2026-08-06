@@ -18,7 +18,8 @@ import {
 } from "../data/characters";
 
 // ─── 에셋 — 낚시용 물고기 스프라이트(OpenGameArt "Cute Fish Sprites" by chips8688, OGA-BY 3.0)
-// + 물결/기척 이펙트("Pixel Art Lake Assets", CC0). 등급별 색상이 기존 FISH_RARITY_HEX 팔레트와
+// + 물결/기척 이펙트("Pixel Art Lake Assets", CC0) + 수면 파도 텍스처("Fishing Game Assets
+// Pixel Art" by CraftPix.net, OGA-BY 3.0). 등급별 색상이 기존 FISH_RARITY_HEX 팔레트와
 // 자연스럽게 맞아떨어지는 색상만 골라 각 등급에 매핑했다.
 const RISEUP_SHEET = "/fishing-assets/riseup_sheet.png";
 const RIPPLE_SHEET = "/fishing-assets/ripple_sheet.png";
@@ -332,7 +333,10 @@ export default function FishingPage() {
             </span>
           </div>
 
-          {/* 물탱크 — idle/waiting/catching 전 구간에서 항상 보이는 공용 배경 */}
+          {/* 물탱크 — idle/waiting/catching 전 구간에서 항상 보이는 공용 배경.
+              수면 텍스처(파도 무늬 타일)는 상단에 가로로만 반복시키고, 그 아래는
+              그라데이션으로 깊이감을 준다 — 세로로 반복하면 파도 줄무늬가 어색하게 겹쳐서
+              수면 한 겹만 텍스처를 쓰고 나머지는 단색 그라데이션으로 마무리했다. */}
           <div
             className="relative w-full overflow-hidden rounded-2xl border border-sky-400/20 select-none"
             style={{
@@ -345,8 +349,16 @@ export default function FishingPage() {
             onPointerLeave={() => { holdingRef.current = false; }}
             onPointerCancel={() => { holdingRef.current = false; }}
           >
-            {/* 수면 라인 */}
-            <div className="absolute top-0 inset-x-0 h-2 bg-sky-200/30" />
+            {/* 수면 파도 텍스처 — CraftPix "Fishing Game Assets Pixel Art"(OGA-BY 3.0), 가로로만 반복 */}
+            <div
+              className="absolute top-0 inset-x-0 h-14 opacity-80"
+              style={{
+                backgroundImage: "url(/fishing-assets/water_surface.png)",
+                backgroundSize: "96px 32px",
+                backgroundRepeat: "repeat-x",
+                imageRendering: "pixelated",
+              }}
+            />
 
             {rippleKey !== null && (
               <div
@@ -415,22 +427,31 @@ export default function FishingPage() {
                     }}
                   />
                 </div>
-                {/* 잡기 막대 */}
-                <div
-                  className="absolute left-2 right-6 rounded-lg border-2 border-emerald-300/70 bg-emerald-400/25"
-                  style={{ bottom: `${clamp(barPct - barHalf, 0, 100 - BAR_HEIGHT_PCT)}%`, height: `${BAR_HEIGHT_PCT}%` }}
-                />
-                {/* 물고기 그림자(실루엣) — 등급은 아직 모르니 실제 색상 대신 그림자만 보여준다 */}
-                <div
-                  className="absolute left-2 w-9 h-9"
-                  style={{
-                    bottom: `calc(${fishPct}% - 18px)`,
-                    backgroundImage: `url(${RISEUP_SHEET})`,
-                    backgroundSize: `${RISEUP_FRAMES * 100}% 100%`,
-                    backgroundPosition: "100% 0",
-                    imageRendering: "pixelated",
-                  }}
-                />
+                {/* 중앙 '찌 통로' — 막대와 물고기가 같은 좁은 레인을 공유해야 막대가
+                    실제 활동 영역만큼만 보이고 텅 빈 큰 상자처럼 안 보인다 */}
+                <div className="absolute left-1/2 top-8 bottom-2 w-24 -translate-x-1/2">
+                  {/* 잡기 막대 */}
+                  <div
+                    className="absolute inset-x-0 rounded-xl border-2 border-emerald-300/80"
+                    style={{
+                      bottom: `${clamp(barPct - barHalf, 0, 100 - BAR_HEIGHT_PCT)}%`,
+                      height: `${BAR_HEIGHT_PCT}%`,
+                      background: "linear-gradient(180deg, rgba(110,231,183,0.4), rgba(16,185,129,0.22))",
+                      boxShadow: "0 0 14px rgba(52,211,153,0.55), inset 0 0 10px rgba(255,255,255,0.18)",
+                    }}
+                  />
+                  {/* 물고기 그림자(실루엣) — 등급은 아직 모르니 실제 색상 대신 그림자만 보여준다 */}
+                  <div
+                    className="absolute left-1/2 w-9 h-9 -translate-x-1/2"
+                    style={{
+                      bottom: `calc(${fishPct}% - 18px)`,
+                      backgroundImage: `url(${RISEUP_SHEET})`,
+                      backgroundSize: `${RISEUP_FRAMES * 100}% 100%`,
+                      backgroundPosition: "100% 0",
+                      imageRendering: "pixelated",
+                    }}
+                  />
+                </div>
                 <p className="absolute inset-x-0 bottom-2 text-center text-[11px] text-white/80 drop-shadow pointer-events-none">
                   {t("fishing.hook_btn")}
                 </p>

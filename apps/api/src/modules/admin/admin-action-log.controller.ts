@@ -2,10 +2,11 @@ import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { ADMIN_ROLES } from "../auth/roles.constants";
 import { AdminActionLogService } from "./admin-action-log.service";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("ADMIN")
+@Roles(...ADMIN_ROLES)
 @Controller("admin/action-log")
 export class AdminActionLogController {
   constructor(private readonly adminActionLogService: AdminActionLogService) {}

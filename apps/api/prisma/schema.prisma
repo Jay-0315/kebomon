@@ -68,6 +68,8 @@ model User {
   status                 String                  @default("ACTIVE") @db.VarChar(12)
   suspendedReason        String?                 @map("suspended_reason") @db.VarChar(255)
   suspendedUntil         DateTime?               @map("suspended_until")
+  failedLoginAttempts    Int                     @default(0) @map("failed_login_attempts")
+  lockedUntil            DateTime?               @map("locked_until")
   profilePhoto           String?                 @map("profile_photo") @db.LongText
   hasPassword            Boolean                 @default(false) @map("has_password")
   bio                    String?                 @db.VarChar(200)

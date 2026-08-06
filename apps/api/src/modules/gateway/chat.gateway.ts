@@ -95,6 +95,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!token) throw new Error("no token");
       const payload = this.jwtStrategy.verify(token);
       client.data.userId = payload.sub;
+      // 관리자가 정지 처리 시 이 room으로 강제 disconnect — notification.gateway.ts와 동일 패턴
+      client.join(`user:${payload.sub}`);
     } catch {
       client.disconnect(true);
     }

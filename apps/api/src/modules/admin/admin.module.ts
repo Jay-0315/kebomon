@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { NotificationGatewayModule } from "../gateway/notification-gateway.module";
+import { GatewayModule } from "../gateway/gateway.module";
 import { RewardsModule } from "../rewards/rewards.module";
 import { AdminActionLogController } from "./admin-action-log.controller";
 import { AdminActionLogService } from "./admin-action-log.service";
@@ -21,6 +22,12 @@ import { AdminCommunityController } from "./admin-community.controller";
 import { AdminCommunityService } from "./admin-community.service";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
+import { AdminExpeditionController } from "./admin-expedition.controller";
+import { AdminExpeditionService } from "./admin-expedition.service";
+import { AdminFishingController } from "./admin-fishing.controller";
+import { AdminFishingService } from "./admin-fishing.service";
+import { AdminRogueController } from "./admin-rogue.controller";
+import { AdminRogueService } from "./admin-rogue.service";
 import { AdminGachaController } from "./admin-gacha.controller";
 import { AdminGachaService } from "./admin-gacha.service";
 import { AdminGuildsController } from "./admin-guilds.controller";
@@ -37,7 +44,7 @@ import { AdminUsersController } from "./admin-users.controller";
 import { AdminUsersService } from "./admin-users.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, NotificationGatewayModule, RewardsModule],
+  imports: [AuthModule, NotificationsModule, NotificationGatewayModule, GatewayModule, RewardsModule],
   controllers: [
     AdminUsersController,
     AdminCommunityController,
@@ -55,6 +62,9 @@ import { AdminUsersService } from "./admin-users.service";
     AdminSeasonController,
     AdminAuctionController,
     AdminTowerDefenseController,
+    AdminFishingController,
+    AdminRogueController,
+    AdminExpeditionController,
   ],
   providers: [
     AdminUsersService,
@@ -73,6 +83,9 @@ import { AdminUsersService } from "./admin-users.service";
     AdminSeasonService,
     AdminAuctionService,
     AdminTowerDefenseService,
+    AdminFishingService,
+    AdminRogueService,
+    AdminExpeditionService,
   ],
 })
 export class AdminModule {}

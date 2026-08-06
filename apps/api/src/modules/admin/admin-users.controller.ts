@@ -3,6 +3,7 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { ADMIN_ROLES, SUPER_ADMIN_ROLES } from "../auth/roles.constants";
 import { AdminUsersService } from "./admin-users.service";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { BulkAdjustRewardDto } from "./dto/bulk-adjust-reward.dto";
@@ -10,7 +11,7 @@ import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("ADMIN")
+@Roles(...ADMIN_ROLES)
 @Controller("admin/users")
 export class AdminUsersController {
   constructor(private readonly adminUsersService: AdminUsersService) {}
@@ -42,6 +43,7 @@ export class AdminUsersController {
     return this.adminUsersService.getSuspensionHistory(id);
   }
 
+  @Roles(...SUPER_ADMIN_ROLES)
   @Patch(":id/role")
   updateRole(
     @CurrentUser() requester: { sub: string },
@@ -60,6 +62,7 @@ export class AdminUsersController {
     return this.adminUsersService.updateStatus(requester.sub, id, dto);
   }
 
+  @Roles(...SUPER_ADMIN_ROLES)
   @Patch(":id/reward")
   adjustReward(
     @CurrentUser() requester: { sub: string },
@@ -69,6 +72,7 @@ export class AdminUsersController {
     return this.adminUsersService.adjustReward(requester.sub, id, dto);
   }
 
+  @Roles(...SUPER_ADMIN_ROLES)
   @Post("bulk-reward")
   bulkAdjustReward(
     @CurrentUser() requester: { sub: string },

@@ -12,6 +12,7 @@ import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
 
 type TrendPoint = { date: string; count: number };
+type PointsTrendPoint = { date: string; earned: number; spent: number };
 
 type DashboardSummary = {
   totalUsers: number;
@@ -20,6 +21,8 @@ type DashboardSummary = {
   dau: number;
   signupTrend: TrendPoint[];
   postTrend: TrendPoint[];
+  retention: { d1: number | null; d7: number | null };
+  pointsTrend: PointsTrendPoint[];
 };
 
 function StatTile({ label, value }: { label: string; value: number }) {
@@ -31,12 +34,33 @@ function StatTile({ label, value }: { label: string; value: number }) {
   );
 }
 
+function PercentTile({ label, value, emptyLabel }: { label: string; value: number | null; emptyLabel: string }) {
+  return (
+    <div className="rounded-lg border border-[var(--border)] p-4">
+      <p className="mb-1 text-xs text-[var(--fg-muted)]">{label}</p>
+      <p className="text-2xl font-semibold">{value === null ? emptyLabel : `${(value * 100).toFixed(1)}%`}</p>
+    </div>
+  );
+}
+
 function formatDate(date: string) {
   const d = new Date(date);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function TrendChart({ id, title, data, color }: { id: string; title: string; data: TrendPoint[]; color: string }) {
+function TrendChart({
+  id,
+  title,
+  data,
+  color,
+  dataKey = "count",
+}: {
+  id: string;
+  title: string;
+  data: Record<string, unknown>[];
+  color: string;
+  dataKey?: string;
+}) {
   const gradientId = `fill-${id}`;
   return (
     <div className="rounded-lg border border-[var(--border)] p-4">
@@ -77,7 +101,7 @@ function TrendChart({ id, title, data, color }: { id: string; title: string; dat
             />
             <Area
               type="monotone"
-              dataKey="count"
+              dataKey={dataKey}
               stroke={color}
               strokeWidth={2}
               fill={`url(#${gradientId})`}
@@ -118,9 +142,39 @@ export default function DashboardPage() {
         <StatTile label={t("dashboard.total_comments")} value={data.totalComments} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <PercentTile
+          label={t("dashboard.retention_d1")}
+          value={data.retention.d1}
+          emptyLabel={t("dashboard.retention_empty")}
+        />
+        <PercentTile
+          label={t("dashboard.retention_d7")}
+          value={data.retention.d7}
+          emptyLabel={t("dashboard.retention_empty")}
+        />
+      </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TrendChart id="signup" title={t("dashboard.signup_trend")} data={data.signupTrend} color="var(--chart-1)" />
         <TrendChart id="posts" title={t("dashboard.post_trend")} data={data.postTrend} color="var(--chart-2)" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TrendChart
+          id="points-earned"
+          title={t("dashboard.points_earned_trend")}
+          data={data.pointsTrend}
+          dataKey="earned"
+          color="var(--chart-1)"
+        />
+        <TrendChart
+          id="points-spent"
+          title={t("dashboard.points_spent_trend")}
+          data={data.pointsTrend}
+          dataKey="spent"
+          color="var(--chart-2)"
+        />
       </div>
     </div>
   );

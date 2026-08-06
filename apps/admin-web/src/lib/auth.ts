@@ -33,5 +33,10 @@ export function getStoredUser(): AdminUser | null {
 }
 
 export function isAdminAuthenticated() {
-  return Boolean(getAuthToken()) && getStoredUser()?.role === "ADMIN";
+  const role = getStoredUser()?.role;
+  return Boolean(getAuthToken()) && (role === "ADMIN" || role === "SUPER_ADMIN");
+}
+
+export function isSuperAdmin() {
+  return getStoredUser()?.role === "SUPER_ADMIN";
 }

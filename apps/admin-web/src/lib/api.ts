@@ -27,7 +27,7 @@ async function request<T>(
     if (!response.ok) {
       if (response.status === 401 && token) {
         clearAuthSession();
-        window.location.href = "/login";
+        window.location.href = import.meta.env.PROD ? "/admin/login" : "/login";
       }
       const text = await response.text().catch(() => "");
       const error = new Error(text || `HTTP ${response.status}`) as Error & {
@@ -48,6 +48,17 @@ async function request<T>(
     return JSON.parse(text) as T;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/** api 요청 실패 시 서버가 내려준 원본 에러 메시지(JSON body의 message)를 추출 — 파싱 실패 시 undefined */
+export function getErrorMessage(err: unknown): string | undefined {
+  if (!(err instanceof Error)) return undefined;
+  try {
+    const parsed = JSON.parse(err.message) as { message?: string };
+    return typeof parsed.message === "string" ? parsed.message : undefined;
+  } catch {
+    return undefined;
   }
 }
 

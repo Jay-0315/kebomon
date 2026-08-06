@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationGateway } from "../gateway/notification.gateway";
+import { ChatGateway } from "../gateway/chat.gateway";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { BulkAdjustRewardDto } from "./dto/bulk-adjust-reward.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
@@ -40,6 +41,7 @@ export class AdminUsersService {
     private readonly notifications: NotificationsService,
     private readonly emailService: EmailService,
     private readonly notificationGateway: NotificationGateway,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   async findAll(q?: string, role?: string, status?: string, page = 1, sortBy?: string, sortDir?: string) {
@@ -219,6 +221,9 @@ export class AdminUsersService {
     }
     const user = await this.prisma.user.findUnique({ where: { id: targetId } });
     if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
+    if (user.role === "SUPER_ADMIN") {
+      throw new ForbiddenException("SUPER_ADMIN 권한은 DB에서만 변경할 수 있습니다.");
+    }
 
     const updated = await this.prisma.user.update({
       where: { id: targetId },
@@ -271,6 +276,7 @@ export class AdminUsersService {
     if (dto.status === "SUSPENDED") {
       this.notificationGateway.emitToUser(targetId, "force-logout", { reason: dto.reason ?? null, suspendedUntil });
       this.notificationGateway.server.in(`user:${targetId}`).disconnectSockets(true);
+      this.chatGateway.server.in(`user:${targetId}`).disconnectSockets(true);
     }
 
     void logSuspensionChange(

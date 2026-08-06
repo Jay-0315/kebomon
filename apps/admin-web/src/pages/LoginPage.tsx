@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { api } from "../lib/api";
+import { api, getErrorMessage } from "../lib/api";
 import { clearAuthSession, setAuthSession, type AdminUser } from "../lib/auth";
 import { useLang } from "../context/LangContext";
 
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   function finishLogin(res: LoginResponse) {
-    if (res.user.role !== "ADMIN") {
+    if (res.user.role !== "ADMIN" && res.user.role !== "SUPER_ADMIN") {
       clearAuthSession();
       setError(t("login.error_forbidden"));
       return;
@@ -87,8 +87,8 @@ export default function LoginPage() {
     try {
       const res = await api.post<LoginResponse>("/auth/login", { email, password });
       finishLogin(res);
-    } catch {
-      setError(t("login.error_invalid"));
+    } catch (err) {
+      setError(getErrorMessage(err) ?? t("login.error_invalid"));
     } finally {
       setLoading(false);
     }

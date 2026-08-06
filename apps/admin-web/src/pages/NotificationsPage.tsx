@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { isSuperAdmin } from "../lib/auth";
 import UserPickerModal, { type PickedUser } from "../components/UserPickerModal";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
@@ -207,6 +208,7 @@ export default function NotificationsPage() {
         </button>
       </form>
 
+      {isSuperAdmin() && (
       <form onSubmit={handleBulkReward} className="mt-6 rounded-lg border border-[var(--border)] p-4">
         <h2 className="mb-4 text-sm font-semibold">{t("notifications.bulk_reward_title")}</h2>
 
@@ -247,6 +249,7 @@ export default function NotificationsPage() {
           {bulkSending ? t("notifications.bulk_reward_sending") : t("notifications.bulk_reward_send")}
         </button>
       </form>
+      )}
 
       {pickerOpen && (
         <UserPickerModal

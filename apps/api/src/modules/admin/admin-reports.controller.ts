@@ -3,11 +3,12 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { ADMIN_ROLES } from "../auth/roles.constants";
 import { AdminReportsService } from "./admin-reports.service";
 import { UpdateReportStatusDto } from "./dto/update-report-status.dto";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("ADMIN")
+@Roles(...ADMIN_ROLES)
 @Controller("admin/reports")
 export class AdminReportsController {
   constructor(private readonly adminReportsService: AdminReportsService) {}

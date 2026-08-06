@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { api } from "../lib/api";
+import { isSuperAdmin } from "../lib/auth";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
@@ -219,24 +220,28 @@ export default function UsersPage() {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => toggleRole(u)}
-                      className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
-                    >
-                      {u.role === "ADMIN" ? t("users.demote") : t("users.promote")}
-                    </button>
+                    {isSuperAdmin() && u.role !== "SUPER_ADMIN" && (
+                      <button
+                        onClick={() => toggleRole(u)}
+                        className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
+                      >
+                        {u.role === "ADMIN" ? t("users.demote") : t("users.promote")}
+                      </button>
+                    )}
                     <button
                       onClick={() => (u.status === "SUSPENDED" ? unsuspend(u) : setSuspendTarget(u))}
                       className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
                     >
                       {u.status === "SUSPENDED" ? t("users.unsuspend") : t("users.suspend")}
                     </button>
-                    <button
-                      onClick={() => setRewardTarget(u)}
-                      className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
-                    >
-                      {t("users.adjust_reward")}
-                    </button>
+                    {isSuperAdmin() && (
+                      <button
+                        onClick={() => setRewardTarget(u)}
+                        className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--bg-hover)]"
+                      >
+                        {t("users.adjust_reward")}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
