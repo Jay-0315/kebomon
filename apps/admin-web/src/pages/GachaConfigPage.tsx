@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import LoadingState from "../components/LoadingState";
 import type { TranslationKey } from "../lib/i18n";
 
 type RateMap = Record<string, number>;
@@ -117,7 +118,7 @@ export default function GachaConfigPage() {
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (loading) return <LoadingState />;
   if (!config) return <p className="text-red-400">{error ?? t("gacha.no_config")}</p>;
 
   return (

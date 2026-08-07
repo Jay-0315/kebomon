@@ -62,6 +62,26 @@ export function getErrorMessage(err: unknown): string | undefined {
   }
 }
 
+/** 인증 헤더가 필요한 파일(CSV 등)을 받아 브라우저 다운로드로 저장 */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = getAuthToken();
+  const response = await fetch(`${API_BASE_URL}/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>

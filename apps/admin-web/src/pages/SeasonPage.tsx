@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
+import LoadingState from "../components/LoadingState";
 
 type RankingEntry = {
   rank: number;
@@ -19,6 +21,7 @@ type SeasonPreview = {
 
 export default function SeasonPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [preview, setPreview] = useState<SeasonPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +50,7 @@ export default function SeasonPage() {
     setError(null);
     try {
       await api.post("/admin/season/force-reset");
-      window.alert(t("season.reset_done"));
+      showToast(t("season.reset_done"), "success");
       load();
     } catch {
       setError(t("season.error_reset"));
@@ -56,7 +59,7 @@ export default function SeasonPage() {
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (loading) return <LoadingState />;
 
   return (
     <div className="max-w-2xl">

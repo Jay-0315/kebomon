@@ -7,12 +7,14 @@ import { NotificationGateway } from "../gateway/notification.gateway";
 import { ChatGateway } from "../gateway/chat.gateway";
 import { AdjustUserRewardDto } from "./dto/adjust-user-reward.dto";
 import { BulkAdjustRewardDto } from "./dto/bulk-adjust-reward.dto";
+import { BulkAdjustRewardSelectedDto } from "./dto/bulk-adjust-reward-selected.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { logSuspensionChange } from "./suspension-history.util";
 import { logAdminAction } from "./admin-action-log.util";
 import { CHARACTER_NAMES } from "./character-names.constant";
+import { toCsv } from "./csv.util";
 
 const PAGE_SIZE = 20;
 
@@ -44,13 +46,17 @@ export class AdminUsersService {
     private readonly chatGateway: ChatGateway,
   ) {}
 
-  async findAll(q?: string, role?: string, status?: string, page = 1, sortBy?: string, sortDir?: string) {
-    const skip = (page - 1) * PAGE_SIZE;
-    const where = {
+  private buildWhere(q?: string, role?: string, status?: string) {
+    return {
       ...(q ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] } : {}),
       ...(role ? { role } : {}),
       ...(status ? { status } : {}),
     };
+  }
+
+  async findAll(q?: string, role?: string, status?: string, page = 1, sortBy?: string, sortDir?: string) {
+    const skip = (page - 1) * PAGE_SIZE;
+    const where = this.buildWhere(q, role, status);
     const dir = sortDir === "asc" ? "asc" : "desc";
     const selectFields = {
       id: true,
@@ -129,6 +135,38 @@ export class AdminUsersService {
     };
   }
 
+  async exportCsv(q?: string, role?: string, status?: string): Promise<string> {
+    const where = this.buildWhere(q, role, status);
+    const users = await this.prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        lastLoginAt: true,
+        reward: { select: { missionPoints: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return toCsv(
+      ["id", "name", "email", "role", "status", "missionPoints", "createdAt", "lastLoginAt"],
+      users.map((u) => [
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.status,
+        u.reward?.missionPoints ?? 0,
+        u.createdAt.toISOString(),
+        u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
+      ]),
+    );
+  }
+
   async findById(id: string) {
     const [user, reportsAgainst] = await Promise.all([
       this.prisma.user.findUnique({
@@ -144,6 +182,7 @@ export class AdminUsersService {
           createdAt: true,
           lastLoginAt: true,
           reward: { select: rewardSelect },
+          titles: { select: { titleId: true, obtainedAt: true }, orderBy: { obtainedAt: "desc" } },
           battleStats: { select: { tierPoints: true, wins: true, losses: true, winStreak: true, bestStreak: true } },
           duelStats: { select: { wins: true, losses: true, winStreak: true, bestStreak: true } },
           guildMembership: { select: { role: true, guild: { select: { id: true, name: true } } } },
@@ -403,5 +442,77 @@ export class AdminUsersService {
     );
 
     return { total: allUserIds.length, notified, delta };
+  }
+
+  /** 선택한 유저들에게만 KP를 일괄 지급 — UserReward가 없는 유저는 새로 생성 */
+  async bulkAdjustRewardSelected(requesterId: string, dto: BulkAdjustRewardSelectedDto) {
+    const delta = dto.missionPointsDelta;
+    const userIds = [...new Set(dto.userIds)];
+
+    const validIds = (
+      await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true } })
+    ).map((u) => u.id);
+    if (validIds.length === 0) throw new NotFoundException("대상 사용자를 찾을 수 없습니다.");
+
+    const existingIds = new Set(
+      (await this.prisma.userReward.findMany({ where: { userId: { in: validIds } }, select: { userId: true } })).map(
+        (r) => r.userId,
+      ),
+    );
+    const missingIds = validIds.filter((id) => !existingIds.has(id));
+
+    await this.prisma.userReward.updateMany({
+      where: { userId: { in: validIds } },
+      data: { missionPoints: { increment: delta } },
+    });
+
+    if (missingIds.length > 0) {
+      await this.prisma.userReward.createMany({
+        data: missingIds.map((userId) => ({ userId, missionPoints: delta })),
+      });
+    }
+
+    const results = await Promise.allSettled(
+      validIds.map(async (userId) => {
+        void logPointsChange(this.prisma, userId, delta, `선택 지급${dto.reason ? `: ${dto.reason}` : ""}`);
+        await this.notifications.create({
+          userId,
+          type: "notice",
+          title: "KP 지급 안내",
+          body: `KP +${delta}${dto.reason ? ` (사유: ${dto.reason})` : ""}`,
+        });
+      }),
+    );
+    const notified = results.filter((r) => r.status === "fulfilled").length;
+
+    void logAdminAction(
+      this.prisma,
+      requesterId,
+      "USER_REWARD_BULK_ADJUST",
+      null,
+      null,
+      `KP +${delta} × 선택 ${validIds.length}명${dto.reason ? ` (사유: ${dto.reason})` : ""}`,
+    );
+
+    return { total: validIds.length, notified, delta };
+  }
+
+  async grantTitle(requesterId: string, targetId: string, titleId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: targetId } });
+    if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
+
+    await this.prisma.userTitle.upsert({
+      where: { userId_titleId: { userId: targetId, titleId } },
+      create: { userId: targetId, titleId },
+      update: {},
+    });
+    void logAdminAction(this.prisma, requesterId, "USER_TITLE_GRANT", "USER", targetId, `title ${titleId}`);
+    return { userId: targetId, titleId };
+  }
+
+  async revokeTitle(requesterId: string, targetId: string, titleId: number) {
+    await this.prisma.userTitle.deleteMany({ where: { userId: targetId, titleId } });
+    void logAdminAction(this.prisma, requesterId, "USER_TITLE_REVOKE", "USER", targetId, `title ${titleId}`);
+    return { userId: targetId, titleId };
   }
 }

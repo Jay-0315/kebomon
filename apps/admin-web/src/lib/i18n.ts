@@ -26,6 +26,11 @@ const dict = {
     "common.status": "상태",
     "common.reason": "사유",
 
+    // ── 에러 바운더리 (LangProvider 밖에서도 렌더되므로 translate()를 직접 호출) ──
+    "errorBoundary.title": "문제가 발생했습니다",
+    "errorBoundary.message": "페이지를 표시하는 중 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.",
+    "errorBoundary.reload": "새로고침",
+
     // ── 로그인 ──
     "login.heading": "관리자 로그인",
     "login.email": "이메일",
@@ -138,6 +143,9 @@ const dict = {
     "users.confirm_unsuspend": "{{email}}의 정지를 해제할까요?",
     "users.error_role_change": "권한 변경에 실패했습니다.",
     "users.error_unsuspend": "정지 해제에 실패했습니다.",
+    "users.export_csv": "CSV 내보내기",
+    "users.error_export": "CSV 내보내기에 실패했습니다.",
+    "users.bulk_reward_selected": "선택 {{count}}명 KP 지급",
 
     // ── 회원 상세 ──
     "userDetail.error_load": "유저 정보를 불러오지 못했습니다.",
@@ -161,6 +169,15 @@ const dict = {
     "userDetail.character_obtained": "{{name}} 획득",
     "userDetail.suspension_history": "정지 이력",
     "userDetail.auto_expired": "기간 만료(자동 해제)",
+    "userDetail.titles_section": "칭호 관리",
+    "userDetail.no_titles": "보유한 칭호가 없습니다.",
+    "userDetail.revoke_title": "회수",
+    "userDetail.grant_title": "부여",
+    "userDetail.title_id_placeholder": "칭호 ID",
+    "userDetail.confirm_title_revoke": "칭호 #{{id}}를 회수할까요?",
+    "userDetail.error_title_invalid": "올바른 칭호 ID를 입력해주세요.",
+    "userDetail.error_title_grant": "칭호 부여에 실패했습니다.",
+    "userDetail.error_title_revoke": "칭호 회수에 실패했습니다.",
 
     // ── 재화 조정 모달 ──
     "rewardModal.field_normal_eggs": "일반 알",
@@ -176,6 +193,13 @@ const dict = {
     "rewardModal.error_save": "재화 조정에 실패했습니다.",
     "rewardModal.saving": "저장 중...",
     "rewardModal.apply": "적용",
+
+    // ── 선택 유저 KP 지급 모달 ──
+    "bulkRewardModal.title": "선택 유저 KP 지급",
+    "bulkRewardModal.target_count": "대상 {{count}}명",
+    "bulkRewardModal.amount_label": "지급 KP",
+    "bulkRewardModal.error_amount": "1 이상의 숫자를 입력해주세요.",
+    "bulkRewardModal.error_save": "지급에 실패했습니다.",
 
     // ── 계정 정지 모달 ──
     "suspendModal.title": "계정 정지",
@@ -524,6 +548,8 @@ const dict = {
     // ── 감사 로그 ──
     "actionLog.title": "감사 로그",
     "actionLog.filter_placeholder": "관리자 userId로 필터링",
+    "actionLog.export_csv": "CSV 내보내기",
+    "actionLog.error_export": "CSV 내보내기에 실패했습니다.",
     "actionLog.col_actor": "관리자",
     "actionLog.col_action": "액션",
     "actionLog.col_target": "대상",
@@ -546,6 +572,9 @@ const dict = {
     "actionLog.action_USER_SUSPEND": "계정 정지",
     "actionLog.action_USER_UNSUSPEND": "계정 정지 해제",
     "actionLog.action_USER_REWARD_ADJUST": "재화 조정",
+    "actionLog.action_USER_REWARD_BULK_ADJUST": "재화 일괄 지급",
+    "actionLog.action_USER_TITLE_GRANT": "칭호 부여",
+    "actionLog.action_USER_TITLE_REVOKE": "칭호 회수",
     "actionLog.target_USER": "유저",
     "actionLog.target_POST": "게시글",
     "actionLog.target_COMMENT": "댓글",
@@ -583,6 +612,11 @@ const dict = {
     "common.date": "日時",
     "common.status": "状態",
     "common.reason": "理由",
+
+    // ── エラーバウンダリ ──
+    "errorBoundary.title": "問題が発生しました",
+    "errorBoundary.message": "ページの表示中にエラーが発生しました。再読み込みして再度お試しください。",
+    "errorBoundary.reload": "再読み込み",
 
     // ── ログイン ──
     "login.heading": "管理者ログイン",
@@ -696,6 +730,9 @@ const dict = {
     "users.confirm_unsuspend": "{{email}}の停止を解除しますか？",
     "users.error_role_change": "権限の変更に失敗しました。",
     "users.error_unsuspend": "停止解除に失敗しました。",
+    "users.export_csv": "CSVエクスポート",
+    "users.error_export": "CSVエクスポートに失敗しました。",
+    "users.bulk_reward_selected": "選択{{count}}名にKP支給",
 
     // ── 会員詳細 ──
     "userDetail.error_load": "ユーザー情報の読み込みに失敗しました。",
@@ -719,6 +756,15 @@ const dict = {
     "userDetail.character_obtained": "{{name}}獲得",
     "userDetail.suspension_history": "停止履歴",
     "userDetail.auto_expired": "期間満了(自動解除)",
+    "userDetail.titles_section": "称号管理",
+    "userDetail.no_titles": "保有している称号がありません。",
+    "userDetail.revoke_title": "回収",
+    "userDetail.grant_title": "付与",
+    "userDetail.title_id_placeholder": "称号ID",
+    "userDetail.confirm_title_revoke": "称号 #{{id}} を回収しますか？",
+    "userDetail.error_title_invalid": "正しい称号IDを入力してください。",
+    "userDetail.error_title_grant": "称号の付与に失敗しました。",
+    "userDetail.error_title_revoke": "称号の回収に失敗しました。",
 
     // ── リソース調整モーダル ──
     "rewardModal.field_normal_eggs": "通常卵",
@@ -734,6 +780,13 @@ const dict = {
     "rewardModal.error_save": "リソース調整に失敗しました。",
     "rewardModal.saving": "保存中...",
     "rewardModal.apply": "適用",
+
+    // ── 選択ユーザーKP支給モーダル ──
+    "bulkRewardModal.title": "選択ユーザーにKP支給",
+    "bulkRewardModal.target_count": "対象{{count}}名",
+    "bulkRewardModal.amount_label": "支給KP",
+    "bulkRewardModal.error_amount": "1以上の数値を入力してください。",
+    "bulkRewardModal.error_save": "支給に失敗しました。",
 
     // ── アカウント停止モーダル ──
     "suspendModal.title": "アカウント停止",
@@ -1082,6 +1135,8 @@ const dict = {
     // ── 監査ログ ──
     "actionLog.title": "監査ログ",
     "actionLog.filter_placeholder": "管理者userIdで絞り込み",
+    "actionLog.export_csv": "CSVエクスポート",
+    "actionLog.error_export": "CSVエクスポートに失敗しました。",
     "actionLog.col_actor": "管理者",
     "actionLog.col_action": "アクション",
     "actionLog.col_target": "対象",
@@ -1104,6 +1159,9 @@ const dict = {
     "actionLog.action_USER_SUSPEND": "アカウント停止",
     "actionLog.action_USER_UNSUSPEND": "アカウント停止解除",
     "actionLog.action_USER_REWARD_ADJUST": "リソース調整",
+    "actionLog.action_USER_REWARD_BULK_ADJUST": "リソース一括支給",
+    "actionLog.action_USER_TITLE_GRANT": "称号付与",
+    "actionLog.action_USER_TITLE_REVOKE": "称号回収",
     "actionLog.target_USER": "ユーザー",
     "actionLog.target_POST": "投稿",
     "actionLog.target_COMMENT": "コメント",
@@ -1141,6 +1199,11 @@ const dict = {
     "common.date": "Date",
     "common.status": "Status",
     "common.reason": "Reason",
+
+    // ── Error Boundary ──
+    "errorBoundary.title": "Something went wrong",
+    "errorBoundary.message": "An error occurred while displaying this page. Please reload and try again.",
+    "errorBoundary.reload": "Reload",
 
     // ── Login ──
     "login.heading": "Admin Login",
@@ -1254,6 +1317,9 @@ const dict = {
     "users.confirm_unsuspend": "Unsuspend {{email}}?",
     "users.error_role_change": "Failed to change role.",
     "users.error_unsuspend": "Failed to unsuspend.",
+    "users.export_csv": "Export CSV",
+    "users.error_export": "Failed to export CSV.",
+    "users.bulk_reward_selected": "Grant KP to {{count}} selected",
 
     // ── User Detail ──
     "userDetail.error_load": "Failed to load user info.",
@@ -1277,6 +1343,15 @@ const dict = {
     "userDetail.character_obtained": "Obtained {{name}}",
     "userDetail.suspension_history": "Suspension History",
     "userDetail.auto_expired": "Expired (auto-lifted)",
+    "userDetail.titles_section": "Title Management",
+    "userDetail.no_titles": "No titles held.",
+    "userDetail.revoke_title": "Revoke",
+    "userDetail.grant_title": "Grant",
+    "userDetail.title_id_placeholder": "Title ID",
+    "userDetail.confirm_title_revoke": "Revoke title #{{id}}?",
+    "userDetail.error_title_invalid": "Please enter a valid title ID.",
+    "userDetail.error_title_grant": "Failed to grant title.",
+    "userDetail.error_title_revoke": "Failed to revoke title.",
 
     // ── Reward Adjust Modal ──
     "rewardModal.field_normal_eggs": "Normal Egg",
@@ -1292,6 +1367,13 @@ const dict = {
     "rewardModal.error_save": "Failed to adjust resources.",
     "rewardModal.saving": "Saving...",
     "rewardModal.apply": "Apply",
+
+    // ── Bulk Reward Selected Modal ──
+    "bulkRewardModal.title": "Grant KP to Selected Users",
+    "bulkRewardModal.target_count": "{{count}} target(s)",
+    "bulkRewardModal.amount_label": "KP Amount",
+    "bulkRewardModal.error_amount": "Please enter a number of 1 or more.",
+    "bulkRewardModal.error_save": "Failed to grant KP.",
 
     // ── Suspend Account Modal ──
     "suspendModal.title": "Suspend Account",
@@ -1640,6 +1722,8 @@ const dict = {
     // ── Audit Log ──
     "actionLog.title": "Audit Log",
     "actionLog.filter_placeholder": "Filter by admin userId",
+    "actionLog.export_csv": "Export CSV",
+    "actionLog.error_export": "Failed to export CSV.",
     "actionLog.col_actor": "Admin",
     "actionLog.col_action": "Action",
     "actionLog.col_target": "Target",
@@ -1662,6 +1746,9 @@ const dict = {
     "actionLog.action_USER_SUSPEND": "Suspend Account",
     "actionLog.action_USER_UNSUSPEND": "Unsuspend Account",
     "actionLog.action_USER_REWARD_ADJUST": "Adjust Resources",
+    "actionLog.action_USER_REWARD_BULK_ADJUST": "Bulk Grant Resources",
+    "actionLog.action_USER_TITLE_GRANT": "Grant Title",
+    "actionLog.action_USER_TITLE_REVOKE": "Revoke Title",
     "actionLog.target_USER": "User",
     "actionLog.target_POST": "Post",
     "actionLog.target_COMMENT": "Comment",

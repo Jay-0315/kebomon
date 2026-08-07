@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import LoadingState from "../components/LoadingState";
 
 type MaintenanceConfig = {
   enabled: boolean;
@@ -66,7 +67,7 @@ export default function MaintenancePage() {
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (loading) return <LoadingState />;
 
   return (
     <div className="max-w-xl">

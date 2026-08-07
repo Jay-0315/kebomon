@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import PostDetailModal, { type PostDetail } from "../components/PostDetailModal";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 
 type PostRow = PostDetail;
 
@@ -20,6 +21,7 @@ const stripHtml = (html: string) =>
 
 export default function CommunityPostsPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
@@ -58,7 +60,7 @@ export default function CommunityPostsPage() {
       await api.delete(`/admin/community/posts/${post.id}`);
       load();
     } catch {
-      window.alert(t("community.error_delete"));
+      showToast(t("community.error_delete"), "error");
     }
   }
 

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
-import { api } from "../lib/api";
+import { api, downloadFile } from "../lib/api";
 import { isSuperAdmin } from "../lib/auth";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
+import BulkRewardSelectedModal from "../components/BulkRewardSelectedModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 
 type SortKey = "name" | "email" | "role" | "status" | "online" | "reward" | "createdAt" | "lastLoginAt";
 type SortDir = "asc" | "desc";
@@ -62,6 +64,7 @@ type UsersResponse = {
 
 export default function UsersPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q, 300);
   const [roleFilter, setRoleFilter] = useState("");
@@ -74,6 +77,9 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [rewardTarget, setRewardTarget] = useState<AdminUserRow | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<AdminUserRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRewardOpen, setBulkRewardOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   async function load(p: number) {
     setLoading(true);
@@ -98,13 +104,48 @@ export default function UsersPage() {
   // 검색어/필터/정렬이 바뀌면 1페이지부터 즉시 재검색
   useEffect(() => {
     setPage(1);
+    setSelectedIds(new Set());
     void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, roleFilter, statusFilter, sortBy, sortDir]);
 
   function handlePageChange(p: number) {
     setPage(p);
+    setSelectedIds(new Set());
     void load(p);
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      if (data && data.users.length > 0 && data.users.every((u) => prev.has(u.id))) {
+        return new Set();
+      }
+      return new Set(data?.users.map((u) => u.id) ?? []);
+    });
+  }
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedQ) params.set("q", debouncedQ);
+      if (roleFilter) params.set("role", roleFilter);
+      if (statusFilter) params.set("status", statusFilter);
+      await downloadFile(`/admin/users/export?${params.toString()}`, "users.csv");
+    } catch {
+      showToast(t("users.error_export"), "error");
+    } finally {
+      setExporting(false);
+    }
   }
 
   function toggleSort(key: SortKey) {
@@ -123,7 +164,7 @@ export default function UsersPage() {
       await api.patch(`/admin/users/${user.id}/role`, { role: nextRole });
       void load(page);
     } catch {
-      window.alert(t("users.error_role_change"));
+      showToast(t("users.error_role_change"), "error");
     }
   }
 
@@ -133,7 +174,7 @@ export default function UsersPage() {
       await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
       void load(page);
     } catch {
-      window.alert(t("users.error_unsuspend"));
+      showToast(t("users.error_unsuspend"), "error");
     }
   }
 
@@ -166,6 +207,21 @@ export default function UsersPage() {
           <option value="ACTIVE" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ACTIVE</option>
           <option value="SUSPENDED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">SUSPENDED</option>
         </select>
+        <button
+          onClick={handleExportCsv}
+          disabled={exporting}
+          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
+        >
+          {exporting ? t("common.loading") : t("users.export_csv")}
+        </button>
+        {isSuperAdmin() && selectedIds.size > 0 && (
+          <button
+            onClick={() => setBulkRewardOpen(true)}
+            className="rounded-md border border-[#b7607e]/40 px-3 py-1.5 text-sm text-[#b7607e] hover:bg-[#b7607e]/10"
+          >
+            {t("users.bulk_reward_selected", { count: selectedIds.size })}
+          </button>
+        )}
       </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
@@ -174,6 +230,15 @@ export default function UsersPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-soft)] text-[var(--fg-muted)]">
             <tr>
+              {isSuperAdmin() && (
+                <th className="w-8 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={(data?.users.length ?? 0) > 0 && (data?.users.every((u) => selectedIds.has(u.id)) ?? false)}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+              )}
               <SortHeader sortKey="name" label={t("users.col_name")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader sortKey="email" label={t("users.col_email")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
               <SortHeader sortKey="role" label={t("users.col_role")} activeKey={sortBy} dir={sortDir} onToggle={toggleSort} />
@@ -193,6 +258,11 @@ export default function UsersPage() {
           <tbody>
             {data?.users.map((u) => (
               <tr key={u.id} className="border-t border-[var(--border)]">
+                {isSuperAdmin() && (
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} />
+                  </td>
+                )}
                 <td className="px-3 py-2">
                   <Link to={`/users/${u.id}`} className="text-[#b7607e] hover:underline">
                     {u.name}
@@ -248,7 +318,7 @@ export default function UsersPage() {
             ))}
             {!loading && data?.users.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-[var(--fg-faint)]">
+                <td colSpan={isSuperAdmin() ? 9 : 8} className="px-3 py-6 text-center text-[var(--fg-faint)]">
                   {t("common.no_results")}
                 </td>
               </tr>
@@ -295,6 +365,17 @@ export default function UsersPage() {
           userLabel={`${suspendTarget.name} (${suspendTarget.email})`}
           onClose={() => setSuspendTarget(null)}
           onSaved={() => load(page)}
+        />
+      )}
+
+      {bulkRewardOpen && (
+        <BulkRewardSelectedModal
+          userIds={[...selectedIds]}
+          onClose={() => setBulkRewardOpen(false)}
+          onSaved={() => {
+            setSelectedIds(new Set());
+            load(page);
+          }}
         />
       )}
     </div>

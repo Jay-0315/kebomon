@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 
 type AdminUserRow = {
   id: string;
@@ -19,6 +20,7 @@ type UsersResponse = {
 
 export default function AdminAccountsPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [users, setUsers] = useState<AdminUserRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export default function AdminAccountsPage() {
       await api.patch(`/admin/users/${user.id}/role`, { role: "USER" });
       load();
     } catch {
-      window.alert(t("users.error_role_change"));
+      showToast(t("users.error_role_change"), "error");
     }
   }
 

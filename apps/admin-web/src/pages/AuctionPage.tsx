@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 import type { TranslationKey } from "../lib/i18n";
 
 type AuctionListing = {
@@ -37,6 +38,7 @@ const STATUS_LABEL_KEY: Record<string, TranslationKey> = {
 
 export default function AuctionPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [statusFilter, setStatusFilter] = useState("active");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<AuctionResponse | null>(null);
@@ -79,7 +81,7 @@ export default function AuctionPage() {
       setCancelReason("");
       load();
     } catch {
-      window.alert(t("auction.error_cancel"));
+      showToast(t("auction.error_cancel"), "error");
     } finally {
       setSubmitting(false);
     }

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Header, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -18,5 +18,12 @@ export class AdminActionLogController {
     @Query("page") page?: string,
   ) {
     return this.adminActionLogService.findAll(actorId, action, page ? Number(page) : 1);
+  }
+
+  @Get("export")
+  @Header("Content-Type", "text/csv; charset=utf-8")
+  @Header("Content-Disposition", 'attachment; filename="action-log.csv"')
+  exportCsv(@Query("actorId") actorId?: string, @Query("action") action?: string) {
+    return this.adminActionLogService.exportCsv(actorId, action);
   }
 }

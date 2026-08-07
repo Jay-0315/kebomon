@@ -13,9 +13,17 @@ const ROLE_ORDER: Record<string, number> = { owner: 0, officer: 1, member: 2 };
 export class AdminGuildsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(q?: string, page = 1) {
+  async findAll(q?: string, page = 1, sortBy?: string, sortDir?: string) {
     const skip = (page - 1) * PAGE_SIZE;
     const where = q ? { name: { contains: q } } : undefined;
+    const dir = sortDir === "asc" ? "asc" : "desc";
+    const orderByMap: Record<string, object> = {
+      name: { name: dir },
+      level: { level: dir },
+      memberCount: { members: { _count: dir } },
+      createdAt: { createdAt: dir },
+    };
+    const orderBy = orderByMap[sortBy ?? ""] ?? { createdAt: "desc" };
 
     const [guilds, total] = await Promise.all([
       this.prisma.guild.findMany({
@@ -29,7 +37,7 @@ export class AdminGuildsService {
             include: { contributions: true },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: PAGE_SIZE,
       }),

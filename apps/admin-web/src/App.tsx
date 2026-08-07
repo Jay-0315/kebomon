@@ -4,6 +4,7 @@ import AdminLayout from "./components/AdminLayout";
 import { isAdminAuthenticated, isSuperAdmin, setAuthToken } from "./lib/auth";
 import { api } from "./lib/api";
 import { LangProvider } from "./context/LangContext";
+import { ToastProvider } from "./context/ToastContext";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import UsersPage from "./pages/UsersPage";
@@ -66,6 +67,7 @@ export default function App() {
   return (
     <BrowserRouter basename={basename}>
       <LangProvider>
+        <ToastProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -137,6 +139,7 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ToastProvider>
       </LangProvider>
     </BrowserRouter>
   );

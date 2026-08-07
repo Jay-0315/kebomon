@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 import type { TranslationKey } from "../lib/i18n";
 
 type InquiryRow = {
@@ -37,6 +38,7 @@ const STATUS_LABEL_KEY: Record<InquiryRow["status"], TranslationKey> = {
 
 export default function InquiriesPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<InquiriesResponse | null>(null);
@@ -76,7 +78,7 @@ export default function InquiriesPage() {
       setReplyText("");
       load();
     } catch {
-      window.alert(t("inquiries.error_reply"));
+      showToast(t("inquiries.error_reply"), "error");
     } finally {
       setSubmitting(false);
     }

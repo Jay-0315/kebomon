@@ -13,8 +13,13 @@ export class AdminGuildsController {
   constructor(private readonly adminGuildsService: AdminGuildsService) {}
 
   @Get()
-  findAll(@Query("q") q?: string, @Query("page") page?: string) {
-    return this.adminGuildsService.findAll(q, page ? Number(page) : 1);
+  findAll(
+    @Query("q") q?: string,
+    @Query("page") page?: string,
+    @Query("sortBy") sortBy?: string,
+    @Query("sortDir") sortDir?: string,
+  ) {
+    return this.adminGuildsService.findAll(q, page ? Number(page) : 1, sortBy, sortDir);
   }
 
   @Get(":id")

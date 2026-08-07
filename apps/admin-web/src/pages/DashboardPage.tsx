@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import LoadingState from "../components/LoadingState";
 
 type TrendPoint = { date: string; count: number };
 type PointsTrendPoint = { date: string; earned: number; spent: number };
@@ -119,7 +120,7 @@ export default function DashboardPage() {
   }, []);
 
   if (error) return <p className="text-red-400">{error}</p>;
-  if (!data) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (!data) return <LoadingState />;
 
   return (
     <div>

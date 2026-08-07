@@ -5,6 +5,8 @@ import { isSuperAdmin } from "../lib/auth";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
+import LoadingState from "../components/LoadingState";
 import type { TranslationKey } from "../lib/i18n";
 
 type UserDetail = {
@@ -22,6 +24,7 @@ type UserDetail = {
   duelStats: { wins: number; losses: number; winStreak: number; bestStreak: number } | null;
   guildMembership: { role: string; guild: { id: string; name: string } } | null;
   posts: { id: string; content: string; category: string; createdAt: string }[];
+  titles: { titleId: number; obtainedAt: string }[];
   _count: { posts: number; comments: number; characters: number };
   reportsAgainstCount: number;
 };
@@ -59,6 +62,7 @@ export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useLang();
+  const { showToast } = useToast();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityLog | null>(null);
   const [suspensionHistory, setSuspensionHistory] = useState<SuspensionHistoryRow[] | null>(null);
@@ -66,6 +70,8 @@ export default function UserDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showReward, setShowReward] = useState(false);
   const [showSuspend, setShowSuspend] = useState(false);
+  const [titleIdInput, setTitleIdInput] = useState("");
+  const [grantingTitle, setGrantingTitle] = useState(false);
 
   async function load() {
     if (!id) return;
@@ -100,7 +106,7 @@ export default function UserDetailPage() {
       await api.patch(`/admin/users/${user.id}/role`, { role: nextRole });
       load();
     } catch {
-      window.alert(t("users.error_role_change"));
+      showToast(t("users.error_role_change"), "error");
     }
   }
 
@@ -111,11 +117,41 @@ export default function UserDetailPage() {
       await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
       load();
     } catch {
-      window.alert(t("users.error_unsuspend"));
+      showToast(t("users.error_unsuspend"), "error");
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  async function grantTitle() {
+    if (!user) return;
+    const titleId = Number(titleIdInput);
+    if (!Number.isInteger(titleId) || titleId < 1) {
+      showToast(t("userDetail.error_title_invalid"), "error");
+      return;
+    }
+    setGrantingTitle(true);
+    try {
+      await api.post(`/admin/users/${user.id}/titles`, { titleId });
+      setTitleIdInput("");
+      load();
+    } catch {
+      showToast(t("userDetail.error_title_grant"), "error");
+    } finally {
+      setGrantingTitle(false);
+    }
+  }
+
+  async function revokeTitle(titleId: number) {
+    if (!user) return;
+    if (!window.confirm(t("userDetail.confirm_title_revoke", { id: titleId }))) return;
+    try {
+      await api.delete(`/admin/users/${user.id}/titles/${titleId}`);
+      load();
+    } catch {
+      showToast(t("userDetail.error_title_revoke"), "error");
+    }
+  }
+
+  if (loading) return <LoadingState />;
   if (error || !user) return <p className="text-red-400">{error ?? t("userDetail.not_found")}</p>;
 
   return (
@@ -285,6 +321,54 @@ export default function UserDetailPage() {
           </ul>
         )}
       </div>
+
+      {isSuperAdmin() && (
+        <div className="mt-4 rounded-lg border border-[var(--border)] p-4">
+          <h2 className="mb-3 text-sm font-semibold">{t("userDetail.titles_section")}</h2>
+          {user.titles.length === 0 ? (
+            <p className="mb-3 text-sm text-[var(--fg-faint)]">{t("userDetail.no_titles")}</p>
+          ) : (
+            <ul className="mb-3 space-y-2">
+              {user.titles.map((title) => (
+                <li
+                  key={title.titleId}
+                  className="flex items-center justify-between border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0"
+                >
+                  <span>
+                    #{title.titleId}
+                    <span className="ml-2 text-xs text-[var(--fg-faint)]">
+                      {new Date(title.obtainedAt).toLocaleString()}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => revokeTitle(title.titleId)}
+                    className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                  >
+                    {t("userDetail.revoke_title")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={1}
+              value={titleIdInput}
+              onChange={(e) => setTitleIdInput(e.target.value)}
+              placeholder={t("userDetail.title_id_placeholder")}
+              className="w-40 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
+            />
+            <button
+              onClick={grantTitle}
+              disabled={grantingTitle}
+              className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
+            >
+              {grantingTitle ? t("common.loading") : t("userDetail.grant_title")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showReward && (
         <RewardAdjustModal

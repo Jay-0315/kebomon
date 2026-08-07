@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
 import { translate, type Lang, type TranslationKey } from "../lib/i18n";
 
-const LANG_CACHE_KEY = "kebo-admin-lang";
+export const LANG_CACHE_KEY = "kebo-admin-lang";
 
 interface LangContextValue {
   lang: Lang;
@@ -13,7 +13,7 @@ interface LangContextValue {
 
 const LangContext = createContext<LangContextValue | null>(null);
 
-function isLang(value: unknown): value is Lang {
+export function isLang(value: unknown): value is Lang {
   return value === "ko" || value === "ja" || value === "en";
 }
 

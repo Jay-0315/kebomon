@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { toCsv } from "./csv.util";
 
 const PAGE_SIZE = 30;
 
@@ -43,5 +44,39 @@ export class AdminActionLogService {
       page,
       totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
     };
+  }
+
+  async exportCsv(actorId?: string, action?: string): Promise<string> {
+    const where = {
+      ...(actorId ? { actorId } : {}),
+      ...(action ? { action } : {}),
+    };
+
+    const rows = await this.prisma.adminActionLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const userTargetIds = rows.filter((r) => r.targetType === "USER" && r.targetId).map((r) => r.targetId as string);
+    const idsToResolve = [...new Set([...rows.map((r) => r.actorId), ...userTargetIds])];
+    const users = idsToResolve.length
+      ? await this.prisma.user.findMany({ where: { id: { in: idsToResolve } }, select: { id: true, name: true } })
+      : [];
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
+
+    return toCsv(
+      ["id", "actorId", "actorName", "action", "targetType", "targetId", "targetName", "detail", "createdAt"],
+      rows.map((r) => [
+        r.id.toString(),
+        r.actorId,
+        nameById.get(r.actorId) ?? null,
+        r.action,
+        r.targetType,
+        r.targetId,
+        r.targetType === "USER" && r.targetId ? (nameById.get(r.targetId) ?? null) : null,
+        r.detail,
+        r.createdAt.toISOString(),
+      ]),
+    );
   }
 }

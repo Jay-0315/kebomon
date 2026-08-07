@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 import type { TranslationKey } from "../lib/i18n";
 
 type ReportRow = {
@@ -61,6 +62,7 @@ function PreviewCell({ report }: { report: ReportRow }) {
 
 export default function ReportsPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<ReportsResponse | null>(null);
@@ -104,7 +106,7 @@ export default function ReportsPage() {
       setResolutionNote("");
       load();
     } catch {
-      window.alert(t("reports.error_resolve"));
+      showToast(t("reports.error_resolve"), "error");
     } finally {
       setSubmitting(false);
     }

@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router";
 
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
+import LoadingState from "../components/LoadingState";
 import type { TranslationKey } from "../lib/i18n";
 
 type GuildMemberRow = {
@@ -57,6 +59,7 @@ export default function GuildDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useLang();
+  const { showToast } = useToast();
   const [guild, setGuild] = useState<GuildDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,11 +91,11 @@ export default function GuildDetailPage() {
       await api.delete(`/admin/guilds/${guild.id}`);
       navigate("/guilds");
     } catch {
-      window.alert(t("guilds.error_disband"));
+      showToast(t("guilds.error_disband"), "error");
     }
   }
 
-  if (loading) return <p className="text-[var(--fg-faint)]">{t("common.loading")}</p>;
+  if (loading) return <LoadingState />;
   if (error || !guild) return <p className="text-red-400">{error ?? t("guildDetail.not_found")}</p>;
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, downloadFile } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 import { translate, type Lang, type TranslationKey } from "../lib/i18n";
 
 type ActionLogRow = {
@@ -41,6 +42,9 @@ const ACTION_LABEL_KEY: Record<string, TranslationKey> = {
   USER_SUSPEND: "actionLog.action_USER_SUSPEND",
   USER_UNSUSPEND: "actionLog.action_USER_UNSUSPEND",
   USER_REWARD_ADJUST: "actionLog.action_USER_REWARD_ADJUST",
+  USER_REWARD_BULK_ADJUST: "actionLog.action_USER_REWARD_BULK_ADJUST",
+  USER_TITLE_GRANT: "actionLog.action_USER_TITLE_GRANT",
+  USER_TITLE_REVOKE: "actionLog.action_USER_TITLE_REVOKE",
 };
 
 const TARGET_TYPE_KEY: Record<string, TranslationKey> = {
@@ -89,10 +93,12 @@ function formatDetail(detail: string | null, lang: Lang): string {
 
 export default function AdminActionLogPage() {
   const { t, lang } = useLang();
+  const { showToast } = useToast();
   const [actorId, setActorId] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<ActionLogResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   async function load(p: number) {
     setError(null);
@@ -118,6 +124,19 @@ export default function AdminActionLogPage() {
     void load(p);
   }
 
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (actorId) params.set("actorId", actorId);
+      await downloadFile(`/admin/action-log/export?${params.toString()}`, "action-log.csv");
+    } catch {
+      showToast(t("actionLog.error_export"), "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       <h1 className="mb-4 text-lg font-semibold">{t("actionLog.title")}</h1>
@@ -129,6 +148,13 @@ export default function AdminActionLogPage() {
           placeholder={t("actionLog.filter_placeholder")}
           className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
         />
+        <button
+          onClick={handleExportCsv}
+          disabled={exporting}
+          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
+        >
+          {exporting ? t("common.loading") : t("actionLog.export_csv")}
+        </button>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}

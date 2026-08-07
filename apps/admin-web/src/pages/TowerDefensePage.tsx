@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 
 type RankingRow = {
   userId: string;
@@ -14,6 +15,7 @@ type RankingRow = {
 
 export default function TowerDefensePage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [rows, setRows] = useState<RankingRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export default function TowerDefensePage() {
       setResetReason("");
       load();
     } catch {
-      window.alert(t("towerDefense.error_reset"));
+      showToast(t("towerDefense.error_reset"), "error");
     } finally {
       setSubmitting(false);
     }

@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import BannerFormModal, { type BannerRow } from "../components/BannerFormModal";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 
 export default function BannersPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [banners, setBanners] = useState<BannerRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formTarget, setFormTarget] = useState<BannerRow | "new" | null>(null);
@@ -30,7 +32,7 @@ export default function BannersPage() {
       await api.delete(`/admin/banners/${banner.id}`);
       load();
     } catch {
-      window.alert(t("banners.error_delete"));
+      showToast(t("banners.error_delete"), "error");
     }
   }
 

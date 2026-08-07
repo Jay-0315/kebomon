@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LangContext";
+import { useToast } from "../context/ToastContext";
 
 type CommentRow = {
   id: string;
@@ -25,6 +26,7 @@ const stripHtml = (html: string) =>
 
 export default function CommunityCommentsPage() {
   const { t } = useLang();
+  const { showToast } = useToast();
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CommentsResponse | null>(null);
@@ -60,7 +62,7 @@ export default function CommunityCommentsPage() {
       await api.delete(`/admin/community/comments/${comment.id}`);
       load();
     } catch {
-      window.alert(t("community.error_delete"));
+      showToast(t("community.error_delete"), "error");
     }
   }
 
