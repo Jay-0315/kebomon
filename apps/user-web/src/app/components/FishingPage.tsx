@@ -364,16 +364,15 @@ export default function FishingPage() {
             </span>
           </div>
 
-          {/* 물탱크 — idle/waiting/catching 전 구간에서 항상 보이는 공용 배경.
-              수면 텍스처(파도 무늬 타일)는 상단에 가로로만 반복시키고, 그 아래는
-              그라데이션으로 깊이감을 준다 — 세로로 반복하면 파도 줄무늬가 어색하게 겹쳐서
-              수면 한 겹만 텍스처를 쓰고 나머지는 단색 그라데이션으로 마무리했다. */}
+          {/* 낚시터 — 기존 해변 배경 에셋 위에 수면 톤을 얹어 미니게임 UI 가독성을 유지한다. */}
           <div
             className="relative w-full overflow-hidden rounded-2xl border border-sky-300/25 select-none shadow-[inset_0_-30px_60px_rgba(6,78,118,0.45)]"
             style={{
               height: 360,
-              background:
-                "radial-gradient(circle at 18% 12%, rgba(254,240,138,0.28) 0%, transparent 24%), linear-gradient(180deg, #7dd3fc33 0%, #0ea5e966 38%, #0369a1dd 100%)",
+              backgroundImage:
+                "linear-gradient(180deg, rgba(7,89,133,0.2) 0%, rgba(8,47,73,0.38) 46%, rgba(12,74,110,0.7) 100%), url(/bg-beach.png)",
+              backgroundPosition: "center 48%",
+              backgroundSize: "cover",
               touchAction: "none",
             }}
             onPointerDown={(e) => { if (phase === "catching") { e.preventDefault(); holdingRef.current = true; } }}
@@ -388,7 +387,8 @@ export default function FishingPage() {
                   "linear-gradient(115deg, transparent 0 12%, rgba(255,255,255,0.28) 13%, transparent 18% 34%, rgba(255,255,255,0.18) 35%, transparent 42% 100%)",
               }}
             />
-            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-amber-900/45 via-amber-700/20 to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-sky-200/18 via-white/5 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-sky-950/60 via-cyan-950/20 to-transparent" />
             <div className="absolute left-4 bottom-7 h-10 w-3 rounded-t-full bg-emerald-300/45 shadow-[12px_-8px_0_rgba(110,231,183,0.28),26px_5px_0_rgba(52,211,153,0.24)]" />
             <div className="absolute right-8 bottom-8 h-12 w-3 rounded-t-full bg-lime-300/40 shadow-[-14px_7px_0_rgba(132,204,22,0.22),18px_-4px_0_rgba(163,230,53,0.26)]" />
             <div className="absolute left-[10%] top-[34%] opacity-60" style={{ animation: "fishingDrift 7s ease-in-out infinite" }}>
@@ -408,17 +408,6 @@ export default function FishingPage() {
               <Anchor className="w-3.5 h-3.5" />
               {distinctCount}/{FISH.length}
             </div>
-            {/* 수면 파도 텍스처 — CraftPix "Fishing Game Assets Pixel Art"(OGA-BY 3.0), 가로로만 반복 */}
-            <div
-              className="absolute top-0 inset-x-0 h-14 opacity-80"
-              style={{
-                backgroundImage: "url(/fishing-assets/water_surface.png)",
-                backgroundSize: "96px 32px",
-                backgroundRepeat: "repeat-x",
-                imageRendering: "pixelated",
-              }}
-            />
-
             {rippleKey !== null && (
               <div
                 key={rippleKey}
