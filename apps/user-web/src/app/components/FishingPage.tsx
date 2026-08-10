@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Fish as FishIcon, Sparkles, BookOpen, Zap, Anchor, Waves } from "lucide-react";
+import { Fish as FishIcon, Sparkles, BookOpen, Zap, Anchor, Waves, Lock, X, Trophy } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { api } from "../lib/api";
@@ -15,6 +15,7 @@ import {
   RARITY_COLOR,
   RARITY_BORDER,
   getRarityLabel,
+  type CharacterRarity,
 } from "../data/characters";
 
 // ─── 에셋 — 낚시용 물고기 스프라이트(OpenGameArt "Cute Fish Sprites" by chips8688, OGA-BY 3.0)
@@ -61,6 +62,61 @@ function FishPortrait({ fish, size = 40, className = "" }: { fish: { asset: stri
 
 type Phase = "idle" | "waiting" | "catching" | "success" | "missed";
 type Grade = "perfect" | "good";
+type FishDexFilter = "all" | "owned" | "missing" | CharacterRarity;
+
+const FISH_FILTERS: FishDexFilter[] = ["all", "owned", "missing", "common", "uncommon", "rare", "epic", "legendary", "mythic"];
+
+const FISH_RARITY_TONE: Record<CharacterRarity, { aura: string; rays: string; ring: string; scale: string }> = {
+  common: { aura: "from-slate-400/20", rays: "bg-slate-200/10", ring: "border-slate-300/35", scale: "scale-100" },
+  uncommon: { aura: "from-emerald-400/25", rays: "bg-emerald-200/10", ring: "border-emerald-300/45", scale: "scale-105" },
+  rare: { aura: "from-sky-400/30", rays: "bg-sky-200/15", ring: "border-sky-300/55", scale: "scale-110" },
+  epic: { aura: "from-violet-400/35", rays: "bg-violet-200/20", ring: "border-violet-300/60", scale: "scale-115" },
+  legendary: { aura: "from-amber-300/45", rays: "bg-amber-100/25", ring: "border-amber-200/70", scale: "scale-125" },
+  mythic: { aura: "from-pink-300/50", rays: "bg-pink-100/30", ring: "border-pink-200/80", scale: "scale-125" },
+};
+
+const fishUi = (lang: string) => ({
+  nextReward: lang === "ja" ? "次の報酬" : lang === "en" ? "Next Reward" : "다음 보상",
+  complete: lang === "ja" ? "すべて達成" : lang === "en" ? "Complete" : "전체 달성",
+  left: lang === "ja" ? "残り" : lang === "en" ? "left" : "남음",
+  filterAll: lang === "ja" ? "全体" : lang === "en" ? "All" : "전체",
+  owned: lang === "ja" ? "発見済み" : lang === "en" ? "Owned" : "보유",
+  missing: lang === "ja" ? "未発見" : lang === "en" ? "Missing" : "미발견",
+  caught: lang === "ja" ? "捕獲数" : lang === "en" ? "Caught" : "포획 수",
+  firstFind: lang === "ja" ? "発見すると詳細が開きます" : lang === "en" ? "Details unlock when discovered" : "발견하면 상세 정보가 열립니다",
+  dexDetail: lang === "ja" ? "図鑑詳細" : lang === "en" ? "Dex Detail" : "도감 상세",
+  speciesNo: lang === "ja" ? "種 No." : lang === "en" ? "Species No." : "도감 번호",
+  habitat: lang === "ja" ? "生息地" : lang === "en" ? "Habitat" : "서식지",
+  close: lang === "ja" ? "閉じる" : lang === "en" ? "Close" : "닫기",
+});
+
+const getFishHabitat = (rarity: CharacterRarity, lang: string) => {
+  const ko: Record<CharacterRarity, string> = {
+    common: "얕은 해변가",
+    uncommon: "잔잔한 물가",
+    rare: "푸른 난류",
+    epic: "달빛 암초",
+    legendary: "폭풍 먼바다",
+    mythic: "심연의 균열",
+  };
+  const ja: Record<CharacterRarity, string> = {
+    common: "浅い浜辺",
+    uncommon: "穏やかな水辺",
+    rare: "青い暖流",
+    epic: "月光の岩礁",
+    legendary: "嵐の沖合",
+    mythic: "深淵の裂け目",
+  };
+  const en: Record<CharacterRarity, string> = {
+    common: "Shallow Shore",
+    uncommon: "Quiet Waters",
+    rare: "Blue Current",
+    epic: "Moonlit Reef",
+    legendary: "Storming Offshore",
+    mythic: "Abyssal Rift",
+  };
+  return lang === "ja" ? ja[rarity] : lang === "en" ? en[rarity] : ko[rarity];
+};
 
 const BITE_MIN_DELAY_MS = 2000;
 const BITE_MAX_DELAY_MS = 5000;
@@ -135,6 +191,8 @@ export default function FishingPage() {
   const [fishDexBest, setFishDexBest] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [milestoneToast, setMilestoneToast] = useState<number | null>(null);
+  const [dexFilter, setDexFilter] = useState<FishDexFilter>("all");
+  const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
 
   // 렌더용 스냅샷 — 실제 물리 계산은 catchRef(ref)에서 매 프레임 진행하고, 화면 갱신에
   // 필요한 세 값만 state로 미러링한다
@@ -310,6 +368,16 @@ export default function FishingPage() {
   const cooldownSec = Math.ceil(cooldownMs / 1000);
   const distinctCount = Object.keys(ownedFish).length;
   const barHalf = BAR_HEIGHT_PCT / 2;
+  const ui = fishUi(lang);
+  const nextMilestone = FISH_DEX_MILESTONES.find((m) => distinctCount < m.count);
+  const selectedFish = selectedFishId ? FISH_BY_ID.get(selectedFishId) ?? null : null;
+  const filteredFish = FISH.filter((fishDef) => {
+    const owned = (ownedFish[fishDef.id] ?? 0) > 0;
+    if (dexFilter === "owned") return owned;
+    if (dexFilter === "missing") return !owned;
+    if (dexFilter === "all") return true;
+    return fishDef.rarity === dexFilter;
+  });
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -538,6 +606,7 @@ export default function FishingPage() {
             if (!fishDef) return null;
             const rarity = fishDef.rarity;
             const hex = FISH_RARITY_HEX[rarity];
+            const tone = FISH_RARITY_TONE[rarity];
             return (
               <div
                 className="flex flex-col items-center gap-3 py-1 w-full"
@@ -553,13 +622,20 @@ export default function FishingPage() {
                   </p>
                 )}
                 <div
-                  className="relative rounded-2xl p-6 flex flex-col items-center gap-2 w-full overflow-hidden"
+                  className={`relative rounded-2xl p-6 flex flex-col items-center gap-2 w-full overflow-hidden border-2 ${tone.ring}`}
                   style={{
-                    border: `1.5px solid ${hex}66`,
-                    background: `radial-gradient(circle at 50% 25%, ${hex}2e 0%, ${hex}0a 55%, transparent 100%)`,
-                    boxShadow: `0 0 28px ${hex}3d, inset 0 0 32px ${hex}14`,
+                    background: `radial-gradient(circle at 50% 20%, ${hex}45 0%, ${hex}14 48%, rgba(15,23,42,0.12) 100%)`,
+                    boxShadow: `0 0 ${rarity === "mythic" || rarity === "legendary" ? 54 : 30}px ${hex}55, inset 0 0 36px ${hex}18`,
                   }}
                 >
+                  {(rarity === "epic" || rarity === "legendary" || rarity === "mythic") && (
+                    <div
+                      className={`pointer-events-none absolute left-1/2 top-24 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b ${tone.aura} to-transparent opacity-90 blur-2xl`}
+                    />
+                  )}
+                  {(rarity === "legendary" || rarity === "mythic") && (
+                    <div className={`pointer-events-none absolute left-1/2 top-24 h-72 w-8 origin-center -translate-x-1/2 -translate-y-1/2 ${tone.rays} blur-sm`} style={{ animation: "fishRaySpin 5s linear infinite" }} />
+                  )}
                   <div className="relative flex items-center justify-center">
                     <div
                       className="absolute inset-0 rounded-full blur-xl"
@@ -568,7 +644,7 @@ export default function FishingPage() {
                     <FishPortrait
                       fish={fishDef}
                       size={88}
-                      className="relative [animation:fishIconPop_0.5s_0.05s_ease-out_both]"
+                      className={`relative drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)] ${tone.scale} [animation:fishIconPop_0.5s_0.05s_ease-out_both]`}
                     />
                   </div>
                   <span
@@ -612,17 +688,41 @@ export default function FishingPage() {
 
       {tab === "dex" && (
         <div className="space-y-3">
-          <div className="bg-card rounded-2xl border border-border p-4">
-            <p className="text-xs font-semibold text-foreground mb-2">
-              {t("fishing.milestone_heading")}
-            </p>
-            <div className="flex flex-col gap-1">
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-foreground">
+                  {t("fishing.milestone_heading")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {nextMilestone
+                    ? `${ui.nextReward}: ${distinctCount}/${nextMilestone.count} · ${Math.max(0, nextMilestone.count - distinctCount)} ${ui.left}`
+                    : ui.complete}
+                </p>
+              </div>
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-300">
+                <Trophy className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-[width]"
+                style={{
+                  width: `${nextMilestone ? clamp((distinctCount / nextMilestone.count) * 100, 0, 100) : 100}%`,
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
               {FISH_DEX_MILESTONES.map((m) => {
                 const achieved = fishDexBest >= m.count;
                 return (
                   <p
                     key={m.count}
-                    className={`text-xs ${achieved ? "text-primary font-semibold" : "text-muted-foreground"}`}
+                    className={`rounded-lg px-2 py-1 text-[11px] ${
+                      achieved
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "bg-muted/60 text-muted-foreground"
+                    }`}
                   >
                     {achieved ? "✓ " : ""}
                     {t("fishing.milestone_item")
@@ -633,40 +733,143 @@ export default function FishingPage() {
               })}
             </div>
           </div>
+
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            {FISH_FILTERS.map((filter) => {
+              const active = dexFilter === filter;
+              const label =
+                filter === "all"
+                  ? ui.filterAll
+                  : filter === "owned"
+                    ? ui.owned
+                    : filter === "missing"
+                      ? ui.missing
+                      : getRarityLabel(filter, lang);
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setDexFilter(filter)}
+                  className={`shrink-0 rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${
+                    active
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-border bg-card text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {FISH.map((fishDef) => {
+          {filteredFish.map((fishDef) => {
             const count = ownedFish[fishDef.id] ?? 0;
             const owned = count > 0;
             return (
-              <div
+              <button
                 key={fishDef.id}
-                className={`rounded-xl border p-3 flex flex-col items-center gap-1 ${
+                onClick={() => setSelectedFishId(fishDef.id)}
+                className={`min-h-[118px] rounded-xl border p-3 flex flex-col items-center justify-between gap-1 transition active:scale-95 ${
                   owned
-                    ? `${RARITY_BORDER[fishDef.rarity]} ${FISH_RARITY_BG[fishDef.rarity]}`
-                    : "border-border bg-muted opacity-50"
+                    ? `${RARITY_BORDER[fishDef.rarity]} ${FISH_RARITY_BG[fishDef.rarity]} hover:bg-muted/40`
+                    : "border-border bg-muted/70 opacity-75"
                 }`}
               >
-                {owned ? (
-                  <FishPortrait fish={fishDef} size={38} />
-                ) : (
-                  <FishIcon className="w-7 h-7 text-muted-foreground" />
-                )}
+                <div className="grid h-11 w-11 place-items-center">
+                  {owned ? (
+                    <FishPortrait fish={fishDef} size={42} />
+                  ) : (
+                    <Lock className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
                 <p
-                  className={`text-[11px] font-medium text-center ${owned ? RARITY_COLOR[fishDef.rarity] : "text-muted-foreground"}`}
+                  className={`min-h-8 text-[11px] font-semibold text-center leading-tight ${owned ? RARITY_COLOR[fishDef.rarity] : "text-muted-foreground"}`}
                 >
                   {owned ? getFishName(fishDef, lang) : "???"}
                 </p>
-                {owned && (
-                  <span className="text-[10px] text-muted-foreground">
-                    x{count}
-                  </span>
-                )}
-              </div>
+                <span className={`text-[10px] ${owned ? "text-muted-foreground" : "text-muted-foreground/70"}`}>
+                  {owned ? `x${count}` : getRarityLabel(fishDef.rarity, lang)}
+                </span>
+              </button>
             );
           })}
           </div>
         </div>
       )}
+
+      {selectedFish && (() => {
+        const count = ownedFish[selectedFish.id] ?? 0;
+        const owned = count > 0;
+        const hex = FISH_RARITY_HEX[selectedFish.rarity];
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/65 p-0 sm:p-4"
+            onClick={() => setSelectedFishId(null)}
+          >
+            <div
+              className={`w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border bg-card p-5 shadow-2xl ${owned ? RARITY_BORDER[selectedFish.rarity] : "border-border"}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground">{ui.dexDetail}</p>
+                  <h3 className={`text-lg font-extrabold ${owned ? RARITY_COLOR[selectedFish.rarity] : "text-muted-foreground"}`}>
+                    {owned ? getFishName(selectedFish, lang) : "???"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedFishId(null)}
+                  className="grid h-9 w-9 place-items-center rounded-xl bg-muted text-muted-foreground"
+                  aria-label={ui.close}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div
+                className="my-5 flex h-44 items-center justify-center rounded-2xl border overflow-hidden"
+                style={{
+                  borderColor: owned ? `${hex}66` : undefined,
+                  background: owned
+                    ? `radial-gradient(circle at 50% 42%, ${hex}2f 0%, ${hex}0d 52%, transparent 100%)`
+                    : "rgba(148,163,184,0.08)",
+                }}
+              >
+                {owned ? (
+                  <FishPortrait fish={selectedFish} size={108} className="drop-shadow-[0_12px_22px_rgba(0,0,0,0.35)]" />
+                ) : (
+                  <Lock className="h-12 w-12 text-muted-foreground/70" />
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-muted/60 p-3">
+                  <p className="text-[10px] text-muted-foreground">{ui.speciesNo}</p>
+                  <p className="font-bold">#{String(selectedFish.id).padStart(2, "0")}</p>
+                </div>
+                <div className="rounded-xl bg-muted/60 p-3">
+                  <p className="text-[10px] text-muted-foreground">{ui.caught}</p>
+                  <p className="font-bold">{owned ? `x${count}` : "-"}</p>
+                </div>
+                <div className="rounded-xl bg-muted/60 p-3">
+                  <p className="text-[10px] text-muted-foreground">{ui.habitat}</p>
+                  <p className="font-bold">{owned ? getFishHabitat(selectedFish.rarity, lang) : "???"}</p>
+                </div>
+                <div className="rounded-xl bg-muted/60 p-3">
+                  <p className="text-[10px] text-muted-foreground">{getRarityLabel(selectedFish.rarity, lang)}</p>
+                  <p className={`font-bold ${RARITY_COLOR[selectedFish.rarity]}`}>{getRarityLabel(selectedFish.rarity, lang)}</p>
+                </div>
+              </div>
+
+              {!owned && (
+                <p className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-center text-[11px] text-muted-foreground">
+                  {ui.firstFind}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {milestoneToast !== null && (
         <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-primary/40 bg-card px-4 py-2.5 shadow-lg">

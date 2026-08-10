@@ -2506,6 +2506,117 @@ export default function RoguePage() {
               </div>
             </div>
 
+            {/* Run guide shortcuts */}
+            <div
+              style={{
+                background: C.panelDark,
+                border: `1px solid ${C.border}`,
+                borderRadius: 10,
+                padding: 12,
+                animation: "rogue-in 0.4s 0.09s ease-out both",
+              }}
+            >
+              {(() => {
+                const storyDifficulty: "normal" | "hard" | "hell" =
+                  difficulty === "hard" || difficulty === "hell" ? difficulty : "normal";
+                const meta = {
+                  normal: {
+                    color: "#22c55e",
+                    stages: 7,
+                    repeat: { kp: 5000, stones: 4 },
+                  },
+                  hard: {
+                    color: "#f59e0b",
+                    stages: 10,
+                    repeat: { kp: 7500, stones: 5 },
+                  },
+                  hell: {
+                    color: "#ef4444",
+                    stages: 15,
+                    repeat: { kp: 10000, stones: 6 },
+                  },
+                }[storyDifficulty];
+                const fightGold = DIFF_GOLD_FIGHT[storyDifficulty];
+                const eliteGold = DIFF_GOLD_ELITE[storyDifficulty];
+                const info = [
+                  {
+                    label: ko ? "층수" : ja ? "階層" : "Stages",
+                    value: `${meta.stages}`,
+                  },
+                  {
+                    label: ko ? "일반전" : ja ? "通常戦" : "Fight",
+                    value: `${fightGold}G`,
+                  },
+                  {
+                    label: ko ? "엘리트" : ja ? "エリート" : "Elite",
+                    value: `${eliteGold}G`,
+                  },
+                  {
+                    label: ko ? "반복 보상" : ja ? "反復報酬" : "Repeat",
+                    value: `${meta.repeat.kp.toLocaleString()}KP · ${meta.repeat.stones}`,
+                  },
+                ];
+                return (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 6 }}>
+                      {info.map((item) => (
+                        <div
+                          key={item.label}
+                          style={{
+                            border: `1px solid ${C.border}`,
+                            borderRadius: 8,
+                            background: "#00000018",
+                            padding: "7px 6px",
+                            minWidth: 0,
+                          }}
+                        >
+                          <p style={{ margin: 0, fontSize: 9, color: C.textDim, fontWeight: 700 }}>{item.label}</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 11, color: meta.color, fontWeight: 900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 6, marginTop: 8 }}>
+                      {[
+                        { label: ko ? "보상판" : ja ? "報酬表" : "Rewards", onClick: () => { setGuideDiff(storyDifficulty); setShowRewardGuide(true); }, icon: <Trophy size={13} /> },
+                        { label: ko ? "카드 도감" : ja ? "カード図鑑" : "Cards", onClick: () => setShowCardGuide(true), icon: <BookOpen size={13} /> },
+                        { label: ko ? "기물 도감" : ja ? "遺物図鑑" : "Relics", onClick: () => setShowRelicGuide(true), icon: <Sparkles size={13} /> },
+                      ].map((btn) => (
+                        <button
+                          key={btn.label}
+                          onClick={btn.onClick}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 5,
+                            border: `1px solid ${C.border}`,
+                            borderRadius: 8,
+                            background: C.panel,
+                            color: C.textBright,
+                            padding: "8px 4px",
+                            fontSize: 11,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            fontFamily: FONT,
+                          }}
+                        >
+                          {btn.icon}
+                          <span>{btn.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ margin: "8px 0 0", fontSize: 10, color: C.textDim, lineHeight: 1.4 }}>
+                      {ko
+                        ? "시작/완료 제출은 서버에 기록되며, 비정상적으로 빠른 완료는 보상 검증에서 제외됩니다."
+                        : ja
+                          ? "開始/完了はサーバーに記録され、異常に速い完了は報酬検証で除外されます。"
+                          : "Run start/completion is recorded on the server; abnormally fast clears are excluded from reward validation."}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+
             {/* Start button */}
             <button
               onClick={() => startRun("story")}

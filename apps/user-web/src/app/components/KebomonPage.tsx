@@ -99,6 +99,62 @@ const charNum = (id: number) =>
   String(CHAR_DISPLAY_NUM.get(id) ?? id).padStart(3, "0");
 
 type TFunc = (key: TranslationKey) => string;
+type ObtainFilter = "all" | "owned" | "missing" | "starter" | "gacha" | "achievement";
+
+const OBTAIN_FILTERS: ObtainFilter[] = ["all", "owned", "missing", "starter", "gacha", "achievement"];
+
+const kebomonUi = (lang: string) => ({
+  obtainFilter: lang === "ja" ? "入手先" : lang === "en" ? "Source" : "획득처",
+  owned: lang === "ja" ? "所持" : lang === "en" ? "Owned" : "보유",
+  missing: lang === "ja" ? "未所持" : lang === "en" ? "Missing" : "미보유",
+  nextExpeditionBonus: lang === "ja" ? "次の遠征ボーナスまで" : lang === "en" ? "Next expedition bonus in" : "다음 원정 보너스까지",
+  allBonusReached: lang === "ja" ? "遠征ボーナス最大" : lang === "en" ? "Max expedition bonus reached" : "원정 보너스 최대 달성",
+  useRecommended: lang === "ja" ? "おすすめ用途" : lang === "en" ? "Best Uses" : "추천 사용처",
+  arena: lang === "ja" ? "コロシアム" : lang === "en" ? "Colosseum" : "콜로세움",
+  tower: lang === "ja" ? "タワー" : lang === "en" ? "Tower" : "타워",
+  expedition: lang === "ja" ? "遠征" : lang === "en" ? "Expedition" : "원정",
+  hint: lang === "ja" ? "入手ヒント" : lang === "en" ? "Hint" : "획득 힌트",
+});
+
+function getObtainFilterLabel(filter: ObtainFilter, lang: string, t: TFunc) {
+  const ui = kebomonUi(lang);
+  if (filter === "all") return t("kebomon.all_filter");
+  if (filter === "owned") return ui.owned;
+  if (filter === "missing") return ui.missing;
+  if (filter === "starter") return t("kebomon.obtain_starter");
+  if (filter === "gacha") return t("kebomon.obtain_gacha");
+  return lang === "ja" ? "実績" : lang === "en" ? "Achievement" : "업적";
+}
+
+function getObtainHint(char: CharacterDef, lang: string, t: TFunc) {
+  const ach = ACHIEVEMENT_BY_CHARACTER.get(char.id);
+  if (char.hiddenAchievement) return t("kebomon.obtain_hidden");
+  if (ach) return getAchLabel(ach, lang);
+  if (char.obtainMethod === "starter") return t("kebomon.obtain_starter");
+  return t("kebomon.obtain_gacha");
+}
+
+function getUseScores(
+  char: CharacterDef,
+  characterMasterMap: Record<number, { arenaArchetype?: string }>,
+): Record<"arena" | "tower" | "expedition", number> {
+  const rarityScore: Record<CharacterRarity, number> = {
+    common: 1,
+    uncommon: 2,
+    rare: 3,
+    epic: 4,
+    legendary: 5,
+    mythic: 5,
+  };
+  const arch = resolveArenaArchetype(characterMasterMap, char);
+  const rogueType = ROGUE_TYPE_MAP[char.type] ?? "energy";
+  const base = rarityScore[char.rarity];
+  return {
+    arena: Math.min(5, base + (["warrior", "rogue", "mage", "tank"].includes(arch) ? 1 : 0)),
+    tower: Math.min(5, base + (["mage", "nature", "meka", "cursed"].includes(arch) ? 1 : 0)),
+    expedition: Math.min(5, base + (rogueType === "energy" ? 1 : 0)),
+  };
+}
 
 const CAPSULE_MYSTERY_COLORS = [
   "#7c3aed",
@@ -864,6 +920,7 @@ export default function KebomonPage() {
   const [checkingAchievements, setCheckingAchievements] = useState(false);
   const [dexMilestoneToast, setDexMilestoneToast] = useState<number | null>(null);
   const [archFilter, setArchFilter] = useState<"all" | string>("all");
+  const [obtainFilter, setObtainFilter] = useState<ObtainFilter>("all");
 
   const setTab = (nextTab: Tab) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -1038,6 +1095,12 @@ export default function KebomonPage() {
       : CHARACTERS.filter((c) => c.rarity === filter)
   )
     .filter((c) => archFilter === "all" || resolveArenaArchetype(characterMasterMap, c) === archFilter)
+    .filter((c) => {
+      if (obtainFilter === "all") return true;
+      if (obtainFilter === "owned") return ownedSet.has(c.id);
+      if (obtainFilter === "missing") return !ownedSet.has(c.id);
+      return c.obtainMethod === obtainFilter;
+    })
     .slice()
     .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]);
   const selectedChar =
@@ -1430,6 +1493,7 @@ export default function KebomonPage() {
             selectedChar={selectedChar}
             filter={filter}
             archFilter={archFilter}
+            obtainFilter={obtainFilter}
             filtered={filtered}
             rarities={rarities}
             equipping={equipping}
@@ -1439,6 +1503,7 @@ export default function KebomonPage() {
             totalOwned={ownedCharacterIds.length}
             onSelectFilter={setFilter}
             onSelectArchFilter={setArchFilter}
+            onSelectObtainFilter={setObtainFilter}
             onSelectChar={(id) => setSelected(selected === id ? null : id)}
             onEquip={(id) => void handleEquip(id)}
             t={t}
@@ -1663,11 +1728,13 @@ function CollectionTab({
   selectedChar,
   filter,
   archFilter,
+  obtainFilter,
   filtered,
   rarities,
   equipping,
   onSelectFilter,
   onSelectArchFilter,
+  onSelectObtainFilter,
   onSelectChar,
   onEquip,
   characterEnhancements,
@@ -1682,6 +1749,7 @@ function CollectionTab({
   selectedChar: CharacterDef | null | undefined;
   filter: Filter;
   archFilter: string;
+  obtainFilter: ObtainFilter;
   filtered: CharacterDef[];
   rarities: Filter[];
   equipping: boolean;
@@ -1691,11 +1759,13 @@ function CollectionTab({
   characterMasterMap: Record<number, { arenaArchetype?: string }>;
   onSelectFilter: (f: Filter) => void;
   onSelectArchFilter: (a: string) => void;
+  onSelectObtainFilter: (f: ObtainFilter) => void;
   onSelectChar: (id: number) => void;
   onEquip: (id: number) => void;
   t: TFunc;
 }) {
   const { lang } = useLang();
+  const ui = kebomonUi(lang);
   const topRef = React.useRef<HTMLDivElement>(null);
 
   // 보유 캐릭터 상단 정렬
@@ -1786,6 +1856,19 @@ function CollectionTab({
               );
             })}
         </div>
+        {(() => {
+          const nextBonus = Object.keys(DEX_COMPLETION_BONUS)
+            .map(Number)
+            .filter((count) => count > dexMilestoneBest)
+            .sort((a, b) => a - b)[0];
+          return (
+            <p className="text-[10px] font-medium text-emerald-500">
+              {nextBonus
+                ? `${ui.nextExpeditionBonus} ${Math.max(0, nextBonus - totalOwned)}`
+                : ui.allBonusReached}
+            </p>
+          );
+        })()}
       </div>
 
       {/* Rarity filter */}
@@ -1805,6 +1888,26 @@ function CollectionTab({
               : getRarityLabel(r as CharacterRarity, lang)}
           </button>
         ))}
+      </div>
+
+      {/* 획득처/보유 filter */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-semibold text-muted-foreground">{ui.obtainFilter}</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {OBTAIN_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => onSelectObtainFilter(f)}
+              className={`shrink-0 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all ${
+                obtainFilter === f
+                  ? "bg-primary/80 text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              {getObtainFilterLabel(f, lang, t)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 직업(아키타입) filter */}
@@ -1891,6 +1994,11 @@ function CollectionTab({
                     ST
                   </div>
                 )}
+                {!isOwned && char.obtainMethod === "achievement" && !char.hiddenAchievement && (
+                  <div className="absolute -top-1 -left-1 text-[7px] font-bold bg-sky-500 text-white px-0.5 rounded leading-none py-px">
+                    ACH
+                  </div>
+                )}
               </div>
               {/* name row: job icon + type icon + name text */}
               <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
@@ -1917,6 +2025,11 @@ function CollectionTab({
                   )}
                 </p>
               </div>
+              {!isOwned && (
+                <p className="w-full truncate text-center text-[8px] text-muted-foreground/70">
+                  {getObtainHint(char, lang, t)}
+                </p>
+              )}
             </button>
           );
         })}
@@ -2033,6 +2146,13 @@ function CharacterDetail({
   const { lang } = useLang();
   const ach = ACHIEVEMENT_BY_CHARACTER.get(char.id);
   const isHidden = char.hiddenAchievement && !isOwned;
+  const ui = kebomonUi(lang);
+  const useScores = getUseScores(char, characterMasterMap);
+  const useItems = [
+    { key: "arena" as const, label: ui.arena, icon: <Swords className="h-3 w-3 text-orange-400" /> },
+    { key: "tower" as const, label: ui.tower, icon: <Layers className="h-3 w-3 text-sky-400" /> },
+    { key: "expedition" as const, label: ui.expedition, icon: <MapIcon className="h-3 w-3 text-emerald-400" /> },
+  ];
 
   return (
     <div
@@ -2085,6 +2205,12 @@ function CharacterDetail({
               {getCharDesc(char, lang)}
             </p>
           )}
+          {!isOwned && (
+            <p className="mt-1 inline-flex max-w-full items-center gap-1 rounded-lg bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
+              <Gift className="h-3 w-3 shrink-0" />
+              <span className="truncate">{ui.hint}: {getObtainHint(char, lang, t)}</span>
+            </p>
+          )}
         </div>
         <div className="shrink-0">
           {!isOwned ? (
@@ -2110,6 +2236,31 @@ function CharacterDetail({
       {isOwned && (
         <div className="mt-3 pt-3 border-t border-border">
           <CharStatMini char={char} enhance={enhance} characterMasterMap={characterMasterMap} />
+          <div className="mt-2 rounded-lg border border-border bg-muted/50 p-2.5">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {ui.useRecommended}
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {useItems.map((item) => (
+                <div key={item.key} className="rounded-lg bg-card/60 px-2 py-1.5">
+                  <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+                    {item.icon}
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        size={10}
+                        fill={i < useScores[item.key] ? "#f59e0b" : "none"}
+                        color={i < useScores[item.key] ? "#f59e0b" : "#64748b"}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

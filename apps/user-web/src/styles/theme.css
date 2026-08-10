@@ -109,6 +109,10 @@
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 0.9; }
 }
+@keyframes fishRaySpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
 @keyframes capsuleFloat {
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-6px); }
