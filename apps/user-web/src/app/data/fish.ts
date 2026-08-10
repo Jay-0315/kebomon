@@ -6,6 +6,7 @@ export interface FishDef {
   name: string; // en
   korName: string;
   jaName: string;
+  asset: string;
 }
 
 // 서버(fish-master.constant.ts FISH_DEX_MILESTONES)와 동일한 값 — 표시 전용, 실제 지급은 서버가 판정
@@ -14,7 +15,11 @@ export const FISH_DEX_MILESTONES: { count: number; kp: number }[] = [
   { count: 12, kp: 250 },
   { count: 18, kp: 500 },
   { count: 24, kp: 1000 },
+  { count: 30, kp: 1600 },
+  { count: 36, kp: 2500 },
 ];
+
+const fishAsset = (id: number) => `/fishing-assets/fish/fish_${String(id).padStart(2, "0")}.png`;
 
 const f = (id: number, rarity: CharacterRarity, name: string, korName: string, jaName: string): FishDef => ({
   id,
@@ -22,6 +27,7 @@ const f = (id: number, rarity: CharacterRarity, name: string, korName: string, j
   name,
   korName,
   jaName,
+  asset: fishAsset(id),
 });
 
 export const FISH: FishDef[] = [
@@ -30,31 +36,43 @@ export const FISH: FishDef[] = [
   f(2, "common", "Minnow", "피라미", "ハヤ"),
   f(3, "common", "Catfish", "메기", "ナマズ"),
   f(4, "common", "Loach", "미꾸라지", "ドジョウ"),
+  f(25, "common", "Bluegill", "블루길", "ブルーギル"),
+  f(26, "common", "Stone Moroko", "돌고기", "ムギツク"),
   // uncommon
   f(5, "uncommon", "Carp", "잉어", "コイ"),
   f(6, "uncommon", "Bass", "배스", "バス"),
   f(7, "uncommon", "Sweetfish", "은어", "アユ"),
   f(8, "uncommon", "Eel", "장어", "ウナギ"),
+  f(27, "uncommon", "Rainbow Trout", "무지개송어", "ニジマス"),
+  f(28, "uncommon", "Mandarin Fish", "쏘가리", "オヤニラミ"),
   // rare
   f(9, "rare", "Red Sea Bream", "참돔", "マダイ"),
   f(10, "rare", "Flounder", "광어", "ヒラメ"),
   f(11, "rare", "Lobster", "랍스터", "ロブスター"),
   f(12, "rare", "Octopus", "문어", "タコ"),
+  f(29, "rare", "Pufferfish", "복어", "フグ"),
+  f(30, "rare", "Flying Fish", "날치", "トビウオ"),
   // epic
   f(13, "epic", "Golden Carp", "황금잉어", "金鯉"),
   f(14, "epic", "Baby Great White", "새끼 백상아리", "ホホジロザメの子"),
   f(15, "epic", "Jellyfish King", "해파리 왕", "クラゲの王"),
   f(16, "epic", "Deep-sea Anglerfish", "심해 아귀", "深海アンコウ"),
+  f(31, "epic", "Crystal Salmon", "수정연어", "クリスタルサーモン"),
+  f(32, "epic", "Moonlight Ray", "달빛가오리", "月光エイ"),
   // legendary
   f(17, "legendary", "Marlin", "청새치", "カジキ"),
   f(18, "legendary", "Giant Tuna", "초대형 참치", "超巨大マグロ"),
   f(19, "legendary", "Century Turtle", "백년거북", "百年亀"),
   f(20, "legendary", "Aurora Eel", "오로라 뱀장어", "オーロラウナギ"),
+  f(33, "legendary", "Sunken Crownfish", "침몰왕관어", "沈没クラウンフィッシュ"),
+  f(34, "legendary", "Storm Manta", "폭풍쥐가오리", "嵐マンタ"),
   // mythic
   f(21, "mythic", "Leviathan", "리바이어던", "リヴァイアサン"),
   f(22, "mythic", "Mermaid's Tear", "인어의 눈물", "人魚の涙"),
   f(23, "mythic", "Golden Dragonfish", "황금용어", "金龍魚"),
   f(24, "mythic", "Kebomon Water Spirit", "케보몬 물의 정령", "ケボモン水の精霊"),
+  f(35, "mythic", "Nebula Whale", "성운고래", "星雲クジラ"),
+  f(36, "mythic", "Abyss Phoenixfish", "심연불사어", "深淵フェニックス魚"),
 ];
 
 export const FISH_BY_ID = new Map(FISH.map((fi) => [fi.id, fi]));

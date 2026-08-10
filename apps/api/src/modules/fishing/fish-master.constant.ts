@@ -5,12 +5,12 @@ export const FISH_RARITIES = ["common", "uncommon", "rare", "epic", "legendary",
 export type FishRarity = (typeof FISH_RARITIES)[number];
 
 export const FISH_POOL_BY_RARITY: Record<FishRarity, number[]> = {
-  common: [1, 2, 3, 4],
-  uncommon: [5, 6, 7, 8],
-  rare: [9, 10, 11, 12],
-  epic: [13, 14, 15, 16],
-  legendary: [17, 18, 19, 20],
-  mythic: [21, 22, 23, 24],
+  common: [1, 2, 3, 4, 25, 26],
+  uncommon: [5, 6, 7, 8, 27, 28],
+  rare: [9, 10, 11, 12, 29, 30],
+  epic: [13, 14, 15, 16, 31, 32],
+  legendary: [17, 18, 19, 20, 33, 34],
+  mythic: [21, 22, 23, 24, 35, 36],
 };
 
 export const FISH_ID_TO_RARITY: Record<number, FishRarity> = Object.fromEntries(
@@ -43,6 +43,8 @@ export const FISH_DEX_MILESTONES: { count: number; kp: number }[] = [
   { count: 12, kp: 250 },
   { count: 18, kp: 500 },
   { count: 24, kp: 1000 },
+  { count: 30, kp: 1600 },
+  { count: 36, kp: 2500 },
 ];
 
 export function pickWeightedRarity(weights: Record<FishRarity, number>): FishRarity {

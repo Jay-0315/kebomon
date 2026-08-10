@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Fish as FishIcon, Sparkles, BookOpen, Zap } from "lucide-react";
+import { Fish as FishIcon, Sparkles, BookOpen, Zap, Anchor, Waves } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
 import { api } from "../lib/api";
@@ -39,6 +39,22 @@ function SwimIcon({ rarity, frame = 0, size = 40 }: { rarity: string; size?: num
         backgroundPosition: `${(frame / 3) * 100}% 0`,
         imageRendering: "pixelated",
       }}
+    />
+  );
+}
+
+function FishPortrait({ fish, size = 40, className = "" }: { fish: { asset: string; name: string }; size?: number; className?: string }) {
+  return (
+    <img
+      src={fish.asset}
+      alt={fish.name}
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        imageRendering: "pixelated",
+      }}
+      draggable={false}
     />
   );
 }
@@ -296,10 +312,25 @@ export default function FishingPage() {
   const barHalf = BAR_HEIGHT_PCT / 2;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-2">
-        <FishIcon className="w-6 h-6 text-primary" />
-        <h2 className="text-xl font-bold">{t("nav.fishing")}</h2>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="grid h-10 w-10 place-items-center rounded-xl border border-primary/25 bg-primary/10">
+            <FishIcon className="w-5 h-5 text-primary" />
+          </span>
+          <div>
+            <h2 className="text-xl font-bold leading-tight">{t("nav.fishing")}</h2>
+            <p className="text-xs text-muted-foreground">
+              {t("fishing.dex_count")} {distinctCount}/{FISH.length}
+            </p>
+          </div>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-300">
+          <Zap className="w-3.5 h-3.5" />
+          {t("fishing.daily_cap")
+            .replace("{earned}", String(dailyEarned))
+            .replace("{cap}", String(dailyCap))}
+        </div>
       </div>
 
       <div className="flex gap-1 bg-muted p-1 rounded-xl">
@@ -319,7 +350,7 @@ export default function FishingPage() {
       </div>
 
       {tab === "fish" && (
-        <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center gap-4">
+        <div className="bg-card rounded-2xl border border-border p-4 sm:p-5 flex flex-col items-center gap-4 overflow-hidden">
           <div className="flex items-center gap-2 text-xs flex-wrap justify-center">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 text-muted-foreground font-medium">
               <BookOpen className="w-3 h-3" />
@@ -338,10 +369,11 @@ export default function FishingPage() {
               그라데이션으로 깊이감을 준다 — 세로로 반복하면 파도 줄무늬가 어색하게 겹쳐서
               수면 한 겹만 텍스처를 쓰고 나머지는 단색 그라데이션으로 마무리했다. */}
           <div
-            className="relative w-full overflow-hidden rounded-2xl border border-sky-400/20 select-none"
+            className="relative w-full overflow-hidden rounded-2xl border border-sky-300/25 select-none shadow-[inset_0_-30px_60px_rgba(6,78,118,0.45)]"
             style={{
-              height: 300,
-              background: "linear-gradient(180deg, #7dd3fc22 0%, #0ea5e955 45%, #0369a1cc 100%)",
+              height: 360,
+              background:
+                "radial-gradient(circle at 18% 12%, rgba(254,240,138,0.28) 0%, transparent 24%), linear-gradient(180deg, #7dd3fc33 0%, #0ea5e966 38%, #0369a1dd 100%)",
               touchAction: "none",
             }}
             onPointerDown={(e) => { if (phase === "catching") { e.preventDefault(); holdingRef.current = true; } }}
@@ -349,6 +381,33 @@ export default function FishingPage() {
             onPointerLeave={() => { holdingRef.current = false; }}
             onPointerCancel={() => { holdingRef.current = false; }}
           >
+            <div
+              className="absolute inset-0 opacity-35"
+              style={{
+                backgroundImage:
+                  "linear-gradient(115deg, transparent 0 12%, rgba(255,255,255,0.28) 13%, transparent 18% 34%, rgba(255,255,255,0.18) 35%, transparent 42% 100%)",
+              }}
+            />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-amber-900/45 via-amber-700/20 to-transparent" />
+            <div className="absolute left-4 bottom-7 h-10 w-3 rounded-t-full bg-emerald-300/45 shadow-[12px_-8px_0_rgba(110,231,183,0.28),26px_5px_0_rgba(52,211,153,0.24)]" />
+            <div className="absolute right-8 bottom-8 h-12 w-3 rounded-t-full bg-lime-300/40 shadow-[-14px_7px_0_rgba(132,204,22,0.22),18px_-4px_0_rgba(163,230,53,0.26)]" />
+            <div className="absolute left-[10%] top-[34%] opacity-60" style={{ animation: "fishingDrift 7s ease-in-out infinite" }}>
+              <FishPortrait fish={FISH[5]} size={28} className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.25)]" />
+            </div>
+            <div className="absolute right-[12%] top-[52%] opacity-50 [transform:scaleX(-1)]" style={{ animation: "fishingDrift 8.5s ease-in-out 0.6s infinite" }}>
+              <FishPortrait fish={FISH[12]} size={34} className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.25)]" />
+            </div>
+            <div className="absolute left-[22%] bottom-[18%] opacity-40" style={{ animation: "fishingDrift 9s ease-in-out 1.2s infinite" }}>
+              <FishPortrait fish={FISH[23]} size={30} />
+            </div>
+            <div className="absolute left-5 top-5 flex items-center gap-2 rounded-xl border border-white/15 bg-sky-950/35 px-3 py-2 text-[11px] font-semibold text-white/85 backdrop-blur-sm">
+              <Waves className="w-3.5 h-3.5" />
+              {phase === "catching" ? t("fishing.bite") : t("fishing.tab_fish")}
+            </div>
+            <div className="absolute right-5 top-5 flex items-center gap-2 rounded-xl border border-white/15 bg-sky-950/35 px-3 py-2 text-[11px] font-semibold text-white/85 backdrop-blur-sm">
+              <Anchor className="w-3.5 h-3.5" />
+              {distinctCount}/{FISH.length}
+            </div>
             {/* 수면 파도 텍스처 — CraftPix "Fishing Game Assets Pixel Art"(OGA-BY 3.0), 가로로만 반복 */}
             <div
               className="absolute top-0 inset-x-0 h-14 opacity-80"
@@ -377,14 +436,27 @@ export default function FishingPage() {
             )}
 
             {(phase === "idle") && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
+              <div className="absolute inset-x-5 bottom-5 flex flex-col items-center gap-3 rounded-2xl border border-white/15 bg-sky-950/45 p-4 shadow-2xl backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10">
+                    <SwimIcon rarity="rare" size={36} frame={1} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white drop-shadow">{t("fishing.cast")}</p>
+                    <p className="text-[11px] font-medium text-white/70">
+                      {t("fishing.daily_cap")
+                        .replace("{earned}", String(dailyEarned))
+                        .replace("{cap}", String(dailyCap))}
+                    </p>
+                  </div>
+                </div>
                 <button
                   onClick={() => void handleCast()}
                   disabled={cooldownMs > 0}
-                  className={`w-full rounded-2xl py-3 text-sm font-semibold transition ${
+                  className={`w-full rounded-xl py-3 text-sm font-semibold transition ${
                     cooldownMs <= 0
-                      ? "bg-primary text-white hover:bg-primary/90"
-                      : "bg-secondary text-secondary-foreground cursor-not-allowed opacity-60"
+                      ? "bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary/90"
+                      : "bg-white/20 text-white/70 cursor-not-allowed opacity-70"
                   }`}
                 >
                   {cooldownMs > 0
@@ -504,11 +576,10 @@ export default function FishingPage() {
                       className="absolute inset-0 rounded-full blur-xl"
                       style={{ background: hex, opacity: 0.5, animation: "fishGlowPulse 1.8s ease-in-out infinite" }}
                     />
-                    <img
-                      src={`/fishing-assets/win_${rarity}.png`}
-                      alt=""
-                      className="relative w-20 h-20"
-                      style={{ imageRendering: "pixelated", animation: "fishIconPop 0.5s 0.05s ease-out both" }}
+                    <FishPortrait
+                      fish={fishDef}
+                      size={88}
+                      className="relative [animation:fishIconPop_0.5s_0.05s_ease-out_both]"
                     />
                   </div>
                   <span
@@ -587,7 +658,7 @@ export default function FishingPage() {
                 }`}
               >
                 {owned ? (
-                  <SwimIcon rarity={fishDef.rarity} size={32} />
+                  <FishPortrait fish={fishDef} size={38} />
                 ) : (
                   <FishIcon className="w-7 h-7 text-muted-foreground" />
                 )}
