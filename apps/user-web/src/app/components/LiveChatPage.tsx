@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { Radio, Users, Send, ArrowLeft, Castle, Landmark, Waves, Flame, Star, Shield } from "lucide-react";
+import { Radio, Users, Send, ArrowLeft, Castle, Landmark, Waves, Flame, Star, Shield, Gamepad2, Sparkles } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { getChatSocket, disconnectChatSocket } from "../lib/socket";
 import { PixelSprite } from "./PixelCharacter";
@@ -11,6 +11,7 @@ import { api } from "../lib/api";
 const CHANNELS = [1, 2, 3, 4] as const;
 const BUBBLE_TTL = 5000;
 const isTouchDevice = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+const STICKERS = ["Hi", "GG", "KP!", "Go?", "Nice"];
 
 const CHANNEL_NAME_KEYS = {
   1: "live.channel.1",
@@ -25,6 +26,47 @@ const CHANNEL_ICONS: Record<number, React.ReactNode> = {
   3: <Waves size={18} color="#38bdf8" />,
   4: <Flame size={18} color="#f97316" />,
 };
+
+const CHANNEL_META: Record<number, { eventKo: string; eventJa: string; eventEn: string; roleKo: string; roleJa: string; roleEn: string }> = {
+  1: {
+    eventKo: "유적 탐색 대화",
+    eventJa: "遺跡探索トーク",
+    eventEn: "Ruins scouting",
+    roleKo: "콜로세움·로그라이크 공략 공유",
+    roleJa: "コロシアム・ローグ攻略共有",
+    roleEn: "Colosseum and rogue tips",
+  },
+  2: {
+    eventKo: "광장 대기실",
+    eventJa: "広場ロビー",
+    eventEn: "Plaza lobby",
+    roleKo: "파티 모집과 잡담",
+    roleJa: "パーティ募集と雑談",
+    roleEn: "Party finding and casual chat",
+  },
+  3: {
+    eventKo: "해변 낚시 소식",
+    eventJa: "浜辺釣りニュース",
+    eventEn: "Beach fishing buzz",
+    roleKo: "낚시·원정 결과 공유",
+    roleJa: "釣り・遠征結果共有",
+    roleEn: "Fishing and expedition shares",
+  },
+  4: {
+    eventKo: "미니게임 집결지",
+    eventJa: "ミニゲーム集合所",
+    eventEn: "Minigame staging",
+    roleKo: "레이드·타워디펜스 시작 전 대기",
+    roleJa: "レイド・タワーディフェンス前の待機",
+    roleEn: "Raid and tower defense ready room",
+  },
+};
+
+const liveText = (lang: string) => ({
+  volatile: lang === "ja" ? "メッセージは数秒後に消えます" : lang === "en" ? "Messages disappear after a few seconds" : "메시지는 몇 초 뒤 사라집니다",
+  quick: lang === "ja" ? "クイック" : lang === "en" ? "Quick" : "빠른 반응",
+  guildFocus: lang === "ja" ? "ギルドメンバー専用の一時チャット" : lang === "en" ? "Temporary chat for guild members only" : "길드원 전용 휘발성 채팅",
+});
 
 const BG_MAP: Record<number, { desktop: string; mobile: string; fill: string; border: string }> = {
   1: { desktop: "/bg-ruins.png",  mobile: "/bg-ruins.v.png",  fill: "#1f2a14", border: "#57534e" },
@@ -104,6 +146,7 @@ const charById = (id: number) => CHARACTERS.find((c) => c.id === id) ?? CHARACTE
 export default function LiveChatPage() {
   const { rewardSummary, profile } = useAppData();
   const { t, lang } = useLang();
+  const lt = liveText(lang);
   const location = useLocation();
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
 
@@ -330,12 +373,12 @@ export default function LiveChatPage() {
 
   const isMuted = muteLeft > 0;
 
-  const send = () => {
+  const send = (preset?: string) => {
     if (isMuted) return;
-    const text = input.trim();
+    const text = (preset ?? input).trim();
     if (!text) return;
     getChatSocket().emit("chat:message", { text });
-    setInput("");
+    if (!preset) setInput("");
   };
 
   const allChars = useMemo(() => {
@@ -385,6 +428,16 @@ export default function LiveChatPage() {
                       <Users className="h-4 w-4" />
                       <span>{counts[id] ?? 0}{t("live.participants_suffix")}</span>
                     </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold text-white/80">
+                        <Sparkles className="h-3 w-3" />
+                        {lang === "ja" ? CHANNEL_META[id].eventJa : lang === "en" ? CHANNEL_META[id].eventEn : CHANNEL_META[id].eventKo}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-1 text-[11px] font-medium text-white/70">
+                        <Gamepad2 className="h-3 w-3" />
+                        {lang === "ja" ? CHANNEL_META[id].roleJa : lang === "en" ? CHANNEL_META[id].roleEn : CHANNEL_META[id].roleKo}
+                      </span>
+                    </div>
                   </div>
                   <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
                     {t("live.enter")}
@@ -408,6 +461,7 @@ export default function LiveChatPage() {
                     <Users className="h-4 w-4" />
                     <span>{t("live.guild_channel_desc")}</span>
                   </div>
+                  <p className="mt-2 text-xs text-muted-foreground">{lt.guildFocus}</p>
                 </div>
                 <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
                   {t("live.enter")}
@@ -450,6 +504,20 @@ export default function LiveChatPage() {
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
           <Users className="h-4 w-4" /> {roster.length}
         </div>
+      </div>
+
+      <div className="absolute left-4 right-4 top-14 z-20 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-black/35 px-3 py-2 text-[11px] font-medium text-white/80 backdrop-blur-sm">
+        <span>{lt.volatile}</span>
+        <span className="inline-flex items-center gap-1">
+          <Sparkles className="h-3 w-3 text-amber-300" />
+          {channelId === "guild"
+            ? lt.guildFocus
+            : lang === "ja"
+              ? CHANNEL_META[channelId].eventJa
+              : lang === "en"
+                ? CHANNEL_META[channelId].eventEn
+                : CHANNEL_META[channelId].eventKo}
+        </span>
       </div>
 
       <div className="absolute inset-0 z-10 overflow-hidden">
@@ -521,6 +589,19 @@ export default function LiveChatPage() {
       </div>
 
       <div className="absolute bottom-0 inset-x-0 z-20 flex items-center gap-2 border-t border-white/40 bg-white/80 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-gray-900/70">
+        <div className="hidden sm:flex items-center gap-1">
+          <span className="mr-1 text-[10px] font-semibold text-gray-500 dark:text-gray-300">{lt.quick}</span>
+          {STICKERS.map((s) => (
+            <button
+              key={s}
+              onClick={() => send(s)}
+              disabled={isMuted}
+              className="rounded-full border border-gray-300 bg-white px-2 py-1 text-[11px] font-bold text-gray-700 disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
         <input
           ref={inputRef}
           value={input}
@@ -540,7 +621,7 @@ export default function LiveChatPage() {
           }`}
         />
         <button
-          onClick={send}
+          onClick={() => send()}
           disabled={isMuted}
           className={`shrink-0 flex items-center justify-center rounded-full p-2 text-primary-foreground transition-transform ${
             isMuted ? "cursor-not-allowed bg-gray-300 dark:bg-gray-700" : "bg-primary hover:scale-105"

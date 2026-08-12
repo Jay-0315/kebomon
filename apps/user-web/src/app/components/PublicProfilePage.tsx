@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Flag, Trophy, Swords, Shield } from "lucide-react";
+import { ArrowLeft, Flag, Trophy, Swords, Shield, Star, Award } from "lucide-react";
 import { api } from "../lib/api";
 import { getStoredUser } from "../lib/auth";
 import { useLang } from "../context/LangContext";
-import { CHARACTERS } from "../data/characters";
+import { CHARACTERS, getCharName } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
 import ReportModal from "./ReportModal";
 import TitleBadge from "./TitleBadge";
@@ -73,6 +73,26 @@ export default function PublicProfilePage() {
   const char = profile.equippedCharacterId
     ? (CHARACTERS.find((c) => c.id === profile.equippedCharacterId) ?? null)
     : null;
+  const favoriteChars = profile.favoriteCharacterIds
+    .map((id) => CHARACTERS.find((c) => c.id === id))
+    .filter((c): c is (typeof CHARACTERS)[number] => Boolean(c));
+  const publicBadges = [
+    {
+      key: "arena",
+      label: ko ? "콜로세움 검증" : ja ? "コロシアム実績" : "Arena Proven",
+      active: profile.arena.wins >= 5,
+    },
+    {
+      key: "duel",
+      label: ko ? "듀얼 전적" : ja ? "デュエル戦績" : "Duel Record",
+      active: profile.duel.wins >= 5,
+    },
+    {
+      key: "streak",
+      label: ko ? "연승 기록" : ja ? "連勝記録" : "Streak Record",
+      active: Math.max(profile.arena.bestStreak, profile.duel.bestStreak) >= 3,
+    },
+  ];
   const border = profile.equippedBorderId ? BORDER_STYLES[profile.equippedBorderId] : null;
   // 프레임을 끼든 안 끼든 아바타 슬롯 크기는 항상 고정 — 프레임 PNG마다 원본 캔버스 비율이
   // 달라서(예: challenger.png는 세로로 김) 이 값을 프레임 크기에 맞춰 늘리면 테두리별로
@@ -82,7 +102,7 @@ export default function PublicProfilePage() {
   const photoSize = borderLayout ? borderLayout.photoSize : AVATAR_SIZE;
 
   return (
-    <div className="mx-auto max-w-lg space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
@@ -102,7 +122,14 @@ export default function PublicProfilePage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border bg-muted/30 px-5 py-4">
+          <p className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <Award className="w-4 h-4 text-primary" />
+            {ko ? "공개 프로필" : ja ? "公開プロフィール" : "Public Profile"}
+          </p>
+        </div>
+        <div className="p-5">
         <div className="flex items-center gap-4">
           <div className="relative shrink-0" style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }}>
             <div
@@ -148,6 +175,39 @@ export default function PublicProfilePage() {
           <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{profile.bio}</p>
         )}
 
+        {(char || favoriteChars.length > 0) && (
+          <div className="mt-5 rounded-lg border border-border bg-muted/20 p-4">
+            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Star className="w-3.5 h-3.5 text-primary" />
+              {ko ? "대표 쇼케이스" : ja ? "代表ショーケース" : "Representative Showcase"}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              {char && (
+                <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/10 px-3 py-2">
+                  <PixelSprite type={char.type} colors={char.colors} characterId={char.id} rarity={char.rarity} size={44} />
+                  <div>
+                    <p className="text-xs font-bold text-primary">
+                      {ko ? "대표" : ja ? "代表" : "Main"}
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {getCharName(char, lang)}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {favoriteChars.map((fc) => (
+                <div
+                  key={fc.id}
+                  className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-border bg-card"
+                  title={getCharName(fc, lang)}
+                >
+                  <PixelSprite type={fc.type} colors={fc.colors} characterId={fc.id} rarity={fc.rarity} size={38} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-border bg-muted/30 p-3">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
@@ -181,6 +241,21 @@ export default function PublicProfilePage() {
           </div>
         </div>
 
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {publicBadges.map((badge) => (
+            <span
+              key={badge.key}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                badge.active
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-muted/40 text-muted-foreground"
+              }`}
+            >
+              {badge.label}
+            </span>
+          ))}
+        </div>
+
         {profile.favoriteCharacterIds.length > 0 && (
           <div className="mt-4 border-t border-border pt-4">
             <p className="mb-2 text-xs font-semibold text-muted-foreground">
@@ -202,6 +277,7 @@ export default function PublicProfilePage() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {showReport && (

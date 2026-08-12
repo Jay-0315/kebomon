@@ -15,6 +15,10 @@ import {
   Zap,
   Layers,
   Star,
+  Trophy,
+  Swords,
+  BookOpen,
+  Share2,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 import PixelCharacter from "./PixelCharacter";
@@ -184,6 +188,66 @@ export default function MyPage() {
       CHARACTERS.find((c) => ownedSet.has(c.id)) ??
       CHARACTERS[0])
     : (CHARACTERS.find((c) => ownedSet.has(c.id)) ?? CHARACTERS[0]);
+  const ko = lang === "ko";
+  const ja = lang === "ja";
+  const favoriteChars = favoriteIds
+    .map((id) => CHARACTERS.find((c) => c.id === id))
+    .filter((c): c is (typeof CHARACTERS)[number] => Boolean(c));
+  const showcaseChars = favoriteChars.length > 0 ? favoriteChars.slice(0, 6) : [displayChar];
+  const collectionPct = Math.round((rewardSummary.ownedCharacterIds.length / CHARACTERS.length) * 100);
+  const equippedTitleCount = rewardSummary.ownedTitleIds.length;
+  const statCards = [
+    {
+      key: "battle",
+      icon: <Swords className="w-4 h-4 text-rose-400" />,
+      label: ko ? "전투" : ja ? "バトル" : "Battle",
+      main: `${titleStats.col_wins ?? 0}${ko ? "승" : ja ? "勝" : "W"}`,
+      sub: `${titleStats.col_points ?? 0} pts · ${ko ? "최고" : ja ? "最高" : "Best"} ${titleStats.col_streak ?? 0}`,
+    },
+    {
+      key: "collection",
+      icon: <BookOpen className="w-4 h-4 text-primary" />,
+      label: ko ? "수집" : ja ? "収集" : "Collection",
+      main: `${rewardSummary.ownedCharacterIds.length}/${CHARACTERS.length}`,
+      sub: `${collectionPct}% · ${ko ? "칭호" : ja ? "称号" : "Titles"} ${equippedTitleCount}`,
+    },
+    {
+      key: "community",
+      icon: <MessageCircle className="w-4 h-4 text-sky-400" />,
+      label: ko ? "커뮤니티" : ja ? "コミュニティ" : "Community",
+      main: `${myPosts.length}${ko ? "건" : ja ? "件" : ""}`,
+      sub: ko ? "작성 게시글" : ja ? "投稿数" : "Posts written",
+    },
+    {
+      key: "activity",
+      icon: <Trophy className="w-4 h-4 text-amber-400" />,
+      label: ko ? "활동" : ja ? "活動" : "Activity",
+      main: `${rewardSummary.expeditionCount}${ko ? "회" : ja ? "回" : ""}`,
+      sub: `${ko ? "원정" : ja ? "遠征" : "Expeditions"} · ${ko ? "로그" : ja ? "ローグ" : "Rogue"} ${rewardSummary.rogueClears}`,
+    },
+  ];
+  const profileBadges = [
+    {
+      key: "collector",
+      label: ko ? "수집가" : ja ? "コレクター" : "Collector",
+      active: rewardSummary.ownedCharacterIds.length >= 10,
+    },
+    {
+      key: "arena",
+      label: ko ? "투기장" : ja ? "闘技場" : "Arena",
+      active: (titleStats.col_wins ?? 0) >= 5,
+    },
+    {
+      key: "writer",
+      label: ko ? "기록자" : ja ? "記録者" : "Writer",
+      active: myPosts.length >= 3,
+    },
+    {
+      key: "explorer",
+      label: ko ? "탐험가" : ja ? "探検家" : "Explorer",
+      active: rewardSummary.expeditionCount >= 3,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -373,39 +437,101 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* ── 케보몬 shortcut card ── */}
-      <button
-        onClick={() => navigate("/kebomon")}
-        className="w-full bg-card rounded-md border-2 border-primary/50 hover:border-primary p-4 transition-all hover:shadow-md group flex items-center gap-4 text-left"
-      >
-        <div className="shrink-0">
-          <PixelCharacter characterId={displayChar.id} size={64} float />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Gamepad2 className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">
-              {t("mypage.kebomon_link")}
-            </span>
-          </div>
-          <p
-            className={`text-sm font-medium ${RARITY_COLOR[displayChar.rarity]}`}
+      {/* ── 대표 케보몬 쇼케이스 ── */}
+      <div className="bg-card rounded-md border-2 border-primary/40 p-4 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <button
+            onClick={() => navigate("/kebomon")}
+            className="group flex flex-1 items-center gap-4 text-left"
           >
-            {getCharName(displayChar, lang)}
-            {(rewardSummary.characterEnhancements[displayChar.id] ?? 0) > 0 && (
-              <span className="text-amber-400 ml-1">
-                +{rewardSummary.characterEnhancements[displayChar.id]}
+            <div className="shrink-0">
+              <PixelCharacter characterId={displayChar.id} size={68} float />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="mb-0.5 flex items-center gap-1.5">
+                <Gamepad2 className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">
+                  {ko ? "대표 케보몬" : ja ? "代表ケボモン" : "Showcase Kebomon"}
+                </span>
+              </div>
+              <p className={`text-sm font-medium ${RARITY_COLOR[displayChar.rarity]}`}>
+                {getCharName(displayChar, lang)}
+                {(rewardSummary.characterEnhancements[displayChar.id] ?? 0) > 0 && (
+                  <span className="ml-1 text-amber-400">
+                    +{rewardSummary.characterEnhancements[displayChar.id]}
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {getRarityLabel(displayChar.rarity, lang)} · {rewardSummary.missionPoints}KP
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+          </button>
+
+          <div className="flex flex-1 flex-col gap-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">
+                {ko ? "도감 진행률" : ja ? "図鑑進行率" : "Collection Progress"}
               </span>
-            )}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {getRarityLabel(displayChar.rarity, lang)} ·{" "}
-            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length}{" "}
-            {t("kebomon.collection_count")} · {rewardSummary.missionPoints}KP
-          </p>
+              <span className="text-muted-foreground">
+                {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} · {collectionPct}%
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${collectionPct}%` }} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {showcaseChars.map((char) => (
+                <div
+                  key={char.id}
+                  className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30"
+                  title={getCharName(char, lang)}
+                >
+                  <PixelCharacter characterId={char.id} size={42} />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-      </button>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+          {statCards.map((card) => (
+            <div key={card.key} className="rounded-md border border-border bg-muted/30 p-3">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                {card.icon}
+                {card.label}
+              </p>
+              <p className="text-base font-bold text-foreground">{card.main}</p>
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{card.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+          <div className="flex flex-wrap gap-1.5">
+            {profileBadges.map((badge) => (
+              <span
+                key={badge.key}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                  badge.active
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border bg-muted/40 text-muted-foreground"
+                }`}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate(`/profile/${profile.id}`)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            {ko ? "공개 프로필" : ja ? "公開プロフィール" : "Public Profile"}
+          </button>
+        </div>
+      </div>
 
       {/* ── 칭호 ── */}
       <div className="bg-card rounded-md p-4 shadow-sm border border-border">

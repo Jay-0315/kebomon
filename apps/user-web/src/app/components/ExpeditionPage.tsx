@@ -126,6 +126,7 @@ interface RegionDef {
   unlockRaidCount: number;
   unlockDescKo: string; unlockDescJa: string; unlockDescEn: string;
   rewardBase: { points: number; stones: number; normalEgg: number; bigEgg: number; goldEgg: number };
+  featuredDrops: { ko: string; ja: string; en: string; color: string }[];
 }
 
 const REGIONS: RegionDef[] = [
@@ -139,6 +140,10 @@ const REGIONS: RegionDef[] = [
     color: "#22c55e", borderColor: "#15803d",
     icon: <Map size={18}/>, unlockRaidCount: 0, unlockDescKo: "", unlockDescJa: "", unlockDescEn: "",
     rewardBase: { points: 80, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+    featuredDrops: [
+      { ko: "일반 알", ja: "通常卵", en: "Normal Egg", color: "#94a3b8" },
+      { ko: "초원 강화석", ja: "草原強化石", en: "Grassland Stone", color: "#22c55e" },
+    ],
   },
   {
     id: "forest",
@@ -150,6 +155,10 @@ const REGIONS: RegionDef[] = [
     color: "#16a34a", borderColor: "#14532d",
     icon: <Map size={18}/>, unlockRaidCount: 0, unlockDescKo: "", unlockDescJa: "", unlockDescEn: "",
     rewardBase: { points: 100, stones: 1, normalEgg: 1, bigEgg: 0, goldEgg: 0 },
+    featuredDrops: [
+      { ko: "일반 알", ja: "通常卵", en: "Normal Egg", color: "#94a3b8" },
+      { ko: "숲의 결정", ja: "森の結晶", en: "Forest Crystal", color: "#16a34a" },
+    ],
   },
   {
     id: "ruins",
@@ -164,6 +173,10 @@ const REGIONS: RegionDef[] = [
     unlockDescJa: "レイド1回クリア",
     unlockDescEn: "Clear 1 raid",
     rewardBase: { points: 150, stones: 2, normalEgg: 0, bigEgg: 1, goldEgg: 0 },
+    featuredDrops: [
+      { ko: "고급 알", ja: "上級卵", en: "Big Egg", color: "#4ade80" },
+      { ko: "유적 파편", ja: "遺跡の欠片", en: "Ruin Fragment", color: "#a8a29e" },
+    ],
   },
   {
     id: "altar",
@@ -178,6 +191,10 @@ const REGIONS: RegionDef[] = [
     unlockDescJa: "レイド5回クリア",
     unlockDescEn: "Clear 5 raids",
     rewardBase: { points: 280, stones: 4, normalEgg: 0, bigEgg: 0, goldEgg: 1 },
+    featuredDrops: [
+      { ko: "황금 알", ja: "黄金卵", en: "Gold Egg", color: "#f59e0b" },
+      { ko: "제단 불씨", ja: "祭壇の火種", en: "Altar Ember", color: "#f97316" },
+    ],
   },
 ];
 
@@ -259,6 +276,33 @@ function calcReward(region: RegionDef, partySize: number, durationMultiplier: nu
     bigEgg:    b.bigEgg > 0 ? Math.round(b.bigEgg * mult) : 0,
     goldEgg:   b.goldEgg > 0 ? Math.round(b.goldEgg * mult) : 0,
   };
+}
+
+function calcPartySynergy(partyIds: number[], region: RegionDef, ko: boolean, ja: boolean) {
+  const chars = partyIds
+    .map((id) => CHARACTERS.find((c) => c.id === id))
+    .filter((c): c is (typeof CHARACTERS)[number] => Boolean(c));
+  const extraMembers = Math.max(0, partyIds.length - region.minParty);
+  const uniqueTypes = new Set(chars.map((c) => c.type)).size;
+  const rarityScore = chars.reduce((sum, c) => sum + RARITY_REQ_ORDER.indexOf(c.rarity), 0);
+  const avgRarity = chars.length ? rarityScore / chars.length : 0;
+  const labels = [
+    extraMembers > 0
+      ? (ko ? `추가 대원 +${extraMembers}` : ja ? `追加隊員 +${extraMembers}` : `Extra members +${extraMembers}`)
+      : (ko ? "최소 편성" : ja ? "最低編成" : "Minimum party"),
+    uniqueTypes >= 3
+      ? (ko ? "타입 다양성 높음" : ja ? "タイプ多様性 高" : "High type variety")
+      : uniqueTypes >= 2
+      ? (ko ? "타입 다양성 보통" : ja ? "タイプ多様性 中" : "Mixed types")
+      : (ko ? "타입 다양성 낮음" : ja ? "タイプ多様性 低" : "Low type variety"),
+    avgRarity >= 3
+      ? (ko ? "고등급 중심" : ja ? "高レア中心" : "High rarity core")
+      : avgRarity >= 1.5
+      ? (ko ? "균형 편성" : ja ? "バランス編成" : "Balanced rarity")
+      : (ko ? "기본 편성" : ja ? "基本編成" : "Basic rarity"),
+  ];
+  const score = Math.min(100, Math.round(35 + extraMembers * 14 + Math.min(uniqueTypes, 4) * 9 + avgRarity * 5));
+  return { chars, labels, score };
 }
 
 // ── Time display ────────────────────────────────────────────────────────────
@@ -702,18 +746,38 @@ export default function ExpeditionPage() {
     : 0;
 
   const totalCount = rewardSummary.expeditionCount;
+  const partySynergy = calcPartySynergy(party, selectedRegion, ko, ja);
+  const activeProgress = expedition
+    ? Math.min(100, Math.max(0, Math.round(((now - expedition.startTime) / expedition.durationMs) * 100)))
+    : 0;
 
   // ── Reward result overlay ─────────────────────────────────────────────────
   if (showRewardResult) {
     const r = showRewardResult;
+    const rareEvent = r.goldEgg > 0 || r.bigEgg >= 2;
+    const greatSuccess = rareEvent || r.points >= 500 || r.stones >= 6;
+    const resultTone = rareEvent ? "#f59e0b" : greatSuccess ? "#a855f7" : C.green;
+    const resultTitle = rareEvent
+      ? (ko ? "희귀 이벤트 발견!" : ja ? "レアイベント発見！" : "Rare Event Found!")
+      : greatSuccess
+      ? (ko ? "원정 대성공!" : ja ? "遠征大成功！" : "Great Success!")
+      : (ko ? "원정 성공!" : ja ? "遠征成功！" : "Expedition Success!");
+    const resultDesc = rareEvent
+      ? (ko ? "원정대가 특별한 보상을 회수했습니다." : ja ? "遠征隊が特別な報酬を回収しました。" : "The party recovered a special reward.")
+      : greatSuccess
+      ? (ko ? "편성과 시간이 좋은 결과로 이어졌습니다." : ja ? "編成と時間が良い結果につながりました。" : "Your party setup paid off.")
+      : (ko ? "원정 보상이 정상적으로 적용되었습니다." : ja ? "遠征報酬が適用されました。" : "Expedition rewards were applied.");
     return (
       <div style={{ minHeight:"100vh", background:C.bg, fontFamily:FONT, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20, gap:20 }}>
         <style>{css}</style>
-        <Package size={64} color={C.gold} style={{ animation:"exp-float 2s ease-in-out infinite" }}/>
+        <Package size={64} color={resultTone} style={{ animation:"exp-float 2s ease-in-out infinite", filter:`drop-shadow(0 0 18px ${resultTone}66)` }}/>
         <div style={{ textAlign:"center" }}>
-          <p style={{ margin:0, fontSize:22, fontWeight:900, color:C.gold }}>{ko ? "원정 완료!" : ja ? "遠征完了！" : "Expedition Complete!"}</p>
+          <p style={{ margin:0, fontSize:22, fontWeight:900, color:resultTone }}>{resultTitle}</p>
           <p style={{ margin:"4px 0 0", fontSize:13, color:C.textDim }}>
             {ko ? `원정 ${r.expeditionCount}회 달성` : ja ? `遠征${r.expeditionCount}回達成` : `${r.expeditionCount} expedition${r.expeditionCount!==1?"s":""} completed`}
+          </p>
+          <p style={{ margin:"4px 0 0", fontSize:12, color:C.text, lineHeight:1.6 }}>
+            {resultDesc}
           </p>
         </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center" }}>
@@ -898,6 +962,35 @@ export default function ExpeditionPage() {
               );
             })}
           </div>
+          <div style={{
+            marginTop:8, background:C.panel, border:`1px solid ${C.border}`,
+            borderRadius:10, padding:"10px 12px",
+          }}>
+            <div style={{ height:4, borderRadius:999, background:C.panelDark, overflow:"hidden", marginBottom:8 }}>
+              <div style={{ width:`${activeProgress}%`, height:"100%", background:isComplete ? C.green : C.gold, transition:"width 0.25s" }} />
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6 }}>
+              {[
+                ko ? "출발 기록" : ja ? "出発記録" : "Departed",
+                expedition.eventBonusMult !== null
+                  ? (ko ? "조우 해결" : ja ? "遭遇解決" : "Encounter Resolved")
+                  : activeProgress >= 50
+                  ? (ko ? "조우 대기" : ja ? "遭遇待機" : "Encounter Pending")
+                  : (ko ? "탐색 중" : ja ? "探索中" : "Exploring"),
+                isComplete ? (ko ? "귀환 완료" : ja ? "帰還完了" : "Returned") : (ko ? "귀환 예정" : ja ? "帰還予定" : "Returning Soon"),
+              ].map((label, idx) => (
+                <div key={label} style={{
+                  border:`1px solid ${idx === 0 || (idx === 1 && activeProgress >= 50) || (idx === 2 && isComplete) ? C.green : C.border}`,
+                  background:idx === 0 || (idx === 1 && activeProgress >= 50) || (idx === 2 && isComplete) ? `${C.green}12` : C.panelDark,
+                  borderRadius:7, padding:"6px 5px", textAlign:"center",
+                }}>
+                  <p style={{ margin:0, fontSize:10, color:idx === 0 || (idx === 1 && activeProgress >= 50) || (idx === 2 && isComplete) ? C.green : C.textDim, fontWeight:800 }}>
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -946,6 +1039,11 @@ export default function ExpeditionPage() {
                       <span style={{ color:C.textDim }}> · {ko?"잠김":ja?"ロック":"Locked"}</span>
                     )}
                   </p>
+                  {unlocked && (
+                    <p style={{ margin:"2px 0 0", fontSize:9, color:region.featuredDrops[0]?.color ?? C.textDim, lineHeight:1.3 }}>
+                      {ko ? "전용 드랍" : ja ? "専用ドロップ" : "Drop"} · {ko ? region.featuredDrops[0].ko : ja ? region.featuredDrops[0].ja : region.featuredDrops[0].en}
+                    </p>
+                  )}
                   {!isDefault && !unlocked && (
                     <p style={{ margin:"2px 0 0", fontSize:9, color:C.textDim, lineHeight:1.3 }}>
                       {ko ? region.unlockDescKo : ja ? region.unlockDescJa : region.unlockDescEn}
@@ -1012,6 +1110,23 @@ export default function ExpeditionPage() {
                   </span>
                 </div>
               </div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                {selectedRegion.featuredDrops.map((drop) => (
+                  <div
+                    key={drop.en}
+                    style={{
+                      display:"flex", alignItems:"center", gap:5,
+                      background:`${drop.color}14`, border:`1px solid ${drop.color}44`,
+                      borderRadius:6, padding:"4px 8px",
+                    }}
+                  >
+                    <Package size={11} color={drop.color}/>
+                    <span style={{ fontSize:10, color:drop.color, fontWeight:800 }}>
+                      {ko ? drop.ko : ja ? drop.ja : drop.en}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -1069,6 +1184,35 @@ export default function ExpeditionPage() {
                       </div>
                     );
                   })}
+                </div>
+                <div style={{
+                  background:C.panelDark, border:`1px solid ${C.border}`,
+                  borderRadius:8, padding:"8px 10px", marginBottom:10,
+                }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <p style={{ margin:0, fontSize:11, color:C.textBright, fontWeight:800 }}>
+                      {ko ? "파티 시너지" : ja ? "パーティーシナジー" : "Party Synergy"}
+                    </p>
+                    <span style={{ fontSize:11, color:selectedRegion.color, fontWeight:900 }}>
+                      {party.length === 0 ? "-" : `${partySynergy.score}%`}
+                    </span>
+                  </div>
+                  <div style={{ height:4, borderRadius:999, background:"#050a06", overflow:"hidden", marginBottom:7 }}>
+                    <div style={{ width:`${party.length === 0 ? 0 : partySynergy.score}%`, height:"100%", background:selectedRegion.color }} />
+                  </div>
+                  <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                    {partySynergy.labels.map((label) => (
+                      <span
+                        key={label}
+                        style={{
+                          fontSize:9, color:C.textDim, border:`1px solid ${C.border}`,
+                          borderRadius:999, padding:"2px 6px", background:C.panel,
+                        }}
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowPicker(true)}
