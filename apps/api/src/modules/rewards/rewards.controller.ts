@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt.guard";
+import { Roles } from "../auth/roles.decorator";
+import { RolesGuard } from "../auth/roles.guard";
+import { SUPER_ADMIN_ROLES } from "../auth/roles.constants";
 import { RewardsService } from "./rewards.service";
 
 @Controller("rewards")
@@ -219,5 +222,26 @@ export class RewardsController {
   @Get("hall-of-fame")
   getHallOfFame() {
     return this.rewardsService.getHallOfFame();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...SUPER_ADMIN_ROLES)
+  @Post("season/grant-rank-titles")
+  grantSeasonRankTitles(@Body() body: { seasonId?: number }) {
+    return this.rewardsService.grantSeasonRankTitles(body.seasonId ?? 1);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...SUPER_ADMIN_ROLES)
+  @Post("season/grant-tier-borders")
+  grantSeasonTierBorders(@Body() body: { seasonId?: number }) {
+    return this.rewardsService.grantSeasonTierBorders(body.seasonId ?? 1);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...SUPER_ADMIN_ROLES)
+  @Post("season/reset-stats")
+  resetSeasonStats() {
+    return this.rewardsService.resetSeasonStats();
   }
 }
