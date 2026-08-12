@@ -11,7 +11,14 @@ import { api } from "../lib/api";
 const CHANNELS = [1, 2, 3, 4] as const;
 const BUBBLE_TTL = 5000;
 const isTouchDevice = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-const STICKERS = ["Hi", "GG", "KP!", "Go?", "Nice"];
+const STICKERS = [
+  { id: "wave", icon: "👋", label: "Hi" },
+  { id: "spark", icon: "✨", label: "Nice" },
+  { id: "fire", icon: "🔥", label: "GG" },
+  { id: "zap", icon: "⚡", label: "KP" },
+  { id: "heart", icon: "💙", label: "Cheer" },
+];
+const stickerByText = (text: string) => STICKERS.find((s) => s.icon === text);
 
 const CHANNEL_NAME_KEYS = {
   1: "live.channel.1",
@@ -390,12 +397,18 @@ export default function LiveChatPage() {
 
   if (view === "lobby") {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <div className="mb-6 flex items-center gap-2">
-          <Radio className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("live.title")}</h1>
+      <div className="mx-auto max-w-5xl px-4 py-6">
+        <div className="mb-6 rounded-2xl border border-border bg-card/80 p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Radio className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{t("live.title")}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{t("live.desc")}</p>
+            </div>
+          </div>
         </div>
-        <p className="mb-6 text-sm text-muted-foreground">{t("live.desc")}</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {CHANNELS.map((id) => {
             const bg = BG_MAP[id];
@@ -403,7 +416,7 @@ export default function LiveChatPage() {
               <button
                 key={id}
                 onClick={() => enterChannel(id)}
-                className="group relative flex overflow-hidden rounded-2xl border text-left transition-all hover:shadow-lg"
+                className="group relative flex min-h-[168px] overflow-hidden rounded-2xl border text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-xl"
                 style={{ borderColor: bg.border, background: "transparent" }}
               >
                 <div className="absolute inset-0" style={{ backgroundColor: bg.fill }} />
@@ -416,31 +429,33 @@ export default function LiveChatPage() {
                     alt="" aria-hidden
                   />
                 </picture>
-                <div className="absolute inset-0 bg-black/50" />
-                <div className="relative flex w-full items-center justify-between p-5">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/42 to-black/10" />
+                <div className="relative flex w-full flex-col justify-between p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1 text-xs font-semibold text-white/80 backdrop-blur-sm">
+                      <Users className="h-3.5 w-3.5" />
+                      {counts[id] ?? 0}{t("live.participants_suffix")}
+                    </div>
+                    <div className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white opacity-90 transition group-hover:bg-primary group-hover:text-primary-foreground">
+                      {t("live.enter")}
+                    </div>
+                  </div>
                   <div>
-                    <div className="flex items-center gap-2 text-lg font-bold text-white drop-shadow">
-                      <span>{CHANNEL_ICONS[id]}</span>
-                      ch.{id}
-                      <span className="text-sm font-medium text-white/70">{t(CHANNEL_NAME_KEYS[id])}</span>
+                    <div className="mb-2 flex items-center gap-2 text-xl font-black text-white drop-shadow">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 backdrop-blur-sm">{CHANNEL_ICONS[id]}</span>
+                      <span>ch.{id}</span>
+                      <span className="text-sm font-semibold text-white/75">{t(CHANNEL_NAME_KEYS[id])}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-1 text-sm text-white/60">
-                      <Users className="h-4 w-4" />
-                      <span>{counts[id] ?? 0}{t("live.participants_suffix")}</span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold text-white/80">
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2 py-1 text-[11px] font-semibold text-white/85 backdrop-blur-sm">
                         <Sparkles className="h-3 w-3" />
                         {lang === "ja" ? CHANNEL_META[id].eventJa : lang === "en" ? CHANNEL_META[id].eventEn : CHANNEL_META[id].eventKo}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-1 text-[11px] font-medium text-white/70">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-[11px] font-medium text-white/75 backdrop-blur-sm">
                         <Gamepad2 className="h-3 w-3" />
                         {lang === "ja" ? CHANNEL_META[id].roleJa : lang === "en" ? CHANNEL_META[id].roleEn : CHANNEL_META[id].roleKo}
                       </span>
                     </div>
-                  </div>
-                  <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
-                    {t("live.enter")}
                   </div>
                 </div>
               </button>
@@ -449,9 +464,10 @@ export default function LiveChatPage() {
           {hasGuild && (
             <button
               onClick={enterGuildChannel}
-              className="group relative flex overflow-hidden rounded-2xl border border-primary/40 bg-primary/10 text-left transition-all hover:shadow-lg"
+              className="group relative flex min-h-[148px] overflow-hidden rounded-2xl border border-primary/40 bg-primary/10 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-xl"
             >
-              <div className="relative flex w-full items-center justify-between p-5">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-primary/5" />
+              <div className="relative flex w-full items-center justify-between gap-4 p-5">
                 <div>
                   <div className="flex items-center gap-2 text-lg font-bold text-primary">
                     <Shield className="h-[18px] w-[18px]" />
@@ -463,7 +479,7 @@ export default function LiveChatPage() {
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">{lt.guildFocus}</p>
                 </div>
-                <div className="hidden sm:block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105">
+                <div className="hidden rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform group-hover:scale-105 sm:block">
                   {t("live.enter")}
                 </div>
               </div>
@@ -477,6 +493,18 @@ export default function LiveChatPage() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4 overflow-y-auto">
     <div ref={containerRef} className="relative overflow-hidden rounded-2xl shadow-2xl w-full" style={{ maxWidth: "56rem" }}>
+      <style>{`
+        @keyframes bubble-pop {
+          0% { opacity: 0; transform: translateY(8px) scale(.92); }
+          10% { opacity: 1; transform: translateY(0) scale(1); }
+          78% { opacity: 1; transform: translateY(-4px) scale(1); }
+          100% { opacity: 0; transform: translateY(-12px) scale(.96); }
+        }
+        @keyframes sticker-bounce {
+          0%, 100% { transform: translateY(0) rotate(-2deg); }
+          50% { transform: translateY(-5px) rotate(2deg); }
+        }
+      `}</style>
       <ChannelBackground channelId={channelId} />
 
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between bg-white/70 px-4 py-3 backdrop-blur dark:bg-gray-900/60">
@@ -552,6 +580,7 @@ export default function LiveChatPage() {
           {bubbles.map((b) => {
             const isMine = b.socketId === self?.socketId;
             const def = charById(b.characterId);
+            const sticker = stickerByText(b.text);
             return (
               <div
                 key={b.id}
@@ -564,11 +593,22 @@ export default function LiveChatPage() {
                 }}
               >
                 <div style={{ animation: `bubble-pop ${BUBBLE_TTL}ms ease-out forwards` }}>
-                  <div className={`flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-md ${isMine ? "border-2 border-primary" : "border border-gray-200"}`}>
-                    <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={20} />
-                    <span className={`text-[11px] font-bold ${isMine ? "text-primary" : "text-gray-500"}`}>{b.nickname}</span>
-                    <span className="text-sm font-medium text-gray-900">{b.text}</span>
-                  </div>
+                  {sticker ? (
+                    <div className={`flex min-w-16 flex-col items-center rounded-2xl bg-white/95 px-3 py-2 shadow-lg ${isMine ? "border-2 border-primary" : "border border-white/80"}`}>
+                      <span className="text-4xl leading-none drop-shadow-sm" style={{ animation: "sticker-bounce 1.2s ease-in-out infinite" }}>
+                        {sticker.icon}
+                      </span>
+                      <span className={`mt-1 text-[10px] font-black ${isMine ? "text-primary" : "text-gray-500"}`}>
+                        {sticker.label}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className={`flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-md ${isMine ? "border-2 border-primary" : "border border-gray-200"}`}>
+                      <PixelSprite type={def.type} colors={def.colors} characterId={def.id} rarity={def.rarity} size={20} />
+                      <span className={`text-[11px] font-bold ${isMine ? "text-primary" : "text-gray-500"}`}>{b.nickname}</span>
+                      <span className="text-sm font-medium text-gray-900">{b.text}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -593,12 +633,13 @@ export default function LiveChatPage() {
           <span className="mr-1 text-[10px] font-semibold text-gray-500 dark:text-gray-300">{lt.quick}</span>
           {STICKERS.map((s) => (
             <button
-              key={s}
-              onClick={() => send(s)}
+              key={s.id}
+              onClick={() => send(s.icon)}
               disabled={isMuted}
-              className="rounded-full border border-gray-300 bg-white px-2 py-1 text-[11px] font-bold text-gray-700 disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              title={s.label}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-lg shadow-sm transition hover:-translate-y-0.5 hover:border-primary disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800"
             >
-              {s}
+              {s.icon}
             </button>
           ))}
         </div>
