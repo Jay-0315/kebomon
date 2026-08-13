@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -15,6 +16,8 @@ import { UpdateCommunityPostDto } from "./dto/update-community-post.dto";
 const PAGE_SIZE = 20;
 const COMMENT_PAGE_SIZE = 10;
 const RECENT_COMMENTS = 3;
+const POST_CREATE_COOLDOWN_MS = 60_000;
+const DUPLICATE_POST_WINDOW_MS = 10 * 60_000;
 
 // NOTE: prisma generate 실행 후 타입 오류 해소됨
 const userSelect = { id: true, name: true, profilePhoto: true, reward: { select: { equippedTitleId: true, equippedBorderId: true } } };
@@ -85,6 +88,14 @@ export class CommunityService {
       select: { postId: true },
     });
     return new Set(likes.map((l) => l.postId));
+  }
+
+  private normalizeContent(content: string) {
+    return content
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   //게시글
@@ -163,9 +174,71 @@ export class CommunityService {
     return this.formatPost(post, likedSet.has(postId));
   }
 
+  async findHighlights(userId?: string) {
+    const weekStart = new Date();
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+    const [popular, weeklyBest] = await Promise.all([
+      this.prisma.communityPost.findMany({
+        where: { guildId: null },
+        include: postInclude as any,
+        orderBy: [{ likesCount: "desc" }, { createdAt: "desc" }],
+        take: 5,
+      }),
+      this.prisma.communityPost.findMany({
+        where: { guildId: null, createdAt: { gte: weekStart } },
+        include: postInclude as any,
+        orderBy: [{ likesCount: "desc" }, { createdAt: "desc" }],
+        take: 5,
+      }),
+    ]);
+
+    const postIds = [...popular, ...weeklyBest].map((post) => post.id);
+    const likedSet = await this.batchLiked(userId, postIds);
+
+    return {
+      popular: popular.map((post) => this.formatPost(post, likedSet.has(post.id))),
+      weeklyBest: weeklyBest.map((post) => this.formatPost(post, likedSet.has(post.id))),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   // guildId는 클라이언트가 보낸 DTO가 아니라 호출자(GuildService)가 멤버십을 확인한 뒤
   // 서버에서 결정해 넘기는 값이다 — 절대 클라이언트 입력을 그대로 신뢰하면 안 됨.
   async create(dto: CreateCommunityPostDto, guildId: string | null = null) {
+    const normalized = this.normalizeContent(dto.content);
+    if (normalized.length < 8 && !dto.imageUrl) {
+      throw new BadRequestException("게시글 내용은 8자 이상 입력해주세요.");
+    }
+
+    const recentPost = await this.prisma.communityPost.findFirst({
+      where: {
+        userId: dto.userId,
+        guildId,
+        createdAt: { gte: new Date(Date.now() - POST_CREATE_COOLDOWN_MS) },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    if (recentPost) {
+      throw new BadRequestException("게시글은 1분에 한 번 작성할 수 있습니다.");
+    }
+
+    const duplicateCandidates = await this.prisma.communityPost.findMany({
+      where: {
+        userId: dto.userId,
+        guildId,
+        createdAt: { gte: new Date(Date.now() - DUPLICATE_POST_WINDOW_MS) },
+      },
+      select: { content: true },
+      take: 5,
+      orderBy: { createdAt: "desc" },
+    });
+    if (duplicateCandidates.some((post) => this.normalizeContent(post.content) === normalized)) {
+      throw new BadRequestException("동일한 내용의 게시글은 잠시 후 다시 작성할 수 있습니다.");
+    }
+
     const post = await this.prisma.communityPost.create({
       data: {
         userId: dto.userId,

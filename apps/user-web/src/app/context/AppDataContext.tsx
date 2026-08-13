@@ -69,6 +69,14 @@ export interface GachaConfig {
 
 export interface DailyQuests {
   progress: Record<string, boolean>;
+  items?: {
+    key: string;
+    title: string;
+    description: string;
+    action: string;
+    done: boolean;
+  }[];
+  reward?: { points: number; claimType: string };
   allDone: boolean;
   bonusClaimed: boolean;
 }
@@ -76,6 +84,23 @@ export interface DailyQuests {
 export interface WeeklyQuests {
   progress: Record<string, number>;
   targets: Record<string, number>;
+  items?: {
+    key: string;
+    title: string;
+    description: string;
+    action: string;
+    count: number;
+    target: number;
+    done: boolean;
+    focused?: boolean;
+  }[];
+  rotation?: {
+    id: string;
+    title: string;
+    description: string;
+    focus: string[];
+  };
+  reward?: { points: number; claimType: string };
   allDone: boolean;
   bonusClaimed: boolean;
 }

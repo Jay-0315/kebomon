@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Heart, Plus, X, ChevronRight, Clock, Flame, Search, UserSearch } from "lucide-react";
+import { Heart, Plus, X, ChevronRight, Clock, Flame, Search, UserSearch, Trophy, MessageSquareText } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
 import { useNavigate } from "react-router";
 import { useAppData } from "../context/AppDataContext";
@@ -21,6 +21,12 @@ const CAT_STYLE: Record<PostCategory, string> = {
   tip: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
   chat: "bg-muted text-muted-foreground",
 };
+
+interface CommunityHighlights {
+  popular: CommunityPost[];
+  weeklyBest: CommunityPost[];
+  generatedAt: string;
+}
 
 function mapComment(c: Record<string, unknown>): Comment {
   const u = (c.user as Record<string, unknown> | undefined) ?? {};
@@ -87,6 +93,7 @@ export default function CommunityPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [highlights, setHighlights] = useState<CommunityHighlights | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
   const requestIdRef = useRef(0);
 
@@ -132,10 +139,29 @@ export default function CommunityPage() {
     [currentUser?.id],
   );
 
+  const fetchHighlights = useCallback(async () => {
+    const qs = new URLSearchParams();
+    if (currentUser) qs.set("userId", currentUser.id);
+    const data = await api.get<{
+      popular: Record<string, unknown>[];
+      weeklyBest: Record<string, unknown>[];
+      generatedAt: string;
+    }>(`/community/posts/highlights?${qs.toString()}`);
+    setHighlights({
+      popular: data.popular.map(mapPost),
+      weeklyBest: data.weeklyBest.map(mapPost),
+      generatedAt: data.generatedAt,
+    });
+  }, [currentUser?.id]);
+
   useEffect(() => {
     setPage(1);
     void fetchPosts(1, activeTab, sort, debouncedSearch);
   }, [activeTab, sort, debouncedSearch]);
+
+  useEffect(() => {
+    void fetchHighlights().catch(() => setHighlights(null));
+  }, [fetchHighlights]);
 
   const handlePageChange = (p: number) => {
     setPage(p);
@@ -224,6 +250,23 @@ export default function CommunityPage() {
           className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary/40"
         />
       </div>
+
+      {activeTab === "all" && !debouncedSearch && highlights && (highlights.popular.length > 0 || highlights.weeklyBest.length > 0) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <HighlightPanel
+            title={lang === "ko" ? "인기글" : lang === "ja" ? "人気投稿" : "Popular"}
+            icon={Flame}
+            posts={highlights.popular}
+            onOpen={(postId) => navigate(`/community/${postId}`)}
+          />
+          <HighlightPanel
+            title={lang === "ko" ? "주간 베스트" : lang === "ja" ? "週間ベスト" : "Weekly Best"}
+            icon={Trophy}
+            posts={highlights.weeklyBest}
+            onOpen={(postId) => navigate(`/community/${postId}`)}
+          />
+        </div>
+      )}
 
       {/* 탭 */}
       <div className="flex gap-1 bg-muted p-1 rounded-md">
@@ -432,6 +475,17 @@ export default function CommunityPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <div className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
+                  <MessageSquareText className="h-3.5 w-3.5" />
+                  {lang === "ko" ? "일반 커뮤니티 작성 기준" : lang === "ja" ? "一般コミュニティ投稿基準" : "General Community Posting"}
+                </div>
+                {lang === "ko"
+                  ? "일반 커뮤니티는 공개 게시글 중심으로 운영됩니다. 길드 내부 공유는 길드 게시판을 사용해주세요. 짧은 반복 작성과 동일 내용 재작성은 제한됩니다."
+                  : lang === "ja"
+                    ? "一般コミュニティは公開投稿中心です。ギルド内共有はギルド掲示板を利用してください。短時間の連投や同一内容の再投稿は制限されます。"
+                    : "General community posts are public. Use the guild board for guild-only sharing. Rapid repeat posts and duplicate content are limited."}
+              </div>
               <div className="flex gap-2">
                 {CATEGORY_OPTIONS.map((cat) => (
                   <button
@@ -464,6 +518,47 @@ export default function CommunityPage() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HighlightPanel({
+  title,
+  icon: Icon,
+  posts,
+  onOpen,
+}: {
+  title: string;
+  icon: React.ElementType;
+  posts: CommunityPost[];
+  onOpen: (postId: string) => void;
+}) {
+  return (
+    <div className="rounded border border-border bg-card p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <Icon className="h-4 w-4 text-primary" />
+        {title}
+      </div>
+      {posts.length === 0 ? (
+        <p className="py-4 text-center text-xs text-muted-foreground">-</p>
+      ) : (
+        <div className="space-y-1">
+          {posts.slice(0, 3).map((post, index) => (
+            <button
+              key={post.id}
+              type="button"
+              onClick={() => onOpen(post.id)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted/60"
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{post.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}</span>
+              <span className="shrink-0 text-muted-foreground">♥ {post.likes}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

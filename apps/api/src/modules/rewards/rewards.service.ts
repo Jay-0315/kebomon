@@ -908,6 +908,28 @@ export class RewardsService {
   // ─── 일일 퀘스트 (하루 4개 체크리스트 — achievements/titles처럼 하드코딩, 관리자 편집 불가) ──
   private static readonly DAILY_QUEST_KEYS = ["login", "gacha", "battle", "community"] as const;
   private static readonly DAILY_QUEST_BONUS_POINTS = 80;
+  private static readonly DAILY_QUEST_META = {
+    login: {
+      title: "접속 확인",
+      description: "오늘 서비스에 접속하면 완료됩니다.",
+      action: "로그인 또는 세션 갱신",
+    },
+    gacha: {
+      title: "뽑기 이용",
+      description: "뽑기를 1회 이상 이용하면 완료됩니다.",
+      action: "뽑기 1회 이상",
+    },
+    battle: {
+      title: "전투 콘텐츠 참여",
+      description: "전투 계열 콘텐츠를 1회 이상 진행하면 완료됩니다.",
+      action: "전투 1회 이상",
+    },
+    community: {
+      title: "커뮤니티 활동",
+      description: "게시글 또는 댓글을 작성하면 완료됩니다.",
+      action: "게시글/댓글 1회",
+    },
+  } as const;
   private static readonly DAILY_QUEST_COLUMN = {
     login: "loginDone",
     gacha: "gachaDone",
@@ -938,7 +960,19 @@ export class RewardsService {
     const row = await this.getOrCreateTodayQuestRow(userId);
     const progress = this.toQuestProgress(row);
     const allDone = RewardsService.DAILY_QUEST_KEYS.every((k) => progress[k]);
-    return { progress, allDone, bonusClaimed: row.bonusClaimed };
+    const items = RewardsService.DAILY_QUEST_KEYS.map((key) => ({
+      key,
+      ...RewardsService.DAILY_QUEST_META[key],
+      done: progress[key],
+      rewardPointHint: allDone ? RewardsService.DAILY_QUEST_BONUS_POINTS : 0,
+    }));
+    return {
+      progress,
+      items,
+      allDone,
+      bonusClaimed: row.bonusClaimed,
+      reward: { points: RewardsService.DAILY_QUEST_BONUS_POINTS, claimType: "all_done" },
+    };
   }
 
   /**
@@ -994,12 +1028,39 @@ export class RewardsService {
 
     const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
 
-    return { points: RewardsService.DAILY_QUEST_BONUS_POINTS, newlyUnlockedAchievements };
+    return {
+      points: RewardsService.DAILY_QUEST_BONUS_POINTS,
+      newlyUnlockedAchievements,
+      rewardPresentation: {
+        title: "일일 퀘스트 보상 수령",
+        points: RewardsService.DAILY_QUEST_BONUS_POINTS,
+      },
+    };
   }
 
   // ─── 주간 퀘스트 (일일 퀘스트와 동일한 4개 항목, 주 단위 누적 카운트 + 더 큰 보상) ──
   private static readonly WEEKLY_QUEST_TARGETS = { login: 5, gacha: 3, battle: 10, community: 3 } as const;
   private static readonly WEEKLY_QUEST_BONUS_POINTS = 400;
+  private static readonly WEEKLY_ROTATIONS = [
+    {
+      id: "core-loop",
+      title: "기본 이용 순환",
+      description: "접속, 보상, 전투, 커뮤니티 활동을 균형 있게 진행합니다.",
+      focus: ["login", "gacha", "battle", "community"],
+    },
+    {
+      id: "combat-community",
+      title: "참여 강화 순환",
+      description: "전투 참여와 커뮤니티 상호작용 비중을 높여 진행합니다.",
+      focus: ["battle", "community"],
+    },
+    {
+      id: "collection-loop",
+      title: "수집 강화 순환",
+      description: "접속 유지와 보상 사용 흐름을 중심으로 진행합니다.",
+      focus: ["login", "gacha"],
+    },
+  ] as const;
   private static readonly WEEKLY_QUEST_COLUMN = {
     login: "loginCount",
     gacha: "gachaCount",
@@ -1030,7 +1091,26 @@ export class RewardsService {
     const progress = this.toWeeklyProgress(row);
     const targets = RewardsService.WEEKLY_QUEST_TARGETS;
     const allDone = (Object.keys(targets) as (keyof typeof targets)[]).every((k) => progress[k] >= targets[k]);
-    return { progress, targets, allDone, bonusClaimed: row.bonusClaimed };
+    const rotation = RewardsService.WEEKLY_ROTATIONS[
+      Math.abs(row.weekKey.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0)) % RewardsService.WEEKLY_ROTATIONS.length
+    ];
+    const items = RewardsService.DAILY_QUEST_KEYS.map((key) => ({
+      key,
+      ...RewardsService.DAILY_QUEST_META[key],
+      count: progress[key],
+      target: targets[key],
+      done: progress[key] >= targets[key],
+      focused: (rotation.focus as readonly string[]).includes(key),
+    }));
+    return {
+      progress,
+      targets,
+      items,
+      rotation,
+      allDone,
+      bonusClaimed: row.bonusClaimed,
+      reward: { points: RewardsService.WEEKLY_QUEST_BONUS_POINTS, claimType: "all_done" },
+    };
   }
 
   /** 일일 퀘스트의 markQuestDone과 나란히 호출되는 주간 카운터 증가 — 컬럼 단위 increment라 레이스에 안전 */
@@ -1081,7 +1161,14 @@ export class RewardsService {
 
     const newlyUnlockedAchievements = await this.grantAchievementsAndTitles(userId);
 
-    return { points: RewardsService.WEEKLY_QUEST_BONUS_POINTS, newlyUnlockedAchievements };
+    return {
+      points: RewardsService.WEEKLY_QUEST_BONUS_POINTS,
+      newlyUnlockedAchievements,
+      rewardPresentation: {
+        title: "주간 퀘스트 보상 수령",
+        points: RewardsService.WEEKLY_QUEST_BONUS_POINTS,
+      },
+    };
   }
 
   // ─── 포인트 상점 ─────────────────────────────────────────────────────────────

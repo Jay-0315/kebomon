@@ -30,6 +30,11 @@ export class CommunityController {
     return this.communityService.findMy(userId, page ? Number(page) : 1);
   }
 
+  @Get("highlights")
+  findHighlights(@Query("userId") userId?: string) {
+    return this.communityService.findHighlights(userId);
+  }
+
   @Get(":id")
   findById(@Param("id") id: string, @Query("userId") userId?: string) {
     return this.communityService.findById(id, userId);
