@@ -7,6 +7,24 @@ export interface TdPoint {
   y: number;
 }
 
+export interface TdPlacementSlot {
+  id: string;
+  zoneId: string;
+  x: number;
+  y: number;
+  enabled: boolean;
+  ownerUserId?: string;
+}
+
+export interface TdPlacementZone {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  slots: TdPlacementSlot[];
+}
+
 export interface TdPlayer {
   socketId: string;
   userId: string;
@@ -16,6 +34,8 @@ export interface TdPlayer {
   connected: boolean;
   gold: number;
   kills: number;
+  lives: number;
+  maxLives: number;
   typeUpgrades: Record<TdUnitType, number>;
 }
 
@@ -38,6 +58,7 @@ export interface TdTower {
 
 export interface TdMonster {
   id: string;
+  ownerUserId: string;
   wave: number;
   kind: "normal" | "fast" | "tough" | "boss";
   hp: number;
@@ -61,10 +82,11 @@ export interface TdSnapshot {
   lives: number;
   maxLives: number;
   path: TdPoint[];
-  slots: { id: string; x: number; y: number; occupiedBy: string | null }[];
+  placementZones: TdPlacementZone[];
+  slots: (TdPlacementSlot & { ownerUserId: string; occupiedBy: string | null })[];
   towers: TdTower[];
   monsters: TdMonster[];
-  projectiles: { id: string; from: TdPoint; toMonsterId: string; createdAt: number }[];
+  projectiles: { id: string; ownerUserId: string; from: TdPoint; toMonsterId: string; createdAt: number }[];
   message?: string;
   result?: { won: boolean; wavesCleared: number };
 }

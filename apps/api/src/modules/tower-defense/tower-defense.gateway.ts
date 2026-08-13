@@ -220,6 +220,8 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
       connected: true,
       gold: 0,
       kills: 0,
+      lives: 30,
+      maxLives: 30,
       typeUpgrades: { fire: 0, water: 0, nature: 0 },
     };
   }

@@ -1,8 +1,9 @@
-import {
+﻿import {
   TD_MAX_LIVES,
   TD_FIXED_SUMMON_COST,
   TD_MAX_TOWER_UPGRADE,
   TD_PATH,
+  TD_PLACEMENT_ZONES,
   TD_POOL_CHARACTER_TYPES,
   TD_RARITY_POWER,
   TD_RARITY_WEIGHTS,
@@ -94,20 +95,34 @@ function syncTowerPower(tower: TdTower, level: number) {
   tower.upgradeCost = level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level);
 }
 
-function buildWave(wave: number): Array<Omit<TdMonster, "id" | "pathT" | "reached">> {
+function buildWave(wave: number): Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">> {
   const boss = wave % 10 === 0;
   const kind = boss ? "boss" : wave % 5 === 0 ? "tough" : wave % 3 === 0 ? "fast" : "normal";
   const count = boss ? 1 : 10 + Math.min(20, wave * 2);
   const hpBase = 55 * (1 + wave * 0.14) * Math.pow(1.028, wave);
-  const speedBase = kind === "fast" ? 0.04 : kind === "boss" ? 0.018 : 0.028;
+  const speedBase = kind === "fast" ? 0.08 : kind === "boss" ? 0.036 : 0.056;
   return Array.from({ length: count }, () => ({
     wave,
     kind,
     hp: boss ? hpBase * 12 : kind === "tough" ? hpBase * 2.2 : hpBase,
     maxHp: boss ? hpBase * 12 : kind === "tough" ? hpBase * 2.2 : hpBase,
-    speed: speedBase * (1 + wave * 0.008),
+    speed: speedBase,
     reward: boss ? 100 + wave * 4 : 8 + Math.floor(wave * 0.8),
   }));
+}
+
+function baseSlotId(slotId: string) {
+  const idx = slotId.indexOf(":");
+  return idx >= 0 ? slotId.slice(idx + 1) : slotId;
+}
+
+function slotOwner(slotId: string) {
+  const idx = slotId.indexOf(":");
+  return idx >= 0 ? slotId.slice(0, idx) : null;
+}
+
+function ownedSlotId(userId: string, slotId: string) {
+  return `${userId}:${baseSlotId(slotId)}`;
 }
 
 export class GameEngine {
@@ -126,6 +141,7 @@ export class GameEngine {
       nextWaveAt: 0,
       lives: TD_MAX_LIVES,
       maxLives: TD_MAX_LIVES,
+      arenas: new Map(),
       towers: new Map(),
       monsters: new Map(),
       projectiles: [],
@@ -140,28 +156,46 @@ export class GameEngine {
 
   static snapshot(room: TdRoom, message?: string): TdSnapshot {
     const now = Date.now();
+    const players = [...room.players.values()].map((player) => {
+      const arena = room.arenas.get(player.userId);
+      return {
+        ...player,
+        lives: arena?.lives ?? player.lives ?? TD_MAX_LIVES,
+        maxLives: arena?.maxLives ?? player.maxLives ?? TD_MAX_LIVES,
+      };
+    });
+    const lifeValues = players.map((player) => player.lives);
+    const summaryLives = lifeValues.length > 0 ? Math.max(0, Math.min(...lifeValues)) : room.lives;
     return {
       roomId: room.id,
       roomCode: room.code,
       phase: room.phase,
       hostUserId: room.hostUserId,
-      players: [...room.players.values()],
+      players,
       tick: room.tick,
       wave: room.wave,
       waveActive: room.waveActive,
       nextWaveInMs: room.waveActive ? 0 : Math.max(0, room.nextWaveAt - now),
-      lives: room.lives,
+      lives: summaryLives,
       maxLives: room.maxLives,
       path: TD_PATH,
-      slots: TD_SLOTS.map((slot) => ({
-        ...slot,
-        occupiedBy: [...room.towers.values()].find((t) => t.slotId === slot.id)?.id ?? null,
-      })),
+      placementZones: TD_PLACEMENT_ZONES,
+      slots: players.flatMap((player) =>
+        TD_SLOTS.map((slot) => {
+          const id = ownedSlotId(player.userId, slot.id);
+          return {
+            ...slot,
+            id,
+            ownerUserId: player.userId,
+            occupiedBy: [...room.towers.values()].find((t) => t.slotId === id)?.id ?? null,
+          };
+        }),
+      ),
       towers: [...room.towers.values()],
       monsters: [...room.monsters.values()],
       projectiles: room.projectiles.filter((p) => now - p.createdAt < 450),
       message,
-      result: room.phase === "ended" ? { won: room.lives > 0 && room.wave >= TD_WAVE_COUNT, wavesCleared: Math.max(0, room.wave - 1) } : undefined,
+      result: room.phase === "ended" ? { won: players.some((player) => player.lives > 0) && room.wave >= TD_WAVE_COUNT, wavesCleared: Math.max(0, room.wave - 1) } : undefined,
     };
   }
 
@@ -169,22 +203,33 @@ export class GameEngine {
     room.phase = "playing";
     room.wave = 0;
     room.lives = TD_MAX_LIVES;
+    room.arenas.clear();
     room.nextWaveAt = Date.now() + 1_000;
     room.players.forEach((p) => {
       p.gold = TD_START_GOLD;
       p.kills = 0;
+      p.lives = TD_MAX_LIVES;
+      p.maxLives = TD_MAX_LIVES;
       p.typeUpgrades = emptyTypeUpgrades();
+      room.arenas.set(p.userId, {
+        userId: p.userId,
+        lives: TD_MAX_LIVES,
+        maxLives: TD_MAX_LIVES,
+        spawnQueue: [],
+        nextSpawnAt: 0,
+      });
     });
   }
 
   static summon(room: TdRoom, userId: string, slotId: string): { ok: boolean; message?: string } {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 소환할 수 있습니다." };
-    const slot = TD_SLOTS.find((s) => s.id === slotId);
-    if (!slot) return { ok: false, message: "잘못된 슬롯입니다." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・・醐劍﨑 ・・・溢慣・壱共." };
+    const slot = TD_SLOTS.find((s) => s.id === baseSlotId(slotId));
+    if (slotOwner(slotId) !== userId) return { ok: false, message: "・ｸ・ｸ・専ｲ・﨑・ｹ・・・・溜・尖ｧ・・､・倆腹 ・・・溢慣・壱共." };
+    if (!slot) return { ok: false, message: "・俯ｪｻ・・・ｬ・ｯ・・笈・､." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "・ｴ・ｸ ・ｬ・ｩ ・卓攤 ・ｬ・ｯ・・笈・､." };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "참가자가 아닙니다." };
-    if (player.gold < TD_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
+    if (!player) return { ok: false, message: "・ｸ・・専ｰ ・・漁・壱共." };
+    if (player.gold < TD_SUMMON_COST) return { ok: false, message: "・ｨ・懋ｰ ・・ｱ﨑ｩ・壱共." };
     player.gold -= TD_SUMMON_COST;
 
     player.typeUpgrades ??= emptyTypeUpgrades();
@@ -214,13 +259,14 @@ export class GameEngine {
   }
 
   static fixedSummon(room: TdRoom, userId: string, slotId: string, characterId?: number): { ok: boolean; message?: string } {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 구입할 수 있습니다." };
-    const slot = TD_SLOTS.find((s) => s.id === slotId);
-    if (!slot) return { ok: false, message: "잘못된 슬롯입니다." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・・ｬ・・腹 ・・・溢慣・壱共." };
+    const slot = TD_SLOTS.find((s) => s.id === baseSlotId(slotId));
+    if (slotOwner(slotId) !== userId) return { ok: false, message: "・ｸ・ｸ・専ｲ・﨑・ｹ・・・・溜・尖ｧ・・､・倆腹 ・・・溢慣・壱共." };
+    if (!slot) return { ok: false, message: "・俯ｪｻ・・・ｬ・ｯ・・笈・､." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "・ｴ・ｸ ・ｬ・ｩ ・卓攤 ・ｬ・ｯ・・笈・､." };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "참가자가 아닙니다." };
-    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
+    if (!player) return { ok: false, message: "・ｸ・・専ｰ ・・漁・壱共." };
+    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, message: "・ｨ・懋ｰ ・・ｱ﨑ｩ・壱共." };
     player.gold -= TD_FIXED_SUMMON_COST;
 
     player.typeUpgrades ??= emptyTypeUpgrades();
@@ -250,16 +296,16 @@ export class GameEngine {
   }
 
   static upgrade(room: TdRoom, userId: string, towerId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 타입 강화할 수 있습니다." };
+    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・夋・・・倣剩﨑 ・・・溢慣・壱共." };
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "타입 강화할 수 없는 타워입니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "夋・・・倣剩﨑 ・・・・株 夋・護桿・壱共." };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "참가자가 아닙니다." };
+    if (!player) return { ok: false, message: "・ｸ・・専ｰ ・・漁・壱共." };
     player.typeUpgrades ??= emptyTypeUpgrades();
     const currentLevel = player.typeUpgrades[tower.unitType] ?? 0;
-    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, message: "해당 타입은 최대 강화 단계입니다." };
+    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, message: "﨑ｴ・ｹ 夋・・捩 ・罹劇 ・倣剩 ・ｨ・・桿・壱共." };
     const cost = upgradeCost(currentLevel);
-    if (player.gold < cost) return { ok: false, message: "골드가 부족합니다." };
+    if (player.gold < cost) return { ok: false, message: "・ｨ・懋ｰ ・・ｱ﨑ｩ・壱共." };
     player.gold -= cost;
     const nextLevel = currentLevel + 1;
     player.typeUpgrades[tower.unitType] = nextLevel;
@@ -273,7 +319,7 @@ export class GameEngine {
 
   static sell(room: TdRoom, userId: string, towerId: string) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "판매할 수 없는 타워입니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "甯尖ｧ､﨑 ・・・・株 夋・護桿・壱共." };
     room.towers.delete(towerId);
     const player = room.players.get(userId);
     if (player) player.gold += Math.floor(TD_SUMMON_COST * 0.55);
@@ -281,26 +327,28 @@ export class GameEngine {
   }
 
   static move(room: TdRoom, userId: string, towerId: string, slotId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 이동할 수 있습니다." };
+    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "・､・倆腹 ・・・・株 ・ｬ・ｯ・・笈・､." };
+    if (slotOwner(slotId) !== userId) return { ok: false, message: "・ｸ・ｸ・専ｲ・﨑・ｹ・・・・溜・尖ｧ・・ｴ・呰腹 ・・・溢慣・壱共." };
+    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・・ｴ・呰腹 ・・・溢慣・壱共." };
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "이동할 수 없는 타워입니다." };
-    if (!TD_SLOTS.some((s) => s.id === slotId)) return { ok: false, message: "잘못된 슬롯입니다." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "・ｴ・呰腹 ・・・・株 夋・護桿・壱共." };
+    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "・俯ｪｻ・・・ｬ・ｯ・・笈・､." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "・ｴ・ｸ ・ｬ・ｩ ・卓攤 ・ｬ・ｯ・・笈・､." };
     tower.slotId = slotId;
     return { ok: true };
   }
 
   static merge(room: TdRoom, userId: string, towerId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 합성할 수 있습니다." };
+    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・﨑ｩ・ｱ﨑 ・・・溢慣・壱共." };
     const base = room.towers.get(towerId);
-    if (!base || base.ownerUserId !== userId) return { ok: false, message: "합성할 수 없는 타워입니다." };
-    if (base.locked) return { ok: false, message: "잠긴 타워는 합성할 수 없습니다." };
+    if (!base || base.ownerUserId !== userId) return { ok: false, message: "﨑ｩ・ｱ﨑 ・・・・株 夋・護桿・壱共." };
+    if (base.locked) return { ok: false, message: "・・ｴ 夋・誤株 﨑ｩ・ｱ﨑 ・・・・慣・壱共." };
     const upgradedRarity = nextRarity(base.rarity);
-    if (!upgradedRarity) return { ok: false, message: "최고 등급은 합성할 수 없습니다." };
+    if (!upgradedRarity) return { ok: false, message: "・懋ｳ ・ｱ・餓捩 﨑ｩ・ｱ﨑 ・・・・慣・壱共." };
     const mate = [...room.towers.values()].find(
       (t) => t.id !== base.id && t.ownerUserId === userId && t.rarity === base.rarity && !t.locked,
     );
-    if (!mate) return { ok: false, message: "같은 등급 타워가 2개 필요합니다." };
+    if (!mate) return { ok: false, message: "・呷捩 ・ｱ・・夋・語ｰ 2・・﨑・囈﨑ｩ・壱共." };
 
     const player = room.players.get(userId);
     player && (player.typeUpgrades ??= emptyTypeUpgrades());
@@ -330,14 +378,14 @@ export class GameEngine {
 
   static setTargetMode(room: TdRoom, userId: string, towerId: string, targetMode: TdTargetMode) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "변경할 수 없는 타워입니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "・・ｽ﨑 ・・・・株 夋・護桿・壱共." };
     tower.targetMode = targetMode;
     return { ok: true };
   }
 
   static setLocked(room: TdRoom, userId: string, towerId: string, locked: boolean) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "잠금 상태를 바꿀 수 없는 타워입니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "・・・・・・・ｼ ・緋ｿ ・・・・株 夋・護桿・壱共." };
     tower.locked = locked;
     return { ok: true };
   }
@@ -352,35 +400,48 @@ export class GameEngine {
     if (!room.waveActive && now >= room.nextWaveAt) {
       room.wave += 1;
       room.waveActive = true;
-      room.spawnQueue = buildWave(room.wave);
-      room.nextSpawnAt = now;
+      const wave = buildWave(room.wave);
+      for (const player of room.players.values()) {
+        const arena = room.arenas.get(player.userId);
+        if (!arena || arena.lives <= 0) continue;
+        arena.spawnQueue = wave.map((monster) => ({ ...monster }));
+        arena.nextSpawnAt = now;
+      }
     }
 
-    if (room.waveActive && room.spawnQueue.length > 0 && now >= room.nextSpawnAt) {
-      const spec = room.spawnQueue.shift()!;
-      const monster: TdMonster = { ...spec, id: id("mon"), pathT: 0, reached: false };
-      room.monsters.set(monster.id, monster);
-      room.nextSpawnAt = now + room.spawnEveryMs;
+    if (room.waveActive) {
+      for (const arena of room.arenas.values()) {
+        if (arena.lives <= 0 || arena.spawnQueue.length === 0 || now < arena.nextSpawnAt) continue;
+        const spec = arena.spawnQueue.shift()!;
+        const monster: TdMonster = { ...spec, ownerUserId: arena.userId, id: id("mon"), pathT: 0, reached: false };
+        room.monsters.set(monster.id, monster);
+        arena.nextSpawnAt = now + room.spawnEveryMs;
+      }
     }
 
     for (const monster of [...room.monsters.values()]) {
       monster.pathT += monster.speed * (dt / 1000);
       if (monster.pathT >= 1) {
         room.monsters.delete(monster.id);
-        room.lives -= monster.kind === "boss" ? 5 : 1;
+        const arena = room.arenas.get(monster.ownerUserId);
+        if (arena) {
+          arena.lives = Math.max(0, arena.lives - (monster.kind === "boss" ? 5 : 1));
+          const player = room.players.get(monster.ownerUserId);
+          if (player) player.lives = arena.lives;
+        }
       }
     }
 
     for (const tower of room.towers.values()) {
       if (now - tower.lastAttackAt < tower.attackMs) continue;
-      const slot = TD_SLOTS.find((s) => s.id === tower.slotId);
+      const slot = TD_SLOTS.find((s) => s.id === baseSlotId(tower.slotId));
       if (!slot) continue;
-      const candidates = [...room.monsters.values()].filter((m) => dist(slot, pointOnPath(m.pathT)) <= tower.range);
+      const candidates = [...room.monsters.values()].filter((m) => m.ownerUserId === tower.ownerUserId && dist(slot, pointOnPath(m.pathT)) <= tower.range);
       if (candidates.length === 0) continue;
       const target = this.pickTarget(candidates, tower.targetMode);
       target.hp -= tower.damage;
       tower.lastAttackAt = now;
-      room.projectiles.push({ id: id("proj"), from: { x: slot.x, y: slot.y }, toMonsterId: target.id, createdAt: now });
+      room.projectiles.push({ id: id("proj"), ownerUserId: tower.ownerUserId, from: { x: slot.x, y: slot.y }, toMonsterId: target.id, createdAt: now });
       if (target.hp <= 0) {
         room.monsters.delete(target.id);
         const owner = room.players.get(tower.ownerUserId);
@@ -391,7 +452,9 @@ export class GameEngine {
       }
     }
 
-    if (room.waveActive && room.spawnQueue.length === 0 && room.monsters.size === 0) {
+    const activeArenas = [...room.arenas.values()].filter((arena) => arena.lives > 0);
+    const activeMonsterCount = [...room.monsters.values()].filter((monster) => (room.arenas.get(monster.ownerUserId)?.lives ?? 0) > 0).length;
+    if (room.waveActive && activeArenas.every((arena) => arena.spawnQueue.length === 0) && activeMonsterCount === 0) {
       room.waveActive = false;
       if (room.wave >= TD_WAVE_COUNT) {
         room.phase = "ended";
@@ -401,7 +464,7 @@ export class GameEngine {
       }
     }
 
-    if (room.lives <= 0) {
+    if (activeArenas.length === 0) {
       room.lives = 0;
       room.phase = "ended";
       room.ended = true;

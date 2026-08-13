@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Crown, Gem, Hammer, Heart, Lock, LogIn, LogOut, MessageCircle, Radio, Send, Shield, ShoppingCart, Swords, Trophy, Unlock, Users, Zap } from "lucide-react";
 import { api } from "../lib/api";
 import { disconnectTowerDefenseSocket, getTowerDefenseSocket } from "../lib/socket";
@@ -62,7 +62,15 @@ export default function TowerDefensePage() {
   const [moveTowerId, setMoveTowerId] = useState<string | null>(null);
   const [summonMode, setSummonMode] = useState<"random" | "fixed">("random");
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
-  const [summary, setSummary] = useState<{ attemptsLeft: number; bestWave: number } | null>(null);
+  const [summary, setSummary] = useState<{
+    attemptsLeft: number | null;
+    playMode?: "unlimited";
+    bestWave: number;
+    dailyKpCap?: number;
+    dailyKpEarned?: number;
+    dailyKpLeft?: number;
+    perRunKpCap?: number;
+  } | null>(null);
 
   const myCharacterId = rewardSummary.equippedCharacterId ?? 1;
   const me = useMemo(
@@ -74,7 +82,15 @@ export default function TowerDefensePage() {
 
   useEffect(() => {
     api
-      .get<{ attemptsLeft: number; bestWave: number }>("/tower-defense/summary")
+      .get<{
+        attemptsLeft: number | null;
+        playMode?: "unlimited";
+        bestWave: number;
+        dailyKpCap?: number;
+        dailyKpEarned?: number;
+        dailyKpLeft?: number;
+        perRunKpCap?: number;
+      }>("/tower-defense/summary")
       .then(setSummary)
       .catch(() => setSummary(null));
     api
@@ -82,6 +98,12 @@ export default function TowerDefensePage() {
       .then(setRankings)
       .catch(() => setRankings([]));
   }, []);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(null), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   useEffect(() => {
     const socket = getTowerDefenseSocket();
@@ -203,10 +225,10 @@ export default function TowerDefensePage() {
         <div>
           <p className="flex items-center gap-2 text-xl font-bold">
             <Shield className="h-5 w-5 text-primary" />
-            {ko ? "랜덤 타워 디펜스" : "Random Tower Defense"}
+            {ko ? "・罹墾 夋・・・被慈・､" : "Random Tower Defense"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {ko ? "서버가 전투를 계산하고, 클라이언트는 명령과 렌더링만 담당합니다." : "Server-authoritative real-time defense room."}
+            {ko ? "・罹ｲ・ｰ ・・握・ｼ ・・げ﨑俾ｳ, 增ｴ・ｼ・ｴ・ｸ孖ｸ・・・・ｹ・ｼ ・誤鵠・・ｧ・・ｴ・ｹ﨑ｩ・壱共." : "Server-authoritative real-time defense room."}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -215,12 +237,12 @@ export default function TowerDefensePage() {
             <p className="font-bold">{summary?.bestWave ?? 0}</p>
           </div>
           <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{ko ? "남은 횟수" : "Attempts"}</p>
-            <p className="font-bold">{summary?.attemptsLeft ?? "-"}</p>
+            <p className="text-muted-foreground">{ko ? "・ｨ・ 巐滕・" : "Daily KP"}</p>
+            <p className="font-bold">{summary?.dailyKpEarned ?? 0}/{summary?.dailyKpCap ?? 1200}</p>
           </div>
           <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{ko ? "참가자" : "Players"}</p>
-            <p className="font-bold">{snapshot?.players.length ?? 0}/4</p>
+            <p className="text-muted-foreground">{ko ? "판당 상한" : "Run Cap"}</p>
+            <p className="font-bold">{summary?.perRunKpCap ?? 400} KP</p>
           </div>
         </div>
       </div>
@@ -230,20 +252,20 @@ export default function TowerDefensePage() {
           <div className="rounded-md border border-border bg-card p-5">
             <p className="mb-3 flex items-center gap-2 text-sm font-bold">
               <Radio className="h-4 w-4 text-primary" />
-              {ko ? "방 생성 또는 코드 입장" : "Create or Join"}
+              {ko ? "・ｩ ・晧┳ ・尖株 ・罷糖 ・・棗" : "Create or Join"}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 onClick={createRoom}
                 className="rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90"
               >
-                {ko ? "새 방 만들기" : "Create Room"}
+                {ko ? "・・・ｩ ・誤豆・ｰ" : "Create Room"}
               </button>
               <div className="flex gap-2">
                 <input
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder={ko ? "방 코드" : "Room code"}
+                  placeholder={ko ? "・ｩ ・罷糖" : "Room code"}
                   className="min-w-0 flex-1 rounded-md border border-border bg-input-background px-3 py-2 text-sm"
                 />
                 <button
@@ -251,7 +273,7 @@ export default function TowerDefensePage() {
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-primary"
                 >
                   <LogIn className="h-4 w-4" />
-                  {ko ? "입장" : "Join"}
+                  {ko ? "・・棗" : "Join"}
                 </button>
               </div>
             </div>
@@ -268,13 +290,15 @@ export default function TowerDefensePage() {
             <Hud snapshot={snapshot} />
             <GameCanvas
               snapshot={snapshot}
+              viewUserId={selfUserId}
+              selfUserId={selfUserId}
               selectedTowerId={selectedTowerId}
               onSelectTower={setSelectedTowerId}
               onSummon={summon}
             />
             {moveTowerId && (
               <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
-                이동할 빈 슬롯을 선택하세요.
+                ・ｴ・呰腹 ・・・ｬ・ｯ・・・夋晨葺・ｸ・・
               </div>
             )}
             {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
@@ -380,7 +404,9 @@ function InGameShell({
   onLeave: () => void;
   onSendChat: () => void;
 }) {
+  const [viewUserId, setViewUserId] = useState(selfUserId);
   const me = snapshot.players.find((p) => p.userId === selfUserId) ?? null;
+  const viewingPlayer = snapshot.players.find((p) => p.userId === viewUserId) ?? me;
   const myTowers = snapshot.towers.filter((tower) => tower.ownerUserId === selfUserId);
   const selectedSlot = selectedTower ? snapshot.slots.find((slot) => slot.id === selectedTower.slotId) : null;
   const canRandom = (me?.gold ?? 0) >= RANDOM_SUMMON_COST;
@@ -390,33 +416,40 @@ function InGameShell({
   const canUpgrade = !!selectedTower && selectedTypeLevel < 10 && (me?.gold ?? 0) >= selectedTypeCost;
 
   return (
-    <div className="overflow-hidden rounded-md border border-emerald-500/30 bg-[#05080d] shadow-2xl">
-      <div className="flex min-h-0 flex-col">
-        <div className="flex items-center justify-between border-b border-emerald-500/20 bg-[#071016] px-4 py-2 text-xs">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#03060a] text-emerald-100">
+      <div className="flex h-screen min-h-0 flex-col">
+        <div className="flex shrink-0 items-center justify-between border-b border-emerald-500/20 bg-[#071016] px-4 py-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <ResourcePill icon={<Gem className="h-4 w-4 text-cyan-300" />} label="GOLD" value={me?.gold ?? 0} tone="text-cyan-200" />
             <ResourcePill icon={<Swords className="h-4 w-4 text-red-300" />} label="KILLS" value={me?.kills ?? 0} tone="text-red-200" />
-            <ResourcePill icon={<Heart className="h-4 w-4 text-rose-300" />} label="LIFE" value={`${snapshot.lives}/${snapshot.maxLives}`} tone="text-rose-200" />
+            <ResourcePill icon={<Heart className="h-4 w-4 text-rose-300" />} label="LIFE" value={`${me?.lives ?? snapshot.lives}/${me?.maxLives ?? snapshot.maxLives}`} tone="text-rose-200" />
             <ResourcePill icon={<Zap className="h-4 w-4 text-amber-300" />} label="WAVE" value={snapshot.wave || 1} tone="text-amber-200" />
           </div>
           <button onClick={onLeave} className="rounded border border-emerald-500/30 px-3 py-1 font-bold text-emerald-200 hover:bg-emerald-500/10">
-            나가기
+            ・俾ｰ・ｰ
           </button>
         </div>
 
-        <div className="grid gap-0 xl:grid-cols-[1fr_300px]">
-          <div className="relative bg-black">
-            <GameCanvas snapshot={snapshot} selectedTowerId={selectedTowerId} onSelectTower={onSelectTower} onSummon={onSummon} />
+        <div className="grid min-h-0 flex-1 gap-0 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="relative min-h-0 bg-black">
+            <GameCanvas
+              snapshot={snapshot}
+              viewUserId={viewingPlayer?.userId ?? selfUserId}
+              selfUserId={selfUserId}
+              selectedTowerId={selectedTowerId}
+              fullHeight
+              onSelectTower={onSelectTower}
+              onSummon={onSummon}
+            />
             <div className="absolute left-3 top-3 rounded border border-emerald-500/40 bg-black/70 px-3 py-2 text-xs text-emerald-100 backdrop-blur">
-              <p className="font-bold">ROOM {snapshot.roomCode}</p>
+              <p className="font-bold">{viewingPlayer?.nickname ?? "PLAYER"} AREA</p>
               <p className="text-emerald-300/75">
-                {snapshot.waveActive ? "전투 진행 중" : `다음 웨이브 ${Math.ceil(snapshot.nextWaveInMs / 1000)}초`}
+                {snapshot.waveActive ? "웨이브 진행 중" : `다음 웨이브 ${Math.ceil(snapshot.nextWaveInMs / 1000)}초`}
               </p>
             </div>
             {moveTowerId && (
               <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded border border-amber-300/60 bg-black/75 px-4 py-2 text-sm font-bold text-amber-200">
-                이동할 빈 배치 원을 선택
-              </div>
+                ・ｴ・呰腹 ・・・ｰ・・・川揆 ・夋・              </div>
             )}
             {error && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-red-400/50 bg-black/80 px-4 py-2 text-sm font-bold text-red-200">
@@ -425,13 +458,13 @@ function InGameShell({
             )}
           </div>
 
-          <div className="border-l border-emerald-500/20 bg-[#071016] p-3">
-            <ScoreBoard snapshot={snapshot} selfUserId={selfUserId} />
+          <div className="min-h-0 overflow-y-auto border-l border-emerald-500/20 bg-[#071016] p-3">
+            <ScoreBoard snapshot={snapshot} selfUserId={selfUserId} viewUserId={viewingPlayer?.userId ?? null} onViewUser={setViewUserId} />
           </div>
         </div>
 
-        <div className="grid border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[220px_1fr_320px]">
-          <MiniMap slots={snapshot.slots.length} towers={myTowers.length} />
+        <div className="grid shrink-0 border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[200px_1fr_300px]">
+          <MiniMap slots={snapshot.slots.filter((slot) => slot.ownerUserId === selfUserId).length} towers={myTowers.length} />
           <CommandCard
             selectedTower={selectedTower}
             selectedSlot={selectedSlot}
@@ -468,28 +501,45 @@ function ResourcePill({ icon, label, value, tone }: { icon: React.ReactNode; lab
   );
 }
 
-function ScoreBoard({ snapshot, selfUserId }: { snapshot: TdSnapshot; selfUserId: string | null }) {
+function ScoreBoard({
+  snapshot,
+  selfUserId,
+  viewUserId,
+  onViewUser,
+}: {
+  snapshot: TdSnapshot;
+  selfUserId: string | null;
+  viewUserId: string | null;
+  onViewUser: (userId: string) => void;
+}) {
   return (
     <div className="rounded border border-emerald-500/35 bg-black/45 p-3 text-sm text-emerald-100">
       <div className="mb-3 flex items-center justify-between">
-        <p className="font-black">플레이어</p>
-        <p className="text-xs text-emerald-300/70">킬수 / 골드</p>
+        <p className="font-black">PLAYERS</p>
+        <p className="text-xs text-emerald-300/70">클릭 시 관전 전환</p>
       </div>
       <div className="space-y-2">
         {snapshot.players.map((p) => (
-          <div
+          <button
+            type="button"
+            onClick={() => onViewUser(p.userId)}
             key={p.userId}
-            className={`grid grid-cols-[1fr_54px_64px] items-center gap-2 rounded px-2 py-1.5 ${
-              p.userId === selfUserId ? "bg-emerald-500/15 text-emerald-200" : "bg-white/5"
+            className={`grid w-full grid-cols-[1fr_48px_48px_58px] items-center gap-2 rounded px-2 py-1.5 text-left transition ${
+              p.userId === viewUserId
+                ? "bg-cyan-500/18 text-cyan-100 ring-1 ring-cyan-300/40"
+                : p.userId === selfUserId
+                  ? "bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/20"
+                  : "bg-white/5 hover:bg-white/10"
             }`}
           >
             <div className="min-w-0">
               <p className="truncate font-bold">{p.nickname}</p>
-              <p className="text-[10px] text-emerald-300/60">{p.connected ? "ONLINE" : "RECONNECT"}</p>
+              <p className="text-[10px] text-emerald-300/60">{p.userId === selfUserId ? "MY AREA" : p.connected ? "ONLINE" : "RECONNECT"}</p>
             </div>
+            <p className="text-right font-mono font-bold text-rose-200">{p.lives}</p>
             <p className="text-right font-mono font-bold">{p.kills}</p>
             <p className="text-right font-mono font-bold text-cyan-200">{p.gold}</p>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -501,12 +551,12 @@ function MiniMap({ slots, towers }: { slots: number; towers: number }) {
     <div className="border-r border-emerald-500/20 p-3">
       <div className="h-full rounded border border-emerald-500/35 bg-black/60 p-3">
         <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 28 }, (_, i) => (
+          {Array.from({ length: slots }, (_, i) => (
             <span key={i} className={`h-3 rounded-sm ${i < towers ? "bg-emerald-400" : "bg-emerald-900/50"}`} />
           ))}
         </div>
-        <p className="mt-3 text-xs font-bold text-emerald-200">배치 {towers}/{slots}</p>
-        <p className="mt-1 text-[10px] text-emerald-300/60">4개 구역 / 중앙 루트</p>
+        <p className="mt-3 text-xs font-bold text-emerald-200">・ｰ・・{towers}/{slots}</p>
+        <p className="mt-1 text-[10px] text-emerald-300/60">4・・・ｬ・ｭ / ・卓蕗 ・ｨ孖ｸ</p>
       </div>
     </div>
   );
@@ -552,7 +602,7 @@ function CommandCard({
   return (
     <div className="grid gap-3 p-3 lg:grid-cols-[260px_1fr]">
       <div className="rounded border border-emerald-500/30 bg-black/55 p-3">
-        <p className="mb-2 text-xs font-black text-emerald-200">선택 정보</p>
+        <p className="mb-2 text-xs font-black text-emerald-200">・夋・・簿ｳｴ</p>
         {selectedTower ? (
           <div className="flex items-center gap-3">
             <PixelCharacter characterId={selectedTower.characterId} size={52} />
@@ -560,21 +610,20 @@ function CommandCard({
               <div className="flex flex-wrap items-center gap-1.5">
                 <p className="font-black text-emerald-100">#{selectedTower.characterId}</p>
                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-black ${TYPE_STYLE[selectedTower.unitType]}`}>
-                  {TYPE_LABEL[selectedTower.unitType]} {selectedTypeLevel}강
-                </span>
+                  {TYPE_LABEL[selectedTower.unitType]} {selectedTypeLevel}・・                </span>
               </div>
               <p className="text-xs text-emerald-300/70">
-                {selectedTower.rarity} · DMG {selectedTower.damage} · RNG {selectedTower.range}
+                {selectedTower.rarity} ﾂｷ DMG {selectedTower.damage} ﾂｷ RNG {selectedTower.range}
               </p>
-              <p className="text-xs text-cyan-200">다음 타입 강화비 {selectedTypeCost || "MAX"}</p>
+              <p className="text-xs text-cyan-200">・､・・夋・・・倣剩・・{selectedTypeCost || "MAX"}</p>
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-3">
             <PixelCharacter characterId={myCharacterId} size={52} />
             <div>
-              <p className="font-black text-emerald-100">빈 배치 원 선택</p>
-              <p className="text-xs text-emerald-300/70">모드 선택 후 빈 원 클릭</p>
+              <p className="font-black text-emerald-100">슬롯을 선택해 배치</p>
+              <p className="text-xs text-emerald-300/70">・ｨ・・・夋・弡・・・・・增ｴ・ｭ</p>
             </div>
           </div>
         )}
@@ -596,8 +645,8 @@ function CommandCard({
               summonMode === "random" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
             } ${!canRandom ? "opacity-50" : ""}`}
           >
-            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> 랜덤 소환</span>
-            <span className="mt-1 block font-mono text-[11px]">비용 {RANDOM_SUMMON_COST}G</span>
+            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> ・罹墾 ・醐劍</span>
+            <span className="mt-1 block font-mono text-[11px]">・・圸 {RANDOM_SUMMON_COST}G</span>
           </button>
           <button
             onClick={() => onSummonMode("fixed")}
@@ -605,16 +654,16 @@ function CommandCard({
               summonMode === "fixed" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
             } ${!canFixed ? "opacity-50" : ""}`}
           >
-            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> 확정 유닛 구입</span>
-            <span className="mt-1 block font-mono text-[11px]">비용 {FIXED_SUMMON_COST}G · 대표 유닛</span>
+            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> 확정 유닛</span>
+            <span className="mt-1 block font-mono text-[11px]">비용 {FIXED_SUMMON_COST}G</span>
           </button>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          <ActionButton icon={<Hammer className="h-4 w-4" />} label="타입강화" disabled={!canUpgrade} onClick={onUpgrade} />
-          <ActionButton label="합성" disabled={!selectedTower || selectedTower.locked} onClick={onMerge} />
+          <ActionButton icon={<Hammer className="h-4 w-4" />} label="夋・・ｰ倣剩" disabled={!canUpgrade} onClick={onUpgrade} />
+          <ActionButton label="﨑ｩ・ｱ" disabled={!selectedTower || selectedTower.locked} onClick={onMerge} />
           <ActionButton label="이동" disabled={!selectedTower} onClick={onMove} />
-          <ActionButton label={selectedTower?.locked ? "해제" : "잠금"} disabled={!selectedTower} onClick={onToggleLock} />
+          <ActionButton label={selectedTower?.locked ? "잠금 해제" : "잠금"} disabled={!selectedTower} onClick={onToggleLock} />
         </div>
 
         <div className="grid grid-cols-6 gap-2">
@@ -637,7 +686,7 @@ function CommandCard({
             disabled={!selectedTower}
             className="rounded border border-red-400/35 px-2 py-2 text-xs font-black text-red-200 hover:bg-red-500/10 disabled:opacity-40"
           >
-            판매
+            甯尖ｧ､
           </button>
         </div>
       </div>
@@ -669,10 +718,16 @@ function CompactChat({
   setMessage: (value: string) => void;
   onSend: () => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [chat.length]);
+
   return (
     <div className="border-l border-emerald-500/20 p-3">
       <div className="flex h-full flex-col rounded border border-emerald-500/30 bg-black/55 p-2">
-        <div className="min-h-0 flex-1 space-y-1 overflow-auto text-xs text-emerald-100">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-1 overflow-auto text-xs text-emerald-100">
           {chat.slice(-5).map((m) => (
             <p key={m.id} className="truncate">
               <span className="font-bold text-emerald-300">{m.nickname}</span> {m.message}
@@ -703,7 +758,7 @@ function Hud({ snapshot }: { snapshot: TdSnapshot }) {
     <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
       <HudCell icon={<Swords className="h-4 w-4" />} label="Wave" value={`${snapshot.wave || 1}`} />
       <HudCell icon={<Heart className="h-4 w-4" />} label="Life" value={`${snapshot.lives}/${snapshot.maxLives}`} />
-      <HudCell icon={<Users className="h-4 w-4" />} label="Players" value={`${snapshot.players.length}/4`} />
+      <HudCell icon={<Users className="h-4 w-4" />} label="Run Cap" value={`${snapshot.players.length}/4`} />
       <HudCell icon={<Zap className="h-4 w-4" />} label="Next" value={snapshot.waveActive ? "Active" : `${Math.ceil(snapshot.nextWaveInMs / 1000)}s`} />
       <HudCell icon={<Trophy className="h-4 w-4" />} label="Room" value={snapshot.roomCode} />
     </div>
@@ -752,7 +807,7 @@ function RoomPanel({
             className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:border-destructive hover:text-destructive"
           >
             <LogOut className="h-3.5 w-3.5" />
-            나가기
+            ・俾ｰ・ｰ
           </button>
         </div>
       </div>
@@ -766,7 +821,7 @@ function RoomPanel({
                   {p.userId === snapshot.hostUserId && <Crown className="h-3.5 w-3.5 text-amber-400" />}
                   {p.nickname}
                 </p>
-                <p className="text-xs text-muted-foreground">{p.connected ? "online" : "reconnect wait"} · {p.kills} kills</p>
+                <p className="text-xs text-muted-foreground">{p.connected ? "online" : "reconnect wait"} ﾂｷ {p.kills} kills</p>
               </div>
             </div>
             <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${p.ready || p.userId === snapshot.hostUserId ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
@@ -785,14 +840,14 @@ function RoomPanel({
             disabled={!isHost}
             className="rounded-md bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-40"
           >
-            시작
+            ・懍梠
           </button>
         </div>
       )}
       {snapshot.phase === "ended" && snapshot.result && (
         <div className="mt-3 rounded-md bg-primary/10 p-3 text-sm">
-          <p className="font-bold">{snapshot.result.won ? "성공" : "종료"}</p>
-          <p className="text-muted-foreground">도달 웨이브 {snapshot.result.wavesCleared}</p>
+          <p className="font-bold">{snapshot.result.won ? "승리" : "종료"}</p>
+          <p className="text-muted-foreground">・・峡 ・ｨ・ｴ・・{snapshot.result.wavesCleared}</p>
         </div>
       )}
     </div>
@@ -820,7 +875,7 @@ function TowerPanel({
     <div className="rounded-md border border-border bg-card p-4">
       <p className="mb-3 text-sm font-bold">Tower</p>
       {!tower ? (
-        <p className="text-sm text-muted-foreground">빈 슬롯을 클릭하면 랜덤 타워를 소환합니다.</p>
+        <p className="text-sm text-muted-foreground">・・・ｬ・ｯ・・增ｴ・ｭ﨑俯ｩｴ ・罹墾 夋・誤･ｼ ・醐劍﨑ｩ・壱共.</p>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -830,7 +885,7 @@ function TowerPanel({
                 #{tower.characterId}
                 {tower.locked ? <Lock className="h-3.5 w-3.5 text-amber-400" /> : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
               </p>
-              <p className="text-xs text-muted-foreground">{tower.rarity} · DMG {tower.damage} · RNG {tower.range}</p>
+              <p className="text-xs text-muted-foreground">{tower.rarity} ﾂｷ DMG {tower.damage} ﾂｷ RNG {tower.range}</p>
             </div>
           </div>
           <div className="grid grid-cols-5 gap-1">
@@ -856,16 +911,16 @@ function TowerPanel({
               disabled={tower.locked}
               className="rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-primary hover:text-primary disabled:opacity-40"
             >
-              합성
+              﨑ｩ・ｱ
             </button>
             <button
               onClick={onToggleLock}
               className={`rounded-md border px-3 py-2 text-sm font-bold ${tower.locked ? "border-amber-400/50 bg-amber-400/10 text-amber-500" : "border-border hover:border-primary"}`}
             >
-              {tower.locked ? "해제" : "잠금"}
+              {tower.locked ? "잠금 해제" : "잠금"}
             </button>
             <button onClick={onSell} className="rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-destructive hover:text-destructive">
-              판매
+              甯尖ｧ､
             </button>
           </div>
         </div>
@@ -885,20 +940,26 @@ function ChatPanel({
   setMessage: (value: string) => void;
   onSend: () => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [chat.length]);
+
   return (
     <div className="rounded-md border border-border bg-card p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-bold">
         <MessageCircle className="h-4 w-4 text-primary" />
         Room Chat
       </p>
-      <div className="mb-3 h-40 space-y-2 overflow-auto rounded-md bg-muted/30 p-2">
+      <div ref={scrollRef} className="mb-3 h-40 space-y-2 overflow-auto rounded-md bg-muted/30 p-2">
         {chat.length === 0 ? (
-          <p className="text-xs text-muted-foreground">메시지가 없습니다.</p>
+          <p className="text-xs text-muted-foreground">・肥亨・・ ・・慣・壱共.</p>
         ) : (
           chat.map((m) => (
             <p key={m.id} className="text-xs">
               <span className={m.userId === "system" ? "font-bold text-primary" : "font-bold"}>{m.nickname}</span>
-              <span className="text-muted-foreground"> · </span>
+              <span className="text-muted-foreground"> ﾂｷ </span>
               <span>{m.message}</span>
             </p>
           ))

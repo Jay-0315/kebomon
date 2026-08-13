@@ -1,4 +1,4 @@
-import type { TdPoint, TdRarity, TdUnitType } from "../types/tower-defense.types";
+import type { TdPlacementSlot, TdPlacementZone, TdPoint, TdRarity, TdUnitType } from "../types/tower-defense.types";
 
 export const TD_MAX_PLAYERS = 4;
 export const TD_MAX_LIVES = 30;
@@ -14,51 +14,42 @@ export const TD_WAVE_COUNT = 30;
 export const TD_WAVE_BREAK_MS = 4_000;
 
 export const TD_PATH: TdPoint[] = [
-  { x: 650, y: 610 },
-  { x: 650, y: 500 },
-  { x: 515, y: 500 },
-  { x: 515, y: 365 },
-  { x: 650, y: 365 },
-  { x: 650, y: 250 },
-  { x: 785, y: 250 },
-  { x: 785, y: 120 },
-  { x: 650, y: 120 },
-  { x: 650, y: 20 },
+  { x: 650, y: 24 },
+  { x: 650, y: 326 },
+  { x: 1218, y: 326 },
+  { x: 1218, y: 716 },
+  { x: 730, y: 716 },
+  { x: 730, y: 1040 },
 ];
 
-export const TD_SLOTS = [
-  { id: "tl1", x: 250, y: 85 },
-  { id: "tl2", x: 355, y: 85 },
-  { id: "tl3", x: 460, y: 85 },
-  { id: "tl4", x: 270, y: 175 },
-  { id: "tl5", x: 375, y: 175 },
-  { id: "tl6", x: 480, y: 175 },
-  { id: "tl7", x: 375, y: 265 },
+function slots(zoneId: string, x: number, y: number, cols: number, rows: number, gapX = 94, gapY = 92): TdPlacementSlot[] {
+  return Array.from({ length: cols * rows }, (_, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    return {
+      id: `${zoneId}-${i + 1}`,
+      zoneId,
+      x: x + col * gapX,
+      y: y + row * gapY,
+      enabled: true,
+    };
+  });
+}
 
-  { id: "tr1", x: 840, y: 85 },
-  { id: "tr2", x: 945, y: 85 },
-  { id: "tr3", x: 1050, y: 85 },
-  { id: "tr4", x: 820, y: 175 },
-  { id: "tr5", x: 925, y: 175 },
-  { id: "tr6", x: 1030, y: 175 },
-  { id: "tr7", x: 925, y: 265 },
+export const TD_PLACEMENT_ZONES: TdPlacementZone[] = [
+  { id: "top-left", x: 210, y: 54, width: 330, height: 210, slots: slots("top-left", 292, 120, 2, 2, 110, 88) },
+  { id: "top-mid", x: 760, y: 48, width: 385, height: 222, slots: slots("top-mid", 840, 116, 3, 2, 104, 90) },
+  { id: "top-right", x: 1320, y: 72, width: 370, height: 218, slots: slots("top-right", 1400, 140, 3, 2, 98, 88) },
 
-  { id: "bl1", x: 250, y: 405 },
-  { id: "bl2", x: 355, y: 405 },
-  { id: "bl3", x: 460, y: 405 },
-  { id: "bl4", x: 270, y: 495 },
-  { id: "bl5", x: 375, y: 495 },
-  { id: "bl6", x: 480, y: 495 },
-  { id: "bl7", x: 375, y: 585 },
+  { id: "mid-left", x: 210, y: 380, width: 390, height: 246, slots: slots("mid-left", 292, 456, 3, 2, 106, 96) },
+  { id: "mid-center", x: 792, y: 420, width: 330, height: 218, slots: slots("mid-center", 870, 494, 2, 2, 112, 92) },
+  { id: "mid-right", x: 1290, y: 410, width: 410, height: 242, slots: slots("mid-right", 1370, 484, 3, 2, 108, 94) },
 
-  { id: "br1", x: 840, y: 405 },
-  { id: "br2", x: 945, y: 405 },
-  { id: "br3", x: 1050, y: 405 },
-  { id: "br4", x: 820, y: 495 },
-  { id: "br5", x: 925, y: 495 },
-  { id: "br6", x: 1030, y: 495 },
-  { id: "br7", x: 925, y: 585 },
+  { id: "bot-left", x: 258, y: 780, width: 390, height: 232, slots: slots("bot-left", 338, 850, 3, 2, 106, 92) },
+  { id: "bot-right", x: 1178, y: 780, width: 420, height: 238, slots: slots("bot-right", 1262, 850, 3, 2, 112, 94) },
 ];
+
+export const TD_SLOTS = TD_PLACEMENT_ZONES.flatMap((zone) => zone.slots);
 
 export const TD_RARITY_WEIGHTS: Record<TdRarity, number> = {
   common: 48,

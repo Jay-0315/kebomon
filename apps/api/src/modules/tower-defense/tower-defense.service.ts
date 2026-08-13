@@ -5,13 +5,17 @@ import { logPointsChange } from "../rewards/points-ledger.util";
 import { getTodayKTC } from "../rewards/date.util";
 import { loadCharacterMasterMap } from "../rewards/character-master.util";
 import {
-  MAX_DAILY_ATTEMPTS,
   MIN_RUN_MS,
   OFFER_WEIGHTS,
   TD_MILESTONES,
   WAVE_COUNT,
   buildTowerPool,
 } from "./tower-pool.constant";
+
+const TD_DAILY_KP_CAP = 1200;
+const TD_RUN_KP_CAP = 400;
+const TD_KP_LEDGER_REASON = "타워 디펜스 웨이브 마일스톤 보상";
+const MAX_DAILY_ATTEMPTS = Number.MAX_SAFE_INTEGER;
 
 @Injectable()
 export class TowerDefenseService {
@@ -32,14 +36,58 @@ export class TowerDefenseService {
     return reward.tdAttemptDate === getTodayKTC() ? reward.tdAttemptsToday : 0;
   }
 
+  private todayRangeKtc(now = Date.now()) {
+    // KP cap is evaluated at reward grant time, so runs that end after midnight use the new day's cap.
+    const today = new Date(now + 9 * 3_600_000).toISOString().slice(0, 10);
+    const start = new Date(`${today}T00:00:00+09:00`);
+    return { start, end: new Date(start.getTime() + 86_400_000) };
+  }
+
+  private async towerDefenseKpGrantedToday(userId: string) {
+    const { start, end } = this.todayRangeKtc();
+    const result = await this.prisma.pointsLedger.aggregate({
+      where: {
+        userId,
+        reason: TD_KP_LEDGER_REASON,
+        delta: { gt: 0 },
+        createdAt: { gte: start, lt: end },
+      },
+      _sum: { delta: true },
+    });
+    return result._sum.delta ?? 0;
+  }
+
+  private rawRunKp(wavesCleared: number) {
+    return TD_MILESTONES.filter((m) => wavesCleared >= m.wave).reduce((sum, m) => sum + m.kp, 0);
+  }
+
+  private async grantTowerDefenseKp(userId: string, wantedKp: number) {
+    const todayGranted = await this.towerDefenseKpGrantedToday(userId);
+    const dailyLeft = Math.max(0, TD_DAILY_KP_CAP - todayGranted);
+    const granted = Math.max(0, Math.min(wantedKp, TD_RUN_KP_CAP, dailyLeft));
+    return {
+      granted,
+      wanted: wantedKp,
+      dailyKpCap: TD_DAILY_KP_CAP,
+      dailyKpEarned: todayGranted + granted,
+      dailyKpLeft: Math.max(0, TD_DAILY_KP_CAP - todayGranted - granted),
+      perRunKpCap: TD_RUN_KP_CAP,
+    };
+  }
+
   async getSummary(userId: string) {
     const reward = await this.getOrCreateReward(userId);
     const masterMap = await loadCharacterMasterMap(this.prisma);
-    const used = this.attemptsUsedToday(reward);
+    const dailyKpEarned = await this.towerDefenseKpGrantedToday(userId);
 
     return {
-      attemptsLeft: Math.max(0, MAX_DAILY_ATTEMPTS - used),
+      attemptsLeft: null,
+      playMode: "unlimited",
       bestWave: reward.tdBestWave,
+      dailyKpCap: TD_DAILY_KP_CAP,
+      dailyKpEarned,
+      dailyKpLeft: Math.max(0, TD_DAILY_KP_CAP - dailyKpEarned),
+      perRunKpCap: TD_RUN_KP_CAP,
       towerPool: buildTowerPool(masterMap),
       offerWeights: OFFER_WEIGHTS,
       waveCount: WAVE_COUNT,
@@ -47,6 +95,12 @@ export class TowerDefenseService {
   }
 
   async startRun(userId: string) {
+    await this.getOrCreateReward(userId);
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: { tdActiveRunStartedAt: new Date() },
+    });
+    return { ok: true, playMode: "unlimited" };
     const reward = await this.getOrCreateReward(userId);
     const used = this.attemptsUsedToday(reward);
     if (used >= MAX_DAILY_ATTEMPTS) {
@@ -76,6 +130,16 @@ export class TowerDefenseService {
 
   async consumeRuns(userIds: string[]) {
     const uniqueIds = [...new Set(userIds)];
+    await Promise.all(uniqueIds.map((id) => this.getOrCreateReward(id)));
+    await this.prisma.$transaction(
+      uniqueIds.map((userId) =>
+        this.prisma.userReward.update({
+          where: { userId },
+          data: { tdActiveRunStartedAt: new Date() },
+        }),
+      ),
+    );
+    return;
     const today = getTodayKTC();
     const rewards = await Promise.all(uniqueIds.map((id) => this.getOrCreateReward(id)));
     await this.prisma.$transaction(
@@ -106,8 +170,8 @@ export class TowerDefenseService {
     const prevBest = reward.tdBestWave;
     const isNewRecord = clampedWave > prevBest;
 
-    const crossed = TD_MILESTONES.filter((m) => m.wave > prevBest && clampedWave >= m.wave);
-    const kp = crossed.reduce((sum, m) => sum + m.kp, 0);
+    const kpGrant = await this.grantTowerDefenseKp(userId, this.rawRunKp(clampedWave));
+    const kp = kpGrant.granted;
 
     await this.prisma.userReward.update({
       where: { userId },
@@ -119,7 +183,7 @@ export class TowerDefenseService {
     });
 
     if (kp > 0) {
-      void logPointsChange(this.prisma, userId, kp, "타워 디펜스 웨이브 마일스톤 보상");
+      void logPointsChange(this.prisma, userId, kp, TD_KP_LEDGER_REASON);
     }
     if (isNewRecord) {
       void this.notifications
@@ -138,6 +202,11 @@ export class TowerDefenseService {
       isNewRecord,
       bestWave: Math.max(prevBest, clampedWave),
       kpEarned: kp,
+      kpWanted: kpGrant.wanted,
+      dailyKpCap: kpGrant.dailyKpCap,
+      dailyKpEarned: kpGrant.dailyKpEarned,
+      dailyKpLeft: kpGrant.dailyKpLeft,
+      perRunKpCap: kpGrant.perRunKpCap,
     };
   }
 
@@ -150,8 +219,8 @@ export class TowerDefenseService {
     const clampedWave = Math.max(0, Math.min(WAVE_COUNT, Math.floor(wavesCleared)));
     const prevBest = reward.tdBestWave;
     const isNewRecord = clampedWave > prevBest;
-    const crossed = TD_MILESTONES.filter((m) => m.wave > prevBest && clampedWave >= m.wave);
-    const kp = crossed.reduce((sum, m) => sum + m.kp, 0);
+    const kpGrant = await this.grantTowerDefenseKp(userId, this.rawRunKp(clampedWave));
+    const kp = kpGrant.granted;
 
     await this.prisma.userReward.update({
       where: { userId },
@@ -163,7 +232,7 @@ export class TowerDefenseService {
     });
 
     if (kp > 0) {
-      void logPointsChange(this.prisma, userId, kp, "타워 디펜스 웨이브 마일스톤 보상");
+      void logPointsChange(this.prisma, userId, kp, TD_KP_LEDGER_REASON);
     }
     if (isNewRecord) {
       void this.notifications
@@ -182,6 +251,11 @@ export class TowerDefenseService {
       isNewRecord,
       bestWave: Math.max(prevBest, clampedWave),
       kpEarned: kp,
+      kpWanted: kpGrant.wanted,
+      dailyKpCap: kpGrant.dailyKpCap,
+      dailyKpEarned: kpGrant.dailyKpEarned,
+      dailyKpLeft: kpGrant.dailyKpLeft,
+      perRunKpCap: kpGrant.perRunKpCap,
     };
   }
 

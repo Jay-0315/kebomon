@@ -8,6 +8,24 @@ export interface TdPoint {
   y: number;
 }
 
+export interface TdPlacementSlot {
+  id: string;
+  zoneId: string;
+  x: number;
+  y: number;
+  enabled: boolean;
+  ownerUserId?: string;
+}
+
+export interface TdPlacementZone {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  slots: TdPlacementSlot[];
+}
+
 export interface TdPlayer {
   socketId: string;
   userId: string;
@@ -17,6 +35,8 @@ export interface TdPlayer {
   connected: boolean;
   gold: number;
   kills: number;
+  lives: number;
+  maxLives: number;
   typeUpgrades: Record<TdUnitType, number>;
 }
 
@@ -39,6 +59,7 @@ export interface TdTower {
 
 export interface TdMonster {
   id: string;
+  ownerUserId: string;
   wave: number;
   kind: "normal" | "fast" | "tough" | "boss";
   hp: number;
@@ -51,9 +72,18 @@ export interface TdMonster {
 
 export interface TdProjectile {
   id: string;
+  ownerUserId: string;
   from: TdPoint;
   toMonsterId: string;
   createdAt: number;
+}
+
+export interface TdArena {
+  userId: string;
+  lives: number;
+  maxLives: number;
+  spawnQueue: Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">>;
+  nextSpawnAt: number;
 }
 
 export interface TdSnapshot {
@@ -69,7 +99,8 @@ export interface TdSnapshot {
   lives: number;
   maxLives: number;
   path: TdPoint[];
-  slots: { id: string; x: number; y: number; occupiedBy: string | null }[];
+  placementZones: TdPlacementZone[];
+  slots: (TdPlacementSlot & { ownerUserId: string; occupiedBy: string | null })[];
   towers: TdTower[];
   monsters: TdMonster[];
   projectiles: TdProjectile[];
@@ -94,6 +125,7 @@ export interface TdRoom {
   nextWaveAt: number;
   lives: number;
   maxLives: number;
+  arenas: Map<string, TdArena>;
   towers: Map<string, TdTower>;
   monsters: Map<string, TdMonster>;
   projectiles: TdProjectile[];

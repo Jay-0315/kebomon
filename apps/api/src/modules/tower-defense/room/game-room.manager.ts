@@ -196,6 +196,8 @@ export class GameRoomManager {
       ready: prev?.ready ?? player.ready,
       gold: prev?.gold ?? player.gold,
       kills: prev?.kills ?? player.kills,
+      lives: prev?.lives ?? player.lives,
+      maxLives: prev?.maxLives ?? player.maxLives,
       typeUpgrades: prev?.typeUpgrades ?? player.typeUpgrades,
     });
     room.socketToUser.set(player.socketId, player.userId);

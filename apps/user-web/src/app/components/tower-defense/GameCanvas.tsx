@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CHARACTERS } from "../../data/characters";
-import type { TdPoint, TdSnapshot } from "../../game/tower-defense/types";
+import type { TdPlacementZone, TdPoint, TdSnapshot } from "../../game/tower-defense/types";
 
-const W = 1300;
-const H = 620;
+const W = 1920;
+const H = 1080;
+const PATH_WIDTH = 118;
+const SLOT_HIT_RADIUS = 48;
 
 const RARITY_FILL: Record<string, string> = {
   common: "#94a3b8",
@@ -14,12 +16,11 @@ const RARITY_FILL: Record<string, string> = {
   mythic: "#f43f5e",
 };
 
-const DEPLOY_ZONES = [
-  { x: 185, y: 38, w: 365, h: 265 },
-  { x: 750, y: 38, w: 365, h: 265 },
-  { x: 185, y: 335, w: 365, h: 265 },
-  { x: 750, y: 335, w: 365, h: 265 },
-];
+const TYPE_GLOW: Record<string, string> = {
+  fire: "#fb7185",
+  water: "#67e8f9",
+  nature: "#86efac",
+};
 
 function dist(a: TdPoint, b: TdPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -39,255 +40,327 @@ function pointOnPath(path: TdPoint[], t: number) {
   return path[path.length - 1] ?? { x: 0, y: 0 };
 }
 
-function drawMetalFloor(ctx: CanvasRenderingContext2D) {
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#151b23");
-  bg.addColorStop(0.55, "#0d1118");
-  bg.addColorStop(1, "#151920");
+function pathDirection(path: TdPoint[], t: number) {
+  const p1 = pointOnPath(path, Math.max(0, t - 0.01));
+  const p2 = pointOnPath(path, Math.min(1, t + 0.01));
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+function screenToWorld(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((clientX - rect.left) / rect.width) * W,
+    y: ((clientY - rect.top) / rect.height) * H,
+  };
+}
+
+function getSlotAtPosition(snapshot: TdSnapshot, x: number, y: number) {
+  return snapshot.slots.find((slot) => slot.enabled && Math.hypot(slot.x - x, slot.y - y) <= SLOT_HIT_RADIUS) ?? null;
+}
+
+function drawBackground(ctx: CanvasRenderingContext2D) {
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#101722");
+  bg.addColorStop(0.45, "#070b11");
+  bg.addColorStop(1, "#151b25");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  const space = ctx.createLinearGradient(0, 0, W, H);
-  space.addColorStop(0, "rgba(45, 97, 176, 0.42)");
-  space.addColorStop(0.22, "rgba(7, 14, 32, 0)");
-  space.addColorStop(0.78, "rgba(7, 14, 32, 0)");
-  space.addColorStop(1, "rgba(50, 120, 220, 0.32)");
-  ctx.fillStyle = space;
+  const outer = ctx.createLinearGradient(0, 0, W, 0);
+  outer.addColorStop(0, "rgba(59, 130, 246, 0.42)");
+  outer.addColorStop(0.18, "rgba(0,0,0,0)");
+  outer.addColorStop(0.82, "rgba(0,0,0,0)");
+  outer.addColorStop(1, "rgba(59, 130, 246, 0.32)");
+  ctx.fillStyle = outer;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  for (let i = 0; i < 80; i += 1) {
-    const x = (i * 97) % W;
-    const y = (i * 53) % H;
-    ctx.fillRect(x, y, i % 4 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
-  }
-
   ctx.save();
-  ctx.translate(95, 0);
-  for (let y = -40; y < H + 80; y += 86) {
-    for (let x = 0; x < W - 190; x += 110) {
-      ctx.fillStyle = x % 220 === 0 ? "#222832" : "#1a2029";
-      ctx.strokeStyle = "#303744";
+  ctx.translate(120, 0);
+  for (let y = -60; y < H + 120; y += 128) {
+    for (let x = 0; x < W - 240; x += 152) {
+      ctx.fillStyle = (x + y) % 256 === 0 ? "#202733" : "#171e28";
+      ctx.strokeStyle = "rgba(113, 128, 150, 0.28)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(x, y, 108, 84, 4);
+      ctx.roundRect(x, y, 150, 126, 5);
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(91, 102, 119, 0.35)";
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.16)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(x + 14, y + 14);
-      ctx.lineTo(x + 94, y + 70);
-      ctx.moveTo(x + 94, y + 14);
-      ctx.lineTo(x + 14, y + 70);
+      ctx.moveTo(x + 18, y + 18);
+      ctx.lineTo(x + 132, y + 108);
+      ctx.moveTo(x + 132, y + 18);
+      ctx.lineTo(x + 18, y + 108);
       ctx.stroke();
     }
   }
   ctx.restore();
 
   for (const edge of [
-    { x: 70, y: -20, w: 58, h: H + 40 },
-    { x: W - 128, y: -20, w: 58, h: H + 40 },
-    { x: 110, y: H - 48, w: W - 220, h: 58 },
+    { x: 52, y: -24, w: 74, h: H + 48 },
+    { x: W - 126, y: -24, w: 74, h: H + 48 },
+    { x: 110, y: H - 72, w: W - 220, h: 78 },
   ]) {
     const rail = ctx.createLinearGradient(edge.x, edge.y, edge.x + edge.w, edge.y + edge.h);
-    rail.addColorStop(0, "#323844");
-    rail.addColorStop(0.5, "#151a21");
-    rail.addColorStop(1, "#3d4654");
+    rail.addColorStop(0, "#404956");
+    rail.addColorStop(0.52, "#151a22");
+    rail.addColorStop(1, "#4b5563");
     ctx.fillStyle = rail;
-    ctx.strokeStyle = "#596270";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(203, 213, 225, 0.28)";
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.roundRect(edge.x, edge.y, edge.w, edge.h, 8);
+    ctx.roundRect(edge.x, edge.y, edge.w, edge.h, 10);
     ctx.fill();
     ctx.stroke();
   }
 }
 
-function drawDeployZones(ctx: CanvasRenderingContext2D) {
-  for (const zone of DEPLOY_ZONES) {
-    ctx.fillStyle = "rgba(82, 34, 39, 0.42)";
-    ctx.strokeStyle = "rgba(176, 195, 205, 0.42)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(zone.x, zone.y, zone.w, zone.h, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1;
-    for (let x = zone.x + 72; x < zone.x + zone.w; x += 72) {
-      ctx.beginPath();
-      ctx.moveTo(x, zone.y + 12);
-      ctx.lineTo(x, zone.y + zone.h - 12);
-      ctx.stroke();
-    }
-    for (let y = zone.y + 66; y < zone.y + zone.h; y += 66) {
-      ctx.beginPath();
-      ctx.moveTo(zone.x + 12, y);
-      ctx.lineTo(zone.x + zone.w - 12, y);
-      ctx.stroke();
-    }
-  }
-}
-
-function drawRoute(ctx: CanvasRenderingContext2D, path: TdPoint[]) {
+function drawPath(ctx: CanvasRenderingContext2D, path: TdPoint[], highlight: boolean) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-
   ctx.strokeStyle = "rgba(0, 0, 0, 0.62)";
-  ctx.lineWidth = 84;
+  ctx.lineWidth = PATH_WIDTH + 38;
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
 
-  ctx.strokeStyle = "#111821";
-  ctx.lineWidth = 64;
+  ctx.strokeStyle = "#111923";
+  ctx.lineWidth = PATH_WIDTH;
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(239, 68, 68, 0.78)";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([18, 12]);
+  ctx.strokeStyle = "rgba(94, 234, 212, 0.16)";
+  ctx.lineWidth = PATH_WIDTH - 28;
+  ctx.beginPath();
+  path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.stroke();
+
+  ctx.strokeStyle = highlight ? "rgba(103, 232, 249, 0.58)" : "rgba(148, 163, 184, 0.16)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([22, 18]);
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.strokeStyle = "rgba(74, 222, 128, 0.22)";
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.stroke();
+  ctx.fillStyle = "rgba(251, 191, 36, 0.46)";
+  for (let t = 0.06; t < 0.96; t += 0.075) {
+    const p = pointOnPath(path, t);
+    const a = pathDirection(path, t);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(-12, -10);
+    ctx.lineTo(-6, 0);
+    ctx.lineTo(-12, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
-function drawSummonCircle(ctx: CanvasRenderingContext2D, x: number, y: number, active: boolean, color: string) {
-  const r = active ? 33 : 29;
+function drawZone(ctx: CanvasRenderingContext2D, zone: TdPlacementZone) {
+  const panel = ctx.createLinearGradient(zone.x, zone.y, zone.x, zone.y + zone.height);
+  panel.addColorStop(0, "rgba(65, 38, 43, 0.72)");
+  panel.addColorStop(1, "rgba(20, 24, 32, 0.84)");
+  ctx.fillStyle = panel;
+  ctx.strokeStyle = "rgba(226, 232, 240, 0.52)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(zone.x, zone.y, zone.width, zone.height, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.lineWidth = 1;
+  for (let x = zone.x + 70; x < zone.x + zone.width; x += 70) {
+    ctx.beginPath();
+    ctx.moveTo(x, zone.y + 14);
+    ctx.lineTo(x, zone.y + zone.height - 14);
+    ctx.stroke();
+  }
+  for (let y = zone.y + 62; y < zone.y + zone.height; y += 62) {
+    ctx.beginPath();
+    ctx.moveTo(zone.x + 14, y);
+    ctx.lineTo(zone.x + zone.width - 14, y);
+    ctx.stroke();
+  }
+}
+
+function drawSlot(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, active: boolean, invalid = false) {
+  const r = active ? 42 : 35;
   ctx.save();
-  ctx.shadowColor = active ? color : "rgba(34, 197, 94, 0.38)";
-  ctx.shadowBlur = active ? 20 : 10;
-  const base = ctx.createRadialGradient(x, y, 5, x, y, r);
-  base.addColorStop(0, "rgba(97, 255, 157, 0.42)");
-  base.addColorStop(0.52, "rgba(22, 163, 74, 0.24)");
-  base.addColorStop(1, "rgba(3, 20, 12, 0.86)");
-  ctx.fillStyle = base;
-  ctx.strokeStyle = active ? color : "rgba(74, 222, 128, 0.75)";
-  ctx.lineWidth = active ? 4 : 2;
+  ctx.shadowColor = invalid ? "#ef4444" : color;
+  ctx.shadowBlur = active ? 26 : 12;
+  const fill = ctx.createRadialGradient(x, y, 5, x, y, r);
+  fill.addColorStop(0, invalid ? "rgba(248, 113, 113, 0.52)" : "rgba(110, 231, 183, 0.48)");
+  fill.addColorStop(0.58, invalid ? "rgba(127, 29, 29, 0.28)" : "rgba(20, 184, 166, 0.24)");
+  fill.addColorStop(1, "rgba(2, 6, 23, 0.9)");
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = invalid ? "rgba(248, 113, 113, 0.86)" : color;
+  ctx.lineWidth = active ? 5 : 2;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = "rgba(134, 239, 172, 0.52)";
+  ctx.strokeStyle = invalid ? "rgba(254, 202, 202, 0.54)" : "rgba(187, 247, 208, 0.5)";
   ctx.lineWidth = 1;
-  for (let i = 0; i < 12; i += 1) {
-    const a = (Math.PI * 2 * i) / 12;
+  for (let i = 0; i < 10; i += 1) {
+    const a = (Math.PI * 2 * i) / 10;
     ctx.beginPath();
-    ctx.moveTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9);
-    ctx.lineTo(x + Math.cos(a) * 25, y + Math.sin(a) * 25);
+    ctx.moveTo(x + Math.cos(a) * 13, y + Math.sin(a) * 13);
+    ctx.lineTo(x + Math.cos(a) * 30, y + Math.sin(a) * 30);
     ctx.stroke();
   }
-  ctx.beginPath();
-  ctx.arc(x, y, 18, 0, Math.PI * 2);
-  ctx.stroke();
   ctx.restore();
 }
 
 interface Props {
   snapshot: TdSnapshot | null;
+  viewUserId: string | null;
+  selfUserId: string | null;
   selectedTowerId: string | null;
+  fullHeight?: boolean;
   onSelectTower: (towerId: string | null) => void;
   onSummon: (slotId: string) => void;
 }
 
-export default function GameCanvas({ snapshot, selectedTowerId, onSelectTower, onSummon }: Props) {
+export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHeight = false, onSelectTower, onSummon }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hoverSlotId, setHoverSlotId] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !snapshot) return;
 
-    ctx.clearRect(0, 0, W, H);
-    drawMetalFloor(ctx);
-    drawDeployZones(ctx);
-    drawRoute(ctx, snapshot.path);
+    const ownerId = viewUserId ?? selfUserId;
+    const visibleSlots = snapshot.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId);
+    const visibleTowers = snapshot.towers.filter((tower) => !ownerId || tower.ownerUserId === ownerId);
+    const visibleMonsters = snapshot.monsters.filter((monster) => !ownerId || monster.ownerUserId === ownerId);
+    const visibleProjectiles = snapshot.projectiles.filter((projectile) => !ownerId || projectile.ownerUserId === ownerId);
+    const isOwnView = !!ownerId && ownerId === selfUserId;
+    const hoverSlot = hoverSlotId ? visibleSlots.find((s) => s.id === hoverSlotId) : null;
+    const selectedTower = selectedTowerId ? visibleTowers.find((t) => t.id === selectedTowerId) : null;
 
-    for (const slot of snapshot.slots) {
-      const occupied = snapshot.towers.find((t) => t.id === slot.occupiedBy);
-      drawSummonCircle(ctx, slot.x, slot.y, occupied?.id === selectedTowerId, occupied ? RARITY_FILL[occupied.rarity] ?? "#94a3b8" : "#22c55e");
+    ctx.clearRect(0, 0, W, H);
+    drawBackground(ctx);
+    drawPath(ctx, snapshot.path, !snapshot.waveActive || !!hoverSlot);
+
+    for (const zone of snapshot.placementZones ?? []) drawZone(ctx, zone);
+
+    for (const slot of visibleSlots) {
+      const occupied = visibleTowers.find((t) => t.id === slot.occupiedBy);
+      const isHover = hoverSlotId === slot.id;
+      const isSelected = occupied?.id === selectedTowerId;
+      const invalid = isHover && (!isOwnView || (!!slot.occupiedBy && !isSelected));
+      drawSlot(ctx, slot.x, slot.y, occupied ? RARITY_FILL[occupied.rarity] ?? "#94a3b8" : "#2dd4bf", isHover || isSelected, invalid);
       if (!occupied) {
-        ctx.fillStyle = "rgba(187, 247, 208, 0.9)";
-        ctx.font = "bold 20px sans-serif";
+        ctx.fillStyle = "rgba(204, 251, 241, 0.86)";
+        ctx.font = "bold 26px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("+", slot.x, slot.y + 7);
+        ctx.fillText("+", slot.x, slot.y + 9);
       }
     }
 
-    for (const tower of snapshot.towers) {
-      const slot = snapshot.slots.find((s) => s.id === tower.slotId);
+    if (hoverSlot && !hoverSlot.occupiedBy) {
+      const range = selectedTower?.range ?? 170;
+      ctx.fillStyle = "rgba(34, 211, 238, 0.07)";
+      ctx.strokeStyle = "rgba(103, 232, 249, 0.34)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(hoverSlot.x, hoverSlot.y, range, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.62)";
+      ctx.strokeStyle = "rgba(103, 232, 249, 0.42)";
+      ctx.beginPath();
+      ctx.roundRect(hoverSlot.x - 34, hoverSlot.y - 45, 68, 74, 8);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    for (const tower of visibleTowers) {
+      const slot = visibleSlots.find((s) => s.id === tower.slotId);
       if (!slot) continue;
       const char = CHARACTERS.find((c) => c.id === tower.characterId);
       const rarityColor = RARITY_FILL[tower.rarity] ?? "#94a3b8";
-      ctx.shadowColor = rarityColor;
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = rarityColor;
+      const typeColor = TYPE_GLOW[tower.unitType] ?? "#86efac";
+      ctx.save();
+      ctx.shadowColor = typeColor;
+      ctx.shadowBlur = tower.id === selectedTowerId ? 28 : 16;
+      ctx.fillStyle = char?.colors.s ?? rarityColor;
       ctx.beginPath();
-      ctx.roundRect(slot.x - 15, slot.y - 24, 30, 34, 6);
+      ctx.roundRect(slot.x - 31, slot.y - 52, 62, 68, 12);
       ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(slot.x - 10, slot.y - 18, 20, 12);
-      ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
+      ctx.fillStyle = char?.colors.p ?? "#ffffff";
       ctx.beginPath();
-      ctx.moveTo(slot.x - 22, slot.y + 10);
-      ctx.lineTo(slot.x + 22, slot.y + 10);
-      ctx.lineTo(slot.x + 12, slot.y + 25);
-      ctx.lineTo(slot.x - 12, slot.y + 25);
+      ctx.arc(slot.x, slot.y - 23, 17, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = char?.colors.a ?? rarityColor;
+      ctx.beginPath();
+      ctx.moveTo(slot.x - 27, slot.y + 4);
+      ctx.lineTo(slot.x + 27, slot.y + 4);
+      ctx.lineTo(slot.x + 19, slot.y + 31);
+      ctx.lineTo(slot.x - 19, slot.y + 31);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = char?.colors.p ?? "#ffffff";
-      ctx.fillRect(slot.x - 6, slot.y - 15, 12, 8);
+      ctx.strokeStyle = rarityColor;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.fillRect(slot.x - 8, slot.y - 28, 5, 5);
+      ctx.fillRect(slot.x + 4, slot.y - 28, 5, 5);
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 13px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(String(tower.characterId), slot.x, slot.y + 39);
+      ctx.fillText(char?.korName ?? char?.name ?? String(tower.characterId), slot.x, slot.y + 56);
+      ctx.restore();
     }
 
-    for (const monster of snapshot.monsters) {
+    for (const monster of visibleMonsters) {
       const p = pointOnPath(snapshot.path, monster.pathT);
-      const r = monster.kind === "boss" ? 22 : monster.kind === "tough" ? 16 : 13;
+      const a = pathDirection(snapshot.path, monster.pathT);
+      const r = monster.kind === "boss" ? 34 : monster.kind === "tough" ? 25 : 20;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(a);
       ctx.shadowColor = monster.kind === "boss" ? "#ef4444" : "#84cc16";
-      ctx.shadowBlur = monster.kind === "boss" ? 18 : 10;
+      ctx.shadowBlur = monster.kind === "boss" ? 22 : 12;
       ctx.fillStyle = monster.kind === "boss" ? "#ef4444" : monster.kind === "fast" ? "#38bdf8" : monster.kind === "tough" ? "#a855f7" : "#84cc16";
       ctx.beginPath();
-      ctx.moveTo(p.x, p.y - r);
-      ctx.lineTo(p.x + r, p.y + r);
-      ctx.lineTo(p.x - r, p.y + r);
+      ctx.moveTo(r + 8, 0);
+      ctx.lineTo(-r, -r * 0.72);
+      ctx.lineTo(-r * 0.45, 0);
+      ctx.lineTo(-r, r * 0.72);
       ctx.closePath();
       ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = "#0f172a";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.restore();
+
       const hpPct = Math.max(0, monster.hp / monster.maxHp);
       ctx.fillStyle = "#111827";
-      ctx.fillRect(p.x - 22, p.y - r - 12, 44, 5);
+      ctx.fillRect(p.x - 34, p.y - r - 20, 68, 7);
       ctx.fillStyle = hpPct > 0.5 ? "#22c55e" : hpPct > 0.25 ? "#f59e0b" : "#ef4444";
-      ctx.fillRect(p.x - 22, p.y - r - 12, 44 * hpPct, 5);
+      ctx.fillRect(p.x - 34, p.y - r - 20, 68 * hpPct, 7);
     }
 
-    for (const projectile of snapshot.projectiles) {
-      const target = snapshot.monsters.find((m) => m.id === projectile.toMonsterId);
+    for (const projectile of visibleProjectiles) {
+      const target = visibleMonsters.find((m) => m.id === projectile.toMonsterId);
       if (!target) continue;
       const to = pointOnPath(snapshot.path, target.pathT);
       ctx.strokeStyle = "#6ee7b7";
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.shadowColor = "#22c55e";
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 16;
       ctx.beginPath();
       ctx.moveTo(projectile.from.x, projectile.from.y);
       ctx.lineTo(to.x, to.y);
@@ -295,25 +368,35 @@ export default function GameCanvas({ snapshot, selectedTowerId, onSelectTower, o
       ctx.shadowBlur = 0;
     }
 
-    ctx.fillStyle = "#bbf7d0";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("SPAWN", (snapshot.path[0]?.x ?? 0) + 16, (snapshot.path[0]?.y ?? 0) - 18);
+    const start = snapshot.path[0];
     const end = snapshot.path[snapshot.path.length - 1];
-    if (end) ctx.fillText("CORE", end.x + 16, end.y + 24);
-  }, [snapshot, selectedTowerId]);
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#bbf7d0";
+    ctx.fillText("SPAWN", start.x + 24, start.y - 28);
+    ctx.fillText("CORE", end.x - 84, end.y + 52);
+  }, [hoverSlotId, selfUserId, snapshot, selectedTowerId, viewUserId]);
+
+  const handlePointer = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!snapshot) return;
+    const p = screenToWorld(e.currentTarget, e.clientX, e.clientY);
+    const ownerId = viewUserId ?? selfUserId;
+    const scopedSnapshot = { ...snapshot, slots: snapshot.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId) };
+    setHoverSlotId(getSlotAtPosition(scopedSnapshot, p.x, p.y)?.id ?? null);
+  };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * W;
-    const y = ((e.clientY - rect.top) / rect.height) * H;
-    const slot = snapshot.slots.find((s) => Math.abs(s.x - x) < 34 && Math.abs(s.y - y) < 34);
+    const p = screenToWorld(e.currentTarget, e.clientX, e.clientY);
+    const ownerId = viewUserId ?? selfUserId;
+    const scopedSnapshot = { ...snapshot, slots: snapshot.slots.filter((s) => !ownerId || s.ownerUserId === ownerId) };
+    const slot = getSlotAtPosition(scopedSnapshot, p.x, p.y);
     if (!slot) {
       onSelectTower(null);
       return;
     }
     if (slot.occupiedBy) onSelectTower(slot.occupiedBy);
+    else if (ownerId !== selfUserId) onSelectTower(null);
     else onSummon(slot.id);
   };
 
@@ -322,8 +405,12 @@ export default function GameCanvas({ snapshot, selectedTowerId, onSelectTower, o
       ref={canvasRef}
       width={W}
       height={H}
+      onMouseMove={handlePointer}
+      onMouseLeave={() => setHoverSlotId(null)}
       onClick={handleClick}
-      className="block w-full rounded-md border border-emerald-500/50 bg-[#080d14] shadow-[0_0_28px_rgba(16,185,129,0.18)]"
+      className={`block aspect-video w-full rounded-md border border-emerald-500/50 bg-[#080d14] object-contain shadow-[0_0_28px_rgba(16,185,129,0.18)] ${
+        fullHeight ? "h-full max-h-full" : "max-h-[calc(100vh-220px)]"
+      }`}
     />
   );
 }
