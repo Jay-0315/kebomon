@@ -1,6 +1,7 @@
 export type TdRoomPhase = "lobby" | "playing" | "ended";
 export type TdTargetMode = "front" | "back" | "strong" | "weak" | "boss";
 export type TdRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+export type TdUnitType = "fire" | "water" | "nature";
 
 export interface TdPoint {
   x: number;
@@ -16,17 +17,21 @@ export interface TdPlayer {
   connected: boolean;
   gold: number;
   kills: number;
+  typeUpgrades: Record<TdUnitType, number>;
 }
 
 export interface TdTower {
   id: string;
   ownerUserId: string;
   characterId: number;
+  unitType: TdUnitType;
   rarity: TdRarity;
   slotId: string;
   damage: number;
   range: number;
   attackMs: number;
+  upgradeLevel: number;
+  upgradeCost: number;
   targetMode: TdTargetMode;
   locked: boolean;
   lastAttackAt: number;

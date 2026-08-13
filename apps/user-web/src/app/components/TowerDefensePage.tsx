@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Crown, Heart, Lock, LogIn, LogOut, MessageCircle, Radio, Send, Shield, Swords, Trophy, Unlock, Users, Zap } from "lucide-react";
+import { Copy, Crown, Gem, Hammer, Heart, Lock, LogIn, LogOut, MessageCircle, Radio, Send, Shield, ShoppingCart, Swords, Trophy, Unlock, Users, Zap } from "lucide-react";
 import { api } from "../lib/api";
 import { disconnectTowerDefenseSocket, getTowerDefenseSocket } from "../lib/socket";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
-import type { TdChatMessage, TdSnapshot, TdTargetMode } from "../game/tower-defense/types";
+import type { TdChatMessage, TdSnapshot, TdTargetMode, TdUnitType } from "../game/tower-defense/types";
 import GameCanvas from "./tower-defense/GameCanvas";
 import PixelCharacter from "./PixelCharacter";
 
@@ -24,6 +24,26 @@ const TARGET_LABEL: Record<TdTargetMode, string> = {
   boss: "보스",
 };
 
+const RANDOM_SUMMON_COST = 45;
+const FIXED_SUMMON_COST = 140;
+const TYPE_UPGRADE_BASE_COST = 85;
+const TYPE_UPGRADE_COST_STEP = 55;
+const TYPE_LABEL: Record<TdUnitType, string> = {
+  fire: "불",
+  water: "물",
+  nature: "풀",
+};
+
+const TYPE_STYLE: Record<TdUnitType, string> = {
+  fire: "border-red-400/40 bg-red-500/10 text-red-200",
+  water: "border-cyan-300/40 bg-cyan-500/10 text-cyan-100",
+  nature: "border-emerald-300/40 bg-emerald-500/10 text-emerald-100",
+};
+
+function typeUpgradeCost(level: number) {
+  return TYPE_UPGRADE_BASE_COST + level * TYPE_UPGRADE_COST_STEP;
+}
+
 function actionId() {
   return `a_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -40,6 +60,7 @@ export default function TowerDefensePage() {
   const [chat, setChat] = useState<TdChatMessage[]>([]);
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
   const [moveTowerId, setMoveTowerId] = useState<string | null>(null);
+  const [summonMode, setSummonMode] = useState<"random" | "fixed">("random");
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [summary, setSummary] = useState<{ attemptsLeft: number; bestWave: number } | null>(null);
 
@@ -131,6 +152,10 @@ export default function TowerDefensePage() {
       setMoveTowerId(null);
       return;
     }
+    if (summonMode === "fixed") {
+      socket.emit("td:tower:fixed-summon", { slotId, characterId: myCharacterId, actionId: actionId() });
+      return;
+    }
     socket.emit("td:tower:summon", { slotId, actionId: actionId() });
   };
 
@@ -148,6 +173,11 @@ export default function TowerDefensePage() {
   const mergeTower = () => {
     if (!selectedTower) return;
     socket.emit("td:tower:merge", { towerId: selectedTower.id, actionId: actionId() });
+  };
+
+  const upgradeTower = () => {
+    if (!selectedTower) return;
+    socket.emit("td:tower:upgrade", { towerId: selectedTower.id, actionId: actionId() });
   };
 
   const toggleLockTower = () => {
@@ -232,7 +262,7 @@ export default function TowerDefensePage() {
         </div>
       )}
 
-      {snapshot && (
+      {snapshot && snapshot.phase === "lobby" && (
         <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
           <div className="space-y-3">
             <Hud snapshot={snapshot} />
@@ -272,6 +302,398 @@ export default function TowerDefensePage() {
           </div>
         </div>
       )}
+
+      {snapshot && snapshot.phase !== "lobby" && (
+        <InGameShell
+          snapshot={snapshot}
+          selfUserId={selfUserId}
+          selectedTower={selectedTower}
+          selectedTowerId={selectedTowerId}
+          moveTowerId={moveTowerId}
+          summonMode={summonMode}
+          myCharacterId={myCharacterId}
+          error={error}
+          chat={chat}
+          message={message}
+          setMessage={setMessage}
+          onSelectTower={setSelectedTowerId}
+          onSummon={summon}
+          onSummonMode={setSummonMode}
+          onMove={moveTower}
+          onMerge={mergeTower}
+          onUpgrade={upgradeTower}
+          onToggleLock={toggleLockTower}
+          onSell={sellTower}
+          onTargetMode={setTargetMode}
+          onLeave={leaveRoom}
+          onSendChat={sendChat}
+        />
+      )}
+    </div>
+  );
+}
+
+function InGameShell({
+  snapshot,
+  selfUserId,
+  selectedTower,
+  selectedTowerId,
+  moveTowerId,
+  summonMode,
+  myCharacterId,
+  error,
+  chat,
+  message,
+  setMessage,
+  onSelectTower,
+  onSummon,
+  onSummonMode,
+  onMove,
+  onMerge,
+  onUpgrade,
+  onToggleLock,
+  onSell,
+  onTargetMode,
+  onLeave,
+  onSendChat,
+}: {
+  snapshot: TdSnapshot;
+  selfUserId: string | null;
+  selectedTower: TdSnapshot["towers"][number] | null;
+  selectedTowerId: string | null;
+  moveTowerId: string | null;
+  summonMode: "random" | "fixed";
+  myCharacterId: number;
+  error: string | null;
+  chat: TdChatMessage[];
+  message: string;
+  setMessage: (value: string) => void;
+  onSelectTower: (towerId: string | null) => void;
+  onSummon: (slotId: string) => void;
+  onSummonMode: (mode: "random" | "fixed") => void;
+  onMove: () => void;
+  onMerge: () => void;
+  onUpgrade: () => void;
+  onToggleLock: () => void;
+  onSell: () => void;
+  onTargetMode: (mode: TdTargetMode) => void;
+  onLeave: () => void;
+  onSendChat: () => void;
+}) {
+  const me = snapshot.players.find((p) => p.userId === selfUserId) ?? null;
+  const myTowers = snapshot.towers.filter((tower) => tower.ownerUserId === selfUserId);
+  const selectedSlot = selectedTower ? snapshot.slots.find((slot) => slot.id === selectedTower.slotId) : null;
+  const canRandom = (me?.gold ?? 0) >= RANDOM_SUMMON_COST;
+  const canFixed = (me?.gold ?? 0) >= FIXED_SUMMON_COST;
+  const selectedTypeLevel = selectedTower ? me?.typeUpgrades?.[selectedTower.unitType] ?? selectedTower.upgradeLevel ?? 0 : 0;
+  const selectedTypeCost = selectedTypeLevel >= 10 ? 0 : typeUpgradeCost(selectedTypeLevel);
+  const canUpgrade = !!selectedTower && selectedTypeLevel < 10 && (me?.gold ?? 0) >= selectedTypeCost;
+
+  return (
+    <div className="overflow-hidden rounded-md border border-emerald-500/30 bg-[#05080d] shadow-2xl">
+      <div className="flex min-h-0 flex-col">
+        <div className="flex items-center justify-between border-b border-emerald-500/20 bg-[#071016] px-4 py-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <ResourcePill icon={<Gem className="h-4 w-4 text-cyan-300" />} label="GOLD" value={me?.gold ?? 0} tone="text-cyan-200" />
+            <ResourcePill icon={<Swords className="h-4 w-4 text-red-300" />} label="KILLS" value={me?.kills ?? 0} tone="text-red-200" />
+            <ResourcePill icon={<Heart className="h-4 w-4 text-rose-300" />} label="LIFE" value={`${snapshot.lives}/${snapshot.maxLives}`} tone="text-rose-200" />
+            <ResourcePill icon={<Zap className="h-4 w-4 text-amber-300" />} label="WAVE" value={snapshot.wave || 1} tone="text-amber-200" />
+          </div>
+          <button onClick={onLeave} className="rounded border border-emerald-500/30 px-3 py-1 font-bold text-emerald-200 hover:bg-emerald-500/10">
+            나가기
+          </button>
+        </div>
+
+        <div className="grid gap-0 xl:grid-cols-[1fr_300px]">
+          <div className="relative bg-black">
+            <GameCanvas snapshot={snapshot} selectedTowerId={selectedTowerId} onSelectTower={onSelectTower} onSummon={onSummon} />
+            <div className="absolute left-3 top-3 rounded border border-emerald-500/40 bg-black/70 px-3 py-2 text-xs text-emerald-100 backdrop-blur">
+              <p className="font-bold">ROOM {snapshot.roomCode}</p>
+              <p className="text-emerald-300/75">
+                {snapshot.waveActive ? "전투 진행 중" : `다음 웨이브 ${Math.ceil(snapshot.nextWaveInMs / 1000)}초`}
+              </p>
+            </div>
+            {moveTowerId && (
+              <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded border border-amber-300/60 bg-black/75 px-4 py-2 text-sm font-bold text-amber-200">
+                이동할 빈 배치 원을 선택
+              </div>
+            )}
+            {error && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-red-400/50 bg-black/80 px-4 py-2 text-sm font-bold text-red-200">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="border-l border-emerald-500/20 bg-[#071016] p-3">
+            <ScoreBoard snapshot={snapshot} selfUserId={selfUserId} />
+          </div>
+        </div>
+
+        <div className="grid border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[220px_1fr_320px]">
+          <MiniMap slots={snapshot.slots.length} towers={myTowers.length} />
+          <CommandCard
+            selectedTower={selectedTower}
+            selectedSlot={selectedSlot}
+            typeUpgrades={me?.typeUpgrades ?? { fire: 0, water: 0, nature: 0 }}
+            selectedTypeLevel={selectedTypeLevel}
+            selectedTypeCost={selectedTypeCost}
+            summonMode={summonMode}
+            canRandom={canRandom}
+            canFixed={canFixed}
+            canUpgrade={canUpgrade}
+            myCharacterId={myCharacterId}
+            onSummonMode={onSummonMode}
+            onMove={onMove}
+            onMerge={onMerge}
+            onUpgrade={onUpgrade}
+            onToggleLock={onToggleLock}
+            onSell={onSell}
+            onTargetMode={onTargetMode}
+          />
+          <CompactChat chat={chat} message={message} setMessage={setMessage} onSend={onSendChat} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResourcePill({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded border border-emerald-500/25 bg-black/40 px-3 py-1.5">
+      {icon}
+      <span className="text-[10px] font-bold text-emerald-400/70">{label}</span>
+      <span className={`font-mono text-base font-black ${tone}`}>{value}</span>
+    </div>
+  );
+}
+
+function ScoreBoard({ snapshot, selfUserId }: { snapshot: TdSnapshot; selfUserId: string | null }) {
+  return (
+    <div className="rounded border border-emerald-500/35 bg-black/45 p-3 text-sm text-emerald-100">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="font-black">플레이어</p>
+        <p className="text-xs text-emerald-300/70">킬수 / 골드</p>
+      </div>
+      <div className="space-y-2">
+        {snapshot.players.map((p) => (
+          <div
+            key={p.userId}
+            className={`grid grid-cols-[1fr_54px_64px] items-center gap-2 rounded px-2 py-1.5 ${
+              p.userId === selfUserId ? "bg-emerald-500/15 text-emerald-200" : "bg-white/5"
+            }`}
+          >
+            <div className="min-w-0">
+              <p className="truncate font-bold">{p.nickname}</p>
+              <p className="text-[10px] text-emerald-300/60">{p.connected ? "ONLINE" : "RECONNECT"}</p>
+            </div>
+            <p className="text-right font-mono font-bold">{p.kills}</p>
+            <p className="text-right font-mono font-bold text-cyan-200">{p.gold}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniMap({ slots, towers }: { slots: number; towers: number }) {
+  return (
+    <div className="border-r border-emerald-500/20 p-3">
+      <div className="h-full rounded border border-emerald-500/35 bg-black/60 p-3">
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 28 }, (_, i) => (
+            <span key={i} className={`h-3 rounded-sm ${i < towers ? "bg-emerald-400" : "bg-emerald-900/50"}`} />
+          ))}
+        </div>
+        <p className="mt-3 text-xs font-bold text-emerald-200">배치 {towers}/{slots}</p>
+        <p className="mt-1 text-[10px] text-emerald-300/60">4개 구역 / 중앙 루트</p>
+      </div>
+    </div>
+  );
+}
+
+function CommandCard({
+  selectedTower,
+  selectedSlot,
+  typeUpgrades,
+  selectedTypeLevel,
+  selectedTypeCost,
+  summonMode,
+  canRandom,
+  canFixed,
+  canUpgrade,
+  myCharacterId,
+  onSummonMode,
+  onMove,
+  onMerge,
+  onUpgrade,
+  onToggleLock,
+  onSell,
+  onTargetMode,
+}: {
+  selectedTower: TdSnapshot["towers"][number] | null;
+  selectedSlot: TdSnapshot["slots"][number] | null | undefined;
+  typeUpgrades: Record<TdUnitType, number>;
+  selectedTypeLevel: number;
+  selectedTypeCost: number;
+  summonMode: "random" | "fixed";
+  canRandom: boolean;
+  canFixed: boolean;
+  canUpgrade: boolean;
+  myCharacterId: number;
+  onSummonMode: (mode: "random" | "fixed") => void;
+  onMove: () => void;
+  onMerge: () => void;
+  onUpgrade: () => void;
+  onToggleLock: () => void;
+  onSell: () => void;
+  onTargetMode: (mode: TdTargetMode) => void;
+}) {
+  return (
+    <div className="grid gap-3 p-3 lg:grid-cols-[260px_1fr]">
+      <div className="rounded border border-emerald-500/30 bg-black/55 p-3">
+        <p className="mb-2 text-xs font-black text-emerald-200">선택 정보</p>
+        {selectedTower ? (
+          <div className="flex items-center gap-3">
+            <PixelCharacter characterId={selectedTower.characterId} size={52} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="font-black text-emerald-100">#{selectedTower.characterId}</p>
+                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-black ${TYPE_STYLE[selectedTower.unitType]}`}>
+                  {TYPE_LABEL[selectedTower.unitType]} {selectedTypeLevel}강
+                </span>
+              </div>
+              <p className="text-xs text-emerald-300/70">
+                {selectedTower.rarity} · DMG {selectedTower.damage} · RNG {selectedTower.range}
+              </p>
+              <p className="text-xs text-cyan-200">다음 타입 강화비 {selectedTypeCost || "MAX"}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <PixelCharacter characterId={myCharacterId} size={52} />
+            <div>
+              <p className="font-black text-emerald-100">빈 배치 원 선택</p>
+              <p className="text-xs text-emerald-300/70">모드 선택 후 빈 원 클릭</p>
+            </div>
+          </div>
+        )}
+        {selectedSlot && <p className="mt-2 text-[10px] text-emerald-300/55">SLOT {selectedSlot.id}</p>}
+        <div className="mt-3 grid grid-cols-3 gap-1.5">
+          {(Object.keys(TYPE_LABEL) as TdUnitType[]).map((type) => (
+            <div key={type} className={`rounded border px-2 py-1 text-center text-[10px] font-black ${TYPE_STYLE[type]}`}>
+              {TYPE_LABEL[type]} {typeUpgrades[type] ?? 0}/10
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => onSummonMode("random")}
+            className={`rounded border px-3 py-2 text-left text-xs font-bold ${
+              summonMode === "random" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
+            } ${!canRandom ? "opacity-50" : ""}`}
+          >
+            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> 랜덤 소환</span>
+            <span className="mt-1 block font-mono text-[11px]">비용 {RANDOM_SUMMON_COST}G</span>
+          </button>
+          <button
+            onClick={() => onSummonMode("fixed")}
+            className={`rounded border px-3 py-2 text-left text-xs font-bold ${
+              summonMode === "fixed" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
+            } ${!canFixed ? "opacity-50" : ""}`}
+          >
+            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> 확정 유닛 구입</span>
+            <span className="mt-1 block font-mono text-[11px]">비용 {FIXED_SUMMON_COST}G · 대표 유닛</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          <ActionButton icon={<Hammer className="h-4 w-4" />} label="타입강화" disabled={!canUpgrade} onClick={onUpgrade} />
+          <ActionButton label="합성" disabled={!selectedTower || selectedTower.locked} onClick={onMerge} />
+          <ActionButton label="이동" disabled={!selectedTower} onClick={onMove} />
+          <ActionButton label={selectedTower?.locked ? "해제" : "잠금"} disabled={!selectedTower} onClick={onToggleLock} />
+        </div>
+
+        <div className="grid grid-cols-6 gap-2">
+          {(Object.keys(TARGET_LABEL) as TdTargetMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => onTargetMode(mode)}
+              disabled={!selectedTower}
+              className={`rounded border px-2 py-2 text-xs font-black ${
+                selectedTower?.targetMode === mode
+                  ? "border-cyan-300 bg-cyan-300/10 text-cyan-100"
+                  : "border-emerald-500/25 text-emerald-200 disabled:opacity-40"
+              }`}
+            >
+              {TARGET_LABEL[mode]}
+            </button>
+          ))}
+          <button
+            onClick={onSell}
+            disabled={!selectedTower}
+            className="rounded border border-red-400/35 px-2 py-2 text-xs font-black text-red-200 hover:bg-red-500/10 disabled:opacity-40"
+          >
+            판매
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({ icon, label, disabled, onClick }: { icon?: React.ReactNode; label: string; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex min-h-12 items-center justify-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 text-xs font-black text-emerald-100 hover:bg-emerald-500/12 disabled:opacity-40"
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function CompactChat({
+  chat,
+  message,
+  setMessage,
+  onSend,
+}: {
+  chat: TdChatMessage[];
+  message: string;
+  setMessage: (value: string) => void;
+  onSend: () => void;
+}) {
+  return (
+    <div className="border-l border-emerald-500/20 p-3">
+      <div className="flex h-full flex-col rounded border border-emerald-500/30 bg-black/55 p-2">
+        <div className="min-h-0 flex-1 space-y-1 overflow-auto text-xs text-emerald-100">
+          {chat.slice(-5).map((m) => (
+            <p key={m.id} className="truncate">
+              <span className="font-bold text-emerald-300">{m.nickname}</span> {m.message}
+            </p>
+          ))}
+        </div>
+        <div className="mt-2 flex gap-1">
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) onSend();
+            }}
+            className="min-w-0 flex-1 rounded border border-emerald-500/25 bg-black px-2 py-1 text-xs text-emerald-100"
+            maxLength={120}
+          />
+          <button onClick={onSend} className="rounded border border-emerald-500/30 px-2 text-emerald-200">
+            <Send className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

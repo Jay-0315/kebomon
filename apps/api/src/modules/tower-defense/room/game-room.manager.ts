@@ -95,6 +95,22 @@ export class GameRoomManager {
     return { room, error: result.message ?? null };
   }
 
+  fixedSummon(userId: string, slotId: string, characterId?: number, actionId?: string) {
+    const room = this.getByUser(userId);
+    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
+    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    const result = GameEngine.fixedSummon(room, userId, slotId, characterId);
+    return { room, error: result.message ?? null };
+  }
+
+  upgrade(userId: string, towerId: string, actionId?: string) {
+    const room = this.getByUser(userId);
+    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
+    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    const result = GameEngine.upgrade(room, userId, towerId);
+    return { room, error: result.message ?? null };
+  }
+
   sell(userId: string, towerId: string, actionId?: string) {
     const room = this.getByUser(userId);
     if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
@@ -175,7 +191,13 @@ export class GameRoomManager {
 
   private addPlayer(room: TdRoom, player: TdPlayer) {
     const prev = room.players.get(player.userId);
-    room.players.set(player.userId, { ...player, ready: prev?.ready ?? player.ready, gold: prev?.gold ?? player.gold, kills: prev?.kills ?? player.kills });
+    room.players.set(player.userId, {
+      ...player,
+      ready: prev?.ready ?? player.ready,
+      gold: prev?.gold ?? player.gold,
+      kills: prev?.kills ?? player.kills,
+      typeUpgrades: prev?.typeUpgrades ?? player.typeUpgrades,
+    });
     room.socketToUser.set(player.socketId, player.userId);
     this.userToRoomId.set(player.userId, room.id);
   }

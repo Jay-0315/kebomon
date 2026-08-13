@@ -1,16 +1,21 @@
 import {
   TD_MAX_LIVES,
+  TD_FIXED_SUMMON_COST,
+  TD_MAX_TOWER_UPGRADE,
   TD_PATH,
+  TD_POOL_CHARACTER_TYPES,
   TD_RARITY_POWER,
   TD_RARITY_WEIGHTS,
   TD_SLOTS,
   TD_START_GOLD,
   TD_SUMMON_COST,
   TD_TICK_MS,
+  TD_TYPE_UPGRADE_BASE_COST,
+  TD_TYPE_UPGRADE_COST_STEP,
   TD_WAVE_BREAK_MS,
   TD_WAVE_COUNT,
 } from "../config/tower-defense.config";
-import type { TdMonster, TdRarity, TdRoom, TdSnapshot, TdTargetMode, TdTower } from "../types/tower-defense.types";
+import type { TdMonster, TdRarity, TdRoom, TdSnapshot, TdTargetMode, TdTower, TdUnitType } from "../types/tower-defense.types";
 
 const TD_POOL_CHARACTER_IDS = [127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 83, 66];
 const RARITIES = Object.keys(TD_RARITY_WEIGHTS) as TdRarity[];
@@ -52,6 +57,41 @@ function nextRarity(rarity: TdRarity): TdRarity | null {
   const idx = RARITY_ORDER.indexOf(rarity);
   if (idx < 0 || idx >= RARITY_ORDER.length - 1) return null;
   return RARITY_ORDER[idx + 1];
+}
+
+function upgradeCost(level: number) {
+  return TD_TYPE_UPGRADE_BASE_COST + level * TD_TYPE_UPGRADE_COST_STEP;
+}
+
+function clampPoolCharacterId(characterId?: number) {
+  const parsed = Number(characterId);
+  return TD_POOL_CHARACTER_IDS.includes(parsed) ? parsed : TD_POOL_CHARACTER_IDS[0];
+}
+
+function emptyTypeUpgrades(): Record<TdUnitType, number> {
+  return { fire: 0, water: 0, nature: 0 };
+}
+
+function unitTypeForCharacter(characterId: number): TdUnitType {
+  return TD_POOL_CHARACTER_TYPES[characterId] ?? "nature";
+}
+
+function applyTypePower(rarity: TdRarity, level: number) {
+  const base = TD_RARITY_POWER[rarity];
+  return {
+    damage: Math.round(base.damage * (1 + level * 0.13)),
+    range: Math.round(base.range + level * 4),
+    attackMs: Math.max(360, Math.round(base.attackMs * (1 - Math.min(0.25, level * 0.025)))),
+  };
+}
+
+function syncTowerPower(tower: TdTower, level: number) {
+  const power = applyTypePower(tower.rarity, level);
+  tower.damage = power.damage;
+  tower.range = power.range;
+  tower.attackMs = power.attackMs;
+  tower.upgradeLevel = level;
+  tower.upgradeCost = level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level);
 }
 
 function buildWave(wave: number): Array<Omit<TdMonster, "id" | "pathT" | "reached">> {
@@ -133,6 +173,7 @@ export class GameEngine {
     room.players.forEach((p) => {
       p.gold = TD_START_GOLD;
       p.kills = 0;
+      p.typeUpgrades = emptyTypeUpgrades();
     });
   }
 
@@ -146,22 +187,87 @@ export class GameEngine {
     if (player.gold < TD_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
     player.gold -= TD_SUMMON_COST;
 
+    player.typeUpgrades ??= emptyTypeUpgrades();
     const rarity = weightedRarity();
-    const power = TD_RARITY_POWER[rarity];
+    const characterId = TD_POOL_CHARACTER_IDS[Math.floor(Math.random() * TD_POOL_CHARACTER_IDS.length)];
+    const unitType = unitTypeForCharacter(characterId);
+    const level = player.typeUpgrades[unitType] ?? 0;
+    const power = applyTypePower(rarity, level);
     const tower: TdTower = {
       id: id("tower"),
       ownerUserId: userId,
-      characterId: TD_POOL_CHARACTER_IDS[Math.floor(Math.random() * TD_POOL_CHARACTER_IDS.length)],
+      characterId,
+      unitType,
       rarity,
       slotId,
       damage: power.damage,
       range: power.range,
       attackMs: power.attackMs,
+      upgradeLevel: level,
+      upgradeCost: level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level),
       targetMode: "front",
       locked: false,
       lastAttackAt: 0,
     };
     room.towers.set(tower.id, tower);
+    return { ok: true };
+  }
+
+  static fixedSummon(room: TdRoom, userId: string, slotId: string, characterId?: number): { ok: boolean; message?: string } {
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 구입할 수 있습니다." };
+    const slot = TD_SLOTS.find((s) => s.id === slotId);
+    if (!slot) return { ok: false, message: "잘못된 슬롯입니다." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    const player = room.players.get(userId);
+    if (!player) return { ok: false, message: "참가자가 아닙니다." };
+    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
+    player.gold -= TD_FIXED_SUMMON_COST;
+
+    player.typeUpgrades ??= emptyTypeUpgrades();
+    const rarity: TdRarity = "rare";
+    const selectedCharacterId = clampPoolCharacterId(characterId);
+    const unitType = unitTypeForCharacter(selectedCharacterId);
+    const level = player.typeUpgrades[unitType] ?? 0;
+    const power = applyTypePower(rarity, level);
+    const tower: TdTower = {
+      id: id("tower"),
+      ownerUserId: userId,
+      characterId: selectedCharacterId,
+      unitType,
+      rarity,
+      slotId,
+      damage: power.damage,
+      range: power.range,
+      attackMs: power.attackMs,
+      upgradeLevel: level,
+      upgradeCost: level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level),
+      targetMode: "front",
+      locked: false,
+      lastAttackAt: 0,
+    };
+    room.towers.set(tower.id, tower);
+    return { ok: true };
+  }
+
+  static upgrade(room: TdRoom, userId: string, towerId: string) {
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 타입 강화할 수 있습니다." };
+    const tower = room.towers.get(towerId);
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "타입 강화할 수 없는 타워입니다." };
+    const player = room.players.get(userId);
+    if (!player) return { ok: false, message: "참가자가 아닙니다." };
+    player.typeUpgrades ??= emptyTypeUpgrades();
+    const currentLevel = player.typeUpgrades[tower.unitType] ?? 0;
+    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, message: "해당 타입은 최대 강화 단계입니다." };
+    const cost = upgradeCost(currentLevel);
+    if (player.gold < cost) return { ok: false, message: "골드가 부족합니다." };
+    player.gold -= cost;
+    const nextLevel = currentLevel + 1;
+    player.typeUpgrades[tower.unitType] = nextLevel;
+    for (const ownedTower of room.towers.values()) {
+      if (ownedTower.ownerUserId === userId && ownedTower.unitType === tower.unitType) {
+        syncTowerPower(ownedTower, nextLevel);
+      }
+    }
     return { ok: true };
   }
 
@@ -196,7 +302,12 @@ export class GameEngine {
     );
     if (!mate) return { ok: false, message: "같은 등급 타워가 2개 필요합니다." };
 
-    const power = TD_RARITY_POWER[upgradedRarity];
+    const player = room.players.get(userId);
+    player && (player.typeUpgrades ??= emptyTypeUpgrades());
+    const characterId = TD_POOL_CHARACTER_IDS[Math.floor(Math.random() * TD_POOL_CHARACTER_IDS.length)];
+    const unitType = unitTypeForCharacter(characterId);
+    const level = player?.typeUpgrades?.[unitType] ?? 0;
+    const power = applyTypePower(upgradedRarity, level);
     const keepSlot = base.slotId;
     room.towers.delete(base.id);
     room.towers.delete(mate.id);
@@ -204,10 +315,13 @@ export class GameEngine {
       ...base,
       rarity: upgradedRarity,
       slotId: keepSlot,
-      characterId: TD_POOL_CHARACTER_IDS[Math.floor(Math.random() * TD_POOL_CHARACTER_IDS.length)],
+      characterId,
+      unitType,
       damage: power.damage,
       range: power.range,
       attackMs: power.attackMs,
+      upgradeLevel: level,
+      upgradeCost: level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level),
       lastAttackAt: 0,
       locked: false,
     });

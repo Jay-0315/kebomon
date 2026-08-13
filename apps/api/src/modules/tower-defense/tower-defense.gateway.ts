@@ -112,6 +112,27 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
     this.broadcast(room.id);
   }
 
+  @SubscribeMessage("td:tower:fixed-summon")
+  fixedSummon(@MessageBody() data: { slotId?: string; characterId?: number; actionId?: string }, @ConnectedSocket() client: Socket) {
+    const { room, error } = this.rooms.fixedSummon(
+      client.data.userId as string,
+      String(data?.slotId ?? ""),
+      Number(data?.characterId),
+      data?.actionId,
+    );
+    if (!room) return;
+    if (error) client.emit("td:error", { message: error });
+    this.broadcast(room.id);
+  }
+
+  @SubscribeMessage("td:tower:upgrade")
+  upgrade(@MessageBody() data: { towerId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
+    const { room, error } = this.rooms.upgrade(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
+    if (!room) return;
+    if (error) client.emit("td:error", { message: error });
+    this.broadcast(room.id);
+  }
+
   @SubscribeMessage("td:tower:sell")
   sell(@MessageBody() data: { towerId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
     const { room, error } = this.rooms.sell(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
@@ -199,6 +220,7 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
       connected: true,
       gold: 0,
       kills: 0,
+      typeUpgrades: { fire: 0, water: 0, nature: 0 },
     };
   }
 

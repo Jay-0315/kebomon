@@ -1,9 +1,14 @@
-import type { TdPoint, TdRarity } from "../types/tower-defense.types";
+import type { TdPoint, TdRarity, TdUnitType } from "../types/tower-defense.types";
 
 export const TD_MAX_PLAYERS = 4;
 export const TD_MAX_LIVES = 30;
 export const TD_START_GOLD = 120;
 export const TD_SUMMON_COST = 45;
+export const TD_FIXED_SUMMON_COST = 140;
+export const TD_UPGRADE_BASE_COST = 70;
+export const TD_MAX_TOWER_UPGRADE = 10;
+export const TD_TYPE_UPGRADE_BASE_COST = 85;
+export const TD_TYPE_UPGRADE_COST_STEP = 55;
 export const TD_TICK_MS = 100;
 export const TD_WAVE_COUNT = 30;
 export const TD_WAVE_BREAK_MS = 4_000;
@@ -71,4 +76,25 @@ export const TD_RARITY_POWER: Record<TdRarity, { damage: number; range: number; 
   epic: { damage: 58, range: 180, attackMs: 730 },
   legendary: { damage: 88, range: 195, attackMs: 680 },
   mythic: { damage: 135, range: 210, attackMs: 620 },
+};
+
+export const TD_UNIT_TYPE_LABEL: Record<TdUnitType, string> = {
+  fire: "불",
+  water: "물",
+  nature: "풀",
+};
+
+export const TD_POOL_CHARACTER_TYPES: Record<number, TdUnitType> = {
+  127: "fire",
+  75: "fire",
+  84: "fire",
+  21: "fire",
+  179: "water",
+  36: "water",
+  121: "water",
+  131: "water",
+  52: "nature",
+  154: "nature",
+  83: "nature",
+  66: "nature",
 };
