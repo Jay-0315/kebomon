@@ -15,6 +15,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # node_modules(생성된 Prisma client 포함) + 빌드 산출물 복사
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/apps/api/prisma ./prisma
