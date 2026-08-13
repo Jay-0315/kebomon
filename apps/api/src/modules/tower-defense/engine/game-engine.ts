@@ -95,7 +95,7 @@ function syncTowerPower(tower: TdTower, level: number) {
   tower.upgradeCost = level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level);
 }
 
-function buildWave(wave: number): Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">> {
+function buildWave(wave: number, speedMultiplier: 1 | 2): Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">> {
   const boss = wave % 10 === 0;
   const kind = boss ? "boss" : wave % 5 === 0 ? "tough" : wave % 3 === 0 ? "fast" : "normal";
   const count = boss ? 1 : 10 + Math.min(20, wave * 2);
@@ -106,7 +106,7 @@ function buildWave(wave: number): Array<Omit<TdMonster, "id" | "pathT" | "reache
     kind,
     hp: boss ? hpBase * 12 : kind === "tough" ? hpBase * 2.2 : hpBase,
     maxHp: boss ? hpBase * 12 : kind === "tough" ? hpBase * 2.2 : hpBase,
-    speed: speedBase,
+    speed: speedBase * speedMultiplier,
     reward: boss ? 100 + wave * 4 : 8 + Math.floor(wave * 0.8),
   }));
 }
@@ -126,7 +126,7 @@ function ownedSlotId(userId: string, slotId: string) {
 }
 
 export class GameEngine {
-  static createRoom(hostUserId: string, code: string): TdRoom {
+  static createRoom(hostUserId: string, code: string, speedMultiplier: 1 | 2 = 1): TdRoom {
     return {
       id: id("room"),
       code,
@@ -141,6 +141,7 @@ export class GameEngine {
       nextWaveAt: 0,
       lives: TD_MAX_LIVES,
       maxLives: TD_MAX_LIVES,
+      speedMultiplier,
       arenas: new Map(),
       towers: new Map(),
       monsters: new Map(),
@@ -178,6 +179,7 @@ export class GameEngine {
       nextWaveInMs: room.waveActive ? 0 : Math.max(0, room.nextWaveAt - now),
       lives: summaryLives,
       maxLives: room.maxLives,
+      speedMultiplier: room.speedMultiplier,
       path: TD_PATH,
       placementZones: TD_PLACEMENT_ZONES,
       slots: players.flatMap((player) =>
@@ -400,7 +402,7 @@ export class GameEngine {
     if (!room.waveActive && now >= room.nextWaveAt) {
       room.wave += 1;
       room.waveActive = true;
-      const wave = buildWave(room.wave);
+      const wave = buildWave(room.wave, room.speedMultiplier);
       for (const player of room.players.values()) {
         const arena = room.arenas.get(player.userId);
         if (!arena || arena.lives <= 0) continue;
@@ -441,7 +443,7 @@ export class GameEngine {
       const target = this.pickTarget(candidates, tower.targetMode);
       target.hp -= tower.damage;
       tower.lastAttackAt = now;
-      room.projectiles.push({ id: id("proj"), ownerUserId: tower.ownerUserId, from: { x: slot.x, y: slot.y }, toMonsterId: target.id, createdAt: now });
+      room.projectiles.push({ id: id("proj"), ownerUserId: tower.ownerUserId, from: { x: slot.x, y: slot.y }, toMonsterId: target.id, unitType: tower.unitType, createdAt: now });
       if (target.hp <= 0) {
         room.monsters.delete(target.id);
         const owner = room.players.get(tower.ownerUserId);

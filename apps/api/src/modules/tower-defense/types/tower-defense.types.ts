@@ -75,6 +75,7 @@ export interface TdProjectile {
   ownerUserId: string;
   from: TdPoint;
   toMonsterId: string;
+  unitType: TdUnitType;
   createdAt: number;
 }
 
@@ -98,6 +99,7 @@ export interface TdSnapshot {
   nextWaveInMs: number;
   lives: number;
   maxLives: number;
+  speedMultiplier: 1 | 2;
   path: TdPoint[];
   placementZones: TdPlacementZone[];
   slots: (TdPlacementSlot & { ownerUserId: string; occupiedBy: string | null })[];
@@ -125,6 +127,7 @@ export interface TdRoom {
   nextWaveAt: number;
   lives: number;
   maxLives: number;
+  speedMultiplier: 1 | 2;
   arenas: Map<string, TdArena>;
   towers: Map<string, TdTower>;
   monsters: Map<string, TdMonster>;

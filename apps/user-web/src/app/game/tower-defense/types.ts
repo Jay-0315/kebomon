@@ -81,12 +81,13 @@ export interface TdSnapshot {
   nextWaveInMs: number;
   lives: number;
   maxLives: number;
+  speedMultiplier: 1 | 2;
   path: TdPoint[];
   placementZones: TdPlacementZone[];
   slots: (TdPlacementSlot & { ownerUserId: string; occupiedBy: string | null })[];
   towers: TdTower[];
   monsters: TdMonster[];
-  projectiles: { id: string; ownerUserId: string; from: TdPoint; toMonsterId: string; createdAt: number }[];
+  projectiles: { id: string; ownerUserId: string; from: TdPoint; toMonsterId: string; unitType: TdUnitType; createdAt: number }[];
   message?: string;
   result?: { won: boolean; wavesCleared: number };
 }

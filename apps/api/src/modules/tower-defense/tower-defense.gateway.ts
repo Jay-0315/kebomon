@@ -43,9 +43,10 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
   }
 
   @SubscribeMessage("td:room:create")
-  async create(@MessageBody() data: { characterId?: number }, @ConnectedSocket() client: Socket) {
+  async create(@MessageBody() data: { characterId?: number; speedMultiplier?: number }, @ConnectedSocket() client: Socket) {
     const player = await this.makePlayer(client, data?.characterId);
-    const room = this.rooms.createRoom(player);
+    const speedMultiplier = Number(data?.speedMultiplier) === 2 ? 2 : 1;
+    const room = this.rooms.createRoom(player, speedMultiplier);
     client.join(this.rooms.channel(room.id));
     client.emit("td:self", { userId: player.userId, socketId: client.id });
     this.broadcast(room.id, "방이 생성되었습니다.");

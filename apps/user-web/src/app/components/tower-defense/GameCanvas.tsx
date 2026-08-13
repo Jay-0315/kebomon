@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CHARACTERS } from "../../data/characters";
 import type { TdPlacementZone, TdPoint, TdSnapshot } from "../../game/tower-defense/types";
+import PixelCharacter from "../PixelCharacter";
 
 const W = 1920;
 const H = 1080;
@@ -21,6 +22,37 @@ const TYPE_GLOW: Record<string, string> = {
   water: "#67e8f9",
   nature: "#86efac",
 };
+
+const MONSTER_ASSET: Record<string, string> = {
+  normal: "/td/monsters/slime_nature_walk.png",
+  fast: "/td/monsters/slime_lightning_walk.png",
+  tough: "/td/monsters/slime_dark_walk.png",
+  boss: "/td/monsters/slime_fire_walk.png",
+};
+
+const PROJECTILE_ASSET: Record<string, string> = {
+  fire: "/td/effects/orb_fire.png",
+  water: "/td/effects/orb_ice.png",
+  nature: "/td/effects/orb_nature.png",
+};
+
+const BURST_ASSET: Record<string, string> = {
+  fire: "/td/effects/burst_fire.png",
+  water: "/td/effects/burst_ice.png",
+  nature: "/td/effects/burst_nature.png",
+};
+
+const imageCache = new Map<string, HTMLImageElement>();
+
+function getImage(src: string) {
+  if (typeof Image === "undefined") return null;
+  const cached = imageCache.get(src);
+  if (cached) return cached;
+  const image = new Image();
+  image.src = src;
+  imageCache.set(src, image);
+  return image;
+}
 
 function dist(a: TdPoint, b: TdPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -44,6 +76,33 @@ function pathDirection(path: TdPoint[], t: number) {
   const p1 = pointOnPath(path, Math.max(0, t - 0.01));
   const p2 = pointOnPath(path, Math.min(1, t + 0.01));
   return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+function drawImageCentered(ctx: CanvasRenderingContext2D, image: HTMLImageElement | null, x: number, y: number, size: number, fallback: () => void) {
+  if (image?.complete && image.naturalWidth > 0) {
+    ctx.drawImage(image, x - size / 2, y - size / 2, size, size);
+    return;
+  }
+  fallback();
+}
+
+function drawSpriteSheetCentered(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | null,
+  x: number,
+  y: number,
+  size: number,
+  frameSeed: number,
+  fallback: () => void,
+) {
+  if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    const frameCount = Math.max(1, Math.floor(image.naturalWidth / image.naturalHeight));
+    const frame = Math.floor(frameSeed) % frameCount;
+    const frameW = image.naturalWidth / frameCount;
+    ctx.drawImage(image, frame * frameW, 0, frameW, image.naturalHeight, x - size / 2, y - size / 2, size, size);
+    return;
+  }
+  fallback();
 }
 
 function screenToWorld(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
@@ -234,21 +293,40 @@ interface Props {
 
 export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHeight = false, onSelectTower, onSummon }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const snapshotArrivedAtRef = useRef(Date.now());
   const [hoverSlotId, setHoverSlotId] = useState<string | null>(null);
+  const [renderClock, setRenderClock] = useState(() => Date.now());
+
+  const ownerId = viewUserId ?? selfUserId;
+  const visibleSlots = useMemo(() => snapshot?.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId) ?? [], [ownerId, snapshot]);
+  const visibleTowers = useMemo(() => snapshot?.towers.filter((tower) => !ownerId || tower.ownerUserId === ownerId) ?? [], [ownerId, snapshot]);
+
+  useEffect(() => {
+    snapshotArrivedAtRef.current = Date.now();
+  }, [snapshot?.tick]);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    let frame = 0;
+    const loop = () => {
+      setRenderClock(Date.now());
+      frame = window.requestAnimationFrame(loop);
+    };
+    frame = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [snapshot]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !snapshot) return;
 
-    const ownerId = viewUserId ?? selfUserId;
-    const visibleSlots = snapshot.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId);
-    const visibleTowers = snapshot.towers.filter((tower) => !ownerId || tower.ownerUserId === ownerId);
     const visibleMonsters = snapshot.monsters.filter((monster) => !ownerId || monster.ownerUserId === ownerId);
     const visibleProjectiles = snapshot.projectiles.filter((projectile) => !ownerId || projectile.ownerUserId === ownerId);
     const isOwnView = !!ownerId && ownerId === selfUserId;
     const hoverSlot = hoverSlotId ? visibleSlots.find((s) => s.id === hoverSlotId) : null;
     const selectedTower = selectedTowerId ? visibleTowers.find((t) => t.id === selectedTowerId) : null;
+    const extrapolateSeconds = Math.min(0.16, Math.max(0, (renderClock - snapshotArrivedAtRef.current) / 1000));
 
     ctx.clearRect(0, 0, W, H);
     drawBackground(ctx);
@@ -271,7 +349,7 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
     }
 
     if (hoverSlot && !hoverSlot.occupiedBy) {
-      const range = selectedTower?.range ?? 170;
+      const range = selectedTower?.range ?? 340;
       ctx.fillStyle = "rgba(34, 211, 238, 0.07)";
       ctx.strokeStyle = "rgba(103, 232, 249, 0.34)";
       ctx.lineWidth = 3;
@@ -288,62 +366,56 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
       ctx.stroke();
     }
 
+    if (selectedTower) {
+      const slot = visibleSlots.find((s) => s.id === selectedTower.slotId);
+      if (slot) {
+        ctx.fillStyle = "rgba(34, 211, 238, 0.06)";
+        ctx.strokeStyle = "rgba(103, 232, 249, 0.3)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(slot.x, slot.y, selectedTower.range, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
     for (const tower of visibleTowers) {
       const slot = visibleSlots.find((s) => s.id === tower.slotId);
       if (!slot) continue;
-      const char = CHARACTERS.find((c) => c.id === tower.characterId);
       const rarityColor = RARITY_FILL[tower.rarity] ?? "#94a3b8";
       const typeColor = TYPE_GLOW[tower.unitType] ?? "#86efac";
       ctx.save();
       ctx.shadowColor = typeColor;
       ctx.shadowBlur = tower.id === selectedTowerId ? 28 : 16;
-      ctx.fillStyle = char?.colors.s ?? rarityColor;
-      ctx.beginPath();
-      ctx.roundRect(slot.x - 31, slot.y - 52, 62, 68, 12);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = char?.colors.p ?? "#ffffff";
-      ctx.beginPath();
-      ctx.arc(slot.x, slot.y - 23, 17, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = char?.colors.a ?? rarityColor;
-      ctx.beginPath();
-      ctx.moveTo(slot.x - 27, slot.y + 4);
-      ctx.lineTo(slot.x + 27, slot.y + 4);
-      ctx.lineTo(slot.x + 19, slot.y + 31);
-      ctx.lineTo(slot.x - 19, slot.y + 31);
-      ctx.closePath();
-      ctx.fill();
       ctx.strokeStyle = rarityColor;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = tower.id === selectedTowerId ? 5 : 3;
+      ctx.beginPath();
+      ctx.arc(slot.x, slot.y, tower.id === selectedTowerId ? 48 : 42, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.fillRect(slot.x - 8, slot.y - 28, 5, 5);
-      ctx.fillRect(slot.x + 4, slot.y - 28, 5, 5);
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 13px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(char?.korName ?? char?.name ?? String(tower.characterId), slot.x, slot.y + 56);
       ctx.restore();
     }
 
     for (const monster of visibleMonsters) {
-      const p = pointOnPath(snapshot.path, monster.pathT);
-      const a = pathDirection(snapshot.path, monster.pathT);
+      const renderPathT = Math.min(1, monster.pathT + monster.speed * extrapolateSeconds);
+      const p = pointOnPath(snapshot.path, renderPathT);
+      const a = pathDirection(snapshot.path, renderPathT);
       const r = monster.kind === "boss" ? 34 : monster.kind === "tough" ? 25 : 20;
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(a);
       ctx.shadowColor = monster.kind === "boss" ? "#ef4444" : "#84cc16";
       ctx.shadowBlur = monster.kind === "boss" ? 22 : 12;
-      ctx.fillStyle = monster.kind === "boss" ? "#ef4444" : monster.kind === "fast" ? "#38bdf8" : monster.kind === "tough" ? "#a855f7" : "#84cc16";
-      ctx.beginPath();
-      ctx.moveTo(r + 8, 0);
-      ctx.lineTo(-r, -r * 0.72);
-      ctx.lineTo(-r * 0.45, 0);
-      ctx.lineTo(-r, r * 0.72);
-      ctx.closePath();
-      ctx.fill();
+      const monsterImage = getImage(MONSTER_ASSET[monster.kind] ?? MONSTER_ASSET.normal);
+      drawSpriteSheetCentered(ctx, monsterImage, 0, 0, r * 2.5, renderClock / 110 + monster.wave, () => {
+        ctx.fillStyle = monster.kind === "boss" ? "#ef4444" : monster.kind === "fast" ? "#38bdf8" : monster.kind === "tough" ? "#a855f7" : "#84cc16";
+        ctx.beginPath();
+        ctx.moveTo(r + 8, 0);
+        ctx.lineTo(-r, -r * 0.72);
+        ctx.lineTo(-r * 0.45, 0);
+        ctx.lineTo(-r, r * 0.72);
+        ctx.closePath();
+        ctx.fill();
+      });
       ctx.restore();
 
       const hpPct = Math.max(0, monster.hp / monster.maxHp);
@@ -356,15 +428,50 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
     for (const projectile of visibleProjectiles) {
       const target = visibleMonsters.find((m) => m.id === projectile.toMonsterId);
       if (!target) continue;
-      const to = pointOnPath(snapshot.path, target.pathT);
-      ctx.strokeStyle = "#6ee7b7";
-      ctx.lineWidth = 5;
-      ctx.shadowColor = "#22c55e";
-      ctx.shadowBlur = 16;
+      const targetPathT = Math.min(1, target.pathT + target.speed * extrapolateSeconds);
+      const to = pointOnPath(snapshot.path, targetPathT);
+      const age = Math.max(0, renderClock - projectile.createdAt);
+      const progress = Math.max(0, Math.min(1, age / 320));
+      const x = projectile.from.x + (to.x - projectile.from.x) * progress;
+      const y = projectile.from.y + (to.y - projectile.from.y) * progress;
+      const color = TYPE_GLOW[projectile.unitType] ?? "#6ee7b7";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 14;
       ctx.beginPath();
       ctx.moveTo(projectile.from.x, projectile.from.y);
-      ctx.lineTo(to.x, to.y);
+      ctx.lineTo(x, y);
       ctx.stroke();
+      const projectileImage = getImage(PROJECTILE_ASSET[projectile.unitType] ?? PROJECTILE_ASSET.nature);
+      ctx.fillStyle = color;
+      const orb = ctx.createRadialGradient(x, y, 2, x, y, 18);
+      orb.addColorStop(0, "rgba(255,255,255,0.95)");
+      orb.addColorStop(0.32, color);
+      orb.addColorStop(1, "rgba(2,6,23,0)");
+      ctx.fillStyle = orb;
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.fill();
+      drawImageCentered(ctx, projectileImage, x, y, 18, () => undefined);
+      if (progress > 0.72) {
+        const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
+        ctx.globalAlpha = 1 - progress * 0.35;
+        drawImageCentered(ctx, burstImage, to.x, to.y, 38, () => undefined);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(to.x, to.y, 22 + progress * 12, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let i = 0; i < 8; i += 1) {
+          const a = (Math.PI * 2 * i) / 8 + progress;
+          ctx.beginPath();
+          ctx.moveTo(to.x + Math.cos(a) * 14, to.y + Math.sin(a) * 14);
+          ctx.lineTo(to.x + Math.cos(a) * (34 + progress * 18), to.y + Math.sin(a) * (34 + progress * 18));
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
       ctx.shadowBlur = 0;
     }
 
@@ -375,12 +482,11 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
     ctx.fillStyle = "#bbf7d0";
     ctx.fillText("SPAWN", start.x + 24, start.y - 28);
     ctx.fillText("CORE", end.x - 84, end.y + 52);
-  }, [hoverSlotId, selfUserId, snapshot, selectedTowerId, viewUserId]);
+  }, [hoverSlotId, ownerId, renderClock, selfUserId, snapshot, selectedTowerId, visibleSlots, visibleTowers]);
 
   const handlePointer = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot) return;
     const p = screenToWorld(e.currentTarget, e.clientX, e.clientY);
-    const ownerId = viewUserId ?? selfUserId;
     const scopedSnapshot = { ...snapshot, slots: snapshot.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId) };
     setHoverSlotId(getSlotAtPosition(scopedSnapshot, p.x, p.y)?.id ?? null);
   };
@@ -388,7 +494,6 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot) return;
     const p = screenToWorld(e.currentTarget, e.clientX, e.clientY);
-    const ownerId = viewUserId ?? selfUserId;
     const scopedSnapshot = { ...snapshot, slots: snapshot.slots.filter((s) => !ownerId || s.ownerUserId === ownerId) };
     const slot = getSlotAtPosition(scopedSnapshot, p.x, p.y);
     if (!slot) {
@@ -401,16 +506,42 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={W}
-      height={H}
-      onMouseMove={handlePointer}
-      onMouseLeave={() => setHoverSlotId(null)}
-      onClick={handleClick}
-      className={`block aspect-video w-full rounded-md border border-emerald-500/50 bg-[#080d14] object-contain shadow-[0_0_28px_rgba(16,185,129,0.18)] ${
+    <div
+      className={`relative aspect-video w-full overflow-hidden rounded-md border border-emerald-500/50 bg-[#080d14] shadow-[0_0_28px_rgba(16,185,129,0.18)] ${
         fullHeight ? "h-full max-h-full" : "max-h-[calc(100vh-220px)]"
       }`}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        onMouseMove={handlePointer}
+        onMouseLeave={() => setHoverSlotId(null)}
+        onClick={handleClick}
+        className="absolute inset-0 h-full w-full object-contain"
+      />
+      {visibleTowers.map((tower) => {
+        const slot = visibleSlots.find((s) => s.id === tower.slotId);
+        const char = CHARACTERS.find((c) => c.id === tower.characterId);
+        if (!slot) return null;
+        return (
+          <button
+            key={tower.id}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectTower(tower.id);
+            }}
+            className="absolute z-10 flex -translate-x-1/2 -translate-y-[74%] flex-col items-center outline-none"
+            style={{ left: `${(slot.x / W) * 100}%`, top: `${(slot.y / H) * 100}%` }}
+          >
+            <PixelCharacter characterId={tower.characterId} size={72} />
+            <span className="mt-[-8px] max-w-24 truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+              {char?.korName ?? char?.name ?? `#${tower.characterId}`}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -17,11 +17,11 @@ export class GameRoomManager {
 
   constructor(private readonly towerDefenseService: TowerDefenseService) {}
 
-  createRoom(player: TdPlayer) {
+  createRoom(player: TdPlayer, speedMultiplier: 1 | 2 = 1) {
     this.leaveUser(player.userId);
     let code = roomCode();
     while (this.codeToRoomId.has(code)) code = roomCode();
-    const room = GameEngine.createRoom(player.userId, code);
+    const room = GameEngine.createRoom(player.userId, code, speedMultiplier);
     this.addPlayer(room, player);
     this.rooms.set(room.id, room);
     this.codeToRoomId.set(code, room.id);

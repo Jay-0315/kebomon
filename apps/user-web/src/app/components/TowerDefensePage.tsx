@@ -1,9 +1,10 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Crown, Gem, Hammer, Heart, Lock, LogIn, LogOut, MessageCircle, Radio, Send, Shield, ShoppingCart, Swords, Trophy, Unlock, Users, Zap } from "lucide-react";
+import { Coins, Copy, Crown, Hammer, Heart, Lock, LogIn, LogOut, MessageCircle, Radio, Send, Shield, ShoppingCart, Swords, Trophy, Unlock, Users, Zap } from "lucide-react";
 import { api } from "../lib/api";
 import { disconnectTowerDefenseSocket, getTowerDefenseSocket } from "../lib/socket";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
+import type { TranslationKey } from "../lib/i18n";
 import type { TdChatMessage, TdSnapshot, TdTargetMode, TdUnitType } from "../game/tower-defense/types";
 import GameCanvas from "./tower-defense/GameCanvas";
 import PixelCharacter from "./PixelCharacter";
@@ -16,22 +17,22 @@ interface RankingEntry {
   characterId: number | null;
 }
 
-const TARGET_LABEL: Record<TdTargetMode, string> = {
-  front: "앞",
-  back: "뒤",
-  strong: "강",
-  weak: "약",
-  boss: "보스",
+const TARGET_LABEL_KEY: Record<TdTargetMode, TranslationKey> = {
+  front: "tower_defense.target_front",
+  back: "tower_defense.target_back",
+  strong: "tower_defense.target_strong",
+  weak: "tower_defense.target_weak",
+  boss: "tower_defense.target_boss",
 };
 
 const RANDOM_SUMMON_COST = 45;
 const FIXED_SUMMON_COST = 140;
 const TYPE_UPGRADE_BASE_COST = 85;
 const TYPE_UPGRADE_COST_STEP = 55;
-const TYPE_LABEL: Record<TdUnitType, string> = {
-  fire: "불",
-  water: "물",
-  nature: "풀",
+const TYPE_LABEL_KEY: Record<TdUnitType, TranslationKey> = {
+  fire: "tower_defense.type_fire",
+  water: "tower_defense.type_water",
+  nature: "tower_defense.type_nature",
 };
 
 const TYPE_STYLE: Record<TdUnitType, string> = {
@@ -48,10 +49,13 @@ function actionId() {
   return `a_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function formatText(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template);
+}
+
 export default function TowerDefensePage() {
   const { rewardSummary } = useAppData();
-  const { lang } = useLang();
-  const ko = lang === "ko";
+  const { t } = useLang();
   const [snapshot, setSnapshot] = useState<TdSnapshot | null>(null);
   const [selfUserId, setSelfUserId] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState("");
@@ -60,6 +64,7 @@ export default function TowerDefensePage() {
   const [chat, setChat] = useState<TdChatMessage[]>([]);
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
   const [moveTowerId, setMoveTowerId] = useState<string | null>(null);
+  const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2>(1);
   const [summonMode, setSummonMode] = useState<"random" | "fixed">("random");
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [summary, setSummary] = useState<{
@@ -148,7 +153,7 @@ export default function TowerDefensePage() {
 
   const createRoom = () => {
     setError(null);
-    socket.emit("td:room:create", { characterId: myCharacterId });
+    socket.emit("td:room:create", { characterId: myCharacterId, speedMultiplier });
   };
 
   const joinRoom = () => {
@@ -220,52 +225,64 @@ export default function TowerDefensePage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-5">
-      <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-4 md:flex-row md:items-center md:justify-between">
+    <div className="mx-auto max-w-[1440px] space-y-4 px-4 py-5">
+      <div className="grid gap-4 rounded-md border border-border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
         <div>
           <p className="flex items-center gap-2 text-xl font-bold">
             <Shield className="h-5 w-5 text-primary" />
-            {ko ? "・罹墾 夋・・・被慈・､" : "Random Tower Defense"}
+            {t("tower_defense.title")}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {ko ? "・罹ｲ・ｰ ・・握・ｼ ・・げ﨑俾ｳ, 增ｴ・ｼ・ｴ・ｸ孖ｸ・・・・ｹ・ｼ ・誤鵠・・ｧ・・ｴ・ｹ﨑ｩ・壱共." : "Server-authoritative real-time defense room."}
+            {t("tower_defense.subtitle")}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{ko ? "최고 기록" : "Best"}</p>
+          <div className="flex min-h-14 flex-col justify-center rounded-md bg-muted px-3 py-2">
+            <p className="text-muted-foreground">{t("tower_defense.best_record")}</p>
             <p className="font-bold">{summary?.bestWave ?? 0}</p>
           </div>
-          <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{ko ? "・ｨ・ 巐滕・" : "Daily KP"}</p>
+          <div className="flex min-h-14 flex-col justify-center rounded-md bg-muted px-3 py-2">
+            <p className="text-muted-foreground">{t("tower_defense.daily_kp")}</p>
             <p className="font-bold">{summary?.dailyKpEarned ?? 0}/{summary?.dailyKpCap ?? 1200}</p>
           </div>
-          <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{ko ? "판당 상한" : "Run Cap"}</p>
+          <div className="flex min-h-14 flex-col justify-center rounded-md bg-muted px-3 py-2">
+            <p className="text-muted-foreground">{t("tower_defense.per_run_cap")}</p>
             <p className="font-bold">{summary?.perRunKpCap ?? 400} KP</p>
           </div>
         </div>
       </div>
 
       {!snapshot && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="rounded-md border border-border bg-card p-5">
             <p className="mb-3 flex items-center gap-2 text-sm font-bold">
               <Radio className="h-4 w-4 text-primary" />
-              {ko ? "・ｩ ・晧┳ ・尖株 ・罷糖 ・・棗" : "Create or Join"}
+              {t("tower_defense.create_or_join")}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-stretch gap-3 xl:grid-cols-[240px_220px_minmax(320px,1fr)]">
               <button
                 onClick={createRoom}
                 className="rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90"
               >
-                {ko ? "・・・ｩ ・誤豆・ｰ" : "Create Room"}
+                {t("tower_defense.create_room")}
               </button>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 rounded-md border border-border bg-muted/30 p-1 text-xs font-bold">
+                {([1, 2] as const).map((speed) => (
+                  <button
+                    key={speed}
+                    type="button"
+                    onClick={() => setSpeedMultiplier(speed)}
+                    className={`rounded px-2 py-2 ${speedMultiplier === speed ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {speed === 1 ? t("tower_defense.speed_default") : t("tower_defense.speed_double")}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-2">
                 <input
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder={ko ? "・ｩ ・罷糖" : "Room code"}
+                  placeholder={t("tower_defense.room_code")}
                   className="min-w-0 flex-1 rounded-md border border-border bg-input-background px-3 py-2 text-sm"
                 />
                 <button
@@ -273,7 +290,7 @@ export default function TowerDefensePage() {
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-primary"
                 >
                   <LogIn className="h-4 w-4" />
-                  {ko ? "・・棗" : "Join"}
+                  {t("tower_defense.join")}
                 </button>
               </div>
             </div>
@@ -298,7 +315,7 @@ export default function TowerDefensePage() {
             />
             {moveTowerId && (
               <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
-                ・ｴ・呰腹 ・・・ｬ・ｯ・・・夋晨葺・ｸ・・
+                {t("tower_defense.move_prompt")}
               </div>
             )}
             {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
@@ -404,6 +421,7 @@ function InGameShell({
   onLeave: () => void;
   onSendChat: () => void;
 }) {
+  const { t } = useLang();
   const [viewUserId, setViewUserId] = useState(selfUserId);
   const me = snapshot.players.find((p) => p.userId === selfUserId) ?? null;
   const viewingPlayer = snapshot.players.find((p) => p.userId === viewUserId) ?? me;
@@ -420,13 +438,13 @@ function InGameShell({
       <div className="flex h-screen min-h-0 flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-emerald-500/20 bg-[#071016] px-4 py-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <ResourcePill icon={<Gem className="h-4 w-4 text-cyan-300" />} label="GOLD" value={me?.gold ?? 0} tone="text-cyan-200" />
-            <ResourcePill icon={<Swords className="h-4 w-4 text-red-300" />} label="KILLS" value={me?.kills ?? 0} tone="text-red-200" />
-            <ResourcePill icon={<Heart className="h-4 w-4 text-rose-300" />} label="LIFE" value={`${me?.lives ?? snapshot.lives}/${me?.maxLives ?? snapshot.maxLives}`} tone="text-rose-200" />
-            <ResourcePill icon={<Zap className="h-4 w-4 text-amber-300" />} label="WAVE" value={snapshot.wave || 1} tone="text-amber-200" />
+            <ResourcePill icon={<Coins className="h-4 w-4 text-amber-300" />} label={t("tower_defense.gold")} value={me?.gold ?? 0} tone="text-amber-200" />
+            <ResourcePill icon={<Swords className="h-4 w-4 text-red-300" />} label={t("tower_defense.kills")} value={me?.kills ?? 0} tone="text-red-200" />
+            <ResourcePill icon={<Heart className="h-4 w-4 text-rose-300" />} label={t("tower_defense.life")} value={`${me?.lives ?? snapshot.lives}/${me?.maxLives ?? snapshot.maxLives}`} tone="text-rose-200" />
+            <ResourcePill icon={<Zap className="h-4 w-4 text-amber-300" />} label={t("tower_defense.wave")} value={snapshot.wave || 1} tone="text-amber-200" />
           </div>
           <button onClick={onLeave} className="rounded border border-emerald-500/30 px-3 py-1 font-bold text-emerald-200 hover:bg-emerald-500/10">
-            ・俾ｰ・ｰ
+            {t("tower_defense.leave")}
           </button>
         </div>
 
@@ -442,14 +460,17 @@ function InGameShell({
               onSummon={onSummon}
             />
             <div className="absolute left-3 top-3 rounded border border-emerald-500/40 bg-black/70 px-3 py-2 text-xs text-emerald-100 backdrop-blur">
-              <p className="font-bold">{viewingPlayer?.nickname ?? "PLAYER"} AREA</p>
+              <p className="font-bold">{formatText(t("tower_defense.player_area"), { player: viewingPlayer?.nickname ?? "PLAYER" })}</p>
               <p className="text-emerald-300/75">
-                {snapshot.waveActive ? "웨이브 진행 중" : `다음 웨이브 ${Math.ceil(snapshot.nextWaveInMs / 1000)}초`}
+                {snapshot.waveActive
+                  ? t("tower_defense.wave_active")
+                  : formatText(t("tower_defense.next_wave_in"), { sec: Math.ceil(snapshot.nextWaveInMs / 1000) })}
               </p>
             </div>
             {moveTowerId && (
               <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded border border-amber-300/60 bg-black/75 px-4 py-2 text-sm font-bold text-amber-200">
-                ・ｴ・呰腹 ・・・ｰ・・・川揆 ・夋・              </div>
+                {t("tower_defense.move_prompt")}
+              </div>
             )}
             {error && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-red-400/50 bg-black/80 px-4 py-2 text-sm font-bold text-red-200">
@@ -512,11 +533,12 @@ function ScoreBoard({
   viewUserId: string | null;
   onViewUser: (userId: string) => void;
 }) {
+  const { t } = useLang();
   return (
     <div className="rounded border border-emerald-500/35 bg-black/45 p-3 text-sm text-emerald-100">
       <div className="mb-3 flex items-center justify-between">
-        <p className="font-black">PLAYERS</p>
-        <p className="text-xs text-emerald-300/70">클릭 시 관전 전환</p>
+        <p className="font-black">{t("tower_defense.players")}</p>
+        <p className="text-xs text-emerald-300/70">{t("tower_defense.spectate_hint")}</p>
       </div>
       <div className="space-y-2">
         {snapshot.players.map((p) => (
@@ -534,7 +556,9 @@ function ScoreBoard({
           >
             <div className="min-w-0">
               <p className="truncate font-bold">{p.nickname}</p>
-              <p className="text-[10px] text-emerald-300/60">{p.userId === selfUserId ? "MY AREA" : p.connected ? "ONLINE" : "RECONNECT"}</p>
+              <p className="text-[10px] text-emerald-300/60">
+                {p.userId === selfUserId ? t("tower_defense.my_area") : p.connected ? t("tower_defense.online") : t("tower_defense.reconnect")}
+              </p>
             </div>
             <p className="text-right font-mono font-bold text-rose-200">{p.lives}</p>
             <p className="text-right font-mono font-bold">{p.kills}</p>
@@ -547,6 +571,7 @@ function ScoreBoard({
 }
 
 function MiniMap({ slots, towers }: { slots: number; towers: number }) {
+  const { t } = useLang();
   return (
     <div className="border-r border-emerald-500/20 p-3">
       <div className="h-full rounded border border-emerald-500/35 bg-black/60 p-3">
@@ -555,8 +580,8 @@ function MiniMap({ slots, towers }: { slots: number; towers: number }) {
             <span key={i} className={`h-3 rounded-sm ${i < towers ? "bg-emerald-400" : "bg-emerald-900/50"}`} />
           ))}
         </div>
-        <p className="mt-3 text-xs font-bold text-emerald-200">・ｰ・・{towers}/{slots}</p>
-        <p className="mt-1 text-[10px] text-emerald-300/60">4・・・ｬ・ｭ / ・卓蕗 ・ｨ孖ｸ</p>
+        <p className="mt-3 text-xs font-bold text-emerald-200">{formatText(t("tower_defense.deploy_status"), { towers, slots })}</p>
+        <p className="mt-1 text-[10px] text-emerald-300/60">{t("tower_defense.own_slot_status")}</p>
       </div>
     </div>
   );
@@ -599,10 +624,11 @@ function CommandCard({
   onSell: () => void;
   onTargetMode: (mode: TdTargetMode) => void;
 }) {
+  const { t } = useLang();
   return (
     <div className="grid gap-3 p-3 lg:grid-cols-[260px_1fr]">
       <div className="rounded border border-emerald-500/30 bg-black/55 p-3">
-        <p className="mb-2 text-xs font-black text-emerald-200">・夋・・簿ｳｴ</p>
+        <p className="mb-2 text-xs font-black text-emerald-200">{t("tower_defense.unit_info")}</p>
         {selectedTower ? (
           <div className="flex items-center gap-3">
             <PixelCharacter characterId={selectedTower.characterId} size={52} />
@@ -610,28 +636,31 @@ function CommandCard({
               <div className="flex flex-wrap items-center gap-1.5">
                 <p className="font-black text-emerald-100">#{selectedTower.characterId}</p>
                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-black ${TYPE_STYLE[selectedTower.unitType]}`}>
-                  {TYPE_LABEL[selectedTower.unitType]} {selectedTypeLevel}・・                </span>
+                  {formatText(t("tower_defense.type_level"), { type: t(TYPE_LABEL_KEY[selectedTower.unitType]), level: selectedTypeLevel })}
+                </span>
               </div>
               <p className="text-xs text-emerald-300/70">
-                {selectedTower.rarity} ﾂｷ DMG {selectedTower.damage} ﾂｷ RNG {selectedTower.range}
+                {selectedTower.rarity} · DMG {selectedTower.damage} · RNG {selectedTower.range}
               </p>
-              <p className="text-xs text-cyan-200">・､・・夋・・・倣剩・・{selectedTypeCost || "MAX"}</p>
+              <p className="text-xs text-cyan-200">
+                {formatText(t("tower_defense.next_upgrade_cost"), { cost: selectedTypeCost || "MAX" })}
+              </p>
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-3">
             <PixelCharacter characterId={myCharacterId} size={52} />
             <div>
-              <p className="font-black text-emerald-100">슬롯을 선택해 배치</p>
-              <p className="text-xs text-emerald-300/70">・ｨ・・・夋・弡・・・・・增ｴ・ｭ</p>
+              <p className="font-black text-emerald-100">{t("tower_defense.select_slot")}</p>
+              <p className="text-xs text-emerald-300/70">{t("tower_defense.select_slot_desc")}</p>
             </div>
           </div>
         )}
         {selectedSlot && <p className="mt-2 text-[10px] text-emerald-300/55">SLOT {selectedSlot.id}</p>}
         <div className="mt-3 grid grid-cols-3 gap-1.5">
-          {(Object.keys(TYPE_LABEL) as TdUnitType[]).map((type) => (
+          {(Object.keys(TYPE_LABEL_KEY) as TdUnitType[]).map((type) => (
             <div key={type} className={`rounded border px-2 py-1 text-center text-[10px] font-black ${TYPE_STYLE[type]}`}>
-              {TYPE_LABEL[type]} {typeUpgrades[type] ?? 0}/10
+              {t(TYPE_LABEL_KEY[type])} {typeUpgrades[type] ?? 0}/10
             </div>
           ))}
         </div>
@@ -645,8 +674,8 @@ function CommandCard({
               summonMode === "random" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
             } ${!canRandom ? "opacity-50" : ""}`}
           >
-            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> ・罹墾 ・醐劍</span>
-            <span className="mt-1 block font-mono text-[11px]">・・圸 {RANDOM_SUMMON_COST}G</span>
+            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> {t("tower_defense.random_summon")}</span>
+            <span className="mt-1 block font-mono text-[11px]">{formatText(t("tower_defense.cost_gold"), { cost: RANDOM_SUMMON_COST })}</span>
           </button>
           <button
             onClick={() => onSummonMode("fixed")}
@@ -654,20 +683,20 @@ function CommandCard({
               summonMode === "fixed" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
             } ${!canFixed ? "opacity-50" : ""}`}
           >
-            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> 확정 유닛</span>
-            <span className="mt-1 block font-mono text-[11px]">비용 {FIXED_SUMMON_COST}G</span>
+            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> {t("tower_defense.fixed_summon")}</span>
+            <span className="mt-1 block font-mono text-[11px]">{formatText(t("tower_defense.cost_gold"), { cost: FIXED_SUMMON_COST })}</span>
           </button>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          <ActionButton icon={<Hammer className="h-4 w-4" />} label="夋・・ｰ倣剩" disabled={!canUpgrade} onClick={onUpgrade} />
-          <ActionButton label="﨑ｩ・ｱ" disabled={!selectedTower || selectedTower.locked} onClick={onMerge} />
-          <ActionButton label="이동" disabled={!selectedTower} onClick={onMove} />
-          <ActionButton label={selectedTower?.locked ? "잠금 해제" : "잠금"} disabled={!selectedTower} onClick={onToggleLock} />
+          <ActionButton icon={<Hammer className="h-4 w-4" />} label={t("tower_defense.type_upgrade")} disabled={!canUpgrade} onClick={onUpgrade} />
+          <ActionButton label={t("tower_defense.merge")} disabled={!selectedTower || selectedTower.locked} onClick={onMerge} />
+          <ActionButton label={t("tower_defense.move")} disabled={!selectedTower} onClick={onMove} />
+          <ActionButton label={selectedTower?.locked ? t("tower_defense.unlock") : t("tower_defense.lock")} disabled={!selectedTower} onClick={onToggleLock} />
         </div>
 
         <div className="grid grid-cols-6 gap-2">
-          {(Object.keys(TARGET_LABEL) as TdTargetMode[]).map((mode) => (
+          {(Object.keys(TARGET_LABEL_KEY) as TdTargetMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => onTargetMode(mode)}
@@ -678,7 +707,7 @@ function CommandCard({
                   : "border-emerald-500/25 text-emerald-200 disabled:opacity-40"
               }`}
             >
-              {TARGET_LABEL[mode]}
+              {t(TARGET_LABEL_KEY[mode])}
             </button>
           ))}
           <button
@@ -686,7 +715,7 @@ function CommandCard({
             disabled={!selectedTower}
             className="rounded border border-red-400/35 px-2 py-2 text-xs font-black text-red-200 hover:bg-red-500/10 disabled:opacity-40"
           >
-            甯尖ｧ､
+            {t("tower_defense.sell")}
           </button>
         </div>
       </div>
@@ -718,6 +747,7 @@ function CompactChat({
   setMessage: (value: string) => void;
   onSend: () => void;
 }) {
+  const { t } = useLang();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -728,11 +758,15 @@ function CompactChat({
     <div className="border-l border-emerald-500/20 p-3">
       <div className="flex h-full flex-col rounded border border-emerald-500/30 bg-black/55 p-2">
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-1 overflow-auto text-xs text-emerald-100">
-          {chat.slice(-5).map((m) => (
-            <p key={m.id} className="truncate">
-              <span className="font-bold text-emerald-300">{m.nickname}</span> {m.message}
-            </p>
-          ))}
+          {chat.length === 0 ? (
+            <p className="text-emerald-300/60">{t("tower_defense.no_messages")}</p>
+          ) : (
+            chat.slice(-5).map((m) => (
+              <p key={m.id} className="truncate">
+                <span className="font-bold text-emerald-300">{m.nickname}</span> {m.message}
+              </p>
+            ))
+          )}
         </div>
         <div className="mt-2 flex gap-1">
           <input
@@ -754,13 +788,14 @@ function CompactChat({
 }
 
 function Hud({ snapshot }: { snapshot: TdSnapshot }) {
+  const { t } = useLang();
   return (
     <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-      <HudCell icon={<Swords className="h-4 w-4" />} label="Wave" value={`${snapshot.wave || 1}`} />
-      <HudCell icon={<Heart className="h-4 w-4" />} label="Life" value={`${snapshot.lives}/${snapshot.maxLives}`} />
-      <HudCell icon={<Users className="h-4 w-4" />} label="Run Cap" value={`${snapshot.players.length}/4`} />
-      <HudCell icon={<Zap className="h-4 w-4" />} label="Next" value={snapshot.waveActive ? "Active" : `${Math.ceil(snapshot.nextWaveInMs / 1000)}s`} />
-      <HudCell icon={<Trophy className="h-4 w-4" />} label="Room" value={snapshot.roomCode} />
+      <HudCell icon={<Swords className="h-4 w-4" />} label={t("tower_defense.wave")} value={`${snapshot.wave || 1}`} />
+      <HudCell icon={<Heart className="h-4 w-4" />} label={t("tower_defense.life")} value={`${snapshot.lives}/${snapshot.maxLives}`} />
+      <HudCell icon={<Users className="h-4 w-4" />} label={t("tower_defense.players")} value={`${snapshot.players.length}/4`} />
+      <HudCell icon={<Zap className="h-4 w-4" />} label={t("tower_defense.next")} value={snapshot.waveActive ? t("tower_defense.active") : `${Math.ceil(snapshot.nextWaveInMs / 1000)}s`} />
+      <HudCell icon={<Trophy className="h-4 w-4" />} label={t("tower_defense.room")} value={snapshot.roomCode} />
     </div>
   );
 }
@@ -789,25 +824,26 @@ function RoomPanel({
   onStart: () => void;
   onLeave: () => void;
 }) {
+  const { t } = useLang();
   const me = snapshot.players.find((p) => p.userId === selfUserId);
   return (
     <div className="rounded-md border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-sm font-bold">Room {snapshot.roomCode}</p>
+        <p className="text-sm font-bold">{formatText(t("tower_defense.room_with_code"), { code: snapshot.roomCode })}</p>
         <div className="flex gap-1.5">
           <button
             onClick={() => void navigator.clipboard?.writeText(snapshot.roomCode)}
             className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:border-primary"
           >
             <Copy className="h-3.5 w-3.5" />
-            Copy
+            {t("tower_defense.copy")}
           </button>
           <button
             onClick={onLeave}
             className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:border-destructive hover:text-destructive"
           >
             <LogOut className="h-3.5 w-3.5" />
-            ・俾ｰ・ｰ
+            {t("tower_defense.leave")}
           </button>
         </div>
       </div>
@@ -821,11 +857,13 @@ function RoomPanel({
                   {p.userId === snapshot.hostUserId && <Crown className="h-3.5 w-3.5 text-amber-400" />}
                   {p.nickname}
                 </p>
-                <p className="text-xs text-muted-foreground">{p.connected ? "online" : "reconnect wait"} ﾂｷ {p.kills} kills</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.connected ? t("tower_defense.online") : t("tower_defense.reconnect")} · {formatText(t("tower_defense.kills_value"), { kills: p.kills })}
+                </p>
               </div>
             </div>
             <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${p.ready || p.userId === snapshot.hostUserId ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {p.userId === snapshot.hostUserId ? "HOST" : p.ready ? "READY" : "WAIT"}
+              {p.userId === snapshot.hostUserId ? t("tower_defense.host") : p.ready ? t("tower_defense.ready_state") : t("tower_defense.wait")}
             </span>
           </div>
         ))}
@@ -833,21 +871,21 @@ function RoomPanel({
       {snapshot.phase === "lobby" && (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onReady} className="rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-primary">
-            {me?.ready ? "준비 취소" : "준비"}
+            {me?.ready ? t("tower_defense.unready") : t("tower_defense.ready")}
           </button>
           <button
             onClick={onStart}
             disabled={!isHost}
             className="rounded-md bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-40"
           >
-            ・懍梠
+            {t("tower_defense.start")}
           </button>
         </div>
       )}
       {snapshot.phase === "ended" && snapshot.result && (
         <div className="mt-3 rounded-md bg-primary/10 p-3 text-sm">
-          <p className="font-bold">{snapshot.result.won ? "승리" : "종료"}</p>
-          <p className="text-muted-foreground">・・峡 ・ｨ・ｴ・・{snapshot.result.wavesCleared}</p>
+          <p className="font-bold">{snapshot.result.won ? t("tower_defense.victory") : t("tower_defense.ended")}</p>
+          <p className="text-muted-foreground">{formatText(t("tower_defense.clear_wave"), { wave: snapshot.result.wavesCleared })}</p>
         </div>
       )}
     </div>
@@ -871,11 +909,12 @@ function TowerPanel({
   onSell: () => void;
   onTargetMode: (mode: TdTargetMode) => void;
 }) {
+  const { t } = useLang();
   return (
     <div className="rounded-md border border-border bg-card p-4">
-      <p className="mb-3 text-sm font-bold">Tower</p>
+      <p className="mb-3 text-sm font-bold">{t("tower_defense.tower")}</p>
       {!tower ? (
-        <p className="text-sm text-muted-foreground">・・・ｬ・ｯ・・增ｴ・ｭ﨑俯ｩｴ ・罹墾 夋・誤･ｼ ・醐劍﨑ｩ・壱共.</p>
+        <p className="text-sm text-muted-foreground">{t("tower_defense.tower_empty")}</p>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -885,17 +924,17 @@ function TowerPanel({
                 #{tower.characterId}
                 {tower.locked ? <Lock className="h-3.5 w-3.5 text-amber-400" /> : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
               </p>
-              <p className="text-xs text-muted-foreground">{tower.rarity} ﾂｷ DMG {tower.damage} ﾂｷ RNG {tower.range}</p>
+              <p className="text-xs text-muted-foreground">{tower.rarity} · DMG {tower.damage} · RNG {tower.range}</p>
             </div>
           </div>
           <div className="grid grid-cols-5 gap-1">
-            {(Object.keys(TARGET_LABEL) as TdTargetMode[]).map((mode) => (
+            {(Object.keys(TARGET_LABEL_KEY) as TdTargetMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => onTargetMode(mode)}
                 className={`rounded border px-1 py-1 text-[11px] font-bold ${tower.targetMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
               >
-                {TARGET_LABEL[mode]}
+                {t(TARGET_LABEL_KEY[mode])}
               </button>
             ))}
           </div>
@@ -904,23 +943,23 @@ function TowerPanel({
               onClick={onMove}
               className={`rounded-md border px-3 py-2 text-sm font-bold ${moving ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary"}`}
             >
-              이동
+              {t("tower_defense.move")}
             </button>
             <button
               onClick={onMerge}
               disabled={tower.locked}
               className="rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-primary hover:text-primary disabled:opacity-40"
             >
-              﨑ｩ・ｱ
+              {t("tower_defense.merge")}
             </button>
             <button
               onClick={onToggleLock}
               className={`rounded-md border px-3 py-2 text-sm font-bold ${tower.locked ? "border-amber-400/50 bg-amber-400/10 text-amber-500" : "border-border hover:border-primary"}`}
             >
-              {tower.locked ? "잠금 해제" : "잠금"}
+              {tower.locked ? t("tower_defense.unlock") : t("tower_defense.lock")}
             </button>
             <button onClick={onSell} className="rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-destructive hover:text-destructive">
-              甯尖ｧ､
+              {t("tower_defense.sell")}
             </button>
           </div>
         </div>
@@ -940,6 +979,7 @@ function ChatPanel({
   setMessage: (value: string) => void;
   onSend: () => void;
 }) {
+  const { t } = useLang();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -950,16 +990,16 @@ function ChatPanel({
     <div className="rounded-md border border-border bg-card p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-bold">
         <MessageCircle className="h-4 w-4 text-primary" />
-        Room Chat
+        {t("tower_defense.room_chat")}
       </p>
       <div ref={scrollRef} className="mb-3 h-40 space-y-2 overflow-auto rounded-md bg-muted/30 p-2">
         {chat.length === 0 ? (
-          <p className="text-xs text-muted-foreground">・肥亨・・ ・・慣・壱共.</p>
+          <p className="text-xs text-muted-foreground">{t("tower_defense.no_messages")}</p>
         ) : (
           chat.map((m) => (
             <p key={m.id} className="text-xs">
               <span className={m.userId === "system" ? "font-bold text-primary" : "font-bold"}>{m.nickname}</span>
-              <span className="text-muted-foreground"> ﾂｷ </span>
+              <span className="text-muted-foreground"> · </span>
               <span>{m.message}</span>
             </p>
           ))
@@ -984,11 +1024,12 @@ function ChatPanel({
 }
 
 function RankingPanel({ rankings }: { rankings: RankingEntry[] }) {
+  const { t } = useLang();
   return (
     <div className="rounded-md border border-border bg-card p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-bold">
         <Trophy className="h-4 w-4 text-amber-400" />
-        Rankings
+        {t("tower_defense.rankings")}
       </p>
       <div className="space-y-2">
         {rankings.slice(0, 8).map((r) => (

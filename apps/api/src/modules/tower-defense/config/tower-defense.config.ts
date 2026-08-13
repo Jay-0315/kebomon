@@ -61,12 +61,12 @@ export const TD_RARITY_WEIGHTS: Record<TdRarity, number> = {
 };
 
 export const TD_RARITY_POWER: Record<TdRarity, { damage: number; range: number; attackMs: number }> = {
-  common: { damage: 16, range: 150, attackMs: 850 },
-  uncommon: { damage: 24, range: 160, attackMs: 820 },
-  rare: { damage: 38, range: 170, attackMs: 780 },
-  epic: { damage: 58, range: 180, attackMs: 730 },
-  legendary: { damage: 88, range: 195, attackMs: 680 },
-  mythic: { damage: 135, range: 210, attackMs: 620 },
+  common: { damage: 16, range: 340, attackMs: 850 },
+  uncommon: { damage: 24, range: 365, attackMs: 820 },
+  rare: { damage: 38, range: 395, attackMs: 780 },
+  epic: { damage: 58, range: 425, attackMs: 730 },
+  legendary: { damage: 88, range: 460, attackMs: 680 },
+  mythic: { damage: 135, range: 500, attackMs: 620 },
 };
 
 export const TD_UNIT_TYPE_LABEL: Record<TdUnitType, string> = {
