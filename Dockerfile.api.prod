@@ -1,14 +1,13 @@
-# ───── build stage ─────
-# api를 독립 프로젝트로 빌드 (모노레포 workspace 미사용 → @prisma/client 누락 방지)
 FROM node:20-alpine AS build
 WORKDIR /app
 
-COPY apps/api/package.json ./package.json
-RUN npm install --include=dev
+COPY package.json package-lock.json* ./
+COPY apps/api/package.json ./apps/api/package.json
+RUN npm ci --include=dev --workspace @kebo/api
 
-COPY apps/api/ ./
+COPY apps/api/ ./apps/api/
 # Prisma client 생성 + TypeScript 빌드 (dist)
-RUN npx prisma generate && npm run build
+RUN npm run prisma:generate --workspace @kebo/api && npm run build --workspace @kebo/api
 
 # ───── run stage ─────
 FROM node:20-alpine AS run
@@ -17,9 +16,9 @@ ENV NODE_ENV=production
 
 # node_modules(생성된 Prisma client 포함) + 빌드 산출물 복사
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/apps/api/dist ./dist
+COPY --from=build /app/apps/api/prisma ./prisma
+COPY --from=build /app/apps/api/package.json ./package.json
 
 EXPOSE 4000
 CMD ["node", "dist/main.js"]
