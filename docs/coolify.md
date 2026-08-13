@@ -45,3 +45,22 @@ VAPID_EMAIL=
 - The Coolify compose file does not publish host ports. Let Coolify's proxy route traffic to the `web` service.
 - MySQL data is stored in the named Docker volume `mysql-data`.
 - The Coolify admin nginx config does not use `deploy/admin.htpasswd`; admin access is protected by the app's own admin login.
+
+## CI/CD
+
+Coolify is the production deployment owner.
+
+Recommended setup:
+
+1. Create the resource from the GitHub repository using the GitHub App integration.
+2. Set the tracked branch to `main`.
+3. Set the build pack to Docker Compose.
+4. Set the compose file to `docker-compose.coolify.yml`.
+5. Open the application `Advanced` settings and enable `Auto Deploy`.
+6. Keep the public domain assigned only to the `web` service.
+
+After this, every push to `main` triggers a Coolify deployment.
+
+The GitHub Actions workflow `.github/workflows/deploy.yml` is now manual-only and should be treated as a legacy EC2 fallback. Do not re-enable its `push` trigger while Coolify owns production deployment.
+
+The GitHub Actions workflow `.github/workflows/ci.yml` remains the PR validation workflow.

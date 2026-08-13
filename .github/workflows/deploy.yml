@@ -1,8 +1,6 @@
-name: Deploy to EC2
+name: Legacy EC2 Deploy (manual)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 concurrency:
