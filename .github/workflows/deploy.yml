@@ -45,11 +45,23 @@ jobs:
           docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
           docker rm -f kebo-mysql kebo-api kebo-web kebo-admin 2>/dev/null || true
 
+          # Coolify 실험 후 남은 컨테이너/빌드 산출물과 오래된 Docker 객체를 먼저 정리한다.
+          # 작은 EC2 디스크(20GB급)에서는 npm install 중 ENOSPC가 쉽게 나므로 빌드 전에 공간 확보가 필요하다.
+          docker ps -aq --filter "name=coolify" | xargs -r docker rm -f || true
+          docker ps -aq --filter "name=qhomjcwjtzgmtlkveohgjapp" | xargs -r docker rm -f || true
+          docker builder prune -af || true
+          docker image prune -af || true
+          docker container prune -f || true
+          docker volume prune -f || true
+          sudo -n rm -rf /artifacts/* /data/coolify 2>/dev/null || true
+          df -h
+          docker system df
+
           # mysql부터 띄우고 healthy될 때까지 대기 (schema.sql은 볼륨이 새로 생성될 때만 실행되므로,
           # 이미 떠 있던 DB에는 아래로 누락된 컬럼을 보정. MySQL(오라클)은 MariaDB와 달리
           # ADD COLUMN에 IF NOT EXISTS를 못 쓰므로 information_schema로 존재 여부를 먼저 확인하고
           # 동적 SQL(PREPARE/EXECUTE)로 없을 때만 추가 — 매번 실행해도 안전
-          docker compose -f docker-compose.prod.yml up -d --build --wait mysql
+          COMPOSE_BAKE=false docker compose -f docker-compose.prod.yml up -d --build --wait mysql
 
           docker run --rm --network host \
             -e MYSQL_PWD="${MYSQL_PASSWORD}" \
@@ -87,13 +99,13 @@ jobs:
           # (각각 npm install + vite build/tsc) 러너 메모리를 순간적으로 크게 잡아먹는다 —
           # 인스턴스가 작으면 이 시점(OOM)에 빌드가 원인 로그도 없이 그냥 취소된 것처럼 죽는다.
           # 하나씩 순차로 빌드해서 동시 메모리 사용량을 줄인다.
-          docker compose -f docker-compose.prod.yml build web
-          docker compose -f docker-compose.prod.yml build admin
-          docker compose -f docker-compose.prod.yml build api
+          COMPOSE_BAKE=false docker compose -f docker-compose.prod.yml build web
+          COMPOSE_BAKE=false docker compose -f docker-compose.prod.yml build admin
+          COMPOSE_BAKE=false docker compose -f docker-compose.prod.yml build api
 
           # api는 mysql이 healthy해야 뜨므로(depends_on), 위 스키마 보정이 끝난 뒤에만 기동됨
-          docker compose -f docker-compose.prod.yml up -d --remove-orphans
-          docker image prune -f
+          COMPOSE_BAKE=false docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          docker image prune -af
 
       - name: Health check
         run: |
