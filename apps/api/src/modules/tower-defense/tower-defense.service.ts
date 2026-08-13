@@ -65,6 +65,33 @@ export class TowerDefenseService {
     return { ok: true, attemptsLeft: MAX_DAILY_ATTEMPTS - (used + 1) };
   }
 
+  async assertRunsAvailable(userIds: string[]) {
+    const uniqueIds = [...new Set(userIds)];
+    const rewards = await Promise.all(uniqueIds.map((id) => this.getOrCreateReward(id)));
+    const blocked = rewards.find((reward) => this.attemptsUsedToday(reward) >= MAX_DAILY_ATTEMPTS);
+    if (blocked) {
+      throw new BadRequestException("오늘 도전 횟수를 모두 사용한 참가자가 있습니다.");
+    }
+  }
+
+  async consumeRuns(userIds: string[]) {
+    const uniqueIds = [...new Set(userIds)];
+    const today = getTodayKTC();
+    const rewards = await Promise.all(uniqueIds.map((id) => this.getOrCreateReward(id)));
+    await this.prisma.$transaction(
+      rewards.map((reward) =>
+        this.prisma.userReward.update({
+          where: { userId: reward.userId },
+          data: {
+            tdAttemptsToday: this.attemptsUsedToday(reward) + 1,
+            tdAttemptDate: today,
+            tdActiveRunStartedAt: new Date(),
+          },
+        }),
+      ),
+    );
+  }
+
   async submitResult(userId: string, wavesCleared: number) {
     const reward = await this.getOrCreateReward(userId);
     if (!reward.tdActiveRunStartedAt) {
@@ -86,6 +113,50 @@ export class TowerDefenseService {
       where: { userId },
       data: {
         tdActiveRunStartedAt: null,
+        ...(isNewRecord ? { tdBestWave: clampedWave } : {}),
+        ...(kp > 0 ? { missionPoints: { increment: kp } } : {}),
+      },
+    });
+
+    if (kp > 0) {
+      void logPointsChange(this.prisma, userId, kp, "타워 디펜스 웨이브 마일스톤 보상");
+    }
+    if (isNewRecord) {
+      void this.notifications
+        .create({
+          userId,
+          type: "achievement",
+          title: "타워 디펜스 신기록!",
+          body: `${clampedWave}웨이브까지 도달했습니다.`,
+          link: "/tower-defense",
+        })
+        .catch(() => undefined);
+    }
+
+    return {
+      wavesCleared: clampedWave,
+      isNewRecord,
+      bestWave: Math.max(prevBest, clampedWave),
+      kpEarned: kp,
+    };
+  }
+
+  async submitServerResult(userId: string, wavesCleared: number) {
+    return this.applyResult(userId, wavesCleared, true);
+  }
+
+  private async applyResult(userId: string, wavesCleared: number, clearActiveRun: boolean) {
+    const reward = await this.getOrCreateReward(userId);
+    const clampedWave = Math.max(0, Math.min(WAVE_COUNT, Math.floor(wavesCleared)));
+    const prevBest = reward.tdBestWave;
+    const isNewRecord = clampedWave > prevBest;
+    const crossed = TD_MILESTONES.filter((m) => m.wave > prevBest && clampedWave >= m.wave);
+    const kp = crossed.reduce((sum, m) => sum + m.kp, 0);
+
+    await this.prisma.userReward.update({
+      where: { userId },
+      data: {
+        ...(clearActiveRun ? { tdActiveRunStartedAt: null } : {}),
         ...(isNewRecord ? { tdBestWave: clampedWave } : {}),
         ...(kp > 0 ? { missionPoints: { increment: kp } } : {}),
       },

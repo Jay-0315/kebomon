@@ -79,3 +79,22 @@ export function disconnectDuelSocket() {
   _duelSocket?.disconnect();
   _duelSocket = null;
 }
+
+let _towerDefenseSocket: Socket | null = null;
+
+export function getTowerDefenseSocket(): Socket {
+  if (!_towerDefenseSocket) {
+    _towerDefenseSocket = io(`${socketBase()}/tower-defense`, {
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+      autoConnect: true,
+      auth: { token: getAuthToken() },
+    });
+  }
+  return _towerDefenseSocket;
+}
+
+export function disconnectTowerDefenseSocket() {
+  _towerDefenseSocket?.disconnect();
+  _towerDefenseSocket = null;
+}
