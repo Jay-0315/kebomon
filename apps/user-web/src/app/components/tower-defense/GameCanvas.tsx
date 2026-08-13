@@ -5,7 +5,7 @@ import PixelCharacter from "../PixelCharacter";
 
 const W = 1920;
 const H = 1080;
-const PATH_WIDTH = 118;
+const PATH_WIDTH = 76;
 const SLOT_HIT_RADIUS = 48;
 
 const RARITY_FILL: Record<string, string> = {
@@ -180,7 +180,7 @@ function drawPath(ctx: CanvasRenderingContext2D, path: TdPoint[], highlight: boo
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "rgba(0, 0, 0, 0.62)";
-  ctx.lineWidth = PATH_WIDTH + 38;
+  ctx.lineWidth = PATH_WIDTH + 18;
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
@@ -192,7 +192,7 @@ function drawPath(ctx: CanvasRenderingContext2D, path: TdPoint[], highlight: boo
   ctx.stroke();
 
   ctx.strokeStyle = "rgba(94, 234, 212, 0.16)";
-  ctx.lineWidth = PATH_WIDTH - 28;
+  ctx.lineWidth = PATH_WIDTH - 18;
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
@@ -295,7 +295,6 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const snapshotArrivedAtRef = useRef(Date.now());
   const [hoverSlotId, setHoverSlotId] = useState<string | null>(null);
-  const [renderClock, setRenderClock] = useState(() => Date.now());
 
   const ownerId = viewUserId ?? selfUserId;
   const visibleSlots = useMemo(() => snapshot?.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId) ?? [], [ownerId, snapshot]);
@@ -306,189 +305,189 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
   }, [snapshot?.tick]);
 
   useEffect(() => {
-    if (!snapshot) return;
-    let frame = 0;
-    const loop = () => {
-      setRenderClock(Date.now());
-      frame = window.requestAnimationFrame(loop);
-    };
-    frame = window.requestAnimationFrame(loop);
-    return () => window.cancelAnimationFrame(frame);
-  }, [snapshot]);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !snapshot) return;
+    let frame = 0;
 
-    const visibleMonsters = snapshot.monsters.filter((monster) => !ownerId || monster.ownerUserId === ownerId);
-    const visibleProjectiles = snapshot.projectiles.filter((projectile) => !ownerId || projectile.ownerUserId === ownerId);
-    const isOwnView = !!ownerId && ownerId === selfUserId;
-    const hoverSlot = hoverSlotId ? visibleSlots.find((s) => s.id === hoverSlotId) : null;
-    const selectedTower = selectedTowerId ? visibleTowers.find((t) => t.id === selectedTowerId) : null;
-    const extrapolateSeconds = Math.min(0.16, Math.max(0, (renderClock - snapshotArrivedAtRef.current) / 1000));
+    const drawFrame = (clock: number) => {
+      const visibleMonsters = snapshot.monsters.filter((monster) => !ownerId || monster.ownerUserId === ownerId);
+      const visibleProjectiles = snapshot.projectiles.filter((projectile) => !ownerId || projectile.ownerUserId === ownerId);
+      const isOwnView = !!ownerId && ownerId === selfUserId;
+      const hoverSlot = hoverSlotId ? visibleSlots.find((s) => s.id === hoverSlotId) : null;
+      const selectedTower = selectedTowerId ? visibleTowers.find((t) => t.id === selectedTowerId) : null;
+      const extrapolateSeconds = Math.min(0.16, Math.max(0, (clock - snapshotArrivedAtRef.current) / 1000));
 
-    ctx.clearRect(0, 0, W, H);
-    drawBackground(ctx);
-    drawPath(ctx, snapshot.path, !snapshot.waveActive || !!hoverSlot);
+      ctx.clearRect(0, 0, W, H);
+      drawBackground(ctx);
+      drawPath(ctx, snapshot.path, !snapshot.waveActive || !!hoverSlot);
 
-    for (const zone of snapshot.placementZones ?? []) drawZone(ctx, zone);
+      for (const zone of snapshot.placementZones ?? []) drawZone(ctx, zone);
 
-    for (const slot of visibleSlots) {
-      const occupied = visibleTowers.find((t) => t.id === slot.occupiedBy);
-      const isHover = hoverSlotId === slot.id;
-      const isSelected = occupied?.id === selectedTowerId;
-      const invalid = isHover && (!isOwnView || (!!slot.occupiedBy && !isSelected));
-      drawSlot(ctx, slot.x, slot.y, occupied ? RARITY_FILL[occupied.rarity] ?? "#94a3b8" : "#2dd4bf", isHover || isSelected, invalid);
-      if (!occupied) {
-        ctx.fillStyle = "rgba(204, 251, 241, 0.86)";
-        ctx.font = "bold 26px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("+", slot.x, slot.y + 9);
+      for (const slot of visibleSlots) {
+        const occupied = visibleTowers.find((t) => t.id === slot.occupiedBy);
+        const isHover = hoverSlotId === slot.id;
+        const isSelected = occupied?.id === selectedTowerId;
+        const invalid = isHover && (!isOwnView || (!!slot.occupiedBy && !isSelected));
+        drawSlot(ctx, slot.x, slot.y, occupied ? RARITY_FILL[occupied.rarity] ?? "#94a3b8" : "#2dd4bf", isHover || isSelected, invalid);
+        if (!occupied) {
+          ctx.fillStyle = "rgba(204, 251, 241, 0.86)";
+          ctx.font = "bold 26px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("+", slot.x, slot.y + 9);
+        }
       }
-    }
 
-    if (hoverSlot && !hoverSlot.occupiedBy) {
-      const range = selectedTower?.range ?? 340;
-      ctx.fillStyle = "rgba(34, 211, 238, 0.07)";
-      ctx.strokeStyle = "rgba(103, 232, 249, 0.34)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(hoverSlot.x, hoverSlot.y, range, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = "rgba(15, 23, 42, 0.62)";
-      ctx.strokeStyle = "rgba(103, 232, 249, 0.42)";
-      ctx.beginPath();
-      ctx.roundRect(hoverSlot.x - 34, hoverSlot.y - 45, 68, 74, 8);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    if (selectedTower) {
-      const slot = visibleSlots.find((s) => s.id === selectedTower.slotId);
-      if (slot) {
-        ctx.fillStyle = "rgba(34, 211, 238, 0.06)";
-        ctx.strokeStyle = "rgba(103, 232, 249, 0.3)";
+      if (hoverSlot && !hoverSlot.occupiedBy) {
+        const range = selectedTower?.range ?? 230;
+        ctx.fillStyle = "rgba(34, 211, 238, 0.07)";
+        ctx.strokeStyle = "rgba(103, 232, 249, 0.34)";
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(slot.x, slot.y, selectedTower.range, 0, Math.PI * 2);
+        ctx.arc(hoverSlot.x, hoverSlot.y, range, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(15, 23, 42, 0.62)";
+        ctx.strokeStyle = "rgba(103, 232, 249, 0.42)";
+        ctx.beginPath();
+        ctx.roundRect(hoverSlot.x - 34, hoverSlot.y - 45, 68, 74, 8);
         ctx.fill();
         ctx.stroke();
       }
-    }
 
-    for (const tower of visibleTowers) {
-      const slot = visibleSlots.find((s) => s.id === tower.slotId);
-      if (!slot) continue;
-      const rarityColor = RARITY_FILL[tower.rarity] ?? "#94a3b8";
-      const typeColor = TYPE_GLOW[tower.unitType] ?? "#86efac";
-      ctx.save();
-      ctx.shadowColor = typeColor;
-      ctx.shadowBlur = tower.id === selectedTowerId ? 28 : 16;
-      ctx.strokeStyle = rarityColor;
-      ctx.lineWidth = tower.id === selectedTowerId ? 5 : 3;
-      ctx.beginPath();
-      ctx.arc(slot.x, slot.y, tower.id === selectedTowerId ? 48 : 42, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    for (const monster of visibleMonsters) {
-      const renderPathT = Math.min(1, monster.pathT + monster.speed * extrapolateSeconds);
-      const p = pointOnPath(snapshot.path, renderPathT);
-      const a = pathDirection(snapshot.path, renderPathT);
-      const r = monster.kind === "boss" ? 34 : monster.kind === "tough" ? 25 : 20;
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(a);
-      ctx.shadowColor = monster.kind === "boss" ? "#ef4444" : "#84cc16";
-      ctx.shadowBlur = monster.kind === "boss" ? 22 : 12;
-      const monsterImage = getImage(MONSTER_ASSET[monster.kind] ?? MONSTER_ASSET.normal);
-      drawSpriteSheetCentered(ctx, monsterImage, 0, 0, r * 2.5, renderClock / 110 + monster.wave, () => {
-        ctx.fillStyle = monster.kind === "boss" ? "#ef4444" : monster.kind === "fast" ? "#38bdf8" : monster.kind === "tough" ? "#a855f7" : "#84cc16";
-        ctx.beginPath();
-        ctx.moveTo(r + 8, 0);
-        ctx.lineTo(-r, -r * 0.72);
-        ctx.lineTo(-r * 0.45, 0);
-        ctx.lineTo(-r, r * 0.72);
-        ctx.closePath();
-        ctx.fill();
-      });
-      ctx.restore();
-
-      const hpPct = Math.max(0, monster.hp / monster.maxHp);
-      ctx.fillStyle = "#111827";
-      ctx.fillRect(p.x - 34, p.y - r - 20, 68, 7);
-      ctx.fillStyle = hpPct > 0.5 ? "#22c55e" : hpPct > 0.25 ? "#f59e0b" : "#ef4444";
-      ctx.fillRect(p.x - 34, p.y - r - 20, 68 * hpPct, 7);
-    }
-
-    for (const projectile of visibleProjectiles) {
-      const target = visibleMonsters.find((m) => m.id === projectile.toMonsterId);
-      if (!target) continue;
-      const targetPathT = Math.min(1, target.pathT + target.speed * extrapolateSeconds);
-      const to = pointOnPath(snapshot.path, targetPathT);
-      const age = Math.max(0, renderClock - projectile.createdAt);
-      const progress = Math.max(0, Math.min(1, age / 320));
-      const x = projectile.from.x + (to.x - projectile.from.x) * progress;
-      const y = projectile.from.y + (to.y - projectile.from.y) * progress;
-      const color = TYPE_GLOW[projectile.unitType] ?? "#6ee7b7";
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 14;
-      ctx.beginPath();
-      ctx.moveTo(projectile.from.x, projectile.from.y);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      const projectileImage = getImage(PROJECTILE_ASSET[projectile.unitType] ?? PROJECTILE_ASSET.nature);
-      ctx.fillStyle = color;
-      const orb = ctx.createRadialGradient(x, y, 2, x, y, 18);
-      orb.addColorStop(0, "rgba(255,255,255,0.95)");
-      orb.addColorStop(0.32, color);
-      orb.addColorStop(1, "rgba(2,6,23,0)");
-      ctx.fillStyle = orb;
-      ctx.beginPath();
-      ctx.arc(x, y, 18, 0, Math.PI * 2);
-      ctx.fill();
-      drawImageCentered(ctx, projectileImage, x, y, 18, () => undefined);
-      if (progress > 0.72) {
-        const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
-        ctx.globalAlpha = 1 - progress * 0.35;
-        drawImageCentered(ctx, burstImage, to.x, to.y, 38, () => undefined);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(to.x, to.y, 22 + progress * 12, 0, Math.PI * 2);
-        ctx.stroke();
-        for (let i = 0; i < 8; i += 1) {
-          const a = (Math.PI * 2 * i) / 8 + progress;
+      if (selectedTower) {
+        const slot = visibleSlots.find((s) => s.id === selectedTower.slotId);
+        if (slot) {
+          ctx.fillStyle = "rgba(34, 211, 238, 0.06)";
+          ctx.strokeStyle = "rgba(103, 232, 249, 0.3)";
+          ctx.lineWidth = 3;
           ctx.beginPath();
-          ctx.moveTo(to.x + Math.cos(a) * 14, to.y + Math.sin(a) * 14);
-          ctx.lineTo(to.x + Math.cos(a) * (34 + progress * 18), to.y + Math.sin(a) * (34 + progress * 18));
+          ctx.arc(slot.x, slot.y, selectedTower.range, 0, Math.PI * 2);
+          ctx.fill();
           ctx.stroke();
         }
-        ctx.globalAlpha = 1;
       }
-      ctx.shadowBlur = 0;
-    }
 
-    const start = snapshot.path[0];
-    const end = snapshot.path[snapshot.path.length - 1];
-    ctx.font = "bold 18px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#bbf7d0";
-    ctx.fillText("SPAWN", start.x + 24, start.y - 28);
-    ctx.fillText("CORE", end.x - 84, end.y + 52);
-  }, [hoverSlotId, ownerId, renderClock, selfUserId, snapshot, selectedTowerId, visibleSlots, visibleTowers]);
+      for (const tower of visibleTowers) {
+        const slot = visibleSlots.find((s) => s.id === tower.slotId);
+        if (!slot) continue;
+        const rarityColor = RARITY_FILL[tower.rarity] ?? "#94a3b8";
+        const typeColor = TYPE_GLOW[tower.unitType] ?? "#86efac";
+        ctx.save();
+        ctx.shadowColor = typeColor;
+        ctx.shadowBlur = tower.id === selectedTowerId ? 28 : 16;
+        ctx.strokeStyle = rarityColor;
+        ctx.lineWidth = tower.id === selectedTowerId ? 5 : 3;
+        ctx.beginPath();
+        ctx.arc(slot.x, slot.y, tower.id === selectedTowerId ? 48 : 42, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (const monster of visibleMonsters) {
+        const renderPathT = Math.min(1, monster.pathT + monster.speed * extrapolateSeconds);
+        const p = pointOnPath(snapshot.path, renderPathT);
+        const a = pathDirection(snapshot.path, renderPathT);
+        const r = monster.kind === "boss" ? 34 : monster.kind === "tough" ? 25 : 20;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(a);
+        ctx.shadowColor = monster.kind === "boss" ? "#ef4444" : "#84cc16";
+        ctx.shadowBlur = monster.kind === "boss" ? 22 : 12;
+        const monsterImage = getImage(MONSTER_ASSET[monster.kind] ?? MONSTER_ASSET.normal);
+        drawSpriteSheetCentered(ctx, monsterImage, 0, 0, r * 2.5, clock / 110 + monster.wave, () => {
+          ctx.fillStyle = monster.kind === "boss" ? "#ef4444" : monster.kind === "fast" ? "#38bdf8" : monster.kind === "tough" ? "#a855f7" : "#84cc16";
+          ctx.beginPath();
+          ctx.moveTo(r + 8, 0);
+          ctx.lineTo(-r, -r * 0.72);
+          ctx.lineTo(-r * 0.45, 0);
+          ctx.lineTo(-r, r * 0.72);
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.restore();
+
+        const hpPct = Math.max(0, monster.hp / monster.maxHp);
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(p.x - 34, p.y - r - 20, 68, 7);
+        ctx.fillStyle = hpPct > 0.5 ? "#22c55e" : hpPct > 0.25 ? "#f59e0b" : "#ef4444";
+        ctx.fillRect(p.x - 34, p.y - r - 20, 68 * hpPct, 7);
+      }
+
+      for (const projectile of visibleProjectiles) {
+        const target = visibleMonsters.find((m) => m.id === projectile.toMonsterId);
+        if (!target) continue;
+        const targetPathT = Math.min(1, target.pathT + target.speed * extrapolateSeconds);
+        const to = pointOnPath(snapshot.path, targetPathT);
+        const age = Math.max(0, clock - projectile.createdAt);
+        const progress = Math.max(0, Math.min(1, age / 320));
+        const x = projectile.from.x + (to.x - projectile.from.x) * progress;
+        const y = projectile.from.y + (to.y - projectile.from.y) * progress;
+        const color = TYPE_GLOW[projectile.unitType] ?? "#6ee7b7";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(projectile.from.x, projectile.from.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        const projectileImage = getImage(PROJECTILE_ASSET[projectile.unitType] ?? PROJECTILE_ASSET.nature);
+        ctx.fillStyle = color;
+        const orb = ctx.createRadialGradient(x, y, 2, x, y, 18);
+        orb.addColorStop(0, "rgba(255,255,255,0.95)");
+        orb.addColorStop(0.32, color);
+        orb.addColorStop(1, "rgba(2,6,23,0)");
+        ctx.fillStyle = orb;
+        ctx.beginPath();
+        ctx.arc(x, y, 18, 0, Math.PI * 2);
+        ctx.fill();
+        drawImageCentered(ctx, projectileImage, x, y, 18, () => undefined);
+        if (progress > 0.72) {
+          const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
+          ctx.globalAlpha = 1 - progress * 0.35;
+          drawImageCentered(ctx, burstImage, to.x, to.y, 38, () => undefined);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(to.x, to.y, 22 + progress * 12, 0, Math.PI * 2);
+          ctx.stroke();
+          for (let i = 0; i < 8; i += 1) {
+            const a = (Math.PI * 2 * i) / 8 + progress;
+            ctx.beginPath();
+            ctx.moveTo(to.x + Math.cos(a) * 14, to.y + Math.sin(a) * 14);
+            ctx.lineTo(to.x + Math.cos(a) * (34 + progress * 18), to.y + Math.sin(a) * (34 + progress * 18));
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      const start = snapshot.path[0];
+      const end = snapshot.path[snapshot.path.length - 1];
+      ctx.font = "bold 18px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#bbf7d0";
+      ctx.fillText("SPAWN", start.x + 24, start.y - 28);
+      ctx.fillText("CORE", end.x - 84, end.y + 52);
+
+      if (visibleMonsters.length > 0 || visibleProjectiles.length > 0) {
+        frame = window.requestAnimationFrame(drawFrame);
+      }
+    };
+
+    drawFrame(Date.now());
+    return () => window.cancelAnimationFrame(frame);
+  }, [hoverSlotId, ownerId, selfUserId, snapshot, selectedTowerId, visibleSlots, visibleTowers]);
 
   const handlePointer = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot) return;
     const p = screenToWorld(e.currentTarget, e.clientX, e.clientY);
     const scopedSnapshot = { ...snapshot, slots: snapshot.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId) };
-    setHoverSlotId(getSlotAtPosition(scopedSnapshot, p.x, p.y)?.id ?? null);
+    const nextHoverSlotId = getSlotAtPosition(scopedSnapshot, p.x, p.y)?.id ?? null;
+    setHoverSlotId((prev) => (prev === nextHoverSlotId ? prev : nextHoverSlotId));
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -507,41 +506,45 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
 
   return (
     <div
-      className={`relative aspect-video w-full overflow-hidden rounded-md border border-emerald-500/50 bg-[#080d14] shadow-[0_0_28px_rgba(16,185,129,0.18)] ${
-        fullHeight ? "h-full max-h-full" : "max-h-[calc(100vh-220px)]"
+      className={`relative flex w-full items-center justify-center overflow-hidden rounded-md border border-emerald-500/50 bg-[#080d14] shadow-[0_0_28px_rgba(16,185,129,0.18)] ${
+        fullHeight ? "h-full min-h-0" : "aspect-video max-h-[calc(100vh-220px)]"
       }`}
     >
-      <canvas
-        ref={canvasRef}
-        width={W}
-        height={H}
-        onMouseMove={handlePointer}
-        onMouseLeave={() => setHoverSlotId(null)}
-        onClick={handleClick}
-        className="absolute inset-0 h-full w-full object-contain"
-      />
-      {visibleTowers.map((tower) => {
-        const slot = visibleSlots.find((s) => s.id === tower.slotId);
-        const char = CHARACTERS.find((c) => c.id === tower.characterId);
-        if (!slot) return null;
-        return (
-          <button
-            key={tower.id}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSelectTower(tower.id);
-            }}
-            className="absolute z-10 flex -translate-x-1/2 -translate-y-[74%] flex-col items-center outline-none"
-            style={{ left: `${(slot.x / W) * 100}%`, top: `${(slot.y / H) * 100}%` }}
-          >
-            <PixelCharacter characterId={tower.characterId} size={72} />
-            <span className="mt-[-8px] max-w-24 truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
-              {char?.korName ?? char?.name ?? `#${tower.characterId}`}
-            </span>
-          </button>
-        );
-      })}
+      <div className="relative aspect-video h-full max-h-full w-full max-w-full">
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          onMouseMove={handlePointer}
+          onMouseLeave={() => setHoverSlotId(null)}
+          onClick={handleClick}
+          className="absolute inset-0 h-full w-full"
+        />
+        {visibleTowers.map((tower) => {
+          const slot = visibleSlots.find((s) => s.id === tower.slotId);
+          const char = CHARACTERS.find((c) => c.id === tower.characterId);
+          if (!slot) return null;
+          return (
+            <button
+              key={tower.id}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelectTower(tower.id);
+              }}
+              className="absolute z-10 flex -translate-x-1/2 -translate-y-[58%] flex-col items-center outline-none"
+              style={{ left: `${(slot.x / W) * 100}%`, top: `${(slot.y / H) * 100}%` }}
+            >
+              <span className="flex h-14 w-14 items-center justify-center overflow-hidden">
+                <PixelCharacter characterId={tower.characterId} size={48} />
+              </span>
+              <span className="mt-[-3px] max-w-20 truncate rounded bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white shadow">
+                {char?.korName ?? char?.name ?? `#${tower.characterId}`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

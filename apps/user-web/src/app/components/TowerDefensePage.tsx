@@ -484,7 +484,7 @@ function InGameShell({
           </div>
         </div>
 
-        <div className="grid shrink-0 border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[200px_1fr_300px]">
+        <div className="grid h-[210px] shrink-0 overflow-hidden border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[200px_minmax(0,1fr)_300px]">
           <MiniMap slots={snapshot.slots.filter((slot) => slot.ownerUserId === selfUserId).length} towers={myTowers.length} />
           <CommandCard
             selectedTower={selectedTower}
@@ -573,7 +573,7 @@ function ScoreBoard({
 function MiniMap({ slots, towers }: { slots: number; towers: number }) {
   const { t } = useLang();
   return (
-    <div className="border-r border-emerald-500/20 p-3">
+    <div className="h-full min-h-0 border-r border-emerald-500/20 p-3">
       <div className="h-full rounded border border-emerald-500/35 bg-black/60 p-3">
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: slots }, (_, i) => (
@@ -626,8 +626,8 @@ function CommandCard({
 }) {
   const { t } = useLang();
   return (
-    <div className="grid gap-3 p-3 lg:grid-cols-[260px_1fr]">
-      <div className="rounded border border-emerald-500/30 bg-black/55 p-3">
+    <div className="grid h-full min-h-0 gap-3 overflow-hidden p-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="min-h-0 rounded border border-emerald-500/30 bg-black/55 p-3">
         <p className="mb-2 text-xs font-black text-emerald-200">{t("tower_defense.unit_info")}</p>
         {selectedTower ? (
           <div className="flex items-center gap-3">
@@ -666,7 +666,7 @@ function CommandCard({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onSummonMode("random")}
@@ -728,7 +728,7 @@ function ActionButton({ icon, label, disabled, onClick }: { icon?: React.ReactNo
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-12 items-center justify-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 text-xs font-black text-emerald-100 hover:bg-emerald-500/12 disabled:opacity-40"
+      className="flex min-h-11 items-center justify-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 text-xs font-black text-emerald-100 hover:bg-emerald-500/12 disabled:opacity-40"
     >
       {icon}
       {label}
@@ -755,7 +755,7 @@ function CompactChat({
   }, [chat.length]);
 
   return (
-    <div className="border-l border-emerald-500/20 p-3">
+    <div className="h-full min-h-0 border-l border-emerald-500/20 p-3">
       <div className="flex h-full flex-col rounded border border-emerald-500/30 bg-black/55 p-2">
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-1 overflow-auto text-xs text-emerald-100">
           {chat.length === 0 ? (

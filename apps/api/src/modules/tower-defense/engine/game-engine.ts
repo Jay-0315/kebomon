@@ -4,6 +4,8 @@
   TD_MAX_TOWER_UPGRADE,
   TD_PATH,
   TD_PLACEMENT_ZONES,
+  TD_POOL_CHARACTER_IDS,
+  TD_POOL_CHARACTER_RARITIES,
   TD_POOL_CHARACTER_TYPES,
   TD_RARITY_POWER,
   TD_RARITY_WEIGHTS,
@@ -18,9 +20,13 @@
 } from "../config/tower-defense.config";
 import type { TdMonster, TdRarity, TdRoom, TdSnapshot, TdTargetMode, TdTower, TdUnitType } from "../types/tower-defense.types";
 
-const TD_POOL_CHARACTER_IDS = [127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 83, 66];
-const RARITIES = Object.keys(TD_RARITY_WEIGHTS) as TdRarity[];
 const RARITY_ORDER: TdRarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+const DIRECT_SUMMON_RARITIES: Array<{ fromWave: number; rarities: TdRarity[] }> = [
+  { fromWave: 15, rarities: ["common", "uncommon", "rare", "epic"] },
+  { fromWave: 10, rarities: ["common", "uncommon", "rare"] },
+  { fromWave: 5, rarities: ["common", "uncommon"] },
+  { fromWave: 0, rarities: ["common"] },
+];
 
 function id(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -44,14 +50,14 @@ function pointOnPath(t: number) {
   return TD_PATH[TD_PATH.length - 1];
 }
 
-function weightedRarity(): TdRarity {
-  const total = RARITIES.reduce((sum, r) => sum + TD_RARITY_WEIGHTS[r], 0);
+function weightedRarity(allowedRarities: TdRarity[]): TdRarity {
+  const total = allowedRarities.reduce((sum, r) => sum + TD_RARITY_WEIGHTS[r], 0);
   let roll = Math.random() * total;
-  for (const r of RARITIES) {
+  for (const r of allowedRarities) {
     roll -= TD_RARITY_WEIGHTS[r];
     if (roll <= 0) return r;
   }
-  return "common";
+  return allowedRarities[0] ?? "common";
 }
 
 function nextRarity(rarity: TdRarity): TdRarity | null {
@@ -64,9 +70,28 @@ function upgradeCost(level: number) {
   return TD_TYPE_UPGRADE_BASE_COST + level * TD_TYPE_UPGRADE_COST_STEP;
 }
 
-function clampPoolCharacterId(characterId?: number) {
+function directSummonRarities(wave: number) {
+  return DIRECT_SUMMON_RARITIES.find((entry) => wave >= entry.fromWave)?.rarities ?? ["common"];
+}
+
+function pickCharacterForRarity(rarity: TdRarity) {
+  const pool = TD_POOL_CHARACTER_IDS.filter((id) => TD_POOL_CHARACTER_RARITIES[id] === rarity);
+  return pool[Math.floor(Math.random() * pool.length)] ?? TD_POOL_CHARACTER_IDS[0];
+}
+
+function pickDirectSummon(wave: number) {
+  const rarity = weightedRarity(directSummonRarities(wave));
+  const characterId = pickCharacterForRarity(rarity);
+  return { characterId, rarity };
+}
+
+function clampDirectPoolCharacterId(characterId: number | undefined, wave: number) {
   const parsed = Number(characterId);
-  return TD_POOL_CHARACTER_IDS.includes(parsed) ? parsed : TD_POOL_CHARACTER_IDS[0];
+  const rarity = TD_POOL_CHARACTER_RARITIES[parsed];
+  if ((TD_POOL_CHARACTER_IDS as readonly number[]).includes(parsed) && rarity && directSummonRarities(wave).includes(rarity)) {
+    return { characterId: parsed, rarity };
+  }
+  return pickDirectSummon(wave);
 }
 
 function emptyTypeUpgrades(): Record<TdUnitType, number> {
@@ -224,19 +249,18 @@ export class GameEngine {
   }
 
   static summon(room: TdRoom, userId: string, slotId: string): { ok: boolean; message?: string } {
-    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・・醐劍﨑 ・・・溢慣・壱共." };
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 소환할 수 있습니다." };
     const slot = TD_SLOTS.find((s) => s.id === baseSlotId(slotId));
-    if (slotOwner(slotId) !== userId) return { ok: false, message: "・ｸ・ｸ・専ｲ・﨑・ｹ・・・・溜・尖ｧ・・､・倆腹 ・・・溢慣・壱共." };
-    if (!slot) return { ok: false, message: "・俯ｪｻ・・・ｬ・ｯ・・笈・､." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "・ｴ・ｸ ・ｬ・ｩ ・卓攤 ・ｬ・ｯ・・笈・､." };
+    if (slotOwner(slotId) !== userId) return { ok: false, message: "본인 영역에만 배치할 수 있습니다." };
+    if (!slot) return { ok: false, message: "유효하지 않은 슬롯입니다." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "・ｸ・・専ｰ ・・漁・壱共." };
-    if (player.gold < TD_SUMMON_COST) return { ok: false, message: "・ｨ・懋ｰ ・・ｱ﨑ｩ・壱共." };
+    if (!player) return { ok: false, message: "플레이어 정보를 찾을 수 없습니다." };
+    if (player.gold < TD_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
     player.gold -= TD_SUMMON_COST;
 
     player.typeUpgrades ??= emptyTypeUpgrades();
-    const rarity = weightedRarity();
-    const characterId = TD_POOL_CHARACTER_IDS[Math.floor(Math.random() * TD_POOL_CHARACTER_IDS.length)];
+    const { characterId, rarity } = pickDirectSummon(room.wave);
     const unitType = unitTypeForCharacter(characterId);
     const level = player.typeUpgrades[unitType] ?? 0;
     const power = applyTypePower(rarity, level);
@@ -261,19 +285,18 @@ export class GameEngine {
   }
 
   static fixedSummon(room: TdRoom, userId: string, slotId: string, characterId?: number): { ok: boolean; message?: string } {
-    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・・ｬ・・腹 ・・・溢慣・壱共." };
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 배치할 수 있습니다." };
     const slot = TD_SLOTS.find((s) => s.id === baseSlotId(slotId));
-    if (slotOwner(slotId) !== userId) return { ok: false, message: "・ｸ・ｸ・専ｲ・﨑・ｹ・・・・溜・尖ｧ・・､・倆腹 ・・・溢慣・壱共." };
-    if (!slot) return { ok: false, message: "・俯ｪｻ・・・ｬ・ｯ・・笈・､." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "・ｴ・ｸ ・ｬ・ｩ ・卓攤 ・ｬ・ｯ・・笈・､." };
+    if (slotOwner(slotId) !== userId) return { ok: false, message: "본인 영역에만 배치할 수 있습니다." };
+    if (!slot) return { ok: false, message: "유효하지 않은 슬롯입니다." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "・ｸ・・専ｰ ・・漁・壱共." };
-    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, message: "・ｨ・懋ｰ ・・ｱ﨑ｩ・壱共." };
+    if (!player) return { ok: false, message: "플레이어 정보를 찾을 수 없습니다." };
+    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
     player.gold -= TD_FIXED_SUMMON_COST;
 
     player.typeUpgrades ??= emptyTypeUpgrades();
-    const rarity: TdRarity = "rare";
-    const selectedCharacterId = clampPoolCharacterId(characterId);
+    const { characterId: selectedCharacterId, rarity } = clampDirectPoolCharacterId(characterId, room.wave);
     const unitType = unitTypeForCharacter(selectedCharacterId);
     const level = player.typeUpgrades[unitType] ?? 0;
     const power = applyTypePower(rarity, level);
@@ -298,16 +321,16 @@ export class GameEngine {
   }
 
   static upgrade(room: TdRoom, userId: string, towerId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・夋・・・倣剩﨑 ・・・溢慣・壱共." };
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 강화할 수 있습니다." };
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "夋・・・倣剩﨑 ・・・・株 夋・護桿・壱共." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "강화할 수 있는 타워가 아닙니다." };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "・ｸ・・専ｰ ・・漁・壱共." };
+    if (!player) return { ok: false, message: "플레이어 정보를 찾을 수 없습니다." };
     player.typeUpgrades ??= emptyTypeUpgrades();
     const currentLevel = player.typeUpgrades[tower.unitType] ?? 0;
-    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, message: "﨑ｴ・ｹ 夋・・捩 ・罹劇 ・倣剩 ・ｨ・・桿・壱共." };
+    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, message: "이미 최대 강화 단계입니다." };
     const cost = upgradeCost(currentLevel);
-    if (player.gold < cost) return { ok: false, message: "・ｨ・懋ｰ ・・ｱ﨑ｩ・壱共." };
+    if (player.gold < cost) return { ok: false, message: "골드가 부족합니다." };
     player.gold -= cost;
     const nextLevel = currentLevel + 1;
     player.typeUpgrades[tower.unitType] = nextLevel;
@@ -321,7 +344,7 @@ export class GameEngine {
 
   static sell(room: TdRoom, userId: string, towerId: string) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "甯尖ｧ､﨑 ・・・・株 夋・護桿・壱共." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "판매할 수 있는 타워가 아닙니다." };
     room.towers.delete(towerId);
     const player = room.players.get(userId);
     if (player) player.gold += Math.floor(TD_SUMMON_COST * 0.55);
@@ -329,32 +352,32 @@ export class GameEngine {
   }
 
   static move(room: TdRoom, userId: string, towerId: string, slotId: string) {
-    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "・､・倆腹 ・・・・株 ・ｬ・ｯ・・笈・､." };
-    if (slotOwner(slotId) !== userId) return { ok: false, message: "・ｸ・ｸ・専ｲ・﨑・ｹ・・・・溜・尖ｧ・・ｴ・呰腹 ・・・溢慣・壱共." };
-    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・・ｴ・呰腹 ・・・溢慣・壱共." };
+    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "이동할 수 없는 슬롯입니다." };
+    if (slotOwner(slotId) !== userId) return { ok: false, message: "본인 영역으로만 이동할 수 있습니다." };
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 이동할 수 있습니다." };
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "・ｴ・呰腹 ・・・・株 夋・護桿・壱共." };
-    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "・俯ｪｻ・・・ｬ・ｯ・・笈・､." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "・ｴ・ｸ ・ｬ・ｩ ・卓攤 ・ｬ・ｯ・・笈・､." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "이동할 수 있는 타워가 아닙니다." };
+    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "유효하지 않은 슬롯입니다." };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
     tower.slotId = slotId;
     return { ok: true };
   }
 
   static merge(room: TdRoom, userId: string, towerId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "・護桷 ・・哩 ・卓乱・・﨑ｩ・ｱ﨑 ・・・溢慣・壱共." };
+    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 합성할 수 있습니다." };
     const base = room.towers.get(towerId);
-    if (!base || base.ownerUserId !== userId) return { ok: false, message: "﨑ｩ・ｱ﨑 ・・・・株 夋・護桿・壱共." };
-    if (base.locked) return { ok: false, message: "・・ｴ 夋・誤株 﨑ｩ・ｱ﨑 ・・・・慣・壱共." };
+    if (!base || base.ownerUserId !== userId) return { ok: false, message: "합성할 수 있는 타워가 아닙니다." };
+    if (base.locked) return { ok: false, message: "잠금 상태의 타워는 합성할 수 없습니다." };
     const upgradedRarity = nextRarity(base.rarity);
-    if (!upgradedRarity) return { ok: false, message: "・懋ｳ ・ｱ・餓捩 﨑ｩ・ｱ﨑 ・・・・慣・壱共." };
+    if (!upgradedRarity) return { ok: false, message: "더 이상 합성할 수 없는 등급입니다." };
     const mate = [...room.towers.values()].find(
       (t) => t.id !== base.id && t.ownerUserId === userId && t.rarity === base.rarity && !t.locked,
     );
-    if (!mate) return { ok: false, message: "・呷捩 ・ｱ・・夋・語ｰ 2・・﨑・囈﨑ｩ・壱共." };
+    if (!mate) return { ok: false, message: "같은 등급의 잠금 해제 타워가 2개 필요합니다." };
 
     const player = room.players.get(userId);
     player && (player.typeUpgrades ??= emptyTypeUpgrades());
-    const characterId = TD_POOL_CHARACTER_IDS[Math.floor(Math.random() * TD_POOL_CHARACTER_IDS.length)];
+    const characterId = pickCharacterForRarity(upgradedRarity);
     const unitType = unitTypeForCharacter(characterId);
     const level = player?.typeUpgrades?.[unitType] ?? 0;
     const power = applyTypePower(upgradedRarity, level);
@@ -380,14 +403,14 @@ export class GameEngine {
 
   static setTargetMode(room: TdRoom, userId: string, towerId: string, targetMode: TdTargetMode) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "・・ｽ﨑 ・・・・株 夋・護桿・壱共." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "대상을 변경할 수 있는 타워가 아닙니다." };
     tower.targetMode = targetMode;
     return { ok: true };
   }
 
   static setLocked(room: TdRoom, userId: string, towerId: string, locked: boolean) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "・・・・・・・ｼ ・緋ｿ ・・・・株 夋・護桿・壱共." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "잠금을 변경할 수 있는 타워가 아닙니다." };
     tower.locked = locked;
     return { ok: true };
   }

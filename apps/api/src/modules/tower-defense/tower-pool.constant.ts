@@ -1,4 +1,7 @@
 import type { CharacterMasterRow } from "../rewards/character-master.util";
+import { TD_POOL_CHARACTER_IDS } from "./config/tower-defense.config";
+
+export { TD_POOL_CHARACTER_IDS } from "./config/tower-defense.config";
 
 // 타워 풀은 180종 전체가 아니라 12종으로 추린 전용 풀을 쓴다 — 예전엔 풀이 너무 넓어서
 // "같은 캐릭터"가 두 장 모이는 일이 거의 없어 합성이 사실상 죽어있었다. 등급(rarity)마다
@@ -13,10 +16,6 @@ export const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", 
 //     uncommon: 84 드래곤(mage), 21 거북이(tank) / rare: 179 유니콘(nature), 36 로봇(meka)
 //     epic: 121 여우(cursed), 131 사자(warrior) / legendary: 52 토끼(rogue), 154 드래곤(mage)
 //     mythic: 83 거북이(tank), 66 식물(nature)
-export const TD_POOL_CHARACTER_IDS = [
-  127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 83, 66,
-] as const;
-
 export interface TowerDef {
   characterId: number;
   archetype: Archetype;

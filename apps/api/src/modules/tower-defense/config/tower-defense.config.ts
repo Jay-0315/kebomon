@@ -13,13 +13,32 @@ export const TD_TICK_MS = 100;
 export const TD_WAVE_COUNT = 30;
 export const TD_WAVE_BREAK_MS = 4_000;
 
+export const TD_POOL_CHARACTER_IDS = [
+  127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 83, 66,
+] as const;
+
 export const TD_PATH: TdPoint[] = [
-  { x: 650, y: 24 },
-  { x: 650, y: 326 },
-  { x: 1218, y: 326 },
-  { x: 1218, y: 716 },
-  { x: 730, y: 716 },
-  { x: 730, y: 1040 },
+  { x: 160, y: 245 },
+  { x: 780, y: 245 },
+  { x: 780, y: 70 },
+  { x: 780, y: 245 },
+  { x: 1225, y: 245 },
+  { x: 1225, y: 70 },
+  { x: 1225, y: 575 },
+  { x: 780, y: 575 },
+  { x: 780, y: 1010 },
+  { x: 230, y: 1010 },
+  { x: 230, y: 590 },
+  { x: 780, y: 590 },
+  { x: 780, y: 760 },
+  { x: 1225, y: 760 },
+  { x: 1225, y: 1010 },
+  { x: 1800, y: 1010 },
+  { x: 1800, y: 590 },
+  { x: 1225, y: 590 },
+  { x: 1225, y: 245 },
+  { x: 1800, y: 245 },
+  { x: 1800, y: 70 },
 ];
 
 function slots(zoneId: string, x: number, y: number, cols: number, rows: number, gapX = 94, gapY = 92): TdPlacementSlot[] {
@@ -37,16 +56,16 @@ function slots(zoneId: string, x: number, y: number, cols: number, rows: number,
 }
 
 export const TD_PLACEMENT_ZONES: TdPlacementZone[] = [
-  { id: "top-left", x: 210, y: 54, width: 330, height: 210, slots: slots("top-left", 292, 120, 2, 2, 110, 88) },
-  { id: "top-mid", x: 760, y: 48, width: 385, height: 222, slots: slots("top-mid", 840, 116, 3, 2, 104, 90) },
-  { id: "top-right", x: 1320, y: 72, width: 370, height: 218, slots: slots("top-right", 1400, 140, 3, 2, 98, 88) },
+  { id: "top-left", x: 360, y: 40, width: 350, height: 165, slots: slots("top-left", 430, 94, 3, 2, 96, 72) },
+  { id: "top-mid", x: 850, y: 40, width: 320, height: 165, slots: slots("top-mid", 915, 94, 3, 2, 86, 72) },
+  { id: "top-right", x: 1290, y: 40, width: 340, height: 165, slots: slots("top-right", 1360, 94, 3, 2, 90, 72) },
 
-  { id: "mid-left", x: 210, y: 380, width: 390, height: 246, slots: slots("mid-left", 292, 456, 3, 2, 106, 96) },
-  { id: "mid-center", x: 792, y: 420, width: 330, height: 218, slots: slots("mid-center", 870, 494, 2, 2, 112, 92) },
-  { id: "mid-right", x: 1290, y: 410, width: 410, height: 242, slots: slots("mid-right", 1370, 484, 3, 2, 108, 94) },
+  { id: "mid-left", x: 250, y: 305, width: 470, height: 225, slots: slots("mid-left", 330, 370, 4, 2, 96, 86) },
+  { id: "mid-center", x: 845, y: 315, width: 270, height: 200, slots: slots("mid-center", 910, 376, 2, 2, 98, 82) },
+  { id: "mid-right", x: 1285, y: 305, width: 465, height: 225, slots: slots("mid-right", 1365, 370, 4, 2, 94, 86) },
 
-  { id: "bot-left", x: 258, y: 780, width: 390, height: 232, slots: slots("bot-left", 338, 850, 3, 2, 106, 92) },
-  { id: "bot-right", x: 1178, y: 780, width: 420, height: 238, slots: slots("bot-right", 1262, 850, 3, 2, 112, 94) },
+  { id: "bot-left", x: 310, y: 660, width: 430, height: 320, slots: slots("bot-left", 390, 735, 4, 3, 94, 82) },
+  { id: "bot-right", x: 1290, y: 660, width: 430, height: 320, slots: slots("bot-right", 1370, 735, 4, 3, 94, 82) },
 ];
 
 export const TD_SLOTS = TD_PLACEMENT_ZONES.flatMap((zone) => zone.slots);
@@ -61,12 +80,12 @@ export const TD_RARITY_WEIGHTS: Record<TdRarity, number> = {
 };
 
 export const TD_RARITY_POWER: Record<TdRarity, { damage: number; range: number; attackMs: number }> = {
-  common: { damage: 16, range: 340, attackMs: 850 },
-  uncommon: { damage: 24, range: 365, attackMs: 820 },
-  rare: { damage: 38, range: 395, attackMs: 780 },
-  epic: { damage: 58, range: 425, attackMs: 730 },
-  legendary: { damage: 88, range: 460, attackMs: 680 },
-  mythic: { damage: 135, range: 500, attackMs: 620 },
+  common: { damage: 16, range: 230, attackMs: 850 },
+  uncommon: { damage: 24, range: 250, attackMs: 820 },
+  rare: { damage: 38, range: 275, attackMs: 780 },
+  epic: { damage: 58, range: 305, attackMs: 730 },
+  legendary: { damage: 88, range: 340, attackMs: 680 },
+  mythic: { damage: 135, range: 380, attackMs: 620 },
 };
 
 export const TD_UNIT_TYPE_LABEL: Record<TdUnitType, string> = {
@@ -88,4 +107,19 @@ export const TD_POOL_CHARACTER_TYPES: Record<number, TdUnitType> = {
   154: "nature",
   83: "nature",
   66: "nature",
+};
+
+export const TD_POOL_CHARACTER_RARITIES: Record<number, TdRarity> = {
+  127: "common",
+  75: "common",
+  84: "uncommon",
+  21: "uncommon",
+  179: "rare",
+  36: "rare",
+  121: "epic",
+  131: "epic",
+  52: "legendary",
+  154: "legendary",
+  83: "mythic",
+  66: "mythic",
 };
