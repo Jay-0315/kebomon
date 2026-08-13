@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 COPY apps/user-web/package.json ./apps/user-web/package.json
-RUN npm install
+RUN npm install --include=dev
 
 COPY . .
 
