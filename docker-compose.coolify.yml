@@ -1,0 +1,72 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://kebomon.store}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-}
+    expose:
+      - "80"
+    depends_on:
+      - api
+      - admin
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin.coolify
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://kebomon.store}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    expose:
+      - "80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.prod
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      DATABASE_URL: mysql://${MYSQL_USER:-kebo}:${MYSQL_PASSWORD:?set MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-kebo}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_EMAIL: ${VAPID_EMAIL:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://kebomon.store}
+    expose:
+      - "4000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kebo}
+      MYSQL_USER: ${MYSQL_USER:-kebo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docs/mysql-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  mysql-data:
