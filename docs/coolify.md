@@ -46,11 +46,16 @@ VAPID_EMAIL=
 - MySQL data is stored in the named Docker volume `mysql-data`.
 - The Coolify admin nginx config does not use `deploy/admin.htpasswd`; admin access is protected by the app's own admin login.
 
-## CI/CD
+## CI/CD Status
 
-Coolify is the production deployment owner.
+Production deployment currently uses GitHub Actions again because the current EC2 instance is too small for reliable Coolify source builds.
 
-Recommended setup:
+The workflow `.github/workflows/deploy.yml` deploys pushes to `main` through the existing self-hosted runner.
+
+Coolify can be re-enabled later after increasing server capacity or moving Docker image builds to CI.
+
+Recommended Coolify setup when re-enabling:
+
 
 1. Create the resource from the GitHub repository using the GitHub App integration.
 2. Set the tracked branch to `main`.
@@ -59,8 +64,6 @@ Recommended setup:
 5. Open the application `Advanced` settings and enable `Auto Deploy`.
 6. Keep the public domain assigned only to the `web` service.
 
-After this, every push to `main` triggers a Coolify deployment.
-
-The GitHub Actions workflow `.github/workflows/deploy.yml` is now manual-only and should be treated as a legacy EC2 fallback. Do not re-enable its `push` trigger while Coolify owns production deployment.
+After this, every push to `main` can trigger a Coolify deployment.
 
 The GitHub Actions workflow `.github/workflows/ci.yml` remains the PR validation workflow.
