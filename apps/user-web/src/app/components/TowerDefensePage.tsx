@@ -45,7 +45,7 @@ const SPEED_OPTIONS = [
   { value: 1, labelKey: "tower_defense.speed_default" },
   { value: 1.5, labelKey: "tower_defense.speed_double" },
   { value: 2, labelKey: "tower_defense.speed_triple" },
-] as const;
+] as const satisfies readonly { value: 1 | 1.5 | 2; labelKey: TranslationKey }[];
 
 function typeUpgradeCost(level: number) {
   return TYPE_UPGRADE_BASE_COST + level * TYPE_UPGRADE_COST_STEP;
@@ -232,79 +232,19 @@ export default function TowerDefensePage() {
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 px-4 py-5">
-      <div className="grid gap-4 rounded-md border border-border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
-        <div>
-          <p className="flex items-center gap-2 text-xl font-bold">
-            <Shield className="h-5 w-5 text-primary" />
-            {t("tower_defense.title")}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("tower_defense.subtitle")}
-          </p>
-        </div>
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="flex min-h-14 flex-col justify-center rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{t("tower_defense.best_record")}</p>
-            <p className="font-bold">{summary?.bestWave ?? 0}</p>
-          </div>
-          <div className="flex min-h-14 flex-col justify-center rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{t("tower_defense.daily_kp")}</p>
-            <p className="font-bold">{summary?.dailyKpEarned ?? 0}/{summary?.dailyKpCap ?? 1200}</p>
-          </div>
-          <div className="flex min-h-14 flex-col justify-center rounded-md bg-muted px-3 py-2">
-            <p className="text-muted-foreground">{t("tower_defense.per_run_cap")}</p>
-            <p className="font-bold">{summary?.perRunKpCap ?? 400} KP</p>
-          </div>
-        </div>
-      </div>
-
       {!snapshot && (
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="rounded-md border border-border bg-card p-5">
-            <p className="mb-3 flex items-center gap-2 text-sm font-bold">
-              <Radio className="h-4 w-4 text-primary" />
-              {t("tower_defense.create_or_join")}
-            </p>
-            <div className="grid items-stretch gap-3 xl:grid-cols-[240px_300px_minmax(320px,1fr)]">
-              <button
-                onClick={createRoom}
-                className="rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90"
-              >
-                {t("tower_defense.create_room")}
-              </button>
-              <div className="grid grid-cols-3 rounded-md border border-border bg-muted/30 p-1 text-xs font-bold">
-                {SPEED_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSpeedMultiplier(option.value)}
-                    className={`rounded px-2 py-2 ${speedMultiplier === option.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    {t(option.labelKey)}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-2">
-                <input
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder={t("tower_defense.room_code")}
-                  className="min-w-0 flex-1 rounded-md border border-border bg-input-background px-3 py-2 text-sm"
-                />
-                <button
-                  onClick={joinRoom}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-bold hover:border-primary"
-                >
-                  <LogIn className="h-4 w-4" />
-                  {t("tower_defense.join")}
-                </button>
-              </div>
-            </div>
-            {error && <p className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-          </div>
-
-          <RankingPanel rankings={rankings} />
-        </div>
+        <TowerDefenseLobby
+          summary={summary}
+          rankings={rankings}
+          roomCode={roomCode}
+          speedMultiplier={speedMultiplier}
+          myCharacterId={myCharacterId}
+          error={error}
+          onRoomCodeChange={setRoomCode}
+          onSpeedChange={setSpeedMultiplier}
+          onCreateRoom={createRoom}
+          onJoinRoom={joinRoom}
+        />
       )}
 
       {snapshot && snapshot.phase === "lobby" && (
@@ -376,6 +316,199 @@ export default function TowerDefensePage() {
           onSendChat={sendChat}
         />
       )}
+    </div>
+  );
+}
+
+function TowerDefenseLobby({
+  summary,
+  rankings,
+  roomCode,
+  speedMultiplier,
+  myCharacterId,
+  error,
+  onRoomCodeChange,
+  onSpeedChange,
+  onCreateRoom,
+  onJoinRoom,
+}: {
+  summary: {
+    attemptsLeft: number | null;
+    playMode?: "unlimited";
+    bestWave: number;
+    dailyKpCap?: number;
+    dailyKpEarned?: number;
+    dailyKpLeft?: number;
+    perRunKpCap?: number;
+  } | null;
+  rankings: RankingEntry[];
+  roomCode: string;
+  speedMultiplier: (typeof SPEED_OPTIONS)[number]["value"];
+  myCharacterId: number;
+  error: string | null;
+  onRoomCodeChange: (value: string) => void;
+  onSpeedChange: (value: (typeof SPEED_OPTIONS)[number]["value"]) => void;
+  onCreateRoom: () => void;
+  onJoinRoom: () => void;
+}) {
+  const { t } = useLang();
+  const topRankers = rankings.slice(0, 3);
+
+  return (
+    <div className="overflow-hidden rounded-md border border-emerald-500/25 bg-[#06100b] shadow-[0_0_40px_rgba(16,185,129,0.1)]">
+      <div className="relative border-b border-emerald-500/30 bg-[linear-gradient(180deg,rgba(9,33,18,0.95),rgba(3,8,6,0.96))] px-5 py-10 text-center">
+        <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(34,197,94,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,.14)_1px,transparent_1px)] [background-size:18px_18px]" />
+        <div className="relative mx-auto flex max-w-[760px] flex-col items-center">
+          <div className="mb-3 flex items-end gap-3 text-emerald-400/80">
+            <span className="h-12 w-5 rounded-t-sm border border-emerald-500/35 bg-emerald-400/10 shadow-[0_0_18px_rgba(34,197,94,.35)]" />
+            <div className="grid h-16 w-28 place-items-center rounded-t-lg border border-emerald-500/35 bg-black/35 shadow-[0_0_22px_rgba(34,197,94,.2)]">
+              <Shield className="h-8 w-8" />
+            </div>
+            <span className="h-12 w-5 rounded-t-sm border border-emerald-500/35 bg-emerald-400/10 shadow-[0_0_18px_rgba(34,197,94,.35)]" />
+          </div>
+          <p className="text-[11px] font-black uppercase tracking-[0.55em] text-emerald-400/70">KEBOMON RUIN GUARD</p>
+          <h1 className="mt-2 font-mono text-3xl font-black tracking-[0.18em] text-emerald-200 md:text-4xl">
+            {t("tower_defense.title")}
+          </h1>
+          <div className="mt-4 h-px w-40 bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
+          <p className="mt-4 max-w-xl text-sm text-emerald-100/70">
+            {t("tower_defense.subtitle")}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-5 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,.16),transparent_34%),#050807] p-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5">
+          <section className="grid gap-4 rounded-md border border-emerald-500/25 bg-black/45 p-4 md:grid-cols-[260px_minmax(0,1fr)]">
+            <div className="relative min-h-44 overflow-hidden rounded-md border border-emerald-500/25 bg-[linear-gradient(145deg,rgba(20,83,45,.35),rgba(2,6,23,.75))]">
+              <div className="absolute inset-x-6 bottom-7 h-10 rounded-full bg-emerald-400/10 blur-xl" />
+              <div className="absolute left-6 top-6 grid grid-cols-5 gap-1 opacity-55">
+                {Array.from({ length: 35 }, (_, i) => (
+                  <span key={i} className={`h-3 w-3 rounded-sm ${i % 4 === 0 ? "bg-emerald-400" : "bg-emerald-900"}`} />
+                ))}
+              </div>
+              <div className="absolute bottom-5 right-8">
+                <PixelCharacter characterId={myCharacterId} size={96} />
+              </div>
+            </div>
+
+            <div className="flex min-w-0 flex-col justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-black text-emerald-200">
+                  <Radio className="h-4 w-4 text-primary" />
+                  {t("tower_defense.create_or_join")}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-emerald-100/60">
+                  개인 영역에 유닛을 배치하고, 유적 이동로를 따라 침입하는 몬스터를 막습니다. 방장은 속도를 선택하고 최대 4명이 각자 영역을 방어합니다.
+                </p>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <button
+                  onClick={onCreateRoom}
+                  className="min-h-14 rounded-md border border-emerald-300/40 bg-emerald-400 px-4 text-sm font-black text-black shadow-[0_0_24px_rgba(52,211,153,.22)] hover:bg-emerald-300"
+                >
+                  {t("tower_defense.create_room")}
+                </button>
+                <div className="grid grid-cols-3 rounded-md border border-emerald-500/25 bg-black/45 p-1 text-xs font-black">
+                  {SPEED_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => onSpeedChange(option.value)}
+                      className={`rounded px-2 py-3 ${
+                        speedMultiplier === option.value
+                          ? "bg-emerald-400 text-black shadow-[0_0_18px_rgba(52,211,153,.24)]"
+                          : "text-emerald-100/60 hover:bg-emerald-500/10 hover:text-emerald-100"
+                      }`}
+                    >
+                      {t(option.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_120px]">
+                <input
+                  value={roomCode}
+                  onChange={(e) => onRoomCodeChange(e.target.value.toUpperCase())}
+                  placeholder={t("tower_defense.room_code")}
+                  className="min-w-0 rounded-md border border-emerald-500/20 bg-black/55 px-3 py-3 text-sm font-bold text-emerald-100 outline-none placeholder:text-emerald-100/35 focus:border-emerald-300/60"
+                />
+                <button
+                  onClick={onJoinRoom}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-500/30 px-3 py-3 text-sm font-black text-emerald-100 hover:border-emerald-300 hover:bg-emerald-500/10"
+                >
+                  <LogIn className="h-4 w-4" />
+                  {t("tower_defense.join")}
+                </button>
+              </div>
+              {error && <p className="rounded-md border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-200">{error}</p>}
+            </div>
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-3">
+            <LobbyStat icon={<Trophy className="h-4 w-4" />} label={t("tower_defense.best_record")} value={summary?.bestWave ?? 0} />
+            <LobbyStat icon={<Zap className="h-4 w-4" />} label={t("tower_defense.daily_kp")} value={`${summary?.dailyKpEarned ?? 0}/${summary?.dailyKpCap ?? 1200}`} />
+            <LobbyStat icon={<Coins className="h-4 w-4" />} label={t("tower_defense.per_run_cap")} value={`${summary?.perRunKpCap ?? 400} KP`} />
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-3">
+            <LobbyFeature icon={<Users className="h-4 w-4" />} title="4인 개인 영역" desc="각자 라이프와 배치판을 따로 운용합니다." />
+            <LobbyFeature icon={<Swords className="h-4 w-4" />} title="랜덤 소환" desc="도감 캐릭터를 등급/타입 규칙에 맞춰 배치합니다." />
+            <LobbyFeature icon={<Shield className="h-4 w-4" />} title="일일 KP 제한" desc="무한 플레이는 유지하고 보상량만 제한합니다." />
+          </section>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-md border border-amber-500/25 bg-[linear-gradient(180deg,rgba(120,53,15,.18),rgba(0,0,0,.55))] p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-black text-amber-200">
+              <Trophy className="h-4 w-4 text-amber-300" />
+              {t("tower_defense.rankings")}
+            </p>
+            <div className="space-y-2">
+              {topRankers.length === 0 ? (
+                <p className="rounded bg-black/35 px-3 py-3 text-xs text-amber-100/55">아직 기록이 없습니다.</p>
+              ) : (
+                topRankers.map((r) => (
+                  <div key={r.userId} className="grid grid-cols-[34px_minmax(0,1fr)_48px] items-center gap-2 rounded bg-black/35 px-3 py-2 text-sm">
+                    <span className="font-mono font-black text-amber-300">#{r.rank}</span>
+                    <span className="truncate font-bold text-amber-50">{r.nickname}</span>
+                    <span className="text-right font-mono font-black text-emerald-200">{r.bestWave}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-emerald-500/25 bg-black/45 p-4">
+            <p className="mb-3 text-sm font-black text-emerald-200">방어 규칙</p>
+            <div className="space-y-2 text-xs text-emerald-100/65">
+              <p className="rounded bg-emerald-500/5 px-3 py-2">빈 슬롯에만 설치되며, 설치 후 이동/잠금/판매가 가능합니다.</p>
+              <p className="rounded bg-emerald-500/5 px-3 py-2">불, 물, 풀 타입 강화는 같은 타입 유닛 전체에 적용됩니다.</p>
+              <p className="rounded bg-emerald-500/5 px-3 py-2">고등급 유닛은 합성으로 확장해 후반 웨이브를 대응합니다.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function LobbyStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+  return (
+    <div className="rounded-md border border-emerald-500/25 bg-black/45 px-4 py-3">
+      <p className="flex items-center gap-2 text-xs font-bold text-emerald-100/55">{icon}{label}</p>
+      <p className="mt-1 font-mono text-xl font-black text-emerald-100">{value}</p>
+    </div>
+  );
+}
+
+function LobbyFeature({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
+      <p className="flex items-center gap-2 text-sm font-black text-emerald-200">{icon}{title}</p>
+      <p className="mt-2 text-xs leading-5 text-emerald-100/55">{desc}</p>
     </div>
   );
 }
@@ -1024,26 +1157,6 @@ function ChatPanel({
         <button onClick={onSend} className="rounded-md bg-primary px-3 text-primary-foreground">
           <Send className="h-4 w-4" />
         </button>
-      </div>
-    </div>
-  );
-}
-
-function RankingPanel({ rankings }: { rankings: RankingEntry[] }) {
-  const { t } = useLang();
-  return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <p className="mb-3 flex items-center gap-2 text-sm font-bold">
-        <Trophy className="h-4 w-4 text-amber-400" />
-        {t("tower_defense.rankings")}
-      </p>
-      <div className="space-y-2">
-        {rankings.slice(0, 8).map((r) => (
-          <div key={r.userId} className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-sm">
-            <span>#{r.rank} {r.nickname}</span>
-            <span className="font-bold">{r.bestWave}</span>
-          </div>
-        ))}
       </div>
     </div>
   );

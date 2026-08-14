@@ -13,6 +13,7 @@
   TD_START_GOLD,
   TD_SUMMON_COST,
   TD_TICK_MS,
+  TD_TOWER_RANGE_MULTIPLIER,
   TD_TYPE_UPGRADE_BASE_COST,
   TD_TYPE_UPGRADE_COST_STEP,
   TD_WAVE_BREAK_MS,
@@ -106,7 +107,7 @@ function applyTypePower(rarity: TdRarity, level: number) {
   const base = TD_RARITY_POWER[rarity];
   return {
     damage: Math.round(base.damage * (1 + level * 0.13)),
-    range: Math.round(base.range + level * 4),
+    range: Math.round((base.range + level * 4) * TD_TOWER_RANGE_MULTIPLIER),
     attackMs: Math.max(360, Math.round(base.attackMs * (1 - Math.min(0.25, level * 0.025)))),
   };
 }
@@ -123,8 +124,8 @@ function syncTowerPower(tower: TdTower, level: number) {
 function buildWave(wave: number, speedMultiplier: TdSpeedMultiplier): Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">> {
   const boss = wave % 10 === 0;
   const kind = boss ? "boss" : wave % 5 === 0 ? "tough" : wave % 3 === 0 ? "fast" : "normal";
-  const count = boss ? 1 : 10 + Math.min(20, wave * 2);
-  const hpBase = 55 * (1 + wave * 0.14) * Math.pow(1.028, wave);
+  const count = boss ? 1 : 8 + Math.min(18, Math.floor(wave * 1.65));
+  const hpBase = 42 * (1 + wave * 0.1) * Math.pow(1.018, wave);
   const speedBase = kind === "fast" ? 0.08 : kind === "boss" ? 0.036 : 0.056;
   return Array.from({ length: count }, () => ({
     wave,

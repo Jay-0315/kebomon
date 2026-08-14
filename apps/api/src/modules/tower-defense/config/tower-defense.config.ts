@@ -12,6 +12,7 @@ export const TD_TYPE_UPGRADE_COST_STEP = 55;
 export const TD_TICK_MS = 100;
 export const TD_WAVE_COUNT = 30;
 export const TD_WAVE_BREAK_MS = 4_000;
+export const TD_TOWER_RANGE_MULTIPLIER = 1.5;
 
 export const TD_POOL_CHARACTER_IDS = [
   127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 83, 66,
