@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy, Zap, Star, Skull, Check, ChevronRight, Sparkle, X } from "lucide-react";
+import { Swords, ArrowLeft, Plus, Lock, Users, Crown, Shield, Trophy, Zap, Star, Skull, Check, ChevronRight, Sparkle, X, Bot, BookOpen, Gift } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { getStoredUser } from "../lib/auth";
@@ -349,6 +349,31 @@ export default function DuelPage() {
   const cardDesc = (c: Card) => (ko ? c.desc : ja ? c.descJa : c.descEn);
   const typeColor = (type: Card["type"]) => type === "attack" ? "#ef4444" : type === "skill" ? "#3b82f6" : "#f59e0b";
   const typeIcon = (type: Card["type"]) => type === "attack" ? <Swords className="inline h-2.5 w-2.5" /> : type === "skill" ? <Zap className="inline h-2.5 w-2.5" /> : <Star className="inline h-2.5 w-2.5" />;
+  const ownedTypes = new Set(
+    CHARACTERS.filter((c) => (rewardSummary.ownedCharacterIds ?? []).includes(c.id)).map((c) => c.type),
+  );
+  const duelCopy = {
+    tutorial: ko ? "튜토리얼 / AI 연습" : ja ? "チュートリアル / AI練習" : "Tutorial / AI Practice",
+    tutorialDesc: ko
+      ? "턴마다 에너지를 쓰고 공격/방어/스킬 카드를 순서대로 운영합니다."
+      : ja
+        ? "ターンごとにエネルギーを使い、攻撃・防御・スキルカードを運用します。"
+        : "Spend energy each turn and sequence attack, guard, and skill cards.",
+    aiNote: ko ? "AI 연습전은 서버 매칭 분리 후 활성화됩니다." : ja ? "AI練習はサーバーマッチ分離後に有効化されます。" : "AI practice unlocks after server matchmaking is separated.",
+    season: ko ? "시즌 보상" : ja ? "シーズン報酬" : "Season Rewards",
+    seasonDesc: ko ? "승수, 연승, 랭킹 기록을 시즌 보상 산정에 사용합니다." : ja ? "勝利数、連勝、ランキング記録をシーズン報酬に反映します。" : "Wins, streaks, and ranking records count toward season rewards.",
+    difficulty: ko ? "난이도" : ja ? "難易度" : "Difficulty",
+    ownedBonus: ko ? "보유 보너스" : ja ? "所持ボーナス" : "Owned bonus",
+    noBonus: ko ? "미보유 스킨" : ja ? "未所持スキン" : "No owned skin",
+    easy: ko ? "낮음" : ja ? "低" : "Easy",
+    normal: ko ? "보통" : ja ? "中" : "Normal",
+    hard: ko ? "높음" : ja ? "高" : "Hard",
+  };
+  const deckDifficulty = (deckId: string) => {
+    if (deckId.includes("guard") || deckId.includes("basic")) return duelCopy.easy;
+    if (deckId.includes("wild") || deckId.includes("trick")) return duelCopy.hard;
+    return duelCopy.normal;
+  };
 
   const HpBar = ({ side, big }: { side: Side; big?: boolean }) => {
     const pct = Math.max(0, side.hp / side.maxHp);
@@ -385,6 +410,32 @@ export default function DuelPage() {
         <TavernBanner title={t("duel.title")} desc={t("duel.desc")} />
         <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
           {error && <div className="mb-4 rounded-lg border border-red-700/50 bg-red-950/60 px-4 py-2 text-sm text-red-300 backdrop-blur">{error}</div>}
+
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border p-3" style={{ background: "rgba(15,8,2,0.82)", borderColor: "rgba(139,82,32,0.45)" }}>
+              <p className="mb-1 flex items-center gap-2 text-sm font-bold text-amber-200">
+                <BookOpen className="h-4 w-4 text-amber-400" />
+                {duelCopy.tutorial}
+              </p>
+              <p className="text-xs leading-relaxed text-amber-200/55">{duelCopy.tutorialDesc}</p>
+              <p className="mt-2 flex items-center gap-1 text-[11px] text-amber-300/45">
+                <Bot className="h-3 w-3" />
+                {duelCopy.aiNote}
+              </p>
+            </div>
+            <div className="rounded-xl border p-3" style={{ background: "rgba(15,8,2,0.82)", borderColor: "rgba(139,82,32,0.45)" }}>
+              <p className="mb-1 flex items-center gap-2 text-sm font-bold text-amber-200">
+                <Gift className="h-4 w-4 text-amber-400" />
+                {duelCopy.season}
+              </p>
+              <p className="text-xs leading-relaxed text-amber-200/55">{duelCopy.seasonDesc}</p>
+              <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[11px]">
+                <span className="rounded bg-amber-500/10 px-2 py-1 text-amber-200">{myStats?.wins ?? 0}{t("duel.wins")}</span>
+                <span className="rounded bg-amber-500/10 px-2 py-1 text-amber-200">{myStats?.bestStreak ?? 0}{t("duel.streak")}</span>
+                <span className="rounded bg-amber-500/10 px-2 py-1 text-amber-200">Rank</span>
+              </div>
+            </div>
+          </div>
 
           {/* 내 전적 + 랭킹 버튼 */}
           <div className="mb-4 flex items-center justify-between rounded-xl border p-3"
@@ -574,6 +625,7 @@ export default function DuelPage() {
                   const myPick = room.players.find((p) => p.socketId === selfId)?.deckId;
                   const picked = myPick === d.id;
                   const label = ko ? d.name : ja ? d.nameJa : d.nameEn;
+                  const hasOwnedSkin = ownedTypes.has(d.charType as (typeof CHARACTERS)[number]["type"]);
                   return (
                     <button key={d.id} onClick={() => s.emit("duel:deck", { deckId: d.id })}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 backdrop-blur-sm transition-all ${picked ? "shadow-xl" : "hover:scale-[1.02]"}`}
@@ -584,6 +636,12 @@ export default function DuelPage() {
                       }}>
                       <PixelSprite type={d.charType as never} colors={{ p: d.color, s: d.color, a: d.color }} characterId={0} rarity="common" size={40} />
                       <span className="text-sm font-bold" style={{ color: picked ? d.color : "#c8a060" }}>{label}</span>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: `${d.color}18`, color: d.color }}>
+                        {duelCopy.difficulty} {deckDifficulty(d.id)}
+                      </span>
+                      <span className={`text-[10px] font-semibold ${hasOwnedSkin ? "text-emerald-300" : "text-amber-200/35"}`}>
+                        {hasOwnedSkin ? duelCopy.ownedBonus : duelCopy.noBonus}
+                      </span>
                     </button>
                   );
                 })}

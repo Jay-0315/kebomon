@@ -130,6 +130,21 @@ export default function ColosseumPage() {
   }, []);
 
   const ownedIds = rewardSummary.ownedCharacterIds ?? [];
+  const colCopy = {
+    autoDeck: ko ? "추천 편성" : ja ? "おすすめ編成" : "Auto Deck",
+    risk: ko ? "위험도" : ja ? "危険度" : "Risk",
+    riskLow: ko ? "낮음" : ja ? "低" : "Low",
+    riskMid: ko ? "보통" : ja ? "中" : "Mid",
+    riskHigh: ko ? "높음" : ja ? "高" : "High",
+    seasonReward: ko ? "시즌 보상" : ja ? "シーズン報酬" : "Season Rewards",
+    seasonDesc:
+      ko
+        ? "티어 점수와 연승 기록을 기준으로 시즌 종료 보상과 전시 보상이 정리됩니다."
+        : ja
+          ? "ティアポイントと連勝記録を基準にシーズン終了報酬を表示します。"
+          : "Season rewards are based on tier points and win streak records.",
+    logGuide: ko ? "전투 로그는 피해, 치명타, 승패 변화를 시간순으로 확인합니다." : ja ? "戦闘ログでダメージ、クリティカル、勝敗の流れを時系列で確認します。" : "Battle logs show damage, crits, and result changes in order.",
+  };
 
   // ── 내 데이터 로드 ──
   const fetchMyData = useCallback(async () => {
@@ -259,6 +274,32 @@ export default function ColosseumPage() {
             : "Failed to save deck. Please try again.",
       );
     }
+  };
+
+  const autoFillDeck = async (deckType: "attack" | "defense") => {
+    const rarityRank: Record<string, number> = {
+      mythic: 6,
+      legendary: 5,
+      epic: 4,
+      rare: 3,
+      uncommon: 2,
+      common: 1,
+    };
+    const recommended = [...ownedIds]
+      .filter(Boolean)
+      .sort((a, b) => {
+        const ca = charById(a);
+        const cb = charById(b);
+        const rarityDelta = (rarityRank[cb.rarity] ?? 0) - (rarityRank[ca.rarity] ?? 0);
+        if (rarityDelta !== 0) return rarityDelta;
+        return a - b;
+      })
+      .slice(0, 4);
+    if (recommended.length === 0) {
+      showToast(ko ? "편성할 보유 케보몬이 없습니다." : ja ? "編成できる所持キャラがありません。" : "No owned characters to recommend.");
+      return;
+    }
+    await saveDeck(deckType, recommended);
   };
 
   // ── 공격 확인 (실제 플레이어) ──
@@ -1580,6 +1621,25 @@ export default function ColosseumPage() {
                       {dk.label}
                     </span>
                     <button
+                      onClick={() => void autoFillDeck(dk.type)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                        background: `${dk.accent}12`,
+                        border: `1px solid ${dk.accent}44`,
+                        color: dk.accent,
+                        fontFamily: FONT,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        padding: "3px 8px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {colCopy.autoDeck}
+                    </button>
+                    <button
                       onClick={() => {
                         setEditingDeckType(dk.type);
                         setPhase("deck-edit");
@@ -2719,6 +2779,20 @@ export default function ColosseumPage() {
                         : entry.rank === 3
                           ? "#cd7f32"
                           : C.stoneFaint;
+                  const pointGap = entry.tierPoints - tierPts;
+                  const riskLevel = pointGap > 500 ? "high" : pointGap > 100 ? "mid" : "low";
+                  const riskText =
+                    riskLevel === "high"
+                      ? colCopy.riskHigh
+                      : riskLevel === "mid"
+                        ? colCopy.riskMid
+                        : colCopy.riskLow;
+                  const riskColor =
+                    riskLevel === "high"
+                      ? "#f87171"
+                      : riskLevel === "mid"
+                        ? "#fbbf24"
+                        : "#34d399";
                   return (
                     <div
                       key={entry.userId}
@@ -2810,6 +2884,20 @@ export default function ColosseumPage() {
                         </p>
                       </div>
                       {/* 포인트 */}
+                      <span
+                        style={{
+                          fontSize: 9,
+                          color: riskColor,
+                          border: `1px solid ${riskColor}66`,
+                          background: `${riskColor}18`,
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontWeight: 900,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {colCopy.risk} {riskText}
+                      </span>
                       <span
                         style={{
                           fontFamily: "monospace",

@@ -25,6 +25,7 @@ import {
   Leaf,
   Cpu,
   FlaskConical,
+  Repeat2,
 } from "lucide-react";
 import { useAppData, type GachaResult } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
@@ -1042,6 +1043,30 @@ export default function KebomonPage() {
 
   const breedCandidateCount = (rarity: CharacterRarity) =>
     CHARACTERS.filter((c) => c.rarity === rarity && !ownedSet.has(c.id)).length;
+  const breedPoolCount = (rarity: CharacterRarity) =>
+    CHARACTERS.filter((c) => c.rarity === rarity).length;
+  const selectedBreedRemaining = breedCandidateCount(breedRarity);
+  const selectedBreedPool = breedPoolCount(breedRarity);
+  const selectedBreedOwned = Math.max(0, selectedBreedPool - selectedBreedRemaining);
+  const breedCopy = {
+    remainingTitle: lang === "ja" ? "未所持の残り" : lang === "en" ? "Missing targets" : "남은 미보유 수",
+    probabilityTitle: lang === "ja" ? "確率/保証" : lang === "en" ? "Rates / guarantee" : "확률/보장 설명",
+    duplicateTitle: lang === "ja" ? "重複価値" : lang === "en" ? "Duplicate value" : "중복 가치",
+    guarantee:
+      lang === "ja"
+        ? "選択した等級の未所持プールから獲得します。残りが0体なら実行できません。"
+        : lang === "en"
+          ? "Breeding pulls from missing characters in the selected rarity. It is locked when none remain."
+          : "선택 등급의 미보유 풀에서만 획득합니다. 남은 수가 0이면 교배를 진행할 수 없습니다.",
+    duplicate:
+      lang === "ja"
+        ? "ガチャや卵の重複は交配エッセンスに変換され、未所持回収 루트가 됩니다."
+        : lang === "en"
+          ? "Duplicates from gacha and eggs convert into breeding essence, making them a recovery route for missing entries."
+          : "뽑기/알 중복은 교배 에센스로 전환되어 미보유 케보몬 회수 루트가 됩니다.",
+    pool: lang === "ja" ? "候補" : lang === "en" ? "Pool" : "후보",
+    owned: lang === "ja" ? "所持" : lang === "en" ? "Owned" : "보유",
+  };
 
   const handleBreed = async () => {
     if (breeding) return;
@@ -1453,6 +1478,42 @@ export default function KebomonPage() {
                   );
                 },
               )}
+            </div>
+
+            <div className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-muted p-3">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  {breedCopy.remainingTitle}
+                </p>
+                <p className={`mt-2 text-2xl font-black ${RARITY_COLOR[breedRarity]}`}>
+                  {selectedBreedRemaining}
+                  <span className="ml-1 text-xs font-semibold text-muted-foreground">
+                    / {selectedBreedPool}
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {breedCopy.owned} {selectedBreedOwned} · {breedCopy.pool} {selectedBreedPool}
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted p-3">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                  <Star className="h-3.5 w-3.5" />
+                  {breedCopy.probabilityTitle}
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  {breedCopy.guarantee}
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted p-3">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                  <Repeat2 className="h-3.5 w-3.5" />
+                  {breedCopy.duplicateTitle}
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  {breedCopy.duplicate}
+                </p>
+              </div>
             </div>
 
             <button
