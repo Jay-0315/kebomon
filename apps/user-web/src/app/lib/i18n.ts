@@ -221,6 +221,20 @@ const towerDefenseEn = {
     "tower_defense.ended": "Ended",
     "tower_defense.clear_wave": "Cleared Wave {wave}",
     "tower_defense.kills_value": "{kills} kills",
+    "tower_defense.lobby_eyebrow": "Ancient Ruin Defense",
+    "tower_defense.lobby_description": "Guard the sealed ruin paths and stop enemies entering each player's area.",
+    "tower_defense.lobby_room_desc": "Create a room, choose a speed, and up to 4 players defend their assigned areas.",
+    "tower_defense.lobby_feature_area": "Personal Area",
+    "tower_defense.lobby_feature_area_desc": "Each player has separate placement slots and life.",
+    "tower_defense.lobby_feature_dex": "Dex Units",
+    "tower_defense.lobby_feature_dex_desc": "Units are deployed using the character data matched from the collection.",
+    "tower_defense.lobby_feature_reward": "Reward Limit",
+    "tower_defense.lobby_feature_reward_desc": "Play freely while daily KP rewards are capped.",
+    "tower_defense.no_rankings": "No records yet.",
+    "tower_defense.lobby_rules": "Defense Rules",
+    "tower_defense.lobby_rule_slot": "Units can only be placed on designated slots.",
+    "tower_defense.lobby_rule_upgrade": "Type upgrades apply to all units of the same type.",
+    "tower_defense.lobby_rule_merge": "Higher rarity units are expanded through merging.",
 } as const;
 
 const ko = {
@@ -2763,7 +2777,7 @@ const en = {
 
 const dict = { ko, ja, en };
 
-const runtimeOverrides: Record<Lang, Partial<Record<TranslationKey, string>>> = {
+const runtimeOverrides: Record<Lang, Partial<Record<TranslationKey | string, string>>> = {
   ko: {
     "nav.home": "홈",
     "nav.community": "커뮤니티",
@@ -2811,6 +2825,21 @@ const runtimeOverrides: Record<Lang, Partial<Record<TranslationKey, string>>> = 
     "td.status_kills": "처치",
     "td.status_lives": "라이프",
     "td.wave_label": "웨이브",
+    "tower_defense.title": "랜덤 타워 디펜스",
+    "tower_defense.lobby_eyebrow": "고대 유적 방어전",
+    "tower_defense.lobby_description": "봉인된 유적의 길목을 지키고, 각자의 영역에서 몰려오는 적을 막아내세요.",
+    "tower_defense.lobby_room_desc": "방을 만들고 속도를 선택한 뒤, 최대 4명이 각자 배정된 영역에서 진행합니다.",
+    "tower_defense.lobby_feature_area": "개인 영역",
+    "tower_defense.lobby_feature_area_desc": "플레이어별 배치판과 라이프를 따로 관리합니다.",
+    "tower_defense.lobby_feature_dex": "도감 유닛",
+    "tower_defense.lobby_feature_dex_desc": "보유 도감 캐릭터 기준으로 유닛이 배치됩니다.",
+    "tower_defense.lobby_feature_reward": "보상 한도",
+    "tower_defense.lobby_feature_reward_desc": "플레이는 자유롭게, 일일 KP만 제한됩니다.",
+    "tower_defense.no_rankings": "아직 기록이 없습니다.",
+    "tower_defense.lobby_rules": "방어 규칙",
+    "tower_defense.lobby_rule_slot": "정해진 슬롯에만 설치할 수 있습니다.",
+    "tower_defense.lobby_rule_upgrade": "타입 강화는 같은 타입 유닛 전체에 적용됩니다.",
+    "tower_defense.lobby_rule_merge": "고등급 유닛은 합성으로 확장합니다.",
   },
   ja: {
     "nav.home": "ホーム",
@@ -2859,6 +2888,21 @@ const runtimeOverrides: Record<Lang, Partial<Record<TranslationKey, string>>> = 
     "td.status_kills": "撃破",
     "td.status_lives": "ライフ",
     "td.wave_label": "ウェーブ",
+    "tower_defense.title": "ランダムタワーディフェンス",
+    "tower_defense.lobby_eyebrow": "古代遺跡防衛戦",
+    "tower_defense.lobby_description": "封印された遺跡の道を守り、それぞれのエリアに迫る敵を防ぎましょう。",
+    "tower_defense.lobby_room_desc": "ルームを作成し、速度を選択して、最大4人が各自のエリアで進行します。",
+    "tower_defense.lobby_feature_area": "個人エリア",
+    "tower_defense.lobby_feature_area_desc": "プレイヤーごとに配置スロットとライフを個別に管理します。",
+    "tower_defense.lobby_feature_dex": "図鑑ユニット",
+    "tower_defense.lobby_feature_dex_desc": "保有図鑑キャラクターのデータを基準にユニットが配置されます。",
+    "tower_defense.lobby_feature_reward": "報酬上限",
+    "tower_defense.lobby_feature_reward_desc": "プレイは自由で、デイリーKP報酬のみ制限されます。",
+    "tower_defense.no_rankings": "まだ記録がありません。",
+    "tower_defense.lobby_rules": "防衛ルール",
+    "tower_defense.lobby_rule_slot": "指定されたスロットにのみ配置できます。",
+    "tower_defense.lobby_rule_upgrade": "タイプ強化は同じタイプの全ユニットに適用されます。",
+    "tower_defense.lobby_rule_merge": "高等級ユニットは合成で拡張します。",
   },
   en: {
     "nav.home": "Home",
@@ -2907,10 +2951,25 @@ const runtimeOverrides: Record<Lang, Partial<Record<TranslationKey, string>>> = 
     "td.status_kills": "Kills",
     "td.status_lives": "Life",
     "td.wave_label": "Wave",
+    "tower_defense.title": "Random Tower Defense",
+    "tower_defense.lobby_eyebrow": "Ancient Ruin Defense",
+    "tower_defense.lobby_description": "Guard the sealed ruin paths and stop enemies entering each player's area.",
+    "tower_defense.lobby_room_desc": "Create a room, choose a speed, and up to 4 players defend their assigned areas.",
+    "tower_defense.lobby_feature_area": "Personal Area",
+    "tower_defense.lobby_feature_area_desc": "Each player has separate placement slots and life.",
+    "tower_defense.lobby_feature_dex": "Dex Units",
+    "tower_defense.lobby_feature_dex_desc": "Units are deployed using character data matched from the collection.",
+    "tower_defense.lobby_feature_reward": "Reward Limit",
+    "tower_defense.lobby_feature_reward_desc": "Play freely while daily KP rewards are capped.",
+    "tower_defense.no_rankings": "No records yet.",
+    "tower_defense.lobby_rules": "Defense Rules",
+    "tower_defense.lobby_rule_slot": "Units can only be placed on designated slots.",
+    "tower_defense.lobby_rule_upgrade": "Type upgrades apply to all units of the same type.",
+    "tower_defense.lobby_rule_merge": "Higher rarity units are expanded through merging.",
   },
 };
 
-export function translate(lang: Lang, key: TranslationKey): string {
+export function translate(lang: Lang, key: TranslationKey | string): string {
   const override = runtimeOverrides[lang]?.[key] ?? runtimeOverrides.ko[key];
   if (override) return override;
   const langDict = dict[lang] as Record<string, string>;

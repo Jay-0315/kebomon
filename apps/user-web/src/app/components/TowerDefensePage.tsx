@@ -376,13 +376,13 @@ function TowerDefenseLobby({
             </div>
             <span className="h-10 w-4 rounded-t-lg border border-amber-500/40 bg-amber-400/10 shadow-[0_0_18px_rgba(245,158,11,.25)]" />
           </div>
-          <p className="text-xs font-bold tracking-[0.2em] text-amber-300/75">고대 유적 방어전</p>
+          <p className="text-xs font-bold tracking-[0.2em] text-amber-300/75">{t("tower_defense.lobby_eyebrow")}</p>
           <h1 className="mt-2 text-2xl font-black tracking-[0.04em] text-amber-100 md:text-3xl">
             {t("tower_defense.title")}
           </h1>
           <div className="mt-3 h-px w-36 bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
           <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-            봉인된 유적의 길목을 지키고, 각자의 영역에서 몰려오는 적을 막아내세요.
+            {t("tower_defense.lobby_description")}
           </p>
         </div>
       </div>
@@ -409,7 +409,7 @@ function TowerDefenseLobby({
                   {t("tower_defense.create_or_join")}
                 </p>
                 <p className="mt-2 text-xs leading-5 text-stone-300/75">
-                  방을 만들고 속도를 선택한 뒤, 최대 4명이 각자 배정된 영역에서 진행합니다.
+                  {t("tower_defense.lobby_room_desc")}
                 </p>
               </div>
 
@@ -464,9 +464,9 @@ function TowerDefenseLobby({
           </section>
 
           <section className="grid gap-3 md:grid-cols-3">
-            <LobbyFeature icon={<Users className="h-4 w-4" />} title="개인 영역" desc="플레이어별 배치판과 라이프를 따로 관리합니다." />
-            <LobbyFeature icon={<Swords className="h-4 w-4" />} title="도감 유닛" desc="보유 도감 캐릭터 기준으로 유닛이 배치됩니다." />
-            <LobbyFeature icon={<Shield className="h-4 w-4" />} title="보상 한도" desc="플레이는 자유롭게, 일일 KP만 제한됩니다." />
+            <LobbyFeature icon={<Users className="h-4 w-4" />} title={t("tower_defense.lobby_feature_area")} desc={t("tower_defense.lobby_feature_area_desc")} />
+            <LobbyFeature icon={<Swords className="h-4 w-4" />} title={t("tower_defense.lobby_feature_dex")} desc={t("tower_defense.lobby_feature_dex_desc")} />
+            <LobbyFeature icon={<Shield className="h-4 w-4" />} title={t("tower_defense.lobby_feature_reward")} desc={t("tower_defense.lobby_feature_reward_desc")} />
           </section>
         </div>
 
@@ -478,7 +478,7 @@ function TowerDefenseLobby({
             </p>
             <div className="space-y-2">
               {topRankers.length === 0 ? (
-                <p className="rounded-lg bg-black/35 px-3 py-3 text-xs text-amber-100/55">아직 기록이 없습니다.</p>
+                <p className="rounded-lg bg-black/35 px-3 py-3 text-xs text-amber-100/55">{t("tower_defense.no_rankings")}</p>
               ) : (
                 topRankers.map((r) => (
                   <div key={r.userId} className="grid grid-cols-[34px_minmax(0,1fr)_48px] items-center gap-2 rounded-lg bg-black/35 px-3 py-2 text-sm">
@@ -492,11 +492,11 @@ function TowerDefenseLobby({
           </div>
 
           <div className="rounded-xl border border-amber-500/25 bg-black/45 p-4">
-            <p className="mb-3 text-sm font-black text-amber-100">방어 규칙</p>
+            <p className="mb-3 text-sm font-black text-amber-100">{t("tower_defense.lobby_rules")}</p>
             <div className="space-y-2 text-xs text-stone-300/75">
-              <p className="rounded-lg bg-amber-500/5 px-3 py-2">정해진 슬롯에만 설치할 수 있습니다.</p>
-              <p className="rounded-lg bg-amber-500/5 px-3 py-2">타입 강화는 같은 타입 유닛 전체에 적용됩니다.</p>
-              <p className="rounded-lg bg-amber-500/5 px-3 py-2">고등급 유닛은 합성으로 확장합니다.</p>
+              <p className="rounded-lg bg-amber-500/5 px-3 py-2">{t("tower_defense.lobby_rule_slot")}</p>
+              <p className="rounded-lg bg-amber-500/5 px-3 py-2">{t("tower_defense.lobby_rule_upgrade")}</p>
+              <p className="rounded-lg bg-amber-500/5 px-3 py-2">{t("tower_defense.lobby_rule_merge")}</p>
             </div>
           </div>
         </aside>
