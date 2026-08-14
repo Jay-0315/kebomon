@@ -64,12 +64,6 @@ export default function WeeklyQuestCard() {
           </span>
         )}
       </div>
-      {weeklyQuests.rotation && (
-        <div className="mb-3 rounded-md border border-primary/15 bg-primary/5 px-3 py-2">
-          <p className="text-xs font-semibold text-primary">{weeklyQuests.rotation.title}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{weeklyQuests.rotation.description}</p>
-        </div>
-      )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {QUEST_ROWS.map(({ key, icon: Icon, labelKey }) => {
           const item = weeklyQuests.items?.find((quest) => quest.key === key);
