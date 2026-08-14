@@ -84,7 +84,7 @@ export default function DailyQuestCard() {
                 <span className="truncate">{item?.title ?? t(labelKey)}</span>
               </div>
               <p className="mt-1 line-clamp-2 text-[10px] leading-snug opacity-80">
-                {item?.action ?? (lang === "ko" ? "지정 활동 1회" : lang === "ja" ? "指定アクション1回" : "One required action")}
+                {item?.action ?? (lang === "ko" ? "필수 행동 1회" : lang === "ja" ? "指定アクション1回" : "One required action")}
               </p>
             </div>
           );
@@ -93,7 +93,7 @@ export default function DailyQuestCard() {
       {dailyQuests.allDone && !dailyQuests.bonusClaimed && (
         <p className="mt-3 rounded-md bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
           {lang === "ko"
-            ? "모든 항목이 완료되었습니다. 보상 수령 버튼으로 확정 처리하세요."
+            ? "모든 일일 항목이 완료되었습니다. 보상을 수령해 완료 처리하세요."
             : lang === "ja"
               ? "すべての項目が完了しました。報酬を受け取って確定してください。"
               : "All items are complete. Claim the reward to finalize it."}

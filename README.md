@@ -1,272 +1,136 @@
 # KEBO
 
-커뮤니티 서비스 **KEBO**의 모노레포입니다.
-사용자 웹, 관리자 웹, API 앱으로 구성되며, 이후 `Capacitor`로 모바일 앱 패키징을 염두에 두고 있습니다.
+KEBO는 React 기반 사용자/관리자 웹, NestJS API, MySQL, Docker 인프라로 구성된 웹 서비스입니다. 사용자 서비스는 수집, 커뮤니티, 실시간 채팅, 전투형 콘텐츠, 보상 루프를 제공하고, 관리자 서비스는 운영 설정과 로그 조회를 담당합니다.
 
-## Apps
+## 프로젝트 구조
 
-| 앱               | 설명                                  |
-| ---------------- | ------------------------------------- |
-| `apps/user-web`  | 사용자용 커뮤니티 웹앱 (React + Vite) |
-| `apps/admin-web` | 관리자용 운영 웹앱 스캐폴드           |
-| `apps/api`       | 백엔드 REST API (NestJS + Prisma)     |
+| 경로 | 역할 |
+| --- | --- |
+| `apps/user-web` | 사용자 웹 클라이언트. React, Vite, Tailwind CSS 기반 |
+| `apps/admin-web` | 관리자 웹 클라이언트. 운영 도구와 설정 화면 제공 |
+| `apps/api` | NestJS API 서버. Prisma, MySQL, Socket.IO 사용 |
+| `prisma` | 데이터베이스 스키마와 Prisma 관련 설정 |
+| `docker-compose.yml` | 로컬 및 배포용 컨테이너 구성 |
 
-## Stack
+## 기술 스택
 
-| 구분     | 기술                                                                                                              |
-| -------- | ----------------------------------------------------------------------------------------------------------------- |
-| Frontend | React 18, TypeScript 6, Vite 6, Tailwind CSS v4, React Router v7, Motion v12, Tiptap v3, MUI v7, Recharts, Radix UI, Lucide React |
-| Backend  | NestJS v11, Prisma ORM v6, JWT 인증, Socket.io v4 (WebSocket), Resend (이메일), Web Push (VAPID)                  |
-| Database | MySQL 8.4                                                                                                         |
-| 기타     | Docker Compose, npm workspaces                                                                                    |
+| 영역 | 사용 기술 |
+| --- | --- |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, React Router, Lucide React, Recharts |
+| Backend | NestJS, Prisma ORM, Socket.IO, JWT, Resend, Web Push |
+| Database | MySQL |
+| Infra | Docker Compose, AWS, Coolify |
+| Package | npm workspaces |
 
----
+## 주요 기능 현황
 
-## Local Run
+- 인증, 프로필, 칭호, 프로필 테두리, 언어 설정, 테마 설정
+- 홈 대시보드, KP 가이드, 일일/주간 퀘스트 진행 현황
+- 커뮤니티 게시글, 댓글, 좋아요, 이미지 업로드, 인기글/베스트 영역
+- 케보몬 수집, 도감, 획득처 안내, 상세 정보, 보유/미보유 상태 관리
+- 뽑기, 알, 교배, 픽업/시즌 배너, 기록 UI, 중복 보상 가치 안내
+- 출석, 일일/주간 퀘스트, 콘텐츠 순환형 목표, 보상 수령 처리
+- 라이브 채널, 실시간 채팅, 채널 입장, 이모티콘/스티커형 빠른 반응
+- 원정, 지역 선택, 파티 편성, 시간 기반 보상, 이벤트/로그 UI
+- 낚시, 물고기 도감, 등급별 결과 연출, 마일스톤 보상
+- 로그라이크, 카드/유물/전투/상점/마일스톤 중심 진행
+- 콜로세움/아레나, 상대 위험도, 자동 편성, 전투 로그, 시즌 보상 UI
+- 1:1 카드배틀, 튜토리얼/AI 연습, 덱 난이도, 시즌 보상/랭킹 UI
+- 랜덤 타워 디펜스, 4인 룸, 개인 영역/라이프, 서버 계산, 속도 옵션, 일일 KP 제한
+- 관리자 운영 화면, 이벤트 설정, 콘텐츠 KPI, 밸런스 변경 이력, 보상 지급 로그 검색
+
+## 타워 디펜스 운영 규칙
+
+- 최대 4인 룸 구조이며 각 플레이어는 개인 전장, 개인 라이프, 개인 배치 영역을 사용합니다.
+- 룸 생성 시 기본 속도, 2배속, 3배속 옵션을 선택할 수 있습니다.
+- 티켓 소모 없이 반복 플레이할 수 있고, 일일 KP 획득 제한은 1,200KP입니다.
+- 판당 획득 가능한 KP 상한은 400KP입니다.
+- 일반 진행은 50라운드까지, 51라운드부터 100라운드까지는 무한 모드 구간으로 처리합니다.
+- 아군 유닛 데이터는 도감 캐릭터와 등급 정보를 기준으로 매칭합니다.
+
+## 로컬 실행
 
 ```bash
-# 의존성 설치
 npm install
-
-# 사용자 웹 개발 서버
-npm run dev:user
-
-# API 개발 서버
-npm run dev:api
-
-# Prisma 클라이언트 재생성
 npm run prisma:generate
+npm run dev:api
+npm run dev:user
+npm run dev:admin
 ```
 
-## Docker Run
+기본 접속 주소:
+
+| 서비스 | 주소 |
+| --- | --- |
+| 사용자 웹 | `http://localhost:5173` |
+| 관리자 웹 | `http://localhost:5174` |
+| API | `http://localhost:4000/api` |
+| MySQL | `localhost:3306` |
+
+## Docker 실행
 
 ```bash
-# 1. 환경 파일 준비
 cp .env.example .env
-
-# 2. 사용자 웹 + API + MySQL 실행
 docker compose up --build
 ```
 
-| 서비스    | 주소                      |
-| --------- | ------------------------- |
-| 사용자 웹 | http://localhost:5173     |
-| API       | http://localhost:4000/api |
-| MySQL     | localhost:3306            |
+## 주요 환경 변수
 
-### 환경 변수 (.env)
-
-```
-# DB
+```env
 MYSQL_DATABASE=kebo
 MYSQL_USER=kebo
-MYSQL_PASSWORD=kebo1234
-MYSQL_ROOT_PASSWORD=root1234
+MYSQL_PASSWORD=
+MYSQL_ROOT_PASSWORD=
 
-# API
-JWT_SECRET=kebo-dev-secret
-GOOGLE_CLIENT_ID=               # Google OAuth 클라이언트 ID (선택)
-GOOGLE_CLIENT_IDS=              # 복수 클라이언트 ID (선택, 쉼표 구분)
-GOOGLE_CLIENT_SECRET=           # Google OAuth 시크릿 (선택)
-RESEND_API_KEY=                 # Resend 이메일 API 키 (이메일 인증용)
+JWT_SECRET=
+CORS_ORIGINS=
 
-# Frontend
-VITE_API_BASE_URL=http://localhost:4000
-VITE_GOOGLE_CLIENT_ID=          # Google OAuth 클라이언트 ID (선택)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_IDS=
+GOOGLE_CLIENT_SECRET=
 
-# 포트 커스터마이징 (기본값)
-FRONTEND_PORT=5173
-API_PORT=4000
-MYSQL_PORT=3306
+RESEND_API_KEY=
+VAPID_EMAIL=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+
+VITE_API_BASE_URL=
+VITE_GOOGLE_CLIENT_ID=
+VITE_VAPID_PUBLIC_KEY=
 ```
 
----
+## 데이터베이스
 
-## Database Migration
-
-| 상황               | 방법                                                       |
-| ------------------ | ---------------------------------------------------------- |
-| 신규 설치          | `docker compose up --build` — `mysql-schema.sql` 자동 적용 |
-| 기존 DB 업그레이드 | `docs/migrations/migrations.sql` 참고하여 수동 적용        |
+Prisma 스키마 변경 후에는 다음 명령을 사용합니다.
 
 ```bash
-# 마이그레이션 파일을 컨테이너에서 실행
-docker cp docs/migrations/migrations.sql kebo-mysql:/tmp/migration.sql
-docker exec kebo-mysql mysql -ukebo -pkebo1234 kebo -e "source /tmp/migration.sql;"
-
-# 스키마 변경 후 Prisma 클라이언트 재생성 (Docker 환경)
-docker exec kebo-api sh -c "cd /app/apps/api && node_modules/.bin/prisma generate"
-docker restart kebo-api
+npm run prisma:generate
+npm run prisma:push
 ```
 
----
+배포 환경에서는 DB URL, MySQL 계정, OAuth, JWT, Push, 메일 관련 환경 변수가 Coolify에 등록되어 있어야 합니다.
 
-## Features
+## 빌드 및 타입 체크
 
-### 인증
+```bash
+npx tsc -p apps/api/tsconfig.json --noEmit
+npx tsc -p apps/user-web/tsconfig.json --noEmit
+npx tsc -p apps/admin-web/tsconfig.json --noEmit
 
-- 이메일 회원가입 / 로그인 (JWT)
-- 이메일 인증번호 발송 (Resend) — 회원가입 및 비밀번호 재설정
-- Google OAuth 소셜 로그인 및 계정 연동
-- 회원 탈퇴 — DB 데이터 완전 삭제 (게시글, 리워드 등 Cascade)
+npm run build:user
+npm run build:admin
+```
 
-### 커뮤니티 탭
+## 배포 메모
 
-- 게시글 카테고리 3종 — 자랑(`brag`) / 팁 공유(`tip`) / 잡담(`chat`)
-- 게시글 작성·수정·삭제, Tiptap 리치 텍스트 에디터 (서식·이미지 삽입)
-- 이미지 첨부 — 클라이언트에서 1280px·75% JPEG 압축 후 base64 저장
-- 게시글 목록 페이지네이션 (서버 사이드, 페이지당 20개)
-- 목록에서 게시글 첫 번째 이미지 썸네일 미리보기
-- 좋아요 토글
-- 댓글 + 대댓글(1단계) — 이미지 첨부, 텍스트 없이 이미지만 제출 가능, 수정/삭제
-- 목록에서 최근 댓글 3개 미리보기 (이미지 댓글은 `(사진)`/`(写真)` 표시)
-- 게시글 상세: 전체 댓글 페이지네이션 (페이지당 10개)
-- 작성자 프로필 사진 목록·상세 전체 표시
+- 현재 배포 흐름은 GitHub `main` 브랜치 push를 기준으로 Coolify가 빌드/배포를 감지하는 방식입니다.
+- 원격 브랜치가 앞서 있으면 먼저 `git pull --rebase origin main`으로 최신 커밋을 반영한 뒤 push합니다.
+- Coolify 환경 변수 누락 시 프론트 API 주소, CORS, JWT, MySQL 접속, OAuth, Push 기능에서 런타임 오류가 발생할 수 있습니다.
 
-### 케보몬 탭
+## 운영 확인 항목
 
-캐릭터 수집 & 리워드 시스템
-
-| 항목        | 내용                                                                 |
-| ----------- | -------------------------------------------------------------------- |
-| 캐릭터 종류 | 400종 (30가지 타입 × 6등급)                                          |
-| 등급        | 커먼 / 언커먼 / 레어 / 에픽 / 레전더리 / 신화                        |
-| 획득 방법   | 스타터 선택 / 업적 달성 / 뽑기 / 알 부화 / 미니게임 / 원정           |
-| 뽑기 비용   | 단챠 120KP / 10연챠 1,200KP                                          |
-| 확률        | 커먼 35% / 언커먼 26% / 레어 20% / 에픽 10% / 레전더리 6% / 신화 3% |
-| 천장        | 80연 내 레전더리 이상 1종 보장                                       |
-| 10연 보장   | 언커먼 이상 1종 보장                                                 |
-| 중복 보상   | 등급별 KP 환산 (커먼 5KP ~ 신화 120KP)                              |
-
-**알 시스템**
-
-- 알 종류 3종 — 일반 알 / 빅 알 / 황금 알 (미니게임·원정·로그라이크 등에서 획득)
-- 개별 부화 또는 10개 동시 부화 (10개 부화 시 슬롯 연출)
-
-**케보몬 강화**
-
-- 강화석(Enhancement Stone)으로 케보몬 레벨 업
-- 강화 레벨마다 스탯 수치 증가, 레벨별 강화석 비용 상승
-- KP 상점에서 강화석 구매 가능 (600KP / 개)
-
-**업적** (188종)
-
-- 카테고리 — 출석 / 연속 출석 / 미니게임 / 콜로세움 / 로그라이크 / 원정 / 글 작성 / 케보포인트
-- 카테고리별 접기/펼치기 토글, 진행도 프로그레스 바 표시
-- 히든 업적 별도 섹션
-
-**칭호** (65종+)
-
-- 등급 — 일반 / 희귀 / 영웅 / 전설 / 신화 / 한정
-- 신화 칭호: 무지개 shimmer 애니메이션
-- 등급별 접기/펼치기 토글
-- 마이페이지·게시글·댓글에 장착 칭호 뱃지 표시
-- 시즌 한정 칭호 (콜로세움 시즌 TOP 순위 달성 시 지급)
-
-### 뽑기 탭
-
-- KP를 소모해 케보몬 캡슐 뽑기 (단챠 / 10연챠)
-- 캡슐 개봉 애니메이션, 레어+ 연출
-- 연속 뽑기 천장 / 10연 보장 카운터 표시
-- 중복 케보몬 자동 KP 전환
-
-### 미션 탭
-
-- 콘텐츠별 미션 카드 목록 (미니게임 / 콜로세움 / 로그라이크 / 원정)
-- 각 콘텐츠 간단 소개 및 바로가기
-- KP 획득 가이드 — 출석, 글 작성, 연속 출석, 미니게임, 원정, 로그라이크
-
-### 출석 탭
-
-- 월별 출석 스탬프 캘린더 — 이번 달 출석일 / 전체 누적 출석일 / 연속 출석 streak 표시
-- 출석 체크 버튼 (당일 1회 / KST 기준, 50 · 100 · 150KP 랜덤 지급)
-- 주간 출석 보상 — N일 출석 시 알 지급 (일반·빅·황금 알)
-- 연속 출석 streak 보너스 (+20KP/일)
-
-### 원정 탭
-
-- 케보몬 파티 편성 후 지역 선택 → 시간제 탐험 파견 (1h / 3h / 6h / 12h / 24h)
-- 지역 6종 — 난이도·보상 차등 (Easy ~ Extreme)
-- 탐험 완료 시 보상 수령 — 케보포인트(KP), 강화석, 알 (지역·난이도·파티 수·시간에 따라 산출)
-- 동시에 1개 원정만 진행 가능, 진행 중 남은 시간 실시간 표시
-
-### 미니게임 탭
-
-- 미니게임 2종 — 점프 미니게임 / 슈팅 미니게임
-- 최대 5인 협동 클리어, 보스 HP 공유 (WebSocket 실시간)
-- 클리어 시 KP 또는 알 보상 지급 / 탈락 시 라이프 소진 처리
-- 게임별 4시간 쿨타임, 타임별 랭킹 확인
-
-### 콜로세움 탭
-
-- 1:1 실시간 PvP 배틀 (WebSocket, 주사위 기반 턴제)
-- 티어 시스템 7단계 — 브론즈 / 실버 / 골드 / 플레티넘 / 다이아몬드 / 마스터 / 챌린저
-- 승리 시 티어 포인트 획득, 패배 시 감소 / 연승 보너스
-- 코인 토스로 선공 결정, 배틀 로그·HP 바 실시간 반영
-- **AI 연습 상대** — 패배 패널티 없이 연습 가능, 승리 시 KP 획득
-- 공격/방어 덱 편성 — 케보몬 타입별 스킬 적용
-- 시즌 랭킹 (시간당 캐시 갱신) + 전 시즌 기록 조회
-- 티켓 제도 — 재생성 시간 기반, 배틀 1회당 1티켓 소모
-- 시즌 종료 시 랭킹 칭호 및 **프로필 테두리** 지급 (티어별 6종)
-
-### 로그라이크 탭
-
-- 덱빌딩 로그라이크 카드게임 — 층 진행 맵 (전투 / 엘리트 / 보스 / 상점 / 휴식 / 보물)
-- 난이도 3종 — 노말(7스테이지) / 하드(10스테이지) / 지옥(15스테이지)
-- 케보몬 타입별 직업 7종 (전사·도적·마법사·수호자·자연·야생·만능)
-- 카드 희귀도 — 커먼 / 언커먼 / 레어 / 에픽 / 레전더리
-- 무한 모드 — 100층 클리어 후 진입, 매 5스테이지마다 상점 등장, 랭킹 경쟁
-- 클리어 마일스톤 보상 — KP, 강화석, 알 (누적 클리어 횟수 기준)
-- 상점 내 바가지 이벤트 (30% 확률로 가격 1.5배) / 할인 유물
-
-### 1:1 카드배틀 탭
-
-- 방 생성(공개/비밀번호) 또는 참여로 상대방과 실시간 카드 대전 (WebSocket)
-- 덱 선택 후 양측 준비 완료 시 자동 배틀 시작
-- 턴제 카드 사용 — 공격·방어·독·강화 카드 포함
-- 승패 확정 후 로비 복귀
-
-### 라이브 채팅 탭
-
-- 채널 4종 선택 후 픽셀 아바타로 입장 (실시간 참여 인원 표시)
-- 2D 픽셀 맵 위에서 아바타 자유 이동 (드래그·터치 지원)
-- WebSocket 실시간 채팅 메시지 / 도배 방지 뮤트
-
-### 마이페이지
-
-- 프로필 사진 업로드/삭제 (base64 로컬 저장)
-- 닉네임 인라인 수정
-- 장착 칭호 선택 (등급별 접기/펼치기 토글)
-- **프로필 테두리** 장착 — 콜로세움 시즌 랭킹 보상으로 획득한 티어별 테두리 선택
-- 케보몬 도감 바로가기 카드 (현재 장착 캐릭터 미리보기)
-- 이번 달 요약 (현재 KP 잔액)
-- 내가 작성한 게시글 목록
-
-### 설정
-
-- **테마 색상** 10종 — 에메랄드, 로즈, 오션, 포레스트, 베리, 플레임, 슬레이트, 코랄, 핑크(sage), 망고
-- **다크/라이트 모드** 토글
-- **언어** — 한국어 / 日本語 / English (게임 UI, 카테고리명, 상대시간 등 전체 대응)
-- **웹 푸시 알림** — Web Push API (VAPID) 기반 브라우저 알림 구독/해제
-- Google 소셜 계정 연동
-- 비밀번호 변경 (이메일 인증번호)
-- 회원 탈퇴 (DB 완전 삭제)
-
-### 케보포인트 (KP)
-
-사이트 전반에서 사용되는 공통 재화.
-
-| 획득 방법       | 지급량                        |
-| --------------- | ----------------------------- |
-| 출석 체크       | 50 · 100 · 150KP 랜덤        |
-| 연속 출석 보너스 | +20KP / 일                   |
-| 커뮤니티 글 작성 | 50KP                         |
-| 미니게임 클리어  | KP 또는 알                   |
-| 원정 완료       | 시간에 비례한 KP              |
-| 로그라이크 마일스톤 | 클리어 횟수 기준 KP        |
-| 콜로세움 AI 연습 | 승리 시 KP                  |
-
-| 사용처        | 비용                  |
-| ------------- | --------------------- |
-| 케보몬 뽑기   | 단챠 120KP / 10연챠 1,200KP |
-| KP 상점 (강화석) | 600KP / 개          |
+- 사용자 웹, 관리자 웹, API 타입 체크 통과 여부
+- Docker 이미지 빌드 후 API 런타임 의존성 로딩 여부
+- MySQL 연결 및 Prisma Client 생성 여부
+- Socket.IO 기반 라이브 채팅과 타워 디펜스 룸 이벤트 동작 여부
+- 언어 설정별 한국어, 일본어, 영어 주요 화면 문구 출력 여부

@@ -38,6 +38,8 @@ import { AdminMaintenanceController } from "./admin-maintenance.controller";
 import { AdminMaintenanceService } from "./admin-maintenance.service";
 import { AdminNotificationsController } from "./admin-notifications.controller";
 import { AdminNotificationsService } from "./admin-notifications.service";
+import { AdminOperationsController } from "./admin-operations.controller";
+import { AdminOperationsService } from "./admin-operations.service";
 import { AdminReportsController } from "./admin-reports.controller";
 import { AdminReportsService } from "./admin-reports.service";
 import { AdminUsersController } from "./admin-users.controller";
@@ -59,6 +61,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminBannersController,
     AdminInquiriesController,
     AdminActionLogController,
+    AdminOperationsController,
     AdminSeasonController,
     AdminAuctionController,
     AdminTowerDefenseController,
@@ -80,6 +83,7 @@ import { AdminUsersService } from "./admin-users.service";
     AdminBannersService,
     AdminInquiriesService,
     AdminActionLogService,
+    AdminOperationsService,
     AdminSeasonService,
     AdminAuctionService,
     AdminTowerDefenseService,

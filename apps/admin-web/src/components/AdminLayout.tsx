@@ -13,6 +13,7 @@ const navItems = [
   { to: "/community/comments", key: "nav.community_comments" },
   { to: "/reports", key: "nav.reports" },
   { to: "/inquiries", key: "nav.inquiries" },
+  { to: "/operations", key: "nav.operations" },
   { to: "/gacha-config", key: "nav.gacha_config", superAdminOnly: true },
   { to: "/characters", key: "nav.characters", superAdminOnly: true },
   { to: "/battles", key: "nav.battles" },

@@ -18,6 +18,7 @@ import CharactersPage from "./pages/CharactersPage";
 import ReportsPage from "./pages/ReportsPage";
 import InquiriesPage from "./pages/InquiriesPage";
 import MaintenancePage from "./pages/MaintenancePage";
+import OperationsPage from "./pages/OperationsPage";
 import BannersPage from "./pages/BannersPage";
 import UserDetailPage from "./pages/UserDetailPage";
 import GuildDetailPage from "./pages/GuildDetailPage";
@@ -110,6 +111,7 @@ export default function App() {
             />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/inquiries" element={<InquiriesPage />} />
+            <Route path="/operations" element={<OperationsPage />} />
             <Route
               path="/maintenance"
               element={
