@@ -631,6 +631,15 @@ export class RewardsService {
   // 로그라이크 한 판을 실제로 플레이하는 데 걸리는 최소 시간 — 이보다 빨리 complete가
   // 들어오면 클라이언트 검증 없이 반복 호출해 보상만 채굴하는 것으로 간주해 거부한다.
   private static readonly MIN_ROGUE_RUN_MS = 60_000;
+  private static readonly MAX_ROGUE_RUN_MS = 120 * 60 * 60 * 1000;
+
+  @Cron("0 * * * *")
+  async expireOldRogueRuns() {
+    await this.prisma.userReward.updateMany({
+      where: { activeRunStartedAt: { lt: new Date(Date.now() - RewardsService.MAX_ROGUE_RUN_MS) } },
+      data: { activeRunStartedAt: null },
+    });
+  }
 
   /** 로그라이크/도전 모드 런 시작 기록 — 이후 complete/submit에서 경과 시간을 검증하는 데 사용 */
   async startRun(userId: string) {
@@ -649,6 +658,13 @@ export class RewardsService {
       throw new BadRequestException("시작되지 않은 런입니다.");
     }
     const elapsed = Date.now() - reward.activeRunStartedAt.getTime();
+    if (elapsed > RewardsService.MAX_ROGUE_RUN_MS) {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { activeRunStartedAt: null },
+      });
+      throw new BadRequestException("로그라이크 진행 시간이 만료되었습니다. 다시 시작해주세요.");
+    }
     if (elapsed < RewardsService.MIN_ROGUE_RUN_MS) {
       throw new BadRequestException("비정상적으로 빠른 진행입니다.");
     }
@@ -696,6 +712,14 @@ export class RewardsService {
     const reward = await this.getOrCreateReward(userId);
     if (!reward.activeRunStartedAt) {
       throw new BadRequestException("시작되지 않은 도전입니다.");
+    }
+    const elapsed = Date.now() - reward.activeRunStartedAt.getTime();
+    if (elapsed > RewardsService.MAX_ROGUE_RUN_MS) {
+      await this.prisma.userReward.update({
+        where: { userId },
+        data: { activeRunStartedAt: null },
+      });
+      throw new BadRequestException("로그라이크 진행 시간이 만료되었습니다. 다시 시작해주세요.");
     }
     const prevBest = reward.challengeBest;
     let challengeBest = prevBest;

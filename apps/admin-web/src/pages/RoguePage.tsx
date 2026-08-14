@@ -16,12 +16,19 @@ type RogueResponse = {
   total: number;
   page: number;
   totalPages: number;
+  maxActiveRunHours: number;
 };
 
-function formatElapsed(startedAt: string): string {
-  const minutes = Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000);
-  if (minutes < 60) return `${minutes}분`;
-  return `${Math.floor(minutes / 60)}시간 ${minutes % 60}분`;
+function formatElapsed(
+  startedAt: string,
+  t: (key: "rogue.elapsed_minutes" | "rogue.elapsed_hours" | "rogue.elapsed_hours_minutes", vars: Record<string, number>) => string,
+): string {
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return t("rogue.elapsed_minutes", { minutes });
+  if (minutes <= 0) return t("rogue.elapsed_hours", { hours });
+  return t("rogue.elapsed_hours_minutes", { hours, minutes });
 }
 
 export default function RoguePage() {
@@ -44,6 +51,9 @@ export default function RoguePage() {
     <div>
       <h1 className="mb-1 text-lg font-semibold">{t("rogue.title")}</h1>
       <p className="mb-4 text-sm text-[var(--fg-faint)]">{t("rogue.subtitle")}</p>
+      <p className="mb-4 text-xs text-[var(--fg-faint)]">
+        {t("rogue.active_limit_note", { hours: data?.maxActiveRunHours ?? 120 })}
+      </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select
@@ -82,7 +92,7 @@ export default function RoguePage() {
                 <td className="px-3 py-2">
                   {r.activeRunStartedAt ? (
                     <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs text-emerald-400">
-                      {t("rogue.status_running")} ({formatElapsed(r.activeRunStartedAt)})
+                      {t("rogue.status_running")} ({formatElapsed(r.activeRunStartedAt, t)})
                     </span>
                   ) : (
                     <span className="text-[var(--fg-faint)]">{t("rogue.status_idle")}</span>

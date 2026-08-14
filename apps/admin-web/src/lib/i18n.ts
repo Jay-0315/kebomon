@@ -109,6 +109,10 @@ const dict = {
     "rogue.col_status": "상태",
     "rogue.status_running": "진행중",
     "rogue.status_idle": "대기",
+    "rogue.elapsed_minutes": "{{minutes}}분",
+    "rogue.elapsed_hours": "{{hours}}시간",
+    "rogue.elapsed_hours_minutes": "{{hours}}시간 {{minutes}}분",
+    "rogue.active_limit_note": "{{hours}}시간이 지난 진행 기록은 자동 종료됩니다.",
 
     // ── 원정 모니터링 ──
     "expedition.title": "원정 모니터링",
@@ -697,6 +701,10 @@ const dict = {
     "rogue.col_status": "状態",
     "rogue.status_running": "進行中",
     "rogue.status_idle": "待機中",
+    "rogue.elapsed_minutes": "{{minutes}}分",
+    "rogue.elapsed_hours": "{{hours}}時間",
+    "rogue.elapsed_hours_minutes": "{{hours}}時間 {{minutes}}分",
+    "rogue.active_limit_note": "{{hours}}時間を超過した進行記録は自動終了されます。",
 
     // ── 遠征モニタリング ──
     "expedition.title": "遠征モニタリング",
@@ -1285,6 +1293,10 @@ const dict = {
     "rogue.col_status": "Status",
     "rogue.status_running": "In Progress",
     "rogue.status_idle": "Idle",
+    "rogue.elapsed_minutes": "{{minutes}}m",
+    "rogue.elapsed_hours": "{{hours}}h",
+    "rogue.elapsed_hours_minutes": "{{hours}}h {{minutes}}m",
+    "rogue.active_limit_note": "Runs older than {{hours}} hours are ended automatically.",
 
     // ── Expedition Monitoring ──
     "expedition.title": "Expedition Monitoring",

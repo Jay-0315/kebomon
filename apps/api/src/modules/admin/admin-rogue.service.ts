@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
 const PAGE_SIZE = 20;
+const ROGUE_ACTIVE_RUN_MAX_HOURS = 120;
+const ROGUE_ACTIVE_RUN_MAX_MS = ROGUE_ACTIVE_RUN_MAX_HOURS * 60 * 60 * 1000;
 
 type SortKey = "clears" | "challenge";
 
@@ -10,6 +12,11 @@ export class AdminRogueService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getRankings(sort: SortKey = "clears", page = 1) {
+    await this.prisma.userReward.updateMany({
+      where: { activeRunStartedAt: { lt: new Date(Date.now() - ROGUE_ACTIVE_RUN_MAX_MS) } },
+      data: { activeRunStartedAt: null },
+    });
+
     const rewards = await this.prisma.userReward.findMany({
       where: { OR: [{ rogueClears: { gt: 0 } }, { activeRunStartedAt: { not: null } }] },
       select: {
@@ -38,6 +45,7 @@ export class AdminRogueService {
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+      maxActiveRunHours: ROGUE_ACTIVE_RUN_MAX_HOURS,
     };
   }
 }
