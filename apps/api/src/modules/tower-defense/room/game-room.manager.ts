@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { Server } from "socket.io";
 import { TD_MAX_PLAYERS, TD_TICK_MS } from "../config/tower-defense.config";
 import { GameEngine } from "../engine/game-engine";
-import type { TdPlayer, TdRoom, TdTargetMode } from "../types/tower-defense.types";
+import type { TdPlayer, TdRoom, TdSpeedMultiplier, TdTargetMode } from "../types/tower-defense.types";
 import { TowerDefenseService } from "../tower-defense.service";
 
 function roomCode() {
@@ -17,7 +17,7 @@ export class GameRoomManager {
 
   constructor(private readonly towerDefenseService: TowerDefenseService) {}
 
-  createRoom(player: TdPlayer, speedMultiplier: 1 | 2 = 1) {
+  createRoom(player: TdPlayer, speedMultiplier: TdSpeedMultiplier = 1) {
     this.leaveUser(player.userId);
     let code = roomCode();
     while (this.codeToRoomId.has(code)) code = roomCode();

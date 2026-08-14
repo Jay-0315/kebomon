@@ -18,7 +18,7 @@
   TD_WAVE_BREAK_MS,
   TD_WAVE_COUNT,
 } from "../config/tower-defense.config";
-import type { TdMonster, TdRarity, TdRoom, TdSnapshot, TdTargetMode, TdTower, TdUnitType } from "../types/tower-defense.types";
+import type { TdMonster, TdRarity, TdRoom, TdSnapshot, TdSpeedMultiplier, TdTargetMode, TdTower, TdUnitType } from "../types/tower-defense.types";
 
 const RARITY_ORDER: TdRarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const DIRECT_SUMMON_RARITIES: Array<{ fromWave: number; rarities: TdRarity[] }> = [
@@ -120,7 +120,7 @@ function syncTowerPower(tower: TdTower, level: number) {
   tower.upgradeCost = level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level);
 }
 
-function buildWave(wave: number, speedMultiplier: 1 | 2): Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">> {
+function buildWave(wave: number, speedMultiplier: TdSpeedMultiplier): Array<Omit<TdMonster, "id" | "pathT" | "reached" | "ownerUserId">> {
   const boss = wave % 10 === 0;
   const kind = boss ? "boss" : wave % 5 === 0 ? "tough" : wave % 3 === 0 ? "fast" : "normal";
   const count = boss ? 1 : 10 + Math.min(20, wave * 2);
@@ -151,7 +151,7 @@ function ownedSlotId(userId: string, slotId: string) {
 }
 
 export class GameEngine {
-  static createRoom(hostUserId: string, code: string, speedMultiplier: 1 | 2 = 1): TdRoom {
+  static createRoom(hostUserId: string, code: string, speedMultiplier: TdSpeedMultiplier = 1): TdRoom {
     return {
       id: id("room"),
       code,

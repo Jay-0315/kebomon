@@ -2,6 +2,7 @@ export type TdRoomPhase = "lobby" | "playing" | "ended";
 export type TdTargetMode = "front" | "back" | "strong" | "weak" | "boss";
 export type TdRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type TdUnitType = "fire" | "water" | "nature";
+export type TdSpeedMultiplier = 1 | 1.5 | 2;
 
 export interface TdPoint {
   x: number;
@@ -100,7 +101,7 @@ export interface TdSnapshot {
   nextWaveInMs: number;
   lives: number;
   maxLives: number;
-  speedMultiplier: 1 | 2;
+  speedMultiplier: TdSpeedMultiplier;
   path: TdPoint[];
   placementZones: TdPlacementZone[];
   slots: (TdPlacementSlot & { ownerUserId: string; occupiedBy: string | null })[];
@@ -128,7 +129,7 @@ export interface TdRoom {
   nextWaveAt: number;
   lives: number;
   maxLives: number;
-  speedMultiplier: 1 | 2;
+  speedMultiplier: TdSpeedMultiplier;
   arenas: Map<string, TdArena>;
   towers: Map<string, TdTower>;
   monsters: Map<string, TdMonster>;

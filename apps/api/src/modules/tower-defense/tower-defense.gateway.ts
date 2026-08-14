@@ -12,7 +12,7 @@ import { JwtStrategy } from "../auth/jwt.strategy";
 import { PrismaService } from "../prisma/prisma.service";
 import { GameEngine } from "./engine/game-engine";
 import { GameRoomManager } from "./room/game-room.manager";
-import type { TdPlayer, TdTargetMode } from "./types/tower-defense.types";
+import type { TdPlayer, TdSpeedMultiplier, TdTargetMode } from "./types/tower-defense.types";
 
 @WebSocketGateway({ namespace: "/tower-defense", cors: { origin: true, credentials: true }, path: "/socket.io" })
 export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -45,7 +45,8 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
   @SubscribeMessage("td:room:create")
   async create(@MessageBody() data: { characterId?: number; speedMultiplier?: number }, @ConnectedSocket() client: Socket) {
     const player = await this.makePlayer(client, data?.characterId);
-    const speedMultiplier = Number(data?.speedMultiplier) === 2 ? 2 : 1;
+    const rawSpeed = Number(data?.speedMultiplier);
+    const speedMultiplier: TdSpeedMultiplier = rawSpeed === 2 ? 2 : rawSpeed === 1.5 ? 1.5 : 1;
     const room = this.rooms.createRoom(player, speedMultiplier);
     client.join(this.rooms.channel(room.id));
     client.emit("td:self", { userId: player.userId, socketId: client.id });

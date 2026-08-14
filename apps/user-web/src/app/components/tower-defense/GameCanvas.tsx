@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CHARACTERS } from "../../data/characters";
 import type { TdPlacementZone, TdPoint, TdSnapshot } from "../../game/tower-defense/types";
 import PixelCharacter from "../PixelCharacter";
 
@@ -30,16 +29,18 @@ const MONSTER_ASSET: Record<string, string> = {
   boss: "/td/monsters/slime_fire_walk.png",
 };
 
+const RUINS_TILE_ASSET = "/td/ruins/kenney_16x16.png";
+
 const PROJECTILE_ASSET: Record<string, string> = {
-  fire: "/td/effects/orb_fire.png",
-  water: "/td/effects/orb_ice.png",
-  nature: "/td/effects/orb_nature.png",
+  fire: "/td/effects/cc0/fireball_projectile.png",
+  water: "/td/effects/cc0/fireball_projectile.png",
+  nature: "/td/effects/cc0/fireball_projectile.png",
 };
 
 const BURST_ASSET: Record<string, string> = {
-  fire: "/td/effects/burst_fire.png",
-  water: "/td/effects/burst_ice.png",
-  nature: "/td/effects/burst_nature.png",
+  fire: "/td/effects/cc0/explosion_atlas_512.png",
+  water: "/td/effects/cc0/explosion_atlas_512.png",
+  nature: "/td/effects/cc0/explosion_atlas_512.png",
 };
 
 const imageCache = new Map<string, HTMLImageElement>();
@@ -78,14 +79,6 @@ function pathDirection(path: TdPoint[], t: number) {
   return Math.atan2(p2.y - p1.y, p2.x - p1.x);
 }
 
-function drawImageCentered(ctx: CanvasRenderingContext2D, image: HTMLImageElement | null, x: number, y: number, size: number, fallback: () => void) {
-  if (image?.complete && image.naturalWidth > 0) {
-    ctx.drawImage(image, x - size / 2, y - size / 2, size, size);
-    return;
-  }
-  fallback();
-}
-
 function drawSpriteSheetCentered(
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement | null,
@@ -105,6 +98,29 @@ function drawSpriteSheetCentered(
   fallback();
 }
 
+function drawAtlasFrameCentered(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | null,
+  x: number,
+  y: number,
+  size: number,
+  frameSeed: number,
+  fallback: () => void,
+) {
+  if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    const cols = 4;
+    const rows = 4;
+    const frame = Math.floor(frameSeed) % (cols * rows);
+    const frameW = image.naturalWidth / cols;
+    const frameH = image.naturalHeight / rows;
+    const sx = (frame % cols) * frameW;
+    const sy = Math.floor(frame / cols) * frameH;
+    ctx.drawImage(image, sx, sy, frameW, frameH, x - size / 2, y - size / 2, size, size);
+    return;
+  }
+  fallback();
+}
+
 function screenToWorld(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -119,17 +135,29 @@ function getSlotAtPosition(snapshot: TdSnapshot, x: number, y: number) {
 
 function drawBackground(ctx: CanvasRenderingContext2D) {
   const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#101722");
-  bg.addColorStop(0.45, "#070b11");
-  bg.addColorStop(1, "#151b25");
+  bg.addColorStop(0, "#17241b");
+  bg.addColorStop(0.44, "#0b110d");
+  bg.addColorStop(1, "#21180f");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
+  const ruinsImage = getImage(RUINS_TILE_ASSET);
+  if (ruinsImage?.complete && ruinsImage.naturalWidth > 0) {
+    const pattern = ctx.createPattern(ruinsImage, "repeat");
+    if (pattern) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
   const outer = ctx.createLinearGradient(0, 0, W, 0);
-  outer.addColorStop(0, "rgba(59, 130, 246, 0.42)");
+  outer.addColorStop(0, "rgba(22, 163, 74, 0.32)");
   outer.addColorStop(0.18, "rgba(0,0,0,0)");
   outer.addColorStop(0.82, "rgba(0,0,0,0)");
-  outer.addColorStop(1, "rgba(59, 130, 246, 0.32)");
+  outer.addColorStop(1, "rgba(180, 83, 9, 0.26)");
   ctx.fillStyle = outer;
   ctx.fillRect(0, 0, W, H);
 
@@ -137,21 +165,27 @@ function drawBackground(ctx: CanvasRenderingContext2D) {
   ctx.translate(120, 0);
   for (let y = -60; y < H + 120; y += 128) {
     for (let x = 0; x < W - 240; x += 152) {
-      ctx.fillStyle = (x + y) % 256 === 0 ? "#202733" : "#171e28";
-      ctx.strokeStyle = "rgba(113, 128, 150, 0.28)";
+      ctx.fillStyle = (x + y) % 256 === 0 ? "rgba(54, 63, 50, 0.62)" : "rgba(31, 39, 32, 0.68)";
+      ctx.strokeStyle = "rgba(190, 166, 113, 0.22)";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.roundRect(x, y, 150, 126, 5);
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.16)";
+      ctx.strokeStyle = "rgba(236, 214, 166, 0.1)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x + 18, y + 18);
       ctx.lineTo(x + 132, y + 108);
       ctx.moveTo(x + 132, y + 18);
       ctx.lineTo(x + 18, y + 108);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.12)";
+      ctx.beginPath();
+      ctx.moveTo(x + 18, y + 105);
+      ctx.bezierCurveTo(x + 46, y + 88, x + 64, y + 120, x + 102, y + 94);
       ctx.stroke();
     }
   }
@@ -163,11 +197,11 @@ function drawBackground(ctx: CanvasRenderingContext2D) {
     { x: 110, y: H - 72, w: W - 220, h: 78 },
   ]) {
     const rail = ctx.createLinearGradient(edge.x, edge.y, edge.x + edge.w, edge.y + edge.h);
-    rail.addColorStop(0, "#404956");
-    rail.addColorStop(0.52, "#151a22");
-    rail.addColorStop(1, "#4b5563");
+    rail.addColorStop(0, "#55604a");
+    rail.addColorStop(0.52, "#202619");
+    rail.addColorStop(1, "#6b5d3f");
     ctx.fillStyle = rail;
-    ctx.strokeStyle = "rgba(203, 213, 225, 0.28)";
+    ctx.strokeStyle = "rgba(236, 214, 166, 0.28)";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.roundRect(edge.x, edge.y, edge.w, edge.h, 10);
@@ -185,19 +219,19 @@ function drawPath(ctx: CanvasRenderingContext2D, path: TdPoint[], highlight: boo
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
 
-  ctx.strokeStyle = "#111923";
+  ctx.strokeStyle = "#172d27";
   ctx.lineWidth = PATH_WIDTH;
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(94, 234, 212, 0.16)";
+  ctx.strokeStyle = "rgba(111, 78, 45, 0.34)";
   ctx.lineWidth = PATH_WIDTH - 18;
   ctx.beginPath();
   path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.stroke();
 
-  ctx.strokeStyle = highlight ? "rgba(103, 232, 249, 0.58)" : "rgba(148, 163, 184, 0.16)";
+  ctx.strokeStyle = highlight ? "rgba(253, 224, 71, 0.48)" : "rgba(190, 166, 113, 0.18)";
   ctx.lineWidth = 3;
   ctx.setLineDash([22, 18]);
   ctx.beginPath();
@@ -205,7 +239,7 @@ function drawPath(ctx: CanvasRenderingContext2D, path: TdPoint[], highlight: boo
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = "rgba(251, 191, 36, 0.46)";
+  ctx.fillStyle = "rgba(245, 158, 11, 0.5)";
   for (let t = 0.06; t < 0.96; t += 0.075) {
     const p = pointOnPath(path, t);
     const a = pathDirection(path, t);
@@ -225,17 +259,24 @@ function drawPath(ctx: CanvasRenderingContext2D, path: TdPoint[], highlight: boo
 
 function drawZone(ctx: CanvasRenderingContext2D, zone: TdPlacementZone) {
   const panel = ctx.createLinearGradient(zone.x, zone.y, zone.x, zone.y + zone.height);
-  panel.addColorStop(0, "rgba(65, 38, 43, 0.72)");
-  panel.addColorStop(1, "rgba(20, 24, 32, 0.84)");
+  panel.addColorStop(0, "rgba(63, 51, 36, 0.78)");
+  panel.addColorStop(0.62, "rgba(27, 31, 24, 0.86)");
+  panel.addColorStop(1, "rgba(17, 24, 18, 0.92)");
   ctx.fillStyle = panel;
-  ctx.strokeStyle = "rgba(226, 232, 240, 0.52)";
+  ctx.strokeStyle = "rgba(236, 214, 166, 0.48)";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.roundRect(zone.x, zone.y, zone.width, zone.height, 10);
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.strokeStyle = "rgba(34, 197, 94, 0.18)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(zone.x + 10, zone.y + 10, zone.width - 20, zone.height - 20, 8);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(236, 214, 166, 0.09)";
   ctx.lineWidth = 1;
   for (let x = zone.x + 70; x < zone.x + zone.width; x += 70) {
     ctx.beginPath();
@@ -436,7 +477,7 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
         ctx.lineTo(x, y);
         ctx.stroke();
         const projectileImage = getImage(PROJECTILE_ASSET[projectile.unitType] ?? PROJECTILE_ASSET.nature);
-        ctx.fillStyle = color;
+        const angle = Math.atan2(to.y - projectile.from.y, to.x - projectile.from.x);
         const orb = ctx.createRadialGradient(x, y, 2, x, y, 18);
         orb.addColorStop(0, "rgba(255,255,255,0.95)");
         orb.addColorStop(0.32, color);
@@ -445,12 +486,16 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
         ctx.beginPath();
         ctx.arc(x, y, 24, 0, Math.PI * 2);
         ctx.fill();
-        drawImageCentered(ctx, projectileImage, x, y, 30, () => undefined);
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        drawSpriteSheetCentered(ctx, projectileImage, 0, 0, 42, now / 55 + projectile.createdAt, () => undefined);
+        ctx.rotate(-angle);
+        ctx.translate(-x, -y);
         if (progress > 0.62) {
           const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
           const hitAlpha = Math.max(0, 1 - (progress - 0.62) / 0.38);
           ctx.globalAlpha = hitAlpha;
-          drawImageCentered(ctx, burstImage, to.x, to.y, 72, () => undefined);
+          drawAtlasFrameCentered(ctx, burstImage, to.x, to.y, 92, (progress - 0.62) * 42, () => undefined);
           ctx.strokeStyle = color;
           ctx.lineWidth = 5;
           ctx.beginPath();
@@ -511,7 +556,7 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
         fullHeight ? "h-full min-h-0" : "aspect-video max-h-[calc(100vh-220px)]"
       }`}
     >
-      <div className="relative aspect-video h-full max-h-full w-full max-w-full">
+      <div className={fullHeight ? "relative aspect-video h-full max-h-full max-w-full" : "relative aspect-video w-full max-h-full max-w-full"}>
         <canvas
           ref={canvasRef}
           width={W}
@@ -523,8 +568,8 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
         />
         {visibleTowers.map((tower) => {
           const slot = visibleSlots.find((s) => s.id === tower.slotId);
-          const char = CHARACTERS.find((c) => c.id === tower.characterId);
           if (!slot) return null;
+          const rarityColor = RARITY_FILL[tower.rarity] ?? "#94a3b8";
           return (
             <button
               key={tower.id}
@@ -533,14 +578,18 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
                 event.stopPropagation();
                 onSelectTower(tower.id);
               }}
-              className="absolute z-10 flex -translate-x-1/2 -translate-y-[58%] flex-col items-center outline-none"
+              className="absolute z-10 flex -translate-x-1/2 -translate-y-[58%] items-center justify-center outline-none"
               style={{ left: `${(slot.x / W) * 100}%`, top: `${(slot.y / H) * 100}%` }}
             >
-              <span className="flex h-14 w-14 items-center justify-center overflow-hidden">
+              <span
+                className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full"
+                style={{
+                  border: `2px solid ${rarityColor}`,
+                  background: `radial-gradient(circle, ${rarityColor}30 0%, rgba(2, 6, 23, 0.18) 58%, rgba(2, 6, 23, 0) 76%)`,
+                  boxShadow: `0 0 18px ${rarityColor}99, inset 0 0 13px ${rarityColor}66`,
+                }}
+              >
                 <PixelCharacter characterId={tower.characterId} size={48} />
-              </span>
-              <span className="mt-[-3px] max-w-20 truncate rounded bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white shadow">
-                {char?.korName ?? char?.name ?? `#${tower.characterId}`}
               </span>
             </button>
           );

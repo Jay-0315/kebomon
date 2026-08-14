@@ -41,6 +41,12 @@ const TYPE_STYLE: Record<TdUnitType, string> = {
   nature: "border-emerald-300/40 bg-emerald-500/10 text-emerald-100",
 };
 
+const SPEED_OPTIONS = [
+  { value: 1, labelKey: "tower_defense.speed_default" },
+  { value: 1.5, labelKey: "tower_defense.speed_double" },
+  { value: 2, labelKey: "tower_defense.speed_triple" },
+] as const;
+
 function typeUpgradeCost(level: number) {
   return TYPE_UPGRADE_BASE_COST + level * TYPE_UPGRADE_COST_STEP;
 }
@@ -64,7 +70,7 @@ export default function TowerDefensePage() {
   const [chat, setChat] = useState<TdChatMessage[]>([]);
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
   const [moveTowerId, setMoveTowerId] = useState<string | null>(null);
-  const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2>(1);
+  const [speedMultiplier, setSpeedMultiplier] = useState<(typeof SPEED_OPTIONS)[number]["value"]>(1);
   const [summonMode, setSummonMode] = useState<"random" | "fixed">("random");
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [summary, setSummary] = useState<{
@@ -259,22 +265,22 @@ export default function TowerDefensePage() {
               <Radio className="h-4 w-4 text-primary" />
               {t("tower_defense.create_or_join")}
             </p>
-            <div className="grid items-stretch gap-3 xl:grid-cols-[240px_220px_minmax(320px,1fr)]">
+            <div className="grid items-stretch gap-3 xl:grid-cols-[240px_300px_minmax(320px,1fr)]">
               <button
                 onClick={createRoom}
                 className="rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90"
               >
                 {t("tower_defense.create_room")}
               </button>
-              <div className="grid grid-cols-2 rounded-md border border-border bg-muted/30 p-1 text-xs font-bold">
-                {([1, 2] as const).map((speed) => (
+              <div className="grid grid-cols-3 rounded-md border border-border bg-muted/30 p-1 text-xs font-bold">
+                {SPEED_OPTIONS.map((option) => (
                   <button
-                    key={speed}
+                    key={option.value}
                     type="button"
-                    onClick={() => setSpeedMultiplier(speed)}
-                    className={`rounded px-2 py-2 ${speedMultiplier === speed ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => setSpeedMultiplier(option.value)}
+                    className={`rounded px-2 py-2 ${speedMultiplier === option.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    {speed === 1 ? t("tower_defense.speed_default") : t("tower_defense.speed_double")}
+                    {t(option.labelKey)}
                   </button>
                 ))}
               </div>
