@@ -163,10 +163,11 @@ export class GameRoomManager {
       const userId = room.socketToUser.get(socketId);
       if (!userId) continue;
       room.socketToUser.delete(socketId);
+      const hasOtherSocket = [...room.socketToUser.values()].some((uid) => uid === userId);
+      if (hasOtherSocket) return room;
       const player = room.players.get(userId);
       if (player) player.connected = false;
       if (room.phase === "lobby") this.leaveUser(userId);
-      else this.removeActiveArena(room, userId);
       return room;
     }
     return null;
