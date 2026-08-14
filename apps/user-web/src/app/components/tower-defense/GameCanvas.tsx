@@ -310,13 +310,14 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
     if (!canvas || !ctx || !snapshot) return;
     let frame = 0;
 
-    const drawFrame = (clock: number) => {
+    const drawFrame = () => {
+      const now = Date.now();
       const visibleMonsters = snapshot.monsters.filter((monster) => !ownerId || monster.ownerUserId === ownerId);
       const visibleProjectiles = snapshot.projectiles.filter((projectile) => !ownerId || projectile.ownerUserId === ownerId);
       const isOwnView = !!ownerId && ownerId === selfUserId;
       const hoverSlot = hoverSlotId ? visibleSlots.find((s) => s.id === hoverSlotId) : null;
       const selectedTower = selectedTowerId ? visibleTowers.find((t) => t.id === selectedTowerId) : null;
-      const extrapolateSeconds = Math.min(0.16, Math.max(0, (clock - snapshotArrivedAtRef.current) / 1000));
+      const extrapolateSeconds = Math.min(0.32, Math.max(0, (now - snapshotArrivedAtRef.current) / 1000));
 
       ctx.clearRect(0, 0, W, H);
       drawBackground(ctx);
@@ -396,7 +397,7 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
         ctx.shadowColor = monster.kind === "boss" ? "#ef4444" : "#84cc16";
         ctx.shadowBlur = monster.kind === "boss" ? 22 : 12;
         const monsterImage = getImage(MONSTER_ASSET[monster.kind] ?? MONSTER_ASSET.normal);
-        drawSpriteSheetCentered(ctx, monsterImage, 0, 0, r * 2.5, clock / 110 + monster.wave, () => {
+        drawSpriteSheetCentered(ctx, monsterImage, 0, 0, r * 2.5, now / 110 + monster.wave, () => {
           ctx.fillStyle = monster.kind === "boss" ? "#ef4444" : monster.kind === "fast" ? "#38bdf8" : monster.kind === "tough" ? "#a855f7" : "#84cc16";
           ctx.beginPath();
           ctx.moveTo(r + 8, 0);
@@ -417,18 +418,19 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
 
       for (const projectile of visibleProjectiles) {
         const target = visibleMonsters.find((m) => m.id === projectile.toMonsterId);
-        if (!target) continue;
-        const targetPathT = Math.min(1, target.pathT + target.speed * extrapolateSeconds);
-        const to = pointOnPath(snapshot.path, targetPathT);
-        const age = Math.max(0, clock - projectile.createdAt);
-        const progress = Math.max(0, Math.min(1, age / 320));
+        const to = target
+          ? pointOnPath(snapshot.path, Math.min(1, target.pathT + target.speed * extrapolateSeconds))
+          : projectile.to;
+        const age = Math.max(0, now - projectile.createdAt);
+        const progress = Math.max(0, Math.min(1, age / 260));
         const x = projectile.from.x + (to.x - projectile.from.x) * progress;
         const y = projectile.from.y + (to.y - projectile.from.y) * progress;
         const color = TYPE_GLOW[projectile.unitType] ?? "#6ee7b7";
+        ctx.save();
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 5;
         ctx.shadowColor = color;
-        ctx.shadowBlur = 14;
+        ctx.shadowBlur = 24;
         ctx.beginPath();
         ctx.moveTo(projectile.from.x, projectile.from.y);
         ctx.lineTo(x, y);
@@ -441,28 +443,29 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
         orb.addColorStop(1, "rgba(2,6,23,0)");
         ctx.fillStyle = orb;
         ctx.beginPath();
-        ctx.arc(x, y, 18, 0, Math.PI * 2);
+        ctx.arc(x, y, 24, 0, Math.PI * 2);
         ctx.fill();
-        drawImageCentered(ctx, projectileImage, x, y, 18, () => undefined);
-        if (progress > 0.72) {
+        drawImageCentered(ctx, projectileImage, x, y, 30, () => undefined);
+        if (progress > 0.62) {
           const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
-          ctx.globalAlpha = 1 - progress * 0.35;
-          drawImageCentered(ctx, burstImage, to.x, to.y, 38, () => undefined);
+          const hitAlpha = Math.max(0, 1 - (progress - 0.62) / 0.38);
+          ctx.globalAlpha = hitAlpha;
+          drawImageCentered(ctx, burstImage, to.x, to.y, 72, () => undefined);
           ctx.strokeStyle = color;
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 5;
           ctx.beginPath();
-          ctx.arc(to.x, to.y, 22 + progress * 12, 0, Math.PI * 2);
+          ctx.arc(to.x, to.y, 24 + progress * 26, 0, Math.PI * 2);
           ctx.stroke();
           for (let i = 0; i < 8; i += 1) {
             const a = (Math.PI * 2 * i) / 8 + progress;
             ctx.beginPath();
             ctx.moveTo(to.x + Math.cos(a) * 14, to.y + Math.sin(a) * 14);
-            ctx.lineTo(to.x + Math.cos(a) * (34 + progress * 18), to.y + Math.sin(a) * (34 + progress * 18));
+            ctx.lineTo(to.x + Math.cos(a) * (42 + progress * 24), to.y + Math.sin(a) * (42 + progress * 24));
             ctx.stroke();
           }
           ctx.globalAlpha = 1;
         }
-        ctx.shadowBlur = 0;
+        ctx.restore();
       }
 
       const start = snapshot.path[0];
@@ -473,12 +476,10 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
       ctx.fillText("SPAWN", start.x + 24, start.y - 28);
       ctx.fillText("CORE", end.x - 84, end.y + 52);
 
-      if (visibleMonsters.length > 0 || visibleProjectiles.length > 0) {
-        frame = window.requestAnimationFrame(drawFrame);
-      }
+      frame = window.requestAnimationFrame(drawFrame);
     };
 
-    drawFrame(Date.now());
+    drawFrame();
     return () => window.cancelAnimationFrame(frame);
   }, [hoverSlotId, ownerId, selfUserId, snapshot, selectedTowerId, visibleSlots, visibleTowers]);
 

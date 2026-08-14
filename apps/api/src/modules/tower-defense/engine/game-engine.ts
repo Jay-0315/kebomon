@@ -220,7 +220,7 @@ export class GameEngine {
       ),
       towers: [...room.towers.values()],
       monsters: [...room.monsters.values()],
-      projectiles: room.projectiles.filter((p) => now - p.createdAt < 450),
+      projectiles: room.projectiles.filter((p) => now - p.createdAt < 900),
       message,
       result: room.phase === "ended" ? { won: players.some((player) => player.lives > 0) && room.wave >= TD_WAVE_COUNT, wavesCleared: Math.max(0, room.wave - 1) } : undefined,
     };
@@ -458,15 +458,25 @@ export class GameEngine {
     }
 
     for (const tower of room.towers.values()) {
-      if (now - tower.lastAttackAt < tower.attackMs) continue;
+      const attackIntervalMs = tower.attackMs / room.speedMultiplier;
+      if (now - tower.lastAttackAt < attackIntervalMs) continue;
       const slot = TD_SLOTS.find((s) => s.id === baseSlotId(tower.slotId));
       if (!slot) continue;
       const candidates = [...room.monsters.values()].filter((m) => m.ownerUserId === tower.ownerUserId && dist(slot, pointOnPath(m.pathT)) <= tower.range);
       if (candidates.length === 0) continue;
       const target = this.pickTarget(candidates, tower.targetMode);
+      const targetPoint = pointOnPath(target.pathT);
       target.hp -= tower.damage;
       tower.lastAttackAt = now;
-      room.projectiles.push({ id: id("proj"), ownerUserId: tower.ownerUserId, from: { x: slot.x, y: slot.y }, toMonsterId: target.id, unitType: tower.unitType, createdAt: now });
+      room.projectiles.push({
+        id: id("proj"),
+        ownerUserId: tower.ownerUserId,
+        from: { x: slot.x, y: slot.y },
+        to: targetPoint,
+        toMonsterId: target.id,
+        unitType: tower.unitType,
+        createdAt: now,
+      });
       if (target.hp <= 0) {
         room.monsters.delete(target.id);
         const owner = room.players.get(tower.ownerUserId);

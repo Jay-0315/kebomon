@@ -87,7 +87,7 @@ export interface TdSnapshot {
   slots: (TdPlacementSlot & { ownerUserId: string; occupiedBy: string | null })[];
   towers: TdTower[];
   monsters: TdMonster[];
-  projectiles: { id: string; ownerUserId: string; from: TdPoint; toMonsterId: string; unitType: TdUnitType; createdAt: number }[];
+  projectiles: { id: string; ownerUserId: string; from: TdPoint; to: TdPoint; toMonsterId: string; unitType: TdUnitType; createdAt: number }[];
   message?: string;
   result?: { won: boolean; wavesCleared: number };
 }

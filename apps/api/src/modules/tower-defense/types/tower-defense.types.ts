@@ -74,6 +74,7 @@ export interface TdProjectile {
   id: string;
   ownerUserId: string;
   from: TdPoint;
+  to: TdPoint;
   toMonsterId: string;
   unitType: TdUnitType;
   createdAt: number;
