@@ -9,13 +9,14 @@ export const TD_UPGRADE_BASE_COST = 70;
 export const TD_MAX_TOWER_UPGRADE = 10;
 export const TD_TYPE_UPGRADE_BASE_COST = 85;
 export const TD_TYPE_UPGRADE_COST_STEP = 55;
-export const TD_TICK_MS = 100;
-export const TD_WAVE_COUNT = 30;
+export const TD_TICK_MS = 50;
+export const TD_WAVE_COUNT = 100;
+export const TD_NORMAL_MODE_WAVE_COUNT = 50;
 export const TD_WAVE_BREAK_MS = 4_000;
 export const TD_TOWER_RANGE_MULTIPLIER = 1.5;
 
 export const TD_POOL_CHARACTER_IDS = [
-  127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 83, 66,
+  127, 75, 84, 21, 179, 36, 121, 131, 52, 154, 69, 67, 66,
 ] as const;
 
 export const TD_PATH: TdPoint[] = [
@@ -106,7 +107,8 @@ export const TD_POOL_CHARACTER_TYPES: Record<number, TdUnitType> = {
   131: "water",
   52: "nature",
   154: "nature",
-  83: "nature",
+  69: "fire",
+  67: "water",
   66: "nature",
 };
 
@@ -121,6 +123,7 @@ export const TD_POOL_CHARACTER_RARITIES: Record<number, TdRarity> = {
   131: "epic",
   52: "legendary",
   154: "legendary",
-  83: "mythic",
+  69: "mythic",
+  67: "mythic",
   66: "mythic",
 };

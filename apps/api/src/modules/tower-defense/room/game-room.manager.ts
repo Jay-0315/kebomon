@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { Server } from "socket.io";
 import { TD_MAX_PLAYERS, TD_TICK_MS } from "../config/tower-defense.config";
 import { GameEngine } from "../engine/game-engine";
-import type { TdPlayer, TdRoom, TdSpeedMultiplier, TdTargetMode } from "../types/tower-defense.types";
+import type { TdPlayer, TdRoom, TdSpeedMultiplier } from "../types/tower-defense.types";
 import { TowerDefenseService } from "../tower-defense.service";
 
 function roomCode() {
@@ -135,12 +135,11 @@ export class GameRoomManager {
     return { room, error: result.message ?? null };
   }
 
-  targetMode(userId: string, towerId: string, targetMode: TdTargetMode, actionId?: string) {
+  ignoreLegacyTowerCommand(userId: string, _towerId: string, actionId?: string) {
     const room = this.getByUser(userId);
     if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
     if (this.isDuplicate(room, actionId)) return { room, error: null };
-    const result = GameEngine.setTargetMode(room, userId, towerId, targetMode);
-    return { room, error: result.message ?? null };
+    return { room, error: null };
   }
 
   lock(userId: string, towerId: string, locked: boolean, actionId?: string) {
@@ -154,6 +153,7 @@ export class GameRoomManager {
   leaveUserRoom(userId: string) {
     const room = this.getByUser(userId);
     if (!room) return null;
+    this.removeActiveArena(room, userId);
     this.leaveUser(userId);
     return room;
   }
@@ -166,6 +166,7 @@ export class GameRoomManager {
       const player = room.players.get(userId);
       if (player) player.connected = false;
       if (room.phase === "lobby") this.leaveUser(userId);
+      else this.removeActiveArena(room, userId);
       return room;
     }
     return null;
@@ -220,6 +221,18 @@ export class GameRoomManager {
       this.rooms.delete(room.id);
       this.codeToRoomId.delete(room.code);
     }
+  }
+
+  private removeActiveArena(room: TdRoom, userId: string) {
+    if (room.phase !== "playing") return;
+    room.arenas.delete(userId);
+    for (const [monsterId, monster] of [...room.monsters.entries()]) {
+      if (monster.ownerUserId === userId) room.monsters.delete(monsterId);
+    }
+    for (const [towerId, tower] of [...room.towers.entries()]) {
+      if (tower.ownerUserId === userId) room.towers.delete(towerId);
+    }
+    room.projectiles = room.projectiles.filter((projectile) => projectile.ownerUserId !== userId);
   }
 
   private isDuplicate(room: TdRoom, actionId?: string) {

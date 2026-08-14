@@ -1,5 +1,4 @@
 export type TdRoomPhase = "lobby" | "playing" | "ended";
-export type TdTargetMode = "front" | "back" | "strong" | "weak" | "boss";
 export type TdRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type TdUnitType = "fire" | "water" | "nature";
 export type TdSpeedMultiplier = 1 | 1.5 | 2;
@@ -53,7 +52,6 @@ export interface TdTower {
   attackMs: number;
   upgradeLevel: number;
   upgradeCost: number;
-  targetMode: TdTargetMode;
   locked: boolean;
   lastAttackAt: number;
 }

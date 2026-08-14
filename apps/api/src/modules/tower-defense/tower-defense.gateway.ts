@@ -12,7 +12,7 @@ import { JwtStrategy } from "../auth/jwt.strategy";
 import { PrismaService } from "../prisma/prisma.service";
 import { GameEngine } from "./engine/game-engine";
 import { GameRoomManager } from "./room/game-room.manager";
-import type { TdPlayer, TdSpeedMultiplier, TdTargetMode } from "./types/tower-defense.types";
+import type { TdPlayer, TdSpeedMultiplier } from "./types/tower-defense.types";
 
 @WebSocketGateway({ namespace: "/tower-defense", cors: { origin: true, credentials: true }, path: "/socket.io" })
 export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -159,20 +159,6 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
   @SubscribeMessage("td:tower:merge")
   merge(@MessageBody() data: { towerId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
     const { room, error } = this.rooms.merge(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
-    if (!room) return;
-    if (error) client.emit("td:error", { message: error });
-    this.broadcast(room.id);
-  }
-
-  @SubscribeMessage("td:tower:target-mode")
-  targetMode(
-    @MessageBody() data: { towerId?: string; targetMode?: TdTargetMode; actionId?: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const mode = ["front", "back", "strong", "weak", "boss"].includes(String(data?.targetMode))
-      ? (data?.targetMode as TdTargetMode)
-      : "front";
-    const { room, error } = this.rooms.targetMode(client.data.userId as string, String(data?.towerId ?? ""), mode, data?.actionId);
     if (!room) return;
     if (error) client.emit("td:error", { message: error });
     this.broadcast(room.id);

@@ -5,7 +5,7 @@ import { disconnectTowerDefenseSocket, getTowerDefenseSocket } from "../lib/sock
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
-import type { TdChatMessage, TdSnapshot, TdTargetMode, TdUnitType } from "../game/tower-defense/types";
+import type { TdChatMessage, TdSnapshot, TdUnitType } from "../game/tower-defense/types";
 import GameCanvas from "./tower-defense/GameCanvas";
 import PixelCharacter from "./PixelCharacter";
 
@@ -16,14 +16,6 @@ interface RankingEntry {
   bestWave: number;
   characterId: number | null;
 }
-
-const TARGET_LABEL_KEY: Record<TdTargetMode, TranslationKey> = {
-  front: "tower_defense.target_front",
-  back: "tower_defense.target_back",
-  strong: "tower_defense.target_strong",
-  weak: "tower_defense.target_weak",
-  boss: "tower_defense.target_boss",
-};
 
 const RANDOM_SUMMON_COST = 45;
 const FIXED_SUMMON_COST = 140;
@@ -218,11 +210,6 @@ export default function TowerDefensePage() {
     socket.emit("td:tower:lock", { towerId: selectedTower.id, locked: !selectedTower.locked, actionId: actionId() });
   };
 
-  const setTargetMode = (targetMode: TdTargetMode) => {
-    if (!selectedTower) return;
-    socket.emit("td:tower:target-mode", { towerId: selectedTower.id, targetMode, actionId: actionId() });
-  };
-
   const sendChat = () => {
     const text = message.trim();
     if (!text) return;
@@ -283,7 +270,6 @@ export default function TowerDefensePage() {
               onMerge={mergeTower}
               onToggleLock={toggleLockTower}
               onSell={sellTower}
-              onTargetMode={setTargetMode}
             />
             <ChatPanel chat={chat} message={message} setMessage={setMessage} onSend={sendChat} />
           </div>
@@ -311,7 +297,6 @@ export default function TowerDefensePage() {
           onUpgrade={upgradeTower}
           onToggleLock={toggleLockTower}
           onSell={sellTower}
-          onTargetMode={setTargetMode}
           onLeave={leaveRoom}
           onSendChat={sendChat}
         />
@@ -355,39 +340,40 @@ function TowerDefenseLobby({
   const topRankers = rankings.slice(0, 3);
 
   return (
-    <div className="overflow-hidden rounded-md border border-emerald-500/25 bg-[#06100b] shadow-[0_0_40px_rgba(16,185,129,0.1)]">
-      <div className="relative border-b border-emerald-500/30 bg-[linear-gradient(180deg,rgba(9,33,18,0.95),rgba(3,8,6,0.96))] px-5 py-10 text-center">
-        <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(34,197,94,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,.14)_1px,transparent_1px)] [background-size:18px_18px]" />
+    <div className="overflow-hidden rounded-md border border-amber-500/25 bg-[#0d0904] shadow-[0_0_40px_rgba(180,83,9,0.12)]">
+      <div className="relative border-b border-amber-500/35 bg-[linear-gradient(180deg,rgba(38,20,7,0.96),rgba(9,7,4,0.98))] px-5 py-10 text-center">
+        <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(180,83,9,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(120,113,108,.12)_1px,transparent_1px)] [background-size:22px_22px]" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
         <div className="relative mx-auto flex max-w-[760px] flex-col items-center">
-          <div className="mb-3 flex items-end gap-3 text-emerald-400/80">
-            <span className="h-12 w-5 rounded-t-sm border border-emerald-500/35 bg-emerald-400/10 shadow-[0_0_18px_rgba(34,197,94,.35)]" />
-            <div className="grid h-16 w-28 place-items-center rounded-t-lg border border-emerald-500/35 bg-black/35 shadow-[0_0_22px_rgba(34,197,94,.2)]">
+          <div className="mb-3 flex items-end gap-3 text-amber-300/85">
+            <span className="h-12 w-5 rounded-t-sm border border-amber-500/40 bg-amber-400/10 shadow-[0_0_18px_rgba(245,158,11,.25)]" />
+            <div className="grid h-16 w-28 place-items-center rounded-t-lg border border-amber-500/40 bg-black/35 shadow-[0_0_22px_rgba(245,158,11,.18)]">
               <Shield className="h-8 w-8" />
             </div>
-            <span className="h-12 w-5 rounded-t-sm border border-emerald-500/35 bg-emerald-400/10 shadow-[0_0_18px_rgba(34,197,94,.35)]" />
+            <span className="h-12 w-5 rounded-t-sm border border-amber-500/40 bg-amber-400/10 shadow-[0_0_18px_rgba(245,158,11,.25)]" />
           </div>
-          <p className="text-[11px] font-black uppercase tracking-[0.55em] text-emerald-400/70">KEBOMON RUIN GUARD</p>
-          <h1 className="mt-2 font-mono text-3xl font-black tracking-[0.18em] text-emerald-200 md:text-4xl">
+          <p className="text-[11px] font-black tracking-[0.45em] text-amber-300/75">고대 유적 방어전</p>
+          <h1 className="mt-2 font-mono text-3xl font-black tracking-[0.18em] text-amber-100 md:text-4xl">
             {t("tower_defense.title")}
           </h1>
-          <div className="mt-4 h-px w-40 bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
-          <p className="mt-4 max-w-xl text-sm text-emerald-100/70">
-            {t("tower_defense.subtitle")}
+          <div className="mt-4 h-px w-40 bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+          <p className="mt-4 max-w-xl text-sm text-stone-300">
+            봉인된 유적의 길목을 지키고, 각자의 영역에서 몰려오는 적을 막아내세요.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-5 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,.16),transparent_34%),#050807] p-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-5 bg-[radial-gradient(circle_at_50%_0%,rgba(146,64,14,.18),transparent_34%),#080604] p-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
-          <section className="grid gap-4 rounded-md border border-emerald-500/25 bg-black/45 p-4 md:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="relative min-h-44 overflow-hidden rounded-md border border-emerald-500/25 bg-[linear-gradient(145deg,rgba(20,83,45,.35),rgba(2,6,23,.75))]">
-              <div className="absolute inset-x-6 bottom-7 h-10 rounded-full bg-emerald-400/10 blur-xl" />
-              <div className="absolute left-6 top-6 grid grid-cols-5 gap-1 opacity-55">
+          <section className="grid gap-4 rounded-md border border-amber-500/25 bg-black/45 p-4 md:grid-cols-[260px_minmax(0,1fr)]">
+            <div className="relative grid min-h-44 place-items-center overflow-hidden rounded-md border border-amber-500/25 bg-[linear-gradient(145deg,rgba(67,42,20,.58),rgba(9,7,4,.86))]">
+              <div className="absolute inset-x-8 bottom-7 h-10 rounded-full bg-amber-400/12 blur-xl" />
+              <div className="absolute left-5 top-5 grid grid-cols-5 gap-1 opacity-40">
                 {Array.from({ length: 35 }, (_, i) => (
-                  <span key={i} className={`h-3 w-3 rounded-sm ${i % 4 === 0 ? "bg-emerald-400" : "bg-emerald-900"}`} />
+                  <span key={i} className={`h-3 w-3 rounded-sm ${i % 4 === 0 ? "bg-amber-400" : "bg-stone-700"}`} />
                 ))}
               </div>
-              <div className="absolute bottom-5 right-8">
+              <div className="relative z-10 grid place-items-center">
                 <PixelCharacter characterId={myCharacterId} size={96} />
               </div>
             </div>
@@ -398,19 +384,19 @@ function TowerDefenseLobby({
                   <Radio className="h-4 w-4 text-primary" />
                   {t("tower_defense.create_or_join")}
                 </p>
-                <p className="mt-2 text-xs leading-5 text-emerald-100/60">
-                  개인 영역에 유닛을 배치하고, 유적 이동로를 따라 침입하는 몬스터를 막습니다. 방장은 속도를 선택하고 최대 4명이 각자 영역을 방어합니다.
+                <p className="mt-2 text-xs leading-5 text-stone-300/75">
+                  방을 만들고 속도를 선택한 뒤, 최대 4명이 각자 배정된 영역에서 진행합니다.
                 </p>
               </div>
 
               <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <button
                   onClick={onCreateRoom}
-                  className="min-h-14 rounded-md border border-emerald-300/40 bg-emerald-400 px-4 text-sm font-black text-black shadow-[0_0_24px_rgba(52,211,153,.22)] hover:bg-emerald-300"
+                  className="min-h-14 rounded-md border border-amber-300/50 bg-amber-400 px-4 text-sm font-black text-black shadow-[0_0_24px_rgba(245,158,11,.18)] hover:bg-amber-300"
                 >
                   {t("tower_defense.create_room")}
                 </button>
-                <div className="grid grid-cols-3 rounded-md border border-emerald-500/25 bg-black/45 p-1 text-xs font-black">
+                <div className="grid grid-cols-3 rounded-md border border-amber-500/25 bg-black/45 p-1 text-xs font-black">
                   {SPEED_OPTIONS.map((option) => (
                     <button
                       key={option.value}
@@ -418,8 +404,8 @@ function TowerDefenseLobby({
                       onClick={() => onSpeedChange(option.value)}
                       className={`rounded px-2 py-3 ${
                         speedMultiplier === option.value
-                          ? "bg-emerald-400 text-black shadow-[0_0_18px_rgba(52,211,153,.24)]"
-                          : "text-emerald-100/60 hover:bg-emerald-500/10 hover:text-emerald-100"
+                          ? "bg-amber-400 text-black shadow-[0_0_18px_rgba(245,158,11,.2)]"
+                          : "text-stone-300/70 hover:bg-amber-500/10 hover:text-amber-100"
                       }`}
                     >
                       {t(option.labelKey)}
@@ -433,11 +419,11 @@ function TowerDefenseLobby({
                   value={roomCode}
                   onChange={(e) => onRoomCodeChange(e.target.value.toUpperCase())}
                   placeholder={t("tower_defense.room_code")}
-                  className="min-w-0 rounded-md border border-emerald-500/20 bg-black/55 px-3 py-3 text-sm font-bold text-emerald-100 outline-none placeholder:text-emerald-100/35 focus:border-emerald-300/60"
+                  className="min-w-0 rounded-md border border-amber-500/20 bg-black/55 px-3 py-3 text-sm font-bold text-amber-100 outline-none placeholder:text-stone-400/55 focus:border-amber-300/60"
                 />
                 <button
                   onClick={onJoinRoom}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-500/30 px-3 py-3 text-sm font-black text-emerald-100 hover:border-emerald-300 hover:bg-emerald-500/10"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-md border border-amber-500/30 px-3 py-3 text-sm font-black text-amber-100 hover:border-amber-300 hover:bg-amber-500/10"
                 >
                   <LogIn className="h-4 w-4" />
                   {t("tower_defense.join")}
@@ -454,14 +440,14 @@ function TowerDefenseLobby({
           </section>
 
           <section className="grid gap-3 md:grid-cols-3">
-            <LobbyFeature icon={<Users className="h-4 w-4" />} title="4인 개인 영역" desc="각자 라이프와 배치판을 따로 운용합니다." />
-            <LobbyFeature icon={<Swords className="h-4 w-4" />} title="랜덤 소환" desc="도감 캐릭터를 등급/타입 규칙에 맞춰 배치합니다." />
-            <LobbyFeature icon={<Shield className="h-4 w-4" />} title="일일 KP 제한" desc="무한 플레이는 유지하고 보상량만 제한합니다." />
+            <LobbyFeature icon={<Users className="h-4 w-4" />} title="개인 영역" desc="플레이어별 배치판과 라이프를 따로 관리합니다." />
+            <LobbyFeature icon={<Swords className="h-4 w-4" />} title="도감 유닛" desc="보유 도감 캐릭터 기준으로 유닛이 배치됩니다." />
+            <LobbyFeature icon={<Shield className="h-4 w-4" />} title="보상 한도" desc="플레이는 자유롭게, 일일 KP만 제한됩니다." />
           </section>
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-md border border-amber-500/25 bg-[linear-gradient(180deg,rgba(120,53,15,.18),rgba(0,0,0,.55))] p-4">
+          <div className="rounded-md border border-amber-500/25 bg-[linear-gradient(180deg,rgba(120,53,15,.2),rgba(0,0,0,.6))] p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-black text-amber-200">
               <Trophy className="h-4 w-4 text-amber-300" />
               {t("tower_defense.rankings")}
@@ -474,19 +460,19 @@ function TowerDefenseLobby({
                   <div key={r.userId} className="grid grid-cols-[34px_minmax(0,1fr)_48px] items-center gap-2 rounded bg-black/35 px-3 py-2 text-sm">
                     <span className="font-mono font-black text-amber-300">#{r.rank}</span>
                     <span className="truncate font-bold text-amber-50">{r.nickname}</span>
-                    <span className="text-right font-mono font-black text-emerald-200">{r.bestWave}</span>
+                    <span className="text-right font-mono font-black text-amber-100">{r.bestWave}</span>
                   </div>
                 ))
               )}
             </div>
           </div>
 
-          <div className="rounded-md border border-emerald-500/25 bg-black/45 p-4">
-            <p className="mb-3 text-sm font-black text-emerald-200">방어 규칙</p>
-            <div className="space-y-2 text-xs text-emerald-100/65">
-              <p className="rounded bg-emerald-500/5 px-3 py-2">빈 슬롯에만 설치되며, 설치 후 이동/잠금/판매가 가능합니다.</p>
-              <p className="rounded bg-emerald-500/5 px-3 py-2">불, 물, 풀 타입 강화는 같은 타입 유닛 전체에 적용됩니다.</p>
-              <p className="rounded bg-emerald-500/5 px-3 py-2">고등급 유닛은 합성으로 확장해 후반 웨이브를 대응합니다.</p>
+          <div className="rounded-md border border-amber-500/25 bg-black/45 p-4">
+            <p className="mb-3 text-sm font-black text-amber-100">방어 규칙</p>
+            <div className="space-y-2 text-xs text-stone-300/75">
+              <p className="rounded bg-amber-500/5 px-3 py-2">정해진 슬롯에만 설치할 수 있습니다.</p>
+              <p className="rounded bg-amber-500/5 px-3 py-2">타입 강화는 같은 타입 유닛 전체에 적용됩니다.</p>
+              <p className="rounded bg-amber-500/5 px-3 py-2">고등급 유닛은 합성으로 확장합니다.</p>
             </div>
           </div>
         </aside>
@@ -497,18 +483,18 @@ function TowerDefenseLobby({
 
 function LobbyStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-emerald-500/25 bg-black/45 px-4 py-3">
-      <p className="flex items-center gap-2 text-xs font-bold text-emerald-100/55">{icon}{label}</p>
-      <p className="mt-1 font-mono text-xl font-black text-emerald-100">{value}</p>
+    <div className="rounded-md border border-amber-500/25 bg-black/45 px-4 py-3">
+      <p className="flex items-center gap-2 text-xs font-bold text-stone-300/65">{icon}{label}</p>
+      <p className="mt-1 font-mono text-xl font-black text-amber-100">{value}</p>
     </div>
   );
 }
 
 function LobbyFeature({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
-      <p className="flex items-center gap-2 text-sm font-black text-emerald-200">{icon}{title}</p>
-      <p className="mt-2 text-xs leading-5 text-emerald-100/55">{desc}</p>
+    <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.055] p-4">
+      <p className="flex items-center gap-2 text-sm font-black text-amber-100">{icon}{title}</p>
+      <p className="mt-2 text-xs leading-5 text-stone-300/65">{desc}</p>
     </div>
   );
 }
@@ -533,7 +519,6 @@ function InGameShell({
   onUpgrade,
   onToggleLock,
   onSell,
-  onTargetMode,
   onLeave,
   onSendChat,
 }: {
@@ -556,7 +541,6 @@ function InGameShell({
   onUpgrade: () => void;
   onToggleLock: () => void;
   onSell: () => void;
-  onTargetMode: (mode: TdTargetMode) => void;
   onLeave: () => void;
   onSendChat: () => void;
 }) {
@@ -571,6 +555,32 @@ function InGameShell({
   const selectedTypeLevel = selectedTower ? me?.typeUpgrades?.[selectedTower.unitType] ?? selectedTower.upgradeLevel ?? 0 : 0;
   const selectedTypeCost = selectedTypeLevel >= 10 ? 0 : typeUpgradeCost(selectedTypeLevel);
   const canUpgrade = !!selectedTower && selectedTypeLevel < 10 && (me?.gold ?? 0) >= selectedTypeCost;
+  const canMerge = !!selectedTower && !selectedTower.locked && snapshot.towers.some(
+    (tower) =>
+      tower.id !== selectedTower.id &&
+      tower.ownerUserId === selectedTower.ownerUserId &&
+      tower.characterId === selectedTower.characterId &&
+      !tower.locked,
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+      const key = event.key.toLowerCase();
+      if (key === "r") onSummonMode("random");
+      else if (key === "f") onSummonMode("fixed");
+      else if (key === "u") onUpgrade();
+      else if (key === "m") onMerge();
+      else if (key === "v") onMove();
+      else if (key === "l") onToggleLock();
+      else if (key === "s") onSell();
+      else return;
+      event.preventDefault();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onMerge, onMove, onSell, onSummonMode, onToggleLock, onUpgrade]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#03060a] text-emerald-100">
@@ -623,7 +633,7 @@ function InGameShell({
           </div>
         </div>
 
-        <div className="grid h-[210px] shrink-0 overflow-hidden border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[200px_minmax(0,1fr)_300px]">
+        <div className="grid h-[240px] shrink-0 overflow-hidden border-t border-emerald-500/20 bg-[#05080d] md:grid-cols-[220px_minmax(0,1fr)_320px]">
           <MiniMap slots={snapshot.slots.filter((slot) => slot.ownerUserId === selfUserId).length} towers={myTowers.length} />
           <CommandCard
             selectedTower={selectedTower}
@@ -635,6 +645,7 @@ function InGameShell({
             canRandom={canRandom}
             canFixed={canFixed}
             canUpgrade={canUpgrade}
+            canMerge={canMerge}
             myCharacterId={myCharacterId}
             onSummonMode={onSummonMode}
             onMove={onMove}
@@ -642,7 +653,6 @@ function InGameShell({
             onUpgrade={onUpgrade}
             onToggleLock={onToggleLock}
             onSell={onSell}
-            onTargetMode={onTargetMode}
           />
           <CompactChat chat={chat} message={message} setMessage={setMessage} onSend={onSendChat} />
         </div>
@@ -736,6 +746,7 @@ function CommandCard({
   canRandom,
   canFixed,
   canUpgrade,
+  canMerge,
   myCharacterId,
   onSummonMode,
   onMove,
@@ -743,7 +754,6 @@ function CommandCard({
   onUpgrade,
   onToggleLock,
   onSell,
-  onTargetMode,
 }: {
   selectedTower: TdSnapshot["towers"][number] | null;
   selectedSlot: TdSnapshot["slots"][number] | null | undefined;
@@ -754,6 +764,7 @@ function CommandCard({
   canRandom: boolean;
   canFixed: boolean;
   canUpgrade: boolean;
+  canMerge: boolean;
   myCharacterId: number;
   onSummonMode: (mode: "random" | "fixed") => void;
   onMove: () => void;
@@ -761,11 +772,10 @@ function CommandCard({
   onUpgrade: () => void;
   onToggleLock: () => void;
   onSell: () => void;
-  onTargetMode: (mode: TdTargetMode) => void;
 }) {
   const { t } = useLang();
   return (
-    <div className="grid h-full min-h-0 gap-3 overflow-hidden p-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="grid h-full min-h-0 gap-3 overflow-hidden p-3 lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="min-h-0 rounded border border-emerald-500/30 bg-black/55 p-3">
         <p className="mb-2 text-xs font-black text-emerald-200">{t("tower_defense.unit_info")}</p>
         {selectedTower ? (
@@ -783,6 +793,9 @@ function CommandCard({
               </p>
               <p className="text-xs text-cyan-200">
                 {formatText(t("tower_defense.next_upgrade_cost"), { cost: selectedTypeCost || "MAX" })}
+              </p>
+              <p className="text-[11px] text-emerald-300/60">
+                선택 유닛의 {t(TYPE_LABEL_KEY[selectedTower.unitType])} 타입 전체 강화
               </p>
             </div>
           </div>
@@ -813,7 +826,7 @@ function CommandCard({
               summonMode === "random" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
             } ${!canRandom ? "opacity-50" : ""}`}
           >
-            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> {t("tower_defense.random_summon")}</span>
+            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4" /> {t("tower_defense.random_summon")} <span className="text-[10px] opacity-60">R</span></span>
             <span className="mt-1 block font-mono text-[11px]">{formatText(t("tower_defense.cost_gold"), { cost: RANDOM_SUMMON_COST })}</span>
           </button>
           <button
@@ -822,39 +835,28 @@ function CommandCard({
               summonMode === "fixed" ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-emerald-500/25 text-emerald-200"
             } ${!canFixed ? "opacity-50" : ""}`}
           >
-            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> {t("tower_defense.fixed_summon")}</span>
+            <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> {t("tower_defense.fixed_summon")} <span className="text-[10px] opacity-60">F</span></span>
             <span className="mt-1 block font-mono text-[11px]">{formatText(t("tower_defense.cost_gold"), { cost: FIXED_SUMMON_COST })}</span>
           </button>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          <ActionButton icon={<Hammer className="h-4 w-4" />} label={t("tower_defense.type_upgrade")} disabled={!canUpgrade} onClick={onUpgrade} />
-          <ActionButton label={t("tower_defense.merge")} disabled={!selectedTower || selectedTower.locked} onClick={onMerge} />
-          <ActionButton label={t("tower_defense.move")} disabled={!selectedTower} onClick={onMove} />
-          <ActionButton label={selectedTower?.locked ? t("tower_defense.unlock") : t("tower_defense.lock")} disabled={!selectedTower} onClick={onToggleLock} />
+          <ActionButton icon={<Hammer className="h-4 w-4" />} label={selectedTower ? `${t(TYPE_LABEL_KEY[selectedTower.unitType])} ${t("tower_defense.type_upgrade")}` : t("tower_defense.type_upgrade")} hotkey="U" disabled={!canUpgrade} onClick={onUpgrade} />
+          <ActionButton label={t("tower_defense.merge")} hotkey="M" disabled={!canMerge} onClick={onMerge} />
+          <ActionButton label={t("tower_defense.move")} hotkey="V" disabled={!selectedTower} onClick={onMove} />
+          <ActionButton label={selectedTower?.locked ? t("tower_defense.unlock") : t("tower_defense.lock")} hotkey="L" disabled={!selectedTower} onClick={onToggleLock} />
         </div>
 
-        <div className="grid grid-cols-6 gap-2">
-          {(Object.keys(TARGET_LABEL_KEY) as TdTargetMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => onTargetMode(mode)}
-              disabled={!selectedTower}
-              className={`rounded border px-2 py-2 text-xs font-black ${
-                selectedTower?.targetMode === mode
-                  ? "border-cyan-300 bg-cyan-300/10 text-cyan-100"
-                  : "border-emerald-500/25 text-emerald-200 disabled:opacity-40"
-              }`}
-            >
-              {t(TARGET_LABEL_KEY[mode])}
-            </button>
-          ))}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px]">
+          <div className="rounded border border-emerald-500/25 bg-emerald-500/5 px-3 py-3 text-xs font-bold text-emerald-100/75">
+            공격 대상: 가장 가까운 적 자동 선택
+          </div>
           <button
             onClick={onSell}
             disabled={!selectedTower}
             className="rounded border border-red-400/35 px-2 py-2 text-xs font-black text-red-200 hover:bg-red-500/10 disabled:opacity-40"
           >
-            {t("tower_defense.sell")}
+            {t("tower_defense.sell")} <span className="text-[10px] opacity-60">S</span>
           </button>
         </div>
       </div>
@@ -862,15 +864,16 @@ function CommandCard({
   );
 }
 
-function ActionButton({ icon, label, disabled, onClick }: { icon?: React.ReactNode; label: string; disabled?: boolean; onClick: () => void }) {
+function ActionButton({ icon, label, hotkey, disabled, onClick }: { icon?: React.ReactNode; label: string; hotkey?: string; disabled?: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-11 items-center justify-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 text-xs font-black text-emerald-100 hover:bg-emerald-500/12 disabled:opacity-40"
+      className="flex min-h-12 items-center justify-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 text-xs font-black text-emerald-100 hover:bg-emerald-500/12 disabled:opacity-40"
     >
       {icon}
       {label}
+      {hotkey && <span className="text-[10px] opacity-60">{hotkey}</span>}
     </button>
   );
 }
@@ -1038,7 +1041,6 @@ function TowerPanel({
   onMerge,
   onToggleLock,
   onSell,
-  onTargetMode,
 }: {
   tower: ReturnType<NonNullable<TdSnapshot["towers"]>["find"]> | null;
   moving: boolean;
@@ -1046,7 +1048,6 @@ function TowerPanel({
   onMerge: () => void;
   onToggleLock: () => void;
   onSell: () => void;
-  onTargetMode: (mode: TdTargetMode) => void;
 }) {
   const { t } = useLang();
   return (
@@ -1066,16 +1067,8 @@ function TowerPanel({
               <p className="text-xs text-muted-foreground">{tower.rarity} · DMG {tower.damage} · RNG {tower.range}</p>
             </div>
           </div>
-          <div className="grid grid-cols-5 gap-1">
-            {(Object.keys(TARGET_LABEL_KEY) as TdTargetMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => onTargetMode(mode)}
-                className={`rounded border px-1 py-1 text-[11px] font-bold ${tower.targetMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
-              >
-                {t(TARGET_LABEL_KEY[mode])}
-              </button>
-            ))}
+          <div className="rounded border border-border bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
+            공격 대상: 가장 가까운 적 자동 선택
           </div>
           <div className="grid grid-cols-4 gap-2">
             <button

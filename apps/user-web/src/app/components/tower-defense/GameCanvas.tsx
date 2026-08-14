@@ -6,6 +6,8 @@ const W = 1920;
 const H = 1080;
 const PATH_WIDTH = 76;
 const SLOT_HIT_RADIUS = 48;
+const PROJECTILE_TRAVEL_MS = 320;
+const PROJECTILE_EFFECT_MS = 520;
 
 const RARITY_FILL: Record<string, string> = {
   common: "#94a3b8",
@@ -381,15 +383,6 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
       }
 
       if (hoverSlot && !hoverSlot.occupiedBy) {
-        const range = selectedTower?.range ?? 230;
-        ctx.fillStyle = "rgba(34, 211, 238, 0.07)";
-        ctx.strokeStyle = "rgba(103, 232, 249, 0.34)";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(hoverSlot.x, hoverSlot.y, range, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
         ctx.fillStyle = "rgba(15, 23, 42, 0.62)";
         ctx.strokeStyle = "rgba(103, 232, 249, 0.42)";
         ctx.beginPath();
@@ -401,13 +394,15 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
       if (selectedTower) {
         const slot = visibleSlots.find((s) => s.id === selectedTower.slotId);
         if (slot) {
-          ctx.fillStyle = "rgba(34, 211, 238, 0.06)";
-          ctx.strokeStyle = "rgba(103, 232, 249, 0.3)";
-          ctx.lineWidth = 3;
+          ctx.fillStyle = "rgba(34, 211, 238, 0.025)";
+          ctx.strokeStyle = "rgba(103, 232, 249, 0.16)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([14, 16]);
           ctx.beginPath();
           ctx.arc(slot.x, slot.y, selectedTower.range, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
+          ctx.setLineDash([]);
         }
       }
 
@@ -463,51 +458,59 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
           ? pointOnPath(snapshot.path, Math.min(1, target.pathT + target.speed * extrapolateSeconds))
           : projectile.to;
         const age = Math.max(0, now - projectile.createdAt);
-        const progress = Math.max(0, Math.min(1, age / 260));
+        if (age > PROJECTILE_EFFECT_MS) continue;
+        const progress = Math.max(0, Math.min(1, age / PROJECTILE_TRAVEL_MS));
         const x = projectile.from.x + (to.x - projectile.from.x) * progress;
         const y = projectile.from.y + (to.y - projectile.from.y) * progress;
         const color = TYPE_GLOW[projectile.unitType] ?? "#6ee7b7";
         ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 5;
         ctx.shadowColor = color;
-        ctx.shadowBlur = 24;
-        ctx.beginPath();
-        ctx.moveTo(projectile.from.x, projectile.from.y);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        const projectileImage = getImage(PROJECTILE_ASSET[projectile.unitType] ?? PROJECTILE_ASSET.nature);
+        ctx.shadowBlur = 18;
         const angle = Math.atan2(to.y - projectile.from.y, to.x - projectile.from.x);
-        const orb = ctx.createRadialGradient(x, y, 2, x, y, 18);
-        orb.addColorStop(0, "rgba(255,255,255,0.95)");
-        orb.addColorStop(0.32, color);
-        orb.addColorStop(1, "rgba(2,6,23,0)");
-        ctx.fillStyle = orb;
-        ctx.beginPath();
-        ctx.arc(x, y, 24, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        drawSpriteSheetCentered(ctx, projectileImage, 0, 0, 42, now / 55 + projectile.createdAt, () => undefined);
-        ctx.rotate(-angle);
-        ctx.translate(-x, -y);
-        if (progress > 0.62) {
-          const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
-          const hitAlpha = Math.max(0, 1 - (progress - 0.62) / 0.38);
-          ctx.globalAlpha = hitAlpha;
-          drawAtlasFrameCentered(ctx, burstImage, to.x, to.y, 92, (progress - 0.62) * 42, () => undefined);
-          ctx.strokeStyle = color;
+        if (progress < 1) {
+          const projectileImage = getImage(PROJECTILE_ASSET[projectile.unitType] ?? PROJECTILE_ASSET.nature);
+          const tailX = x - Math.cos(angle) * 34;
+          const tailY = y - Math.sin(angle) * 34;
+          const tail = ctx.createLinearGradient(tailX, tailY, x, y);
+          tail.addColorStop(0, "rgba(255,255,255,0)");
+          tail.addColorStop(0.55, `${color}88`);
+          tail.addColorStop(1, "rgba(255,255,255,0.95)");
+          ctx.strokeStyle = tail;
           ctx.lineWidth = 5;
+          ctx.lineCap = "round";
           ctx.beginPath();
-          ctx.arc(to.x, to.y, 24 + progress * 26, 0, Math.PI * 2);
+          ctx.moveTo(tailX, tailY);
+          ctx.lineTo(x, y);
           ctx.stroke();
-          for (let i = 0; i < 8; i += 1) {
-            const a = (Math.PI * 2 * i) / 8 + progress;
+
+          const orb = ctx.createRadialGradient(x, y, 2, x, y, 18);
+          orb.addColorStop(0, "rgba(255,255,255,0.95)");
+          orb.addColorStop(0.34, color);
+          orb.addColorStop(1, "rgba(2,6,23,0)");
+          ctx.fillStyle = orb;
+          ctx.beginPath();
+          ctx.arc(x, y, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          drawSpriteSheetCentered(ctx, projectileImage, 0, 0, 38, now / 55 + projectile.createdAt, () => undefined);
+          ctx.rotate(-angle);
+          ctx.translate(-x, -y);
+        } else {
+          const burstImage = getImage(BURST_ASSET[projectile.unitType] ?? BURST_ASSET.nature);
+          const hitProgress = Math.max(0, Math.min(1, (age - PROJECTILE_TRAVEL_MS) / (PROJECTILE_EFFECT_MS - PROJECTILE_TRAVEL_MS)));
+          const hitAlpha = Math.max(0, 1 - hitProgress);
+          ctx.globalAlpha = hitAlpha;
+          drawAtlasFrameCentered(ctx, burstImage, to.x, to.y, 82, hitProgress * 15, () => {
+            const flash = ctx.createRadialGradient(to.x, to.y, 2, to.x, to.y, 48);
+            flash.addColorStop(0, "rgba(255,255,255,0.95)");
+            flash.addColorStop(0.35, color);
+            flash.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.fillStyle = flash;
             ctx.beginPath();
-            ctx.moveTo(to.x + Math.cos(a) * 14, to.y + Math.sin(a) * 14);
-            ctx.lineTo(to.x + Math.cos(a) * (42 + progress * 24), to.y + Math.sin(a) * (42 + progress * 24));
-            ctx.stroke();
-          }
+            ctx.arc(to.x, to.y, 48, 0, Math.PI * 2);
+            ctx.fill();
+          });
           ctx.globalAlpha = 1;
         }
         ctx.restore();

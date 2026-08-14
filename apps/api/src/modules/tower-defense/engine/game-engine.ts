@@ -19,7 +19,7 @@
   TD_WAVE_BREAK_MS,
   TD_WAVE_COUNT,
 } from "../config/tower-defense.config";
-import type { TdMonster, TdRarity, TdRoom, TdSnapshot, TdSpeedMultiplier, TdTargetMode, TdTower, TdUnitType } from "../types/tower-defense.types";
+import type { TdMonster, TdPoint, TdRarity, TdRoom, TdSnapshot, TdSpeedMultiplier, TdTower, TdUnitType } from "../types/tower-defense.types";
 
 const RARITY_ORDER: TdRarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const DIRECT_SUMMON_RARITIES: Array<{ fromWave: number; rarities: TdRarity[] }> = [
@@ -277,7 +277,6 @@ export class GameEngine {
       attackMs: power.attackMs,
       upgradeLevel: level,
       upgradeCost: level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level),
-      targetMode: "front",
       locked: false,
       lastAttackAt: 0,
     };
@@ -313,7 +312,6 @@ export class GameEngine {
       attackMs: power.attackMs,
       upgradeLevel: level,
       upgradeCost: level >= TD_MAX_TOWER_UPGRADE ? 0 : upgradeCost(level),
-      targetMode: "front",
       locked: false,
       lastAttackAt: 0,
     };
@@ -372,9 +370,9 @@ export class GameEngine {
     const upgradedRarity = nextRarity(base.rarity);
     if (!upgradedRarity) return { ok: false, message: "더 이상 합성할 수 없는 등급입니다." };
     const mate = [...room.towers.values()].find(
-      (t) => t.id !== base.id && t.ownerUserId === userId && t.rarity === base.rarity && !t.locked,
+      (t) => t.id !== base.id && t.ownerUserId === userId && t.characterId === base.characterId && !t.locked,
     );
-    if (!mate) return { ok: false, message: "같은 등급의 잠금 해제 타워가 2개 필요합니다." };
+    if (!mate) return { ok: false, message: "완전히 같은 유닛 2개가 필요합니다." };
 
     const player = room.players.get(userId);
     player && (player.typeUpgrades ??= emptyTypeUpgrades());
@@ -399,13 +397,6 @@ export class GameEngine {
       lastAttackAt: 0,
       locked: false,
     });
-    return { ok: true };
-  }
-
-  static setTargetMode(room: TdRoom, userId: string, towerId: string, targetMode: TdTargetMode) {
-    const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "대상을 변경할 수 있는 타워가 아닙니다." };
-    tower.targetMode = targetMode;
     return { ok: true };
   }
 
@@ -465,7 +456,7 @@ export class GameEngine {
       if (!slot) continue;
       const candidates = [...room.monsters.values()].filter((m) => m.ownerUserId === tower.ownerUserId && dist(slot, pointOnPath(m.pathT)) <= tower.range);
       if (candidates.length === 0) continue;
-      const target = this.pickTarget(candidates, tower.targetMode);
+      const target = this.pickClosestTarget(candidates, slot);
       const targetPoint = pointOnPath(target.pathT);
       target.hp -= tower.damage;
       tower.lastAttackAt = now;
@@ -507,13 +498,8 @@ export class GameEngine {
     }
   }
 
-  private static pickTarget(monsters: TdMonster[], mode: TdTargetMode) {
-    const sorted = [...monsters];
-    if (mode === "back") return sorted.sort((a, b) => a.pathT - b.pathT)[0];
-    if (mode === "strong") return sorted.sort((a, b) => b.hp - a.hp)[0];
-    if (mode === "weak") return sorted.sort((a, b) => a.hp - b.hp)[0];
-    if (mode === "boss") return sorted.sort((a, b) => Number(b.kind === "boss") - Number(a.kind === "boss") || b.pathT - a.pathT)[0];
-    return sorted.sort((a, b) => b.pathT - a.pathT)[0];
+  private static pickClosestTarget(monsters: TdMonster[], towerPoint: TdPoint) {
+    return [...monsters].sort((a, b) => dist(towerPoint, pointOnPath(a.pathT)) - dist(towerPoint, pointOnPath(b.pathT)))[0];
   }
 }
 
