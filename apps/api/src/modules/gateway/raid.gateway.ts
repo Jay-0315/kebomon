@@ -28,10 +28,103 @@ function rarityDamage(rarity: string): number {
   return 1; // common, uncommon
 }
 
+type RaidSeason = {
+  id: "dawn" | "day" | "dusk" | "night";
+  label: string;
+  effect: string;
+  goalMult: number;
+  damageMult: number;
+  endsAt: number;
+};
+
+type RaidPattern = {
+  id: string;
+  label: string;
+  hint: string;
+  goalMult: number;
+  damageMult: number;
+  lines: ((nick: string) => string)[];
+};
+
 const RAID_META: Record<number, { name: string; points: number; goal: number; cry: string }> = {
   1: { name: "점프 미니게임",  points: 30, goal: 50, cry: "내 장애물을 피할 수 있겠나?!" },
   5: { name: "슈팅 미니게임",  points: 60, goal: 200, cry: "내 군단을 뚫을 수 있겠나?!" },
 };
+
+const RAID_PATTERNS: Record<number, RaidPattern[]> = {
+  1: [
+    {
+      id: "rush",
+      label: "연속 돌진",
+      hint: "짧은 간격으로 장애물이 이어집니다. 점프 성공 피해량이 소폭 증가합니다.",
+      goalMult: 1,
+      damageMult: 1.1,
+      lines: [
+        (nick) => `${nick}, 다음 발판은 더 빠를 것이다!`,
+        () => "연속 돌진을 버텨낼 수 있겠나?",
+      ],
+    },
+    {
+      id: "heavy_wall",
+      label: "중압 방벽",
+      hint: "보스 체력이 증가하지만 클리어 보상이 안정적으로 유지됩니다.",
+      goalMult: 1.2,
+      damageMult: 1,
+      lines: [
+        (nick) => `${nick}, 이 벽은 쉽게 무너지지 않는다.`,
+        () => "방벽을 넘어야 길이 열린다!",
+      ],
+    },
+  ],
+  5: [
+    {
+      id: "swarm",
+      label: "군단 소환",
+      hint: "격추 피해량이 증가합니다. 빠르게 적을 정리하세요.",
+      goalMult: 1.05,
+      damageMult: 1.15,
+      lines: [
+        (nick) => `${nick}, 내 군단을 모두 상대해봐라!`,
+        () => "사방에서 적이 몰려온다!",
+      ],
+    },
+    {
+      id: "arcane_shield",
+      label: "마력 보호막",
+      hint: "보스 체력이 높아집니다. 랭킹 경쟁에 적합한 패턴입니다.",
+      goalMult: 1.25,
+      damageMult: 1,
+      lines: [
+        (nick) => `${nick}, 이 보호막을 뚫을 수 있겠나?`,
+        () => "마력 보호막이 보스를 감싼다!",
+      ],
+    },
+  ],
+};
+
+function currentRaidSeason(now = new Date()): RaidSeason {
+  const kstHour = (now.getUTCHours() + 9) % 24;
+  const phaseStart = Math.floor(kstHour / 6) * 6;
+  const currentKstHourStartUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    kstHour - 9,
+    0,
+    0,
+    0,
+  );
+  const endsAt = currentKstHourStartUtc + (phaseStart + 6 - kstHour) * 60 * 60 * 1000;
+  if (kstHour < 6) return { id: "night", label: "심야 시즌", effect: "보스 HP +15%, 피해량 +10%", goalMult: 1.15, damageMult: 1.1, endsAt };
+  if (kstHour < 12) return { id: "dawn", label: "새벽 시즌", effect: "보스 HP -10%", goalMult: 0.9, damageMult: 1, endsAt };
+  if (kstHour < 18) return { id: "day", label: "주간 시즌", effect: "기본 밸런스", goalMult: 1, damageMult: 1, endsAt };
+  return { id: "dusk", label: "황혼 시즌", effect: "피해량 +15%", goalMult: 1, damageMult: 1.15, endsAt };
+}
+
+function pickRaidPattern(type: number): RaidPattern {
+  const pool = RAID_PATTERNS[type] ?? RAID_PATTERNS[1];
+  return pool[(Math.random() * pool.length) | 0];
+}
 
 export const BOSS_POOL = [
   75,76,116,125,127,139,140,152,155,156,159,174,176,205,258,275,292,333,351,391,
@@ -91,6 +184,8 @@ interface RaidRoom {
   progress: number;
   cleared: boolean;
   bossCharId: number;
+  season: RaidSeason;
+  pattern: RaidPattern;
 }
 
 /** 랭킹 보상 결정 */
@@ -113,6 +208,8 @@ function newRoom(type: number): RaidRoom {
     progress: 0,
     cleared: false,
     bossCharId: randomBoss(),
+    season: currentRaidSeason(),
+    pattern: pickRaidPattern(type),
   };
 }
 
@@ -157,6 +254,18 @@ export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   private getBans(type: number): Set<string> {
     if (!this.entryBans.has(type)) this.entryBans.set(type, new Set());
     return this.entryBans.get(type)!;
+  }
+
+  private effectiveRaidMeta(r: RaidRoom) {
+    const base = RAID_META[r.type];
+    return {
+      ...base,
+      goal: Math.max(1, Math.round(base.goal * r.season.goalMult * r.pattern.goalMult)),
+    };
+  }
+
+  private calcDamage(player: Player, r: RaidRoom): number {
+    return Math.max(1, Math.round(rarityDamage(player.rarity) * r.season.damageMult * r.pattern.damageMult));
   }
 
   @SubscribeMessage("raid:join")
@@ -235,7 +344,7 @@ export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     if (!player || player.raidType !== 5) return;
     const r = this.getRoom(5);
     if (r.cleared) return;
-    const dmg = rarityDamage(player.rarity);
+    const dmg = this.calcDamage(player, r);
     r.progress += dmg;
     player.damage += dmg;
     this.applyProgress(r, 5, player.nickname, dmg);
@@ -247,17 +356,18 @@ export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     if (!player || player.raidType !== 1) return;
     const r = this.getRoom(1);
     if (r.cleared) return;
-    const dmg = rarityDamage(player.rarity);
+    const dmg = this.calcDamage(player, r);
     r.progress += dmg;
     player.damage += dmg;
     this.applyProgress(r, 1, player.nickname, dmg);
   }
 
   private applyProgress(r: RaidRoom, type: number, attackerNickname: string, dmg: number) {
-    const meta = RAID_META[type];
+    const meta = this.effectiveRaidMeta(r);
 
     if (!r.cleared) {
-      const line = randomBossLine(attackerNickname);
+      const patternLine = r.pattern.lines[(Math.random() * r.pattern.lines.length) | 0];
+      const line = Math.random() < 0.65 ? patternLine(attackerNickname) : randomBossLine(attackerNickname);
       const hp = Math.max(0, meta.goal - r.progress);
       this.server.to(room(type)).emit("raid:bossHit", { line, hp, maxHp: meta.goal, dmg });
     }
@@ -394,7 +504,7 @@ export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
   private broadcastState(type: number) {
     const r = this.getRoom(type);
-    const meta = RAID_META[type];
+    const meta = this.effectiveRaidMeta(r);
     const participants = [...r.players.values()].map((p) => ({
       socketId: p.socketId,
       characterId: p.characterId,
@@ -409,6 +519,17 @@ export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       maxHp: meta.goal,
       cleared: r.cleared,
       mission: this.missionView(r),
+      season: {
+        id: r.season.id,
+        label: r.season.label,
+        effect: r.season.effect,
+        endsAt: r.season.endsAt,
+      },
+      pattern: {
+        id: r.pattern.id,
+        label: r.pattern.label,
+        hint: r.pattern.hint,
+      },
       participants,
       count: r.players.size,
       maxPlayers: MAX_PLAYERS,
@@ -421,16 +542,35 @@ export class RaidGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   getLobbyStatus() {
-    const info: Record<number, { count: number; cooldownUntil: number; bossCharId: number; currentHp: number; maxHp: number }> = {};
+    const info: Record<number, {
+      count: number;
+      cooldownUntil: number;
+      bossCharId: number;
+      currentHp: number;
+      maxHp: number;
+      season: { id: string; label: string; effect: string; endsAt: number };
+      pattern: { id: string; label: string; hint: string };
+    }> = {};
     for (const t of RAID_TYPES) {
-      const r = this.rooms.get(t);
-      const meta = RAID_META[t];
+      const activeRoom = this.getRoom(t);
+      const meta = this.effectiveRaidMeta(activeRoom);
       info[t] = {
-        count: r?.players.size ?? 0,
+        count: activeRoom.players.size,
         cooldownUntil: this.cooldowns.get(t) ?? 0,
-        bossCharId: this.getRoom(t).bossCharId,
-        currentHp: r && !r.cleared ? Math.max(0, meta.goal - r.progress) : meta.goal,
+        bossCharId: activeRoom.bossCharId,
+        currentHp: activeRoom && !activeRoom.cleared ? Math.max(0, meta.goal - activeRoom.progress) : meta.goal,
         maxHp: meta.goal,
+        season: {
+          id: activeRoom.season.id,
+          label: activeRoom.season.label,
+          effect: activeRoom.season.effect,
+          endsAt: activeRoom.season.endsAt,
+        },
+        pattern: {
+          id: activeRoom.pattern.id,
+          label: activeRoom.pattern.label,
+          hint: activeRoom.pattern.hint,
+        },
       };
     }
     return info;

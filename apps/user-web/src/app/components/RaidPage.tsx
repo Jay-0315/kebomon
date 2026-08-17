@@ -93,6 +93,8 @@ type RosterEntry = { socketId: string; characterId: number; nickname: string };
 type SelfInfo = { socketId: string; nickname: string; characterId: number };
 type Mission = { label: string; target: string; hint: string; targets?: Record<string, string> };
 type Boss = { characterId: number; name: string; cry: string };
+type RaidSeasonInfo = { id: string; label: string; effect: string; endsAt: number };
+type RaidPatternInfo = { id: string; label: string; hint: string };
 type RaidState = {
   raidType: number;
   name: string;
@@ -101,6 +103,8 @@ type RaidState = {
   maxHp: number;
   cleared: boolean;
   mission: Mission;
+  season?: RaidSeasonInfo;
+  pattern?: RaidPatternInfo;
   participants: RosterEntry[];
   count: number;
   maxPlayers: number;
@@ -1709,6 +1713,92 @@ export default function RaidPage() {
     1: "raid.type.1.mission_hint",
     5: "raid.type.5.mission_hint",
   };
+  const seasonCopy = (season?: RaidSeasonInfo) => {
+    if (!season) return null;
+    const map: Record<string, { ko: string; ja: string; en: string; effectKo: string; effectJa: string; effectEn: string }> = {
+      dawn: {
+        ko: "새벽 시즌",
+        ja: "夜明けシーズン",
+        en: "Dawn Season",
+        effectKo: "보스 HP -10%",
+        effectJa: "ボスHP -10%",
+        effectEn: "Boss HP -10%",
+      },
+      day: {
+        ko: "주간 시즌",
+        ja: "昼シーズン",
+        en: "Day Season",
+        effectKo: "기본 밸런스",
+        effectJa: "基本バランス",
+        effectEn: "Standard balance",
+      },
+      dusk: {
+        ko: "황혼 시즌",
+        ja: "夕暮れシーズン",
+        en: "Dusk Season",
+        effectKo: "피해량 +15%",
+        effectJa: "ダメージ +15%",
+        effectEn: "Damage +15%",
+      },
+      night: {
+        ko: "심야 시즌",
+        ja: "深夜シーズン",
+        en: "Night Season",
+        effectKo: "보스 HP +15%, 피해량 +10%",
+        effectJa: "ボスHP +15%、ダメージ +10%",
+        effectEn: "Boss HP +15%, damage +10%",
+      },
+    };
+    const item = map[season.id];
+    if (!item) return { label: season.label, effect: season.effect };
+    return {
+      label: lang === "ja" ? item.ja : lang === "en" ? item.en : item.ko,
+      effect: lang === "ja" ? item.effectJa : lang === "en" ? item.effectEn : item.effectKo,
+    };
+  };
+  const patternCopy = (pattern?: RaidPatternInfo) => {
+    if (!pattern) return null;
+    const map: Record<string, { ko: string; ja: string; en: string; hintKo: string; hintJa: string; hintEn: string }> = {
+      rush: {
+        ko: "연속 돌진",
+        ja: "連続突進",
+        en: "Rush Chain",
+        hintKo: "점프 성공 피해량이 소폭 증가합니다.",
+        hintJa: "ジャンプ成功時のダメージが少し増加します。",
+        hintEn: "Successful jumps deal slightly more damage.",
+      },
+      heavy_wall: {
+        ko: "중압 방벽",
+        ja: "重圧障壁",
+        en: "Heavy Wall",
+        hintKo: "보스 체력이 증가합니다.",
+        hintJa: "ボスHPが増加します。",
+        hintEn: "Boss HP is increased.",
+      },
+      swarm: {
+        ko: "군단 소환",
+        ja: "軍団召喚",
+        en: "Swarm Call",
+        hintKo: "격추 피해량이 증가합니다.",
+        hintJa: "撃墜ダメージが増加します。",
+        hintEn: "Kill damage is increased.",
+      },
+      arcane_shield: {
+        ko: "마력 보호막",
+        ja: "魔力バリア",
+        en: "Arcane Shield",
+        hintKo: "보스 체력이 크게 증가합니다.",
+        hintJa: "ボスHPが大きく増加します。",
+        hintEn: "Boss HP is heavily increased.",
+      },
+    };
+    const item = map[pattern.id];
+    if (!item) return { label: pattern.label, hint: pattern.hint };
+    return {
+      label: lang === "ja" ? item.ja : lang === "en" ? item.en : item.ko,
+      hint: lang === "ja" ? item.hintJa : lang === "en" ? item.hintEn : item.hintKo,
+    };
+  };
 
   const EGG_LABEL: Record<string, string> = {
     normal: t("egg.normal"),
@@ -1791,6 +1881,8 @@ export default function RaidPage() {
         bossCharId?: number;
         currentHp?: number;
         maxHp?: number;
+        season?: RaidSeasonInfo;
+        pattern?: RaidPatternInfo;
       }
     >
   >({
@@ -1852,6 +1944,8 @@ export default function RaidPage() {
           bossCharId?: number;
           currentHp?: number;
           maxHp?: number;
+          season?: RaidSeasonInfo;
+          pattern?: RaidPatternInfo;
         }
       >,
     ) => setLobby((p) => ({ ...p, ...d }));
@@ -1891,6 +1985,7 @@ export default function RaidPage() {
       setLobby((p) => ({
         ...p,
         [d.raidType]: {
+          ...p[d.raidType],
           count: p[d.raidType]?.count ?? 0,
           cooldownUntil: d.until,
         },
@@ -2107,6 +2202,8 @@ export default function RaidPage() {
             const full5 = info.count >= MAX_PLAYERS;
             const disabled = onCooldown || full5;
             const bossDef = charById(info.bossCharId ?? getBossChar(id).id);
+            const seasonInfo = seasonCopy(info.season);
+            const patternInfo = patternCopy(info.pattern);
             const cardClass = `group flex flex-col rounded-2xl border p-4 text-left transition-all ${
               disabled
                 ? "border-border opacity-60"
@@ -2201,6 +2298,22 @@ export default function RaidPage() {
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {RAIDS[id].desc}
                   </p>
+                  {(seasonInfo || patternInfo) && (
+                    <div className="mt-3 grid gap-1.5 text-[10px]">
+                      {seasonInfo && (
+                        <div className="rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
+                          <span className="font-bold text-primary">{seasonInfo.label}</span>
+                          <span className="ml-1 text-muted-foreground">{seasonInfo.effect}</span>
+                        </div>
+                      )}
+                      {patternInfo && (
+                        <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1">
+                          <span className="font-bold text-amber-500">{patternInfo.label}</span>
+                          <span className="ml-1 text-muted-foreground">{patternInfo.hint}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             );
@@ -2484,6 +2597,20 @@ export default function RaidPage() {
               >
                 {bossLine}
               </p>
+            )}
+            {(seasonCopy(state?.season) || patternCopy(state?.pattern)) && (
+              <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                {seasonCopy(state?.season) && (
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+                    {seasonCopy(state?.season)!.label} · {seasonCopy(state?.season)!.effect}
+                  </span>
+                )}
+                {patternCopy(state?.pattern) && (
+                  <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 font-semibold text-amber-500">
+                    {patternCopy(state?.pattern)!.label}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
