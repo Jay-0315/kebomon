@@ -38,6 +38,22 @@ export default defineConfig({
     include: ['react', 'react-dom', 'react-router', 'lucide-react'],
   },
 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('@mui/') || id.includes('@emotion/')) return 'vendor-mui'
+          if (id.includes('@tiptap/')) return 'vendor-editor'
+          if (id.includes('recharts')) return 'vendor-charts'
+          if (id.includes('socket.io-client')) return 'vendor-socket'
+          if (id.includes('react') || id.includes('scheduler')) return 'vendor-react'
+          return 'vendor'
+        },
+      },
+    },
+  },
+
   server: {
     host: '0.0.0.0',
     port: 5173,

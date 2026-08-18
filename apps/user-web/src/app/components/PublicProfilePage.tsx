@@ -8,7 +8,7 @@ import { CHARACTERS, getCharName } from "../data/characters";
 import { PixelSprite } from "./PixelCharacter";
 import ReportModal from "./ReportModal";
 import TitleBadge from "./TitleBadge";
-import { BORDER_STYLES, getBorderLayout } from "./ColosseumContent";
+import { BORDER_STYLES, getBorderLayout } from "../data/borders";
 
 interface PublicProfile {
   id: string;

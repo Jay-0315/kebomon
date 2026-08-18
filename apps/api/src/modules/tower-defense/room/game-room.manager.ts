@@ -30,14 +30,14 @@ export class GameRoomManager {
 
   joinRoom(code: string, player: TdPlayer) {
     const room = this.getByCode(code);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (room.phase !== "lobby") return { room: null, error: "이미 시작된 방입니다." };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (room.phase !== "lobby") return { room: null, errorKey: "tower_defense.msg_room_already_started" };
     if (room.players.size >= TD_MAX_PLAYERS && !room.players.has(player.userId)) {
-      return { room: null, error: "방이 가득 찼습니다." };
+      return { room: null, errorKey: "tower_defense.msg_room_full" };
     }
     this.leaveUser(player.userId);
     this.addPlayer(room, player);
-    return { room, error: null };
+    return { room, errorKey: null };
   }
 
   reconnect(player: TdPlayer) {
@@ -58,11 +58,11 @@ export class GameRoomManager {
 
   async start(userId: string, server: Server, onEnd: (room: TdRoom) => void) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (room.hostUserId !== userId) return { room: null, error: "방장만 시작할 수 있습니다." };
-    if (room.phase !== "lobby") return { room: null, error: "이미 시작되었습니다." };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (room.hostUserId !== userId) return { room: null, errorKey: "tower_defense.msg_host_only_start" };
+    if (room.phase !== "lobby") return { room: null, errorKey: "tower_defense.msg_already_started" };
     if ([...room.players.values()].some((p) => !p.ready && p.userId !== room.hostUserId)) {
-      return { room: null, error: "준비하지 않은 참가자가 있습니다." };
+      return { room: null, errorKey: "tower_defense.msg_waiting_for_ready" };
     }
     const playerIds = [...room.players.values()].map((p) => p.userId);
     try {
@@ -71,7 +71,7 @@ export class GameRoomManager {
     } catch (e) {
       return {
         room: null,
-        error: e instanceof Error ? e.message : "도전 횟수를 확인할 수 없습니다.",
+        errorKey: "tower_defense.msg_run_check_failed",
       };
     }
     GameEngine.start(room);
@@ -84,70 +84,70 @@ export class GameRoomManager {
         void this.persistResult(room).finally(() => onEnd(room));
       }
     }, TD_TICK_MS);
-    return { room, error: null };
+    return { room, errorKey: null };
   }
 
   summon(userId: string, slotId: string, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.summon(room, userId, slotId);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   fixedSummon(userId: string, slotId: string, characterId?: number, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.fixedSummon(room, userId, slotId, characterId);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   upgrade(userId: string, towerId: string, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.upgrade(room, userId, towerId);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   sell(userId: string, towerId: string, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.sell(room, userId, towerId);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   move(userId: string, towerId: string, slotId: string, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.move(room, userId, towerId, slotId);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   merge(userId: string, towerId: string, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.merge(room, userId, towerId);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   ignoreLegacyTowerCommand(userId: string, _towerId: string, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
-    return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
+    return { room, errorKey: null };
   }
 
   lock(userId: string, towerId: string, locked: boolean, actionId?: string) {
     const room = this.getByUser(userId);
-    if (!room) return { room: null, error: "방을 찾을 수 없습니다." };
-    if (this.isDuplicate(room, actionId)) return { room, error: null };
+    if (!room) return { room: null, errorKey: "tower_defense.msg_room_not_found" };
+    if (this.isDuplicate(room, actionId)) return { room, errorKey: null };
     const result = GameEngine.setLocked(room, userId, towerId, locked);
-    return { room, error: result.message ?? null };
+    return { room, errorKey: result.messageKey ?? null };
   }
 
   leaveUserRoom(userId: string) {

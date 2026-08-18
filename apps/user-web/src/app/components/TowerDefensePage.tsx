@@ -5,7 +5,7 @@ import { disconnectTowerDefenseSocket, getTowerDefenseSocket } from "../lib/sock
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
-import type { TdChatMessage, TdSnapshot, TdUnitType } from "../game/tower-defense/types";
+import type { TdChatMessage, TdMessageParams, TdSnapshot, TdUnitType } from "../game/tower-defense/types";
 import GameCanvas from "./tower-defense/GameCanvas";
 import PixelCharacter from "./PixelCharacter";
 
@@ -47,8 +47,16 @@ function actionId() {
   return `a_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function formatText(template: string, values: Record<string, string | number>) {
+function formatText(template: string, values: Record<string, string | number | boolean>) {
   return Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template);
+}
+
+function translateServerMessage(
+  t: (key: TranslationKey) => string,
+  data: { message?: string; messageKey?: string; messageParams?: TdMessageParams },
+) {
+  if (data.messageKey) return formatText(t(data.messageKey as TranslationKey), data.messageParams ?? {});
+  return data.message ?? "";
 }
 
 export default function TowerDefensePage() {
@@ -113,15 +121,18 @@ export default function TowerDefensePage() {
     const onSelf = (data: { userId: string }) => setSelfUserId(data.userId);
     const onSnapshot = (data: TdSnapshot) => {
       setSnapshot(data);
-      if (data.message) {
-        const systemMessage = data.message;
+      const systemMessage = translateServerMessage(t, data);
+      if (systemMessage) {
         setChat((prev) => [
           ...prev.slice(-40),
           { id: `sys-${Date.now()}`, userId: "system", nickname: "SYSTEM", message: systemMessage, createdAt: Date.now() },
         ]);
       }
     };
-    const onError = (data: { message: string }) => setError(data.message);
+    const onError = (data: { message?: string; messageKey?: string; messageParams?: TdMessageParams }) => {
+      const nextError = translateServerMessage(t, data);
+      if (nextError) setError(nextError);
+    };
     const onChat = (data: TdChatMessage) => setChat((prev) => [...prev.slice(-40), data]);
     const onLeft = () => {
       setSnapshot(null);
@@ -145,7 +156,7 @@ export default function TowerDefensePage() {
       socket.off("td:room:left", onLeft);
       disconnectTowerDefenseSocket();
     };
-  }, [myCharacterId]);
+  }, [myCharacterId, t]);
 
   const socket = getTowerDefenseSocket();
 
@@ -824,7 +835,7 @@ function CommandCard({
                 {formatText(t("tower_defense.next_upgrade_cost"), { cost: selectedTypeCost || "MAX" })}
               </p>
               <p className="text-[11px] text-emerald-300/60">
-                선택 유닛의 {t(TYPE_LABEL_KEY[selectedTower.unitType])} 타입 전체 강화
+                {formatText(t("tower_defense.type_upgrade_hint"), { type: t(TYPE_LABEL_KEY[selectedTower.unitType]) })}
               </p>
             </div>
           </div>
@@ -880,7 +891,7 @@ function CommandCard({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px]">
           <div className="rounded border border-emerald-500/25 bg-emerald-500/5 px-3 py-3 text-xs font-bold text-emerald-100/75">
-            공격 대상: 가장 가까운 적 자동 선택
+            {t("tower_defense.auto_target_nearest")}
           </div>
           <button
             onClick={onSell}
@@ -1099,7 +1110,7 @@ function TowerPanel({
             </div>
           </div>
           <div className="rounded border border-border bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
-            공격 대상: 가장 가까운 적 자동 선택
+            {t("tower_defense.auto_target_nearest")}
           </div>
           <div className="grid grid-cols-4 gap-2">
             <button

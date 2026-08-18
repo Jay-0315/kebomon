@@ -28,14 +28,14 @@ export interface EggOpenResult {
   newlyUnlockedAchievements?: number[];
 }
 import {
-  CHARACTERS as _CHARS,
-  ACHIEVEMENTS as _ACHIEVEMENTS,
+  ACHIEVEMENT_CHARACTER_IDS,
+  CHARACTER_IDS,
   GACHA_RATES,
   DEFAULT_PITY_RARE_THRESHOLD,
   DEFAULT_PITY_LEGENDARY_THRESHOLD,
-} from "../data/characters";
-const _VALID_CHAR_IDS = new Set(_CHARS.map((c) => c.id));
-const _ACHIEVEMENT_CHAR_IDS = new Set(_ACHIEVEMENTS.map((a) => a.characterId));
+} from "../data/characterMeta";
+const _VALID_CHAR_IDS = new Set<number>(CHARACTER_IDS);
+const _ACHIEVEMENT_CHAR_IDS = new Set<number>(ACHIEVEMENT_CHARACTER_IDS);
 const initialAppData = {
   profile: { id: "", name: "", email: "" },
   settings: { notifications: true, darkMode: false, themeColor: "default", language: "ko" as const },

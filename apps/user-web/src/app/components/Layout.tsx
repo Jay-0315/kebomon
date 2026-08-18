@@ -29,10 +29,9 @@ import {
   Castle,
 } from "lucide-react";
 import Footer from "./Footer";
-import { AchievementRevealModal } from "./KebomonPage";
 import TutorialOverlay from "./TutorialOverlay";
 import WelcomeGiftModal from "./WelcomeGiftModal";
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { clearAuthSession } from "../lib/auth";
@@ -40,6 +39,10 @@ import TitleBadge from "./TitleBadge";
 import NotificationBell from "./NotificationBell";
 import InquiryFab from "./InquiryFab";
 import UserAvatar from "./UserAvatar";
+
+const AchievementRevealModal = lazy(() =>
+  import("./KebomonPage").then((module) => ({ default: module.AchievementRevealModal })),
+);
 
 export default function Layout() {
   const location = useLocation();
@@ -367,11 +370,13 @@ export default function Layout() {
   return (
     <>
       {pendingAchievements.length > 0 && (
-        <AchievementRevealModal
-          newlyUnlocked={pendingAchievements}
-          onClose={clearPendingAchievements}
-          t={t}
-        />
+        <Suspense fallback={null}>
+          <AchievementRevealModal
+            newlyUnlocked={pendingAchievements}
+            onClose={clearPendingAchievements}
+            t={t}
+          />
+        </Suspense>
       )}
       {hasInitialized && !settings.welcomeGiftSeen ? (
         <WelcomeGiftModal onClose={() => updateSettings({ welcomeGiftSeen: true })} />

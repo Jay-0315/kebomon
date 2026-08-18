@@ -2,6 +2,7 @@ export type TdRoomPhase = "lobby" | "playing" | "ended";
 export type TdRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type TdUnitType = "fire" | "water" | "nature";
 export type TdSpeedMultiplier = 1 | 1.5 | 2;
+export type TdMessageParams = Record<string, string | number | boolean>;
 
 export interface TdPoint {
   x: number;
@@ -107,6 +108,8 @@ export interface TdSnapshot {
   monsters: TdMonster[];
   projectiles: TdProjectile[];
   message?: string;
+  messageKey?: string;
+  messageParams?: TdMessageParams;
   result?: {
     won: boolean;
     wavesCleared: number;

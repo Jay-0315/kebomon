@@ -181,7 +181,7 @@ export class GameEngine {
     };
   }
 
-  static snapshot(room: TdRoom, message?: string): TdSnapshot {
+  static snapshot(room: TdRoom, messageKey?: string, messageParams?: Record<string, string | number | boolean>): TdSnapshot {
     const now = Date.now();
     const players = [...room.players.values()].map((player) => {
       const arena = room.arenas.get(player.userId);
@@ -222,7 +222,8 @@ export class GameEngine {
       towers: [...room.towers.values()],
       monsters: [...room.monsters.values()],
       projectiles: room.projectiles.filter((p) => now - p.createdAt < 900),
-      message,
+      messageKey,
+      messageParams,
       result: room.phase === "ended" ? { won: players.some((player) => player.lives > 0) && room.wave >= TD_WAVE_COUNT, wavesCleared: Math.max(0, room.wave - 1) } : undefined,
     };
   }
@@ -249,15 +250,15 @@ export class GameEngine {
     });
   }
 
-  static summon(room: TdRoom, userId: string, slotId: string): { ok: boolean; message?: string } {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 소환할 수 있습니다." };
+  static summon(room: TdRoom, userId: string, slotId: string): { ok: boolean; messageKey?: string } {
+    if (room.phase !== "playing") return { ok: false, messageKey: "tower_defense.msg_summon_playing_only" };
     const slot = TD_SLOTS.find((s) => s.id === baseSlotId(slotId));
-    if (slotOwner(slotId) !== userId) return { ok: false, message: "본인 영역에만 배치할 수 있습니다." };
-    if (!slot) return { ok: false, message: "유효하지 않은 슬롯입니다." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    if (slotOwner(slotId) !== userId) return { ok: false, messageKey: "tower_defense.msg_own_area_only" };
+    if (!slot) return { ok: false, messageKey: "tower_defense.msg_invalid_slot" };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, messageKey: "tower_defense.msg_slot_occupied" };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "플레이어 정보를 찾을 수 없습니다." };
-    if (player.gold < TD_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
+    if (!player) return { ok: false, messageKey: "tower_defense.msg_player_not_found" };
+    if (player.gold < TD_SUMMON_COST) return { ok: false, messageKey: "tower_defense.msg_not_enough_gold" };
     player.gold -= TD_SUMMON_COST;
 
     player.typeUpgrades ??= emptyTypeUpgrades();
@@ -284,15 +285,15 @@ export class GameEngine {
     return { ok: true };
   }
 
-  static fixedSummon(room: TdRoom, userId: string, slotId: string, characterId?: number): { ok: boolean; message?: string } {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 배치할 수 있습니다." };
+  static fixedSummon(room: TdRoom, userId: string, slotId: string, characterId?: number): { ok: boolean; messageKey?: string } {
+    if (room.phase !== "playing") return { ok: false, messageKey: "tower_defense.msg_deploy_playing_only" };
     const slot = TD_SLOTS.find((s) => s.id === baseSlotId(slotId));
-    if (slotOwner(slotId) !== userId) return { ok: false, message: "본인 영역에만 배치할 수 있습니다." };
-    if (!slot) return { ok: false, message: "유효하지 않은 슬롯입니다." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    if (slotOwner(slotId) !== userId) return { ok: false, messageKey: "tower_defense.msg_own_area_only" };
+    if (!slot) return { ok: false, messageKey: "tower_defense.msg_invalid_slot" };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, messageKey: "tower_defense.msg_slot_occupied" };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "플레이어 정보를 찾을 수 없습니다." };
-    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, message: "골드가 부족합니다." };
+    if (!player) return { ok: false, messageKey: "tower_defense.msg_player_not_found" };
+    if (player.gold < TD_FIXED_SUMMON_COST) return { ok: false, messageKey: "tower_defense.msg_not_enough_gold" };
     player.gold -= TD_FIXED_SUMMON_COST;
 
     player.typeUpgrades ??= emptyTypeUpgrades();
@@ -320,16 +321,16 @@ export class GameEngine {
   }
 
   static upgrade(room: TdRoom, userId: string, towerId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 강화할 수 있습니다." };
+    if (room.phase !== "playing") return { ok: false, messageKey: "tower_defense.msg_upgrade_playing_only" };
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "강화할 수 있는 타워가 아닙니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, messageKey: "tower_defense.msg_cannot_upgrade" };
     const player = room.players.get(userId);
-    if (!player) return { ok: false, message: "플레이어 정보를 찾을 수 없습니다." };
+    if (!player) return { ok: false, messageKey: "tower_defense.msg_player_not_found" };
     player.typeUpgrades ??= emptyTypeUpgrades();
     const currentLevel = player.typeUpgrades[tower.unitType] ?? 0;
-    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, message: "이미 최대 강화 단계입니다." };
+    if (currentLevel >= TD_MAX_TOWER_UPGRADE) return { ok: false, messageKey: "tower_defense.msg_max_upgrade" };
     const cost = upgradeCost(currentLevel);
-    if (player.gold < cost) return { ok: false, message: "골드가 부족합니다." };
+    if (player.gold < cost) return { ok: false, messageKey: "tower_defense.msg_not_enough_gold" };
     player.gold -= cost;
     const nextLevel = currentLevel + 1;
     player.typeUpgrades[tower.unitType] = nextLevel;
@@ -343,7 +344,7 @@ export class GameEngine {
 
   static sell(room: TdRoom, userId: string, towerId: string) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "판매할 수 있는 타워가 아닙니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, messageKey: "tower_defense.msg_cannot_sell" };
     room.towers.delete(towerId);
     const player = room.players.get(userId);
     if (player) player.gold += Math.floor(TD_SUMMON_COST * 0.55);
@@ -351,28 +352,28 @@ export class GameEngine {
   }
 
   static move(room: TdRoom, userId: string, towerId: string, slotId: string) {
-    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "이동할 수 없는 슬롯입니다." };
-    if (slotOwner(slotId) !== userId) return { ok: false, message: "본인 영역으로만 이동할 수 있습니다." };
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 이동할 수 있습니다." };
+    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, messageKey: "tower_defense.msg_cannot_move_slot" };
+    if (slotOwner(slotId) !== userId) return { ok: false, messageKey: "tower_defense.msg_own_area_move_only" };
+    if (room.phase !== "playing") return { ok: false, messageKey: "tower_defense.msg_move_playing_only" };
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "이동할 수 있는 타워가 아닙니다." };
-    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, message: "유효하지 않은 슬롯입니다." };
-    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, message: "이미 사용 중인 슬롯입니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, messageKey: "tower_defense.msg_cannot_move_tower" };
+    if (!TD_SLOTS.some((s) => s.id === baseSlotId(slotId))) return { ok: false, messageKey: "tower_defense.msg_invalid_slot" };
+    if ([...room.towers.values()].some((t) => t.slotId === slotId)) return { ok: false, messageKey: "tower_defense.msg_slot_occupied" };
     tower.slotId = slotId;
     return { ok: true };
   }
 
   static merge(room: TdRoom, userId: string, towerId: string) {
-    if (room.phase !== "playing") return { ok: false, message: "게임 진행 중에만 합성할 수 있습니다." };
+    if (room.phase !== "playing") return { ok: false, messageKey: "tower_defense.msg_merge_playing_only" };
     const base = room.towers.get(towerId);
-    if (!base || base.ownerUserId !== userId) return { ok: false, message: "합성할 수 있는 타워가 아닙니다." };
-    if (base.locked) return { ok: false, message: "잠금 상태의 타워는 합성할 수 없습니다." };
+    if (!base || base.ownerUserId !== userId) return { ok: false, messageKey: "tower_defense.msg_cannot_merge" };
+    if (base.locked) return { ok: false, messageKey: "tower_defense.msg_locked_cannot_merge" };
     const upgradedRarity = nextRarity(base.rarity);
-    if (!upgradedRarity) return { ok: false, message: "더 이상 합성할 수 없는 등급입니다." };
+    if (!upgradedRarity) return { ok: false, messageKey: "tower_defense.msg_no_next_rarity" };
     const mate = [...room.towers.values()].find(
       (t) => t.id !== base.id && t.ownerUserId === userId && t.characterId === base.characterId && !t.locked,
     );
-    if (!mate) return { ok: false, message: "완전히 같은 유닛 2개가 필요합니다." };
+    if (!mate) return { ok: false, messageKey: "tower_defense.msg_need_same_unit_pair" };
 
     const player = room.players.get(userId);
     player && (player.typeUpgrades ??= emptyTypeUpgrades());
@@ -402,7 +403,7 @@ export class GameEngine {
 
   static setLocked(room: TdRoom, userId: string, towerId: string, locked: boolean) {
     const tower = room.towers.get(towerId);
-    if (!tower || tower.ownerUserId !== userId) return { ok: false, message: "잠금을 변경할 수 있는 타워가 아닙니다." };
+    if (!tower || tower.ownerUserId !== userId) return { ok: false, messageKey: "tower_defense.msg_cannot_lock" };
     tower.locked = locked;
     return { ok: true };
   }

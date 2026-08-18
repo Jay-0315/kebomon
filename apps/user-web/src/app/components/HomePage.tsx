@@ -24,7 +24,7 @@ import { useState } from "react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import { TranslationKey } from "../lib/i18n";
-import { CHARACTERS } from "../data/characters";
+import { CHARACTER_IDS } from "../data/characterMeta";
 import TitleBadge from "./TitleBadge";
 import StatusPanel from "./StatusPanel";
 import UserAvatar from "./UserAvatar";
@@ -151,7 +151,7 @@ export default function HomePage() {
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            {rewardSummary.ownedCharacterIds.length}/{CHARACTERS.length} {t("kebomon.collection_count")} ·{" "}
+            {rewardSummary.ownedCharacterIds.length}/{CHARACTER_IDS.length} {t("kebomon.collection_count")} ·{" "}
             {rewardSummary.missionPoints}KP
           </p>
         </div>

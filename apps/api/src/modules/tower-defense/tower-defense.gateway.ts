@@ -12,12 +12,26 @@ import { JwtStrategy } from "../auth/jwt.strategy";
 import { PrismaService } from "../prisma/prisma.service";
 import { GameEngine } from "./engine/game-engine";
 import { GameRoomManager } from "./room/game-room.manager";
-import type { TdPlayer, TdSpeedMultiplier } from "./types/tower-defense.types";
+import type { TdMessageParams, TdPlayer, TdSpeedMultiplier } from "./types/tower-defense.types";
+
+type TdRateBucket = {
+  count: number;
+  windowStartedAt: number;
+  lastAcceptedAt: number;
+};
+
+const TD_RATE_LIMITS: Record<string, { minIntervalMs: number; windowMs: number; maxInWindow: number }> = {
+  room: { minIntervalMs: 250, windowMs: 5_000, maxInWindow: 12 },
+  command: { minIntervalMs: 80, windowMs: 2_000, maxInWindow: 24 },
+  chat: { minIntervalMs: 800, windowMs: 10_000, maxInWindow: 8 },
+};
 
 @WebSocketGateway({ namespace: "/tower-defense", cors: { origin: true, credentials: true }, path: "/socket.io" })
 export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+
+  private readonly rateBuckets = new Map<string, TdRateBucket>();
 
   constructor(
     private readonly jwtStrategy: JwtStrategy,
@@ -38,46 +52,51 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
   }
 
   handleDisconnect(client: Socket) {
+    this.clearRateBuckets(client.id);
     const room = this.rooms.leaveSocket(client.id);
     if (room) this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:room:create")
   async create(@MessageBody() data: { characterId?: number; speedMultiplier?: number }, @ConnectedSocket() client: Socket) {
+    if (!this.allow(client, "room")) return;
     const player = await this.makePlayer(client, data?.characterId);
     const rawSpeed = Number(data?.speedMultiplier);
     const speedMultiplier: TdSpeedMultiplier = rawSpeed === 2 ? 2 : rawSpeed === 1.5 ? 1.5 : 1;
     const room = this.rooms.createRoom(player, speedMultiplier);
     client.join(this.rooms.channel(room.id));
     client.emit("td:self", { userId: player.userId, socketId: client.id });
-    this.broadcast(room.id, "방이 생성되었습니다.");
+    this.broadcast(room.id, "tower_defense.msg_room_created");
   }
 
   @SubscribeMessage("td:room:join")
   async join(@MessageBody() data: { code?: string; characterId?: number }, @ConnectedSocket() client: Socket) {
+    if (!this.allow(client, "room")) return;
     const player = await this.makePlayer(client, data?.characterId);
-    const { room, error } = this.rooms.joinRoom(String(data?.code ?? ""), player);
+    const { room, errorKey } = this.rooms.joinRoom(String(data?.code ?? ""), player);
     if (!room) {
-      client.emit("td:error", { message: error });
+      this.emitError(client, errorKey);
       return;
     }
     client.join(this.rooms.channel(room.id));
     client.emit("td:self", { userId: player.userId, socketId: client.id });
-    this.broadcast(room.id, `${player.nickname}님이 참가했습니다.`);
+    this.broadcast(room.id, "tower_defense.msg_player_joined", { player: player.nickname });
   }
 
   @SubscribeMessage("td:room:reconnect")
   async reconnect(@MessageBody() data: { characterId?: number }, @ConnectedSocket() client: Socket) {
+    if (!this.allow(client, "room")) return;
     const player = await this.makePlayer(client, data?.characterId);
     const room = this.rooms.reconnect(player);
     if (!room) return;
     client.join(this.rooms.channel(room.id));
     client.emit("td:self", { userId: player.userId, socketId: client.id });
-    this.broadcast(room.id, `${player.nickname}님이 재접속했습니다.`);
+    this.broadcast(room.id, "tower_defense.msg_player_reconnected", { player: player.nickname });
   }
 
   @SubscribeMessage("td:room:ready")
   ready(@MessageBody() data: { ready?: boolean }, @ConnectedSocket() client: Socket) {
+    if (!this.allow(client, "room")) return;
     const userId = client.data.userId as string;
     const room = this.rooms.setReady(userId, !!data?.ready);
     if (room) this.broadcast(room.id);
@@ -89,96 +108,105 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
     const room = this.rooms.leaveUserRoom(userId);
     if (!room) return;
     client.leave(this.rooms.channel(room.id));
-    this.broadcast(room.id, "참가자가 방을 나갔습니다.");
+    this.broadcast(room.id, "tower_defense.msg_player_left");
     client.emit("td:room:left");
   }
 
   @SubscribeMessage("td:game:start")
   async start(@ConnectedSocket() client: Socket) {
+    if (!this.allow(client, "room")) return;
     const userId = client.data.userId as string;
-    const { room, error } = await this.rooms.start(userId, this.server, (endedRoom) => {
-      this.broadcast(endedRoom.id, endedRoom.lives > 0 ? "방어에 성공했습니다." : "공용 생명력이 모두 소진되었습니다.");
+    const { room, errorKey } = await this.rooms.start(userId, this.server, (endedRoom) => {
+      this.broadcast(endedRoom.id, endedRoom.lives > 0 ? "tower_defense.msg_defense_success" : "tower_defense.msg_lives_depleted");
     });
     if (!room) {
-      client.emit("td:error", { message: error });
+      this.emitError(client, errorKey);
       return;
     }
-    this.broadcast(room.id, "게임을 시작합니다.");
+    this.broadcast(room.id, "tower_defense.msg_game_started");
   }
 
   @SubscribeMessage("td:tower:summon")
   summon(@MessageBody() data: { slotId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.summon(client.data.userId as string, String(data?.slotId ?? ""), data?.actionId);
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.summon(client.data.userId as string, String(data?.slotId ?? ""), data?.actionId);
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:tower:fixed-summon")
   fixedSummon(@MessageBody() data: { slotId?: string; characterId?: number; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.fixedSummon(
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.fixedSummon(
       client.data.userId as string,
       String(data?.slotId ?? ""),
       Number(data?.characterId),
       data?.actionId,
     );
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:tower:upgrade")
   upgrade(@MessageBody() data: { towerId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.upgrade(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.upgrade(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:tower:sell")
   sell(@MessageBody() data: { towerId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.sell(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.sell(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:tower:move")
   move(@MessageBody() data: { towerId?: string; slotId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.move(
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.move(
       client.data.userId as string,
       String(data?.towerId ?? ""),
       String(data?.slotId ?? ""),
       data?.actionId,
     );
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:tower:merge")
   merge(@MessageBody() data: { towerId?: string; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.merge(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.merge(client.data.userId as string, String(data?.towerId ?? ""), data?.actionId);
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:tower:lock")
   lock(@MessageBody() data: { towerId?: string; locked?: boolean; actionId?: string }, @ConnectedSocket() client: Socket) {
-    const { room, error } = this.rooms.lock(
+    if (!this.allow(client, "command")) return;
+    const { room, errorKey } = this.rooms.lock(
       client.data.userId as string,
       String(data?.towerId ?? ""),
       !!data?.locked,
       data?.actionId,
     );
     if (!room) return;
-    if (error) client.emit("td:error", { message: error });
+    this.emitError(client, errorKey);
     this.broadcast(room.id);
   }
 
   @SubscribeMessage("td:chat:send")
   chat(@MessageBody() data: { message?: string }, @ConnectedSocket() client: Socket) {
+    if (!this.allow(client, "chat")) return;
     const room = this.rooms.getByUser(client.data.userId as string);
     if (!room) return;
     const player = room.players.get(client.data.userId as string);
@@ -214,9 +242,38 @@ export class TowerDefenseGateway implements OnGatewayConnection, OnGatewayDiscon
     };
   }
 
-  private broadcast(roomId: string, message?: string) {
+  private broadcast(roomId: string, messageKey?: string, messageParams?: TdMessageParams) {
     const room = this.rooms.getById(roomId);
     if (!room) return;
-    this.server.to(this.rooms.channel(roomId)).emit("td:game:snapshot", GameEngine.snapshot(room, message));
+    this.server.to(this.rooms.channel(roomId)).emit("td:game:snapshot", GameEngine.snapshot(room, messageKey, messageParams));
+  }
+
+  private emitError(client: Socket, messageKey?: string | null, messageParams?: TdMessageParams) {
+    if (!messageKey) return;
+    client.emit("td:error", { messageKey, messageParams });
+  }
+
+  private allow(client: Socket, bucketName: keyof typeof TD_RATE_LIMITS) {
+    const limit = TD_RATE_LIMITS[bucketName];
+    const now = Date.now();
+    const key = `${client.id}:${bucketName}`;
+    const bucket = this.rateBuckets.get(key);
+    if (!bucket || now - bucket.windowStartedAt >= limit.windowMs) {
+      this.rateBuckets.set(key, { count: 1, windowStartedAt: now, lastAcceptedAt: now });
+      return true;
+    }
+    if (now - bucket.lastAcceptedAt < limit.minIntervalMs || bucket.count >= limit.maxInWindow) {
+      this.emitError(client, "tower_defense.msg_too_fast");
+      return false;
+    }
+    bucket.count += 1;
+    bucket.lastAcceptedAt = now;
+    return true;
+  }
+
+  private clearRateBuckets(socketId: string) {
+    for (const key of this.rateBuckets.keys()) {
+      if (key.startsWith(`${socketId}:`)) this.rateBuckets.delete(key);
+    }
   }
 }
