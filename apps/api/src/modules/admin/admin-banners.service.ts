@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
+import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
 import { UpsertBannerDto } from "./dto/upsert-banner.dto";
 import { logAdminAction } from "./admin-action-log.util";
 
@@ -39,14 +40,16 @@ export class AdminBannersService {
   // 매일 00:00 KST — 종료 시각이 지난 배너 자동 삭제 (deleteMany라 중복 실행돼도 안전)
   @Cron("0 0 * * *", { timeZone: "Asia/Seoul" })
   async deleteExpiredBanners() {
-    try {
-      const { count } = await this.prisma.banner.deleteMany({
-        where: { endsAt: { lt: new Date() } },
-      });
-      if (count > 0) this.logger.log(`기간 만료 배너 ${count}개 자동 삭제`);
-    } catch (err) {
-      this.logger.error("만료 배너 자동 삭제 실패", err);
-    }
+    return runSingletonCron(this.prisma, this.logger, "banner.deleteExpiredBanners", cronWindowKey(new Date(), "day"), async () => {
+      try {
+        const { count } = await this.prisma.banner.deleteMany({
+          where: { endsAt: { lt: new Date() } },
+        });
+        if (count > 0) this.logger.log(`기간 만료 배너 ${count}개 자동 삭제`);
+      } catch (err) {
+        this.logger.error("만료 배너 자동 삭제 실패", err);
+      }
+    });
   }
 
   private toData(dto: UpsertBannerDto) {

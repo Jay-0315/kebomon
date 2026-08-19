@@ -11,6 +11,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { CommunityService } from "../community/community.service";
 import { ArenaService } from "../arena/arena.service";
 import { RewardsService } from "../rewards/rewards.service";
+import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { randomBoss } from "../gateway/raid.gateway";
 import {
@@ -586,23 +587,25 @@ export class GuildService {
   // 감지하고 수동 확인하는 걸로 두되, 재발하면 컨트리뷰션 단위 지급 여부 컬럼을 추가할 것.
   @Cron("0 0 * * 1", { timeZone: "Asia/Seoul" })
   async settleWeeklyBossRuns() {
-    if (this.settlingBossRuns) {
-      this.logger.warn("이전 길드 보스 정산이 아직 진행 중 — 이번 tick은 건너뜀");
-      return;
-    }
-    this.settlingBossRuns = true;
-    try {
-      const currentWeekKey = getIsoWeekKey(new Date());
-      const pending = await this.prisma.guildBossRun.findMany({
-        where: { rewardsGranted: false, weekKey: { not: currentWeekKey } },
-      });
-      for (const run of pending) {
-        await this.settleRun(run.id).catch((err) => this.logger.error(`길드 보스 정산 실패 runId=${run.id}`, err));
+    return runSingletonCron(this.prisma, this.logger, "guild.settleWeeklyBossRuns", cronWindowKey(new Date(), "week"), async () => {
+      if (this.settlingBossRuns) {
+        this.logger.warn("이전 길드 보스 정산이 아직 진행 중 — 이번 tick은 건너뜀");
+        return;
       }
-    } catch (err) {
-      this.logger.error("길드 보스 주간 정산 배치 실패", err);
-    } finally {
-      this.settlingBossRuns = false;
-    }
+      this.settlingBossRuns = true;
+      try {
+        const currentWeekKey = getIsoWeekKey(new Date());
+        const pending = await this.prisma.guildBossRun.findMany({
+          where: { rewardsGranted: false, weekKey: { not: currentWeekKey } },
+        });
+        for (const run of pending) {
+          await this.settleRun(run.id).catch((err) => this.logger.error(`길드 보스 정산 실패 runId=${run.id}`, err));
+        }
+      } catch (err) {
+        this.logger.error("길드 보스 주간 정산 배치 실패", err);
+      } finally {
+        this.settlingBossRuns = false;
+      }
+    });
   }
 }

@@ -30,9 +30,21 @@ async function request<T>(
         window.location.href = import.meta.env.PROD ? "/admin/login" : "/login";
       }
       const text = await response.text().catch(() => "");
+      let code: string | undefined;
+      let message = text;
+      try {
+        const body = JSON.parse(text) as { code?: string; message?: string | string[] };
+        code = body.code;
+        message = Array.isArray(body.message) ? body.message.join(" ") : body.message ?? text;
+      } catch {
+        /* Keep the raw response text for non-JSON errors. */
+      }
       const error = new Error(text || `HTTP ${response.status}`) as Error & {
+        code?: string;
         status: number;
       };
+      error.message = message || `HTTP ${response.status}`;
+      error.code = code;
       error.status = response.status;
       throw error;
     }

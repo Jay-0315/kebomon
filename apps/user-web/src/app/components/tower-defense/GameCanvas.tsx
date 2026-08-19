@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { TdPlacementZone, TdPoint, TdSnapshot } from "../../game/tower-defense/types";
 import PixelCharacter from "../PixelCharacter";
 
@@ -334,7 +334,7 @@ interface Props {
   onSummon: (slotId: string) => void;
 }
 
-export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHeight = false, onSelectTower, onSummon }: Props) {
+function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHeight = false, onSelectTower, onSummon }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const snapshotArrivedAtRef = useRef(Date.now());
   const [hoverSlotId, setHoverSlotId] = useState<string | null>(null);
@@ -601,3 +601,5 @@ export default function GameCanvas({ snapshot, viewUserId, selfUserId, selectedT
     </div>
   );
 }
+
+export default memo(GameCanvas);

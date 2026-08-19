@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { getTodayKTC } from "../rewards/date.util";
 import { loadCharacterMasterMap } from "../rewards/character-master.util";
+import { badRequest } from "../common/api-error.util";
 import {
   MIN_RUN_MS,
   OFFER_WEIGHTS,
@@ -104,7 +105,7 @@ export class TowerDefenseService {
     const reward = await this.getOrCreateReward(userId);
     const used = this.attemptsUsedToday(reward);
     if (used >= MAX_DAILY_ATTEMPTS) {
-      throw new BadRequestException("오늘 도전 횟수를 모두 사용했습니다.");
+      throw badRequest("TD_RUN_LIMIT_EXCEEDED", "오늘 도전 횟수를 모두 사용했습니다.");
     }
 
     await this.prisma.userReward.update({
@@ -124,7 +125,7 @@ export class TowerDefenseService {
     const rewards = await Promise.all(uniqueIds.map((id) => this.getOrCreateReward(id)));
     const blocked = rewards.find((reward) => this.attemptsUsedToday(reward) >= MAX_DAILY_ATTEMPTS);
     if (blocked) {
-      throw new BadRequestException("오늘 도전 횟수를 모두 사용한 참가자가 있습니다.");
+      throw badRequest("TD_RUN_LIMIT_EXCEEDED", "오늘 도전 횟수를 모두 사용한 참가자가 있습니다.");
     }
   }
 
@@ -159,11 +160,11 @@ export class TowerDefenseService {
   async submitResult(userId: string, wavesCleared: number) {
     const reward = await this.getOrCreateReward(userId);
     if (!reward.tdActiveRunStartedAt) {
-      throw new BadRequestException("시작되지 않은 게임입니다.");
+      throw badRequest("TD_RUN_NOT_STARTED", "시작되지 않은 게임입니다.");
     }
     const elapsed = Date.now() - reward.tdActiveRunStartedAt.getTime();
     if (elapsed < MIN_RUN_MS) {
-      throw new BadRequestException("비정상적으로 빠른 진행입니다.");
+      throw badRequest("TD_RUN_TOO_FAST", "비정상적으로 빠른 진행입니다.");
     }
 
     const clampedWave = Math.max(0, Math.min(WAVE_COUNT, Math.floor(wavesCleared)));

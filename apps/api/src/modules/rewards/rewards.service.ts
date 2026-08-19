@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ARENA_TIERS, getArenaTierKey } from "../arena/arena.constants";
+import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
 import {
   EXPEDITION_DURATIONS,
   EXPEDITION_EVENT_IDS,
@@ -635,9 +636,11 @@ export class RewardsService {
 
   @Cron("0 * * * *")
   async expireOldRogueRuns() {
-    await this.prisma.userReward.updateMany({
-      where: { activeRunStartedAt: { lt: new Date(Date.now() - RewardsService.MAX_ROGUE_RUN_MS) } },
-      data: { activeRunStartedAt: null },
+    return runSingletonCron(this.prisma, this.logger, "rewards.expireOldRogueRuns", cronWindowKey(new Date(), "hour"), async () => {
+      await this.prisma.userReward.updateMany({
+        where: { activeRunStartedAt: { lt: new Date(Date.now() - RewardsService.MAX_ROGUE_RUN_MS) } },
+        data: { activeRunStartedAt: null },
+      });
     });
   }
 
@@ -2182,12 +2185,14 @@ export class RewardsService {
   // 매월 1일 00:00 KST에 실행 — 직전 달 시즌 종료 처리
   @Cron("0 0 1 * *", { timeZone: "Asia/Seoul" })
   async handleSeasonReset() {
-    const seasonId = this.getEndingSeasonNumber();
-    try {
-      await this.runSeasonReset(seasonId);
-    } catch (err) {
-      this.logger.error(`시즌 ${seasonId} 종료 처리 실패`, err);
-    }
+    return runSingletonCron(this.prisma, this.logger, "rewards.handleSeasonReset", cronWindowKey(new Date(), "month"), async () => {
+      const seasonId = this.getEndingSeasonNumber();
+      try {
+        await this.runSeasonReset(seasonId);
+      } catch (err) {
+        this.logger.error(`시즌 ${seasonId} 종료 처리 실패`, err);
+      }
+    });
   }
 
   /**

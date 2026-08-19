@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { GACHA_POOL_IDS } from "../rewards/rewards.service";
 
@@ -333,25 +334,27 @@ export class AuctionService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async settleExpiredAuctions() {
-    if (this.settlingAuctions) {
-      this.logger.warn("이전 경매 정산이 아직 진행 중 — 이번 tick은 건너뜀");
-      return;
-    }
-    this.settlingAuctions = true;
-    try {
-      const expired = await this.prisma.auctionListing.findMany({
-        where: { status: "active", endsAt: { lte: new Date() } },
-        select: { id: true },
-      });
-      for (const { id } of expired) {
-        await this.settleListing(id).catch((err) =>
-          this.logger.error(`경매 ${id} 정산 실패`, err),
-        );
+    return runSingletonCron(this.prisma, this.logger, "auction.settleExpiredAuctions", cronWindowKey(new Date(), "minute"), async () => {
+      if (this.settlingAuctions) {
+        this.logger.warn("이전 경매 정산이 아직 진행 중 — 이번 tick은 건너뜀");
+        return;
       }
-    } catch (err) {
-      this.logger.error("경매 만료 정산 배치 실패", err);
-    } finally {
-      this.settlingAuctions = false;
-    }
+      this.settlingAuctions = true;
+      try {
+        const expired = await this.prisma.auctionListing.findMany({
+          where: { status: "active", endsAt: { lte: new Date() } },
+          select: { id: true },
+        });
+        for (const { id } of expired) {
+          await this.settleListing(id).catch((err) =>
+            this.logger.error(`경매 ${id} 정산 실패`, err),
+          );
+        }
+      } catch (err) {
+        this.logger.error("경매 만료 정산 배치 실패", err);
+      } finally {
+        this.settlingAuctions = false;
+      }
+    });
   }
 }

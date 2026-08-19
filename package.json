@@ -10,6 +10,7 @@
     "build:user": "npm run build --workspace @kebo/user-web",
     "dev:admin": "npm run dev --workspace @kebo/admin-web",
     "build:admin": "npm run build --workspace @kebo/admin-web",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "dev:api": "npm run dev --workspace @kebo/api",
     "build:api": "npm run build --workspace @kebo/api",
     "start:api": "npm run start --workspace @kebo/api",

@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { memo, useState, type ReactElement } from "react";
 import { CHARACTERS } from "../data/characters";
 import type { CharacterType, CharacterRarity } from "../data/characters";
 
@@ -2974,7 +2974,7 @@ interface PixelCharacterProps {
   float?: boolean;
 }
 
-export default function PixelCharacter({ characterId, size = 128, float: doFloat = false }: PixelCharacterProps) {
+function PixelCharacter({ characterId, size = 128, float: doFloat = false }: PixelCharacterProps) {
   const [hovered, setHovered] = useState(false);
   const frame: Frame = hovered ? "react" : "idle";
   const def = (characterId !== undefined ? CHARACTERS.find((c) => c.id === characterId) : undefined) ?? CHARACTERS[0];
@@ -2993,8 +2993,10 @@ export default function PixelCharacter({ characterId, size = 128, float: doFloat
   );
 }
 
+export default memo(PixelCharacter);
+
 /** Render a sprite by character ID (used in Collection grid / party scene) */
-export function PixelSprite({
+export const PixelSprite = memo(function PixelSprite({
   type, characterId: _characterId, size = 48, float: doFloat = false, rarity = "common",
 }: { type: CharacterType; colors?: { p: string; s: string; a: string }; characterId?: number; size?: number; float?: boolean; rarity?: CharacterRarity }) {
   const [hovered, setHovered] = useState(false);
@@ -3012,4 +3014,4 @@ export function PixelSprite({
       {renderer(colors, size, hovered ? "react" : "idle")}
     </div>
   );
-}
+});

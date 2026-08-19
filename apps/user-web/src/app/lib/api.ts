@@ -54,7 +54,7 @@ async function request<T>(
 
       // NestJS 에러 응답 바디: { statusCode, message, error } — message는
       // BadRequestException("텍스트")면 문자열, class-validator 검증 실패면 문자열 배열
-      let body: { message?: string | string[]; maintenance?: boolean; endsAt?: string } | null = null;
+      let body: { code?: string; message?: string | string[]; maintenance?: boolean; endsAt?: string } | null = null;
       try {
         body = await response.json();
       } catch {
@@ -69,9 +69,11 @@ async function request<T>(
         ? body.message.join(" ")
         : body?.message;
       const error = new Error(serverMessage || `HTTP ${response.status}`) as Error & {
+        code?: string;
         status: number;
       };
       error.status = response.status;
+      error.code = body?.code;
       throw error;
     }
 

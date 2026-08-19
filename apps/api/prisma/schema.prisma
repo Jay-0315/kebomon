@@ -594,15 +594,34 @@ model DailyQuestProgress {
 
 /** KP(missionPoints) 변동 원장 — 관리자페이지 유저 상세 "활동 로그"용 */
 model PointsLedger {
-  id        BigInt   @id @default(autoincrement())
-  userId    String   @map("user_id")
-  delta     Int
-  reason    String   @db.VarChar(120)
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             BigInt   @id @default(autoincrement())
+  userId         String   @map("user_id")
+  delta          Int
+  reason         String   @db.VarChar(120)
+  source         String?  @db.VarChar(40)
+  sourceId       String?  @map("source_id") @db.VarChar(120)
+  idempotencyKey String?  @map("idempotency_key") @db.VarChar(160)
+  createdAt      DateTime @default(now()) @map("created_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
+  @@index([source, sourceId])
+  @@unique([idempotencyKey])
   @@map("points_ledger")
+}
+
+model JobExecution {
+  id          BigInt    @id @default(autoincrement())
+  jobKey      String    @map("job_key") @db.VarChar(80)
+  windowKey   String    @map("window_key") @db.VarChar(80)
+  status      String    @default("RUNNING") @db.VarChar(20)
+  startedAt   DateTime  @default(now()) @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+  errorMessage String?  @map("error_message") @db.VarChar(500)
+
+  @@unique([jobKey, windowKey])
+  @@index([jobKey, startedAt(sort: Desc)])
+  @@map("job_executions")
 }
 
 model SuspensionHistory {

@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { envValidationSchema } from "../config/env.validation";
@@ -21,6 +22,7 @@ import { BannersModule } from "./banners/banners.module";
 import { InquiriesModule } from "./inquiries/inquiries.module";
 import { MaintenanceModule } from "./maintenance/maintenance.module";
 import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
+import { ApiErrorFilter } from "./common/api-error.filter";
 
 @Module({
   imports: [
@@ -48,6 +50,7 @@ import { MaintenanceMiddleware } from "./maintenance/maintenance.middleware";
     MaintenanceModule,
     AdminModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: ApiErrorFilter }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
