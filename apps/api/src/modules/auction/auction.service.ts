@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+﻿import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
+import { apiError, badRequest } from "../common/api-error.util";
 import { logPointsChange } from "../rewards/points-ledger.util";
 import { GACHA_POOL_IDS } from "../rewards/rewards.service";
 
@@ -16,7 +17,7 @@ const MIN_START_PRICE = 10;
 @Injectable()
 export class AuctionService {
   private readonly logger = new Logger(AuctionService.name);
-  // 정산이 1분(크론 주기)보다 오래 걸리면 다음 tick이 겹쳐 들어올 수 있어 재진입 방지
+  // In-process guard for a single instance. Cross-instance locking is handled by job_executions.
   private settlingAuctions = false;
 
   constructor(
@@ -31,32 +32,32 @@ export class AuctionService {
     const { characterId, startPrice, buyoutPrice, durationHours } = input;
 
     if (!GACHA_POOL_IDS.includes(characterId)) {
-      throw new BadRequestException("경매에 등록할 수 없는 케보몬입니다.");
+      throw badRequest("AUCTION_INVALID_CHARACTER", "This character cannot be listed.");
     }
     if (!Number.isInteger(startPrice) || startPrice < MIN_START_PRICE) {
-      throw new BadRequestException(`시작가는 ${MIN_START_PRICE}KP 이상이어야 합니다.`);
+      throw badRequest("AUCTION_INVALID_START_PRICE", "Invalid start price.", { min: MIN_START_PRICE });
     }
     if (buyoutPrice !== undefined && buyoutPrice !== null) {
       if (!Number.isInteger(buyoutPrice) || buyoutPrice <= startPrice) {
-        throw new BadRequestException("즉시구매가는 시작가보다 커야 합니다.");
+        throw badRequest("AUCTION_INVALID_BUYOUT_PRICE", "Invalid buyout price.");
       }
     }
     if (!(ALLOWED_DURATIONS_HOURS as readonly number[]).includes(durationHours)) {
-      throw new BadRequestException("유효하지 않은 경매 기간입니다.");
+      throw badRequest("AUCTION_INVALID_DURATION", "Invalid auction duration.");
     }
 
     const owned = await this.prisma.userCharacter.findUnique({
       where: { userId_characterId: { userId, characterId } },
     });
     if (!owned) {
-      throw new BadRequestException("해당 케보몬을 보유하고 있지 않습니다.");
+      throw badRequest("AUCTION_CHARACTER_NOT_OWNED", "You do not own this character.");
     }
 
     const activeCount = await this.prisma.auctionListing.count({
       where: { sellerId: userId, status: "active" },
     });
     if (activeCount >= MAX_ACTIVE_LISTINGS_PER_USER) {
-      throw new BadRequestException(`동시 등록 가능한 경매는 최대 ${MAX_ACTIVE_LISTINGS_PER_USER}개입니다.`);
+      throw badRequest("AUCTION_TOO_MANY_ACTIVE_LISTINGS", "Too many active listings.", { max: MAX_ACTIVE_LISTINGS_PER_USER });
     }
 
     const reward = await this.prisma.userReward.findUnique({ where: { userId } });
@@ -106,7 +107,7 @@ export class AuctionService {
     return { selling, bidding };
   }
 
-  /** 시세 확인용 — 최근 낙찰 내역 (등급/캐릭터 무관하게 최신순, 필요시 캐릭터로 필터) */
+  /** Recent sold listings used by the market price history view. */
   async getPriceHistory(characterId?: number) {
     return this.prisma.auctionListing.findMany({
       where: { status: "sold", ...(characterId ? { characterId } : {}) },
@@ -130,24 +131,24 @@ export class AuctionService {
   async placeBid(userId: string, listingId: string, amount: number) {
     const listing = await this.prisma.auctionListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "active") {
-      throw new NotFoundException("진행 중인 경매를 찾을 수 없습니다.");
+      throw apiError("AUCTION_NOT_FOUND", "Auction listing not found.", HttpStatus.NOT_FOUND);
     }
     if (listing.sellerId === userId) {
-      throw new ForbiddenException("자신의 경매에는 입찰할 수 없습니다.");
+      throw apiError("AUCTION_CANNOT_BID_OWN_LISTING", "Cannot bid on your own listing.", HttpStatus.FORBIDDEN);
     }
     const alreadyOwned = await this.prisma.userCharacter.findUnique({
       where: { userId_characterId: { userId, characterId: listing.characterId } },
     });
     if (alreadyOwned) {
-      throw new BadRequestException("이미 보유하고 있는 케보몬입니다.");
+      throw badRequest("AUCTION_CHARACTER_ALREADY_OWNED", "You already own this character.");
     }
     const minBid = this.minNextBid(listing);
     if (!Number.isInteger(amount) || amount < minBid) {
-      throw new BadRequestException(`최소 입찰액은 ${minBid}KP입니다.`);
+      throw badRequest("AUCTION_BID_TOO_LOW", "Bid amount is too low.", { min: minBid });
     }
     const reward = await this.prisma.userReward.findUnique({ where: { userId } });
     if (!reward || reward.missionPoints < amount) {
-      throw new BadRequestException("KP가 부족합니다.");
+      throw badRequest("AUCTION_NOT_ENOUGH_POINTS", "Not enough KP.");
     }
 
     const previousBidderId = listing.currentBidderId;
@@ -170,7 +171,7 @@ export class AuctionService {
         data: { currentBid: amount, currentBidderId: userId, endsAt: newEndsAt },
       });
       if (updated.count === 0) {
-        throw new BadRequestException("이미 더 높은 입찰이 들어왔습니다. 다시 시도해주세요.");
+        throw badRequest("AUCTION_BID_OUTDATED", "A higher bid already exists. Please retry.");
       }
 
       if (previousBidderId && previousBid !== null) {
@@ -183,15 +184,15 @@ export class AuctionService {
       await tx.auctionBid.create({ data: { listingId, bidderId: userId, amount } });
     });
 
-    void logPointsChange(this.prisma, userId, -amount, "경매 입찰");
+    void logPointsChange(this.prisma, userId, -amount, "auction_bid");
     if (previousBidderId && previousBid !== null) {
-      void logPointsChange(this.prisma, previousBidderId, previousBid, "경매 아웃비드 환불");
+      void logPointsChange(this.prisma, previousBidderId, previousBid, "auction_bid_refund");
       void this.notifications
         .create({
           userId: previousBidderId,
           type: "auction",
-          title: "입찰가가 갱신됐어요",
-          body: `다른 유저가 더 높은 금액(${amount}KP)에 입찰했습니다.`,
+          title: "Auction bid updated",
+          body: `A higher bid was placed (${amount}KP).`,
           link: "/auction",
         })
         .catch(() => undefined);
@@ -207,10 +208,10 @@ export class AuctionService {
   async buyout(userId: string, listingId: string) {
     const listing = await this.prisma.auctionListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "active") {
-      throw new NotFoundException("진행 중인 경매를 찾을 수 없습니다.");
+      throw apiError("AUCTION_NOT_FOUND", "Auction listing not found.", HttpStatus.NOT_FOUND);
     }
     if (listing.buyoutPrice === null) {
-      throw new BadRequestException("즉시구매가 설정되지 않은 경매입니다.");
+      throw badRequest("AUCTION_BUYOUT_NOT_AVAILABLE", "Buyout is not available for this listing.");
     }
     await this.placeBid(userId, listingId, listing.buyoutPrice);
     return { ok: true };
@@ -219,13 +220,13 @@ export class AuctionService {
   async cancelListing(userId: string, listingId: string) {
     const listing = await this.prisma.auctionListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.sellerId !== userId) {
-      throw new NotFoundException("경매를 찾을 수 없습니다.");
+      throw apiError("AUCTION_NOT_FOUND", "Auction listing not found.", HttpStatus.NOT_FOUND);
     }
     if (listing.status !== "active") {
-      throw new BadRequestException("이미 종료된 경매입니다.");
+      throw badRequest("AUCTION_LISTING_ALREADY_ENDED", "Auction listing is already ended.");
     }
     if (listing.currentBidderId !== null) {
-      throw new BadRequestException("입찰이 있는 경매는 취소할 수 없습니다.");
+      throw badRequest("AUCTION_LISTING_HAS_BID", "Cannot cancel a listing with bids.");
     }
 
     const updated = await this.prisma.auctionListing.updateMany({
@@ -233,7 +234,7 @@ export class AuctionService {
       data: { status: "cancelled", settledAt: new Date() },
     });
     if (updated.count === 0) {
-      throw new BadRequestException("이미 처리된 경매입니다.");
+      throw badRequest("AUCTION_LISTING_ALREADY_SETTLED", "Auction listing is already settled.");
     }
 
     await this.prisma.userCharacter.upsert({
@@ -245,7 +246,7 @@ export class AuctionService {
     return { ok: true };
   }
 
-  /** active -> sold/expired 조건부 전환 후 정산 — 중복 정산 방지 */
+  /** Atomically settle one active listing into sold or expired. */
   async settleListing(listingId: string) {
     const listing = await this.prisma.auctionListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "active") return;
@@ -271,8 +272,8 @@ export class AuctionService {
         .create({
           userId: listing.sellerId,
           type: "auction",
-          title: "경매가 유찰됐어요",
-          body: "입찰자가 없어 케보몬이 반환됐습니다.",
+          title: "Auction expired",
+          body: "No bids were placed, so the character was returned.",
           link: "/auction",
         })
         .catch(() => undefined);
@@ -287,12 +288,12 @@ export class AuctionService {
         data: { userId: winnerId, characterId: listing.characterId, enhancementLevel: listing.enhancementLevel },
       });
     } catch {
-      // 낙찰자가 그 사이 같은 캐릭터를 다른 경로로 얻은 방어적 예외 케이스 — 전액 환불하고 판매자에게 반환
+      // If the winner already owns the character, refund the bid and return the listing to the seller.
       await this.prisma.userReward.update({
         where: { userId: winnerId },
         data: { missionPoints: { increment: bidAmount } },
       });
-      void logPointsChange(this.prisma, winnerId, bidAmount, "경매 낙찰 실패 환불");
+      void logPointsChange(this.prisma, winnerId, bidAmount, "auction_settle_refund");
       await this.prisma.userCharacter.upsert({
         where: { userId_characterId: { userId: listing.sellerId, characterId: listing.characterId } },
         create: {
@@ -310,14 +311,14 @@ export class AuctionService {
       where: { userId: listing.sellerId },
       data: { missionPoints: { increment: sellerPayout } },
     });
-    void logPointsChange(this.prisma, listing.sellerId, sellerPayout, "경매 판매 대금");
+    void logPointsChange(this.prisma, listing.sellerId, sellerPayout, "auction_seller_payout");
 
     void this.notifications
       .create({
         userId: listing.sellerId,
         type: "auction",
-        title: "케보몬이 낙찰됐어요",
-        body: `+${sellerPayout}KP (수수료 10% 차감)`,
+        title: "Auction sold",
+        body: `+${sellerPayout}KP (10% fee applied)`,
         link: "/auction",
       })
       .catch(() => undefined);
@@ -325,8 +326,8 @@ export class AuctionService {
       .create({
         userId: winnerId,
         type: "auction",
-        title: "경매에 낙찰됐어요",
-        body: "케보몬을 획득했습니다. 도감에서 확인해보세요.",
+        title: "Auction won",
+        body: "The character has been added to your collection.",
         link: "/kebomon",
       })
       .catch(() => undefined);
@@ -336,7 +337,7 @@ export class AuctionService {
   async settleExpiredAuctions() {
     return runSingletonCron(this.prisma, this.logger, "auction.settleExpiredAuctions", cronWindowKey(new Date(), "minute"), async () => {
       if (this.settlingAuctions) {
-        this.logger.warn("이전 경매 정산이 아직 진행 중 — 이번 tick은 건너뜀");
+        this.logger.warn("Auction settlement is already running. Skipping this tick.");
         return;
       }
       this.settlingAuctions = true;
@@ -347,11 +348,11 @@ export class AuctionService {
         });
         for (const { id } of expired) {
           await this.settleListing(id).catch((err) =>
-            this.logger.error(`경매 ${id} 정산 실패`, err),
+            this.logger.error(`Failed to settle auction ${id}`, err),
           );
         }
       } catch (err) {
-        this.logger.error("경매 만료 정산 배치 실패", err);
+        this.logger.error("Failed to settle expired auctions", err);
       } finally {
         this.settlingAuctions = false;
       }

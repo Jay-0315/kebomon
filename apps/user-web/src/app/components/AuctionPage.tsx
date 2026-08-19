@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Gavel } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
+import { getApiErrorTranslationKey } from "../lib/api-error";
 import { api } from "../lib/api";
 import PixelCharacter from "./PixelCharacter";
 import {
@@ -118,6 +119,12 @@ export default function AuctionPage() {
     return t("auction.day_ago").replace("{n}", String(n));
   };
 
+  const formatApiError = (err: unknown) => {
+    const translationKey = getApiErrorTranslationKey(err);
+    if (translationKey) return t(translationKey);
+    return err instanceof Error ? err.message : String(err);
+  };
+
   const statusLabel = (status: string): string => {
     switch (status) {
       case "sold":
@@ -210,7 +217,7 @@ export default function AuctionPage() {
       loadListings();
       loadMine();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -226,7 +233,7 @@ export default function AuctionPage() {
       loadListings();
       loadMine();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -239,7 +246,7 @@ export default function AuctionPage() {
       await refreshRewards();
       loadMine();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -265,7 +272,7 @@ export default function AuctionPage() {
       loadMine();
       setTab("mine");
     } catch (e) {
-      setSellError(e instanceof Error ? e.message : String(e));
+      setSellError(formatApiError(e));
     } finally {
       setSelling(false);
     }
