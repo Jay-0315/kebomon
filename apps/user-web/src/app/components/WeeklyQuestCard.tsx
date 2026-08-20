@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
-import { CalendarCheck, Sparkles, Swords, Newspaper, Trophy, Check } from "lucide-react";
+import { CalendarCheck, Check, Newspaper, Sparkles, Swords, Trophy } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
 
-const QUEST_ROWS: { key: string; icon: React.ElementType; labelKey: TranslationKey }[] = [
-  { key: "login", icon: CalendarCheck, labelKey: "quest.login" },
-  { key: "gacha", icon: Sparkles, labelKey: "quest.gacha" },
-  { key: "battle", icon: Swords, labelKey: "quest.battle" },
-  { key: "community", icon: Newspaper, labelKey: "quest.community" },
+const QUEST_ROWS: { key: string; icon: React.ElementType; labelKey: TranslationKey; actionKey: TranslationKey }[] = [
+  { key: "login", icon: CalendarCheck, labelKey: "quest.login", actionKey: "weekly_quest.login_action" },
+  { key: "gacha", icon: Sparkles, labelKey: "quest.gacha", actionKey: "weekly_quest.gacha_action" },
+  { key: "battle", icon: Swords, labelKey: "quest.battle", actionKey: "weekly_quest.battle_action" },
+  { key: "community", icon: Newspaper, labelKey: "quest.community", actionKey: "weekly_quest.community_action" },
 ];
 
 export default function WeeklyQuestCard() {
   const { weeklyQuests, fetchWeeklyQuests, claimWeeklyQuestBonus } = useAppData();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const [claiming, setClaiming] = useState(false);
   const [claimedPulse, setClaimedPulse] = useState(false);
 
@@ -65,7 +65,7 @@ export default function WeeklyQuestCard() {
         )}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {QUEST_ROWS.map(({ key, icon: Icon, labelKey }) => {
+        {QUEST_ROWS.map(({ key, icon: Icon, labelKey, actionKey }) => {
           const item = weeklyQuests.items?.find((quest) => quest.key === key);
           const count = item?.count ?? weeklyQuests.progress[key] ?? 0;
           const target = item?.target ?? weeklyQuests.targets[key] ?? 0;
@@ -78,12 +78,8 @@ export default function WeeklyQuestCard() {
               }`}
             >
               <div className="flex items-center gap-2 font-medium">
-                {done ? (
-                  <Check className="h-3.5 w-3.5 shrink-0" />
-                ) : (
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                )}
-                <span className="truncate">{item?.title ?? t(labelKey)}</span>
+                {done ? <Check className="h-3.5 w-3.5 shrink-0" /> : <Icon className="h-3.5 w-3.5 shrink-0" />}
+                <span className="truncate">{t(labelKey)}</span>
                 <span className="ml-auto shrink-0 tabular-nums">
                   {Math.min(count, target)}/{target}
                 </span>
@@ -94,9 +90,7 @@ export default function WeeklyQuestCard() {
                   style={{ width: `${target > 0 ? Math.min(100, (count / target) * 100) : 0}%` }}
                 />
               </div>
-              <p className="mt-1 line-clamp-2 text-[10px] leading-snug opacity-80">
-                {item?.action ?? (lang === "ko" ? "주간 목표 진행" : lang === "ja" ? "週間目標を進行" : "Weekly objective")}
-              </p>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-snug opacity-80">{t(actionKey)}</p>
             </div>
           );
         })}

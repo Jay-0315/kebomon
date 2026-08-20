@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
-import { CalendarCheck, Sparkles, Swords, Newspaper, Gift, Check } from "lucide-react";
+import { CalendarCheck, Check, Gift, Newspaper, Sparkles, Swords } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
 import type { TranslationKey } from "../lib/i18n";
 
-const QUEST_ROWS: { key: string; icon: React.ElementType; labelKey: TranslationKey }[] = [
-  { key: "login", icon: CalendarCheck, labelKey: "quest.login" },
-  { key: "gacha", icon: Sparkles, labelKey: "quest.gacha" },
-  { key: "battle", icon: Swords, labelKey: "quest.battle" },
-  { key: "community", icon: Newspaper, labelKey: "quest.community" },
+const QUEST_ROWS: { key: string; icon: React.ElementType; labelKey: TranslationKey; actionKey: TranslationKey }[] = [
+  { key: "login", icon: CalendarCheck, labelKey: "quest.login", actionKey: "quest.login_action" },
+  { key: "gacha", icon: Sparkles, labelKey: "quest.gacha", actionKey: "quest.gacha_action" },
+  { key: "battle", icon: Swords, labelKey: "quest.battle", actionKey: "quest.battle_action" },
+  { key: "community", icon: Newspaper, labelKey: "quest.community", actionKey: "quest.community_action" },
 ];
 
 export default function DailyQuestCard() {
   const { dailyQuests, fetchDailyQuests, claimDailyQuestBonus } = useAppData();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const [claiming, setClaiming] = useState(false);
   const [claimedPulse, setClaimedPulse] = useState(false);
 
@@ -65,9 +65,8 @@ export default function DailyQuestCard() {
         )}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {QUEST_ROWS.map(({ key, icon: Icon, labelKey }) => {
+        {QUEST_ROWS.map(({ key, icon: Icon, labelKey, actionKey }) => {
           const done = !!dailyQuests.progress[key];
-          const item = dailyQuests.items?.find((quest) => quest.key === key);
           return (
             <div
               key={key}
@@ -76,27 +75,17 @@ export default function DailyQuestCard() {
               }`}
             >
               <div className="flex items-center gap-2 font-medium">
-                {done ? (
-                  <Check className="h-3.5 w-3.5 shrink-0" />
-                ) : (
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                )}
-                <span className="truncate">{item?.title ?? t(labelKey)}</span>
+                {done ? <Check className="h-3.5 w-3.5 shrink-0" /> : <Icon className="h-3.5 w-3.5 shrink-0" />}
+                <span className="truncate">{t(labelKey)}</span>
               </div>
-              <p className="mt-1 line-clamp-2 text-[10px] leading-snug opacity-80">
-                {item?.action ?? (lang === "ko" ? "필수 행동 1회" : lang === "ja" ? "指定アクション1回" : "One required action")}
-              </p>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-snug opacity-80">{t(actionKey)}</p>
             </div>
           );
         })}
       </div>
       {dailyQuests.allDone && !dailyQuests.bonusClaimed && (
         <p className="mt-3 rounded-md bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
-          {lang === "ko"
-            ? "모든 일일 항목이 완료되었습니다. 보상을 수령해 완료 처리하세요."
-            : lang === "ja"
-              ? "すべての項目が完了しました。報酬を受け取って確定してください。"
-              : "All items are complete. Claim the reward to finalize it."}
+          {t("quest.ready_claim")}
         </p>
       )}
     </div>
