@@ -3,14 +3,14 @@ import { useNavigate } from "react-router";
 import { Wallet } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useLang } from "../context/LangContext";
-import { CHARACTERS, RARITY_COLOR, RARITY_LABEL } from "../data/characters";
+import { CHARACTERS, RARITY_COLOR, getRarityLabel } from "../data/characters";
 import PixelCharacter from "./PixelCharacter";
 
 const STARTERS = CHARACTERS.filter((c) => c.obtainMethod === "starter");
 
 export default function StarterSelectionPage() {
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { selectStarter } = useAppData();
   const [selectedStarter, setSelectedStarter] = useState<number | null>(null);
   const [starterLoading, setStarterLoading] = useState(false);
@@ -61,9 +61,13 @@ export default function StarterSelectionPage() {
                 }`}
               >
                 <PixelCharacter characterId={char.id} size={64} float={isSelected} />
-                <p className={`text-sm font-bold ${RARITY_COLOR[char.rarity]}`}>{char.korName}</p>
-                <p className="text-[10px] text-muted-foreground">{RARITY_LABEL[char.rarity]}</p>
-                <p className="text-[10px] text-muted-foreground text-center leading-tight">{char.description}</p>
+                <p className={`text-sm font-bold ${RARITY_COLOR[char.rarity]}`}>
+                  {t(`signup.starter.${char.id}.name`)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{getRarityLabel(char.rarity, lang)}</p>
+                <p className="text-[10px] text-muted-foreground text-center leading-tight">
+                  {t(`signup.starter.${char.id}.desc`)}
+                </p>
               </button>
             );
           })}
