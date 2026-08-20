@@ -7,6 +7,8 @@ const PAGE_SIZE = 30;
 type RewardLogQuery = {
   q?: string;
   reason?: string;
+  source?: string;
+  sourceId?: string;
   direction?: "earned" | "spent" | "all";
   page?: number;
 };
@@ -169,6 +171,8 @@ export class AdminOperationsService {
     const skip = (page - 1) * PAGE_SIZE;
     const where: Prisma.PointsLedgerWhereInput = {
       ...(query.reason ? { reason: { contains: query.reason } } : {}),
+      ...(query.source ? { source: query.source } : {}),
+      ...(query.sourceId ? { sourceId: { contains: query.sourceId } } : {}),
       ...(query.direction === "earned" ? { delta: { gt: 0 } } : {}),
       ...(query.direction === "spent" ? { delta: { lt: 0 } } : {}),
       ...(query.q
@@ -203,6 +207,9 @@ export class AdminOperationsService {
         userEmail: r.user.email,
         delta: r.delta,
         reason: r.reason,
+        source: r.source,
+        sourceId: r.sourceId,
+        idempotencyKey: r.idempotencyKey,
         createdAt: r.createdAt,
       })),
       total,

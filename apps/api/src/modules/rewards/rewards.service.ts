@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+﻿import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ARENA_TIERS, getArenaTierKey } from "../arena/arena.constants";
 import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
+import { badRequest } from "../common/api-error.util";
 import {
   EXPEDITION_DURATIONS,
   EXPEDITION_EVENT_IDS,
@@ -1021,8 +1022,8 @@ export class RewardsService {
     const row = await this.getOrCreateTodayQuestRow(userId);
     const progress = this.toQuestProgress(row);
     const allDone = RewardsService.DAILY_QUEST_KEYS.every((k) => progress[k]);
-    if (!allDone) throw new BadRequestException("아직 모든 퀘스트를 완료하지 않았습니다.");
-    if (row.bonusClaimed) throw new BadRequestException("이미 보상을 받았습니다.");
+    if (!allDone) throw badRequest("QUEST_NOT_COMPLETED", "Quest is not completed.");
+    if (row.bonusClaimed) throw badRequest("QUEST_ALREADY_CLAIMED", "Quest reward already claimed.");
 
     // bonusClaimed=false 조건을 WHERE에 걸어 원자적으로 선점 — 동시에 두 번 호출돼도
     // 딱 한 요청만 count=1을 받아 포인트를 지급하고, 나머지는 0을 받아 거부됨(중복 지급 방지)
@@ -1032,13 +1033,17 @@ export class RewardsService {
       data: { bonusClaimed: true },
     });
     if (claimed.count === 0) {
-      throw new BadRequestException("이미 보상을 받았습니다.");
+      throw badRequest("QUEST_ALREADY_CLAIMED", "Quest reward already claimed.");
     }
     await this.prisma.userReward.update({
       where: { userId },
       data: { missionPoints: { increment: RewardsService.DAILY_QUEST_BONUS_POINTS } },
     });
-    void logPointsChange(this.prisma, userId, RewardsService.DAILY_QUEST_BONUS_POINTS, "일일 퀘스트 보너스");
+    void logPointsChange(this.prisma, userId, RewardsService.DAILY_QUEST_BONUS_POINTS, "daily_quest_bonus", {
+      source: "quest",
+      sourceId: row.dateKey,
+      idempotencyKey: `quest:daily:${row.dateKey}:${userId}`,
+    });
 
     void this.notifications
       .create({
@@ -1156,8 +1161,8 @@ export class RewardsService {
     const progress = this.toWeeklyProgress(row);
     const targets = RewardsService.WEEKLY_QUEST_TARGETS;
     const allDone = (Object.keys(targets) as (keyof typeof targets)[]).every((k) => progress[k] >= targets[k]);
-    if (!allDone) throw new BadRequestException("아직 모든 주간 퀘스트를 완료하지 않았습니다.");
-    if (row.bonusClaimed) throw new BadRequestException("이미 보상을 받았습니다.");
+    if (!allDone) throw badRequest("QUEST_NOT_COMPLETED", "Weekly quest is not completed.");
+    if (row.bonusClaimed) throw badRequest("QUEST_ALREADY_CLAIMED", "Weekly quest reward already claimed.");
 
     await this.getOrCreateReward(userId);
     const claimed = await this.prisma.weeklyQuestProgress.updateMany({
@@ -1165,13 +1170,17 @@ export class RewardsService {
       data: { bonusClaimed: true },
     });
     if (claimed.count === 0) {
-      throw new BadRequestException("이미 보상을 받았습니다.");
+      throw badRequest("QUEST_ALREADY_CLAIMED", "Weekly quest reward already claimed.");
     }
     await this.prisma.userReward.update({
       where: { userId },
       data: { missionPoints: { increment: RewardsService.WEEKLY_QUEST_BONUS_POINTS } },
     });
-    void logPointsChange(this.prisma, userId, RewardsService.WEEKLY_QUEST_BONUS_POINTS, "주간 퀘스트 보너스");
+    void logPointsChange(this.prisma, userId, RewardsService.WEEKLY_QUEST_BONUS_POINTS, "weekly_quest_bonus", {
+      source: "quest",
+      sourceId: row.weekKey,
+      idempotencyKey: `quest:weekly:${row.weekKey}:${userId}`,
+    });
 
     void this.notifications
       .create({
@@ -1205,12 +1214,12 @@ export class RewardsService {
 
   async buyShopItem(userId: string, itemId: string, quantity = 1) {
     const item = RewardsService.SHOP_ITEMS[itemId];
-    if (!item) throw new BadRequestException("유효하지 않은 상품입니다.");
-    if (quantity < 1 || quantity > 99) throw new BadRequestException("구매 수량이 올바르지 않습니다.");
+    if (!item) throw badRequest("REWARD_INVALID_PRODUCT", "Invalid shop item.");
+    if (quantity < 1 || quantity > 99) throw badRequest("REWARD_INVALID_QUANTITY", "Invalid purchase quantity.");
 
     const totalCost = item.price * quantity;
     const reward = await this.getOrCreateReward(userId);
-    if (reward.missionPoints < totalCost) throw new BadRequestException("포인트가 부족합니다.");
+    if (reward.missionPoints < totalCost) throw badRequest("REWARD_NOT_ENOUGH_POINTS", "Not enough KP.");
 
     const updated = await this.prisma.userReward.update({
       where: { userId },
@@ -1220,7 +1229,10 @@ export class RewardsService {
         enhancementStones: { increment: quantity },
       },
     });
-    void logPointsChange(this.prisma, userId, -totalCost, `상점 구매 (${item.label} x${quantity})`);
+    void logPointsChange(this.prisma, userId, -totalCost, `shop_purchase:${itemId}x${quantity}`, {
+      source: "shop",
+      sourceId: `${itemId}:${quantity}`,
+    });
 
     return { success: true, enhancementStones: updated.enhancementStones, remainingPoints: updated.missionPoints };
   }
@@ -1278,15 +1290,16 @@ export class RewardsService {
   /** 정수를 소모해 선택한 등급의 "미보유" 케보몬 1종을 확정 랜덤 지급 */
   async breedCharacter(userId: string, rarity: string) {
     if (!(RARITIES as readonly string[]).includes(rarity)) {
-      throw new BadRequestException("유효하지 않은 등급입니다.");
+      throw badRequest("BREED_INVALID_RARITY", "Invalid breeding rarity.");
     }
 
     const reward = await this.getOrCreateReward(userId);
     const cost = RewardsService.BREEDING_ESSENCE_COST[rarity] ?? 0;
     if (reward.breedingEssence < cost) {
-      throw new BadRequestException(
-        `정수가 부족합니다. 필요: ${cost}, 보유: ${reward.breedingEssence}`,
-      );
+      throw badRequest("BREED_NOT_ENOUGH_ESSENCE", "Not enough breeding essence.", {
+        required: cost,
+        current: reward.breedingEssence,
+      });
     }
 
     const owned = await this.prisma.userCharacter.findMany({
@@ -1300,7 +1313,7 @@ export class RewardsService {
       (id) => masterMap.get(id)?.rarity === rarity && !ownedSet.has(id),
     );
     if (candidates.length === 0) {
-      throw new BadRequestException("이미 해당 등급의 케보몬을 모두 보유하고 있습니다.");
+      throw badRequest("BREED_ALL_OWNED", "All Kebomon in this rarity are already owned.");
     }
 
     const characterId = candidates[Math.floor(Math.random() * candidates.length)];
@@ -1418,7 +1431,7 @@ export class RewardsService {
   async openEgg(userId: string, eggType: EggType) {
     const reward = await this.getOrCreateReward(userId);
     if (eggCount(reward, eggType) <= 0) {
-      throw new BadRequestException("보유한 알이 없습니다.");
+      throw badRequest("GACHA_NOT_ENOUGH_EGGS", "Not enough eggs.");
     }
 
     const config = await resolveGachaConfig(this.prisma);
@@ -1442,7 +1455,10 @@ export class RewardsService {
           breedingEssence: { increment: dupEssence },
         },
       });
-      void logPointsChange(this.prisma, userId, dupPoints, "알 까기 중복 환급");
+      void logPointsChange(this.prisma, userId, dupPoints, "egg_duplicate_refund", {
+        source: "gacha",
+        sourceId: `egg:${eggType}:${pick.id}`,
+      });
     } else {
       await this.prisma.$transaction([
         this.prisma.userReward.update({
@@ -1468,10 +1484,10 @@ export class RewardsService {
 
   /** 알 여러 개 한번에 까기 */
   async openEggBatch(userId: string, eggType: EggType, count: number) {
-    if (count < 2 || count > 10) throw new BadRequestException("한번에 2~10개만 가능합니다.");
+    if (count < 2 || count > 10) throw badRequest("GACHA_INVALID_BATCH_COUNT", "Invalid egg batch count.");
     const reward = await this.getOrCreateReward(userId);
     if (eggCount(reward, eggType) < count) {
-      throw new BadRequestException("보유한 알이 부족합니다.");
+      throw badRequest("GACHA_NOT_ENOUGH_EGGS", "Not enough eggs.");
     }
 
     const owned = await this.prisma.userCharacter.findMany({
@@ -1517,7 +1533,10 @@ export class RewardsService {
         this.prisma.userCharacter.create({ data: { userId, characterId } }),
       ),
     ]);
-    void logPointsChange(this.prisma, userId, totalDupPoints, "알 일괄 까기 중복 환급");
+    void logPointsChange(this.prisma, userId, totalDupPoints, "egg_batch_duplicate_refund", {
+      source: "gacha",
+      sourceId: `egg-batch:${eggType}:${count}`,
+    });
 
     // 결과 배열 형태(results)는 프론트가 그대로 쓰고 있어 그대로 유지 — 새로 지급된 업적
     // 캐릭터는 프론트에서 /rewards/summary 재조회로 감지(완료된 원정/로그라이크와 동일 패턴)
@@ -1531,9 +1550,10 @@ export class RewardsService {
     const reward = await this.getOrCreateReward(userId);
 
     if (reward.missionPoints < cost) {
-      throw new BadRequestException(
-        `포인트가 부족합니다. 필요: ${cost}P, 보유: ${reward.missionPoints}P`,
-      );
+      throw badRequest("GACHA_NOT_ENOUGH_POINTS", "Not enough KP for gacha.", {
+        required: cost,
+        current: reward.missionPoints,
+      });
     }
 
     // Load already-owned characters to detect duplicates
@@ -1572,7 +1592,10 @@ export class RewardsService {
         }),
       ),
     ]);
-    void logPointsChange(this.prisma, userId, -cost + totalBonusPoints, "가챠 뽑기");
+    void logPointsChange(this.prisma, userId, -cost + totalBonusPoints, "gacha_pull", {
+      source: "gacha",
+      sourceId: `pull:${count}`,
+    });
 
     void this.markQuestDone(userId, "gacha").catch(() => undefined);
     void this.incrementWeeklyQuestProgress(userId, "gacha").catch(() => undefined);

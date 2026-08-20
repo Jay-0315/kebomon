@@ -1,5 +1,6 @@
 ﻿import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { cronWindowKey, runSingletonCron } from "../common/cron-lock.util";
@@ -24,6 +25,41 @@ export class AuctionService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  private async applySettlementPointsOnce(input: {
+    userId: string;
+    delta: number;
+    reason: string;
+    listingId: string;
+    idempotencyKey: string;
+  }) {
+    if (input.delta === 0) return false;
+    try {
+      await this.prisma.$transaction([
+        this.prisma.pointsLedger.create({
+          data: {
+            userId: input.userId,
+            delta: input.delta,
+            reason: input.reason,
+            source: "auction",
+            sourceId: input.listingId,
+            idempotencyKey: input.idempotencyKey,
+          },
+        }),
+        this.prisma.userReward.update({
+          where: { userId: input.userId },
+          data: { missionPoints: { increment: input.delta } },
+        }),
+      ]);
+      return true;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        this.logger.warn(`Skipped duplicate auction settlement ledger: ${input.idempotencyKey}`);
+        return false;
+      }
+      throw err;
+    }
+  }
 
   async listCharacter(
     userId: string,
@@ -184,9 +220,17 @@ export class AuctionService {
       await tx.auctionBid.create({ data: { listingId, bidderId: userId, amount } });
     });
 
-    void logPointsChange(this.prisma, userId, -amount, "auction_bid");
+    void logPointsChange(this.prisma, userId, -amount, "auction_bid", {
+      source: "auction",
+      sourceId: listingId,
+      idempotencyKey: `auction:bid:${listingId}:${userId}:${amount}`,
+    });
     if (previousBidderId && previousBid !== null) {
-      void logPointsChange(this.prisma, previousBidderId, previousBid, "auction_bid_refund");
+      void logPointsChange(this.prisma, previousBidderId, previousBid, "auction_bid_refund", {
+        source: "auction",
+        sourceId: listingId,
+        idempotencyKey: `auction:bid-refund:${listingId}:${previousBidderId}:${previousBid}`,
+      });
       void this.notifications
         .create({
           userId: previousBidderId,
@@ -289,11 +333,13 @@ export class AuctionService {
       });
     } catch {
       // If the winner already owns the character, refund the bid and return the listing to the seller.
-      await this.prisma.userReward.update({
-        where: { userId: winnerId },
-        data: { missionPoints: { increment: bidAmount } },
+      await this.applySettlementPointsOnce({
+        userId: winnerId,
+        delta: bidAmount,
+        reason: "auction_settle_refund",
+        listingId: listing.id,
+        idempotencyKey: `auction:settlement:${listing.id}:winner-refund`,
       });
-      void logPointsChange(this.prisma, winnerId, bidAmount, "auction_settle_refund");
       await this.prisma.userCharacter.upsert({
         where: { userId_characterId: { userId: listing.sellerId, characterId: listing.characterId } },
         create: {
@@ -307,21 +353,25 @@ export class AuctionService {
     }
 
     const sellerPayout = Math.floor(bidAmount * (1 - FEE_RATE));
-    await this.prisma.userReward.update({
-      where: { userId: listing.sellerId },
-      data: { missionPoints: { increment: sellerPayout } },
+    const payoutApplied = await this.applySettlementPointsOnce({
+      userId: listing.sellerId,
+      delta: sellerPayout,
+      reason: "auction_seller_payout",
+      listingId: listing.id,
+      idempotencyKey: `auction:settlement:${listing.id}:seller-payout`,
     });
-    void logPointsChange(this.prisma, listing.sellerId, sellerPayout, "auction_seller_payout");
 
-    void this.notifications
-      .create({
-        userId: listing.sellerId,
-        type: "auction",
-        title: "Auction sold",
-        body: `+${sellerPayout}KP (10% fee applied)`,
-        link: "/auction",
-      })
-      .catch(() => undefined);
+    if (payoutApplied) {
+      void this.notifications
+        .create({
+          userId: listing.sellerId,
+          type: "auction",
+          title: "Auction sold",
+          body: `+${sellerPayout}KP (10% fee applied)`,
+          link: "/auction",
+        })
+        .catch(() => undefined);
+    }
     void this.notifications
       .create({
         userId: winnerId,

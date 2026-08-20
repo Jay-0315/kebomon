@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+﻿import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { logPointsChange } from "../rewards/points-ledger.util";
@@ -15,7 +15,7 @@ import {
 
 const TD_DAILY_KP_CAP = 1200;
 const TD_RUN_KP_CAP = 400;
-const TD_KP_LEDGER_REASON = "타워 디펜스 웨이브 마일스톤 보상";
+const TD_KP_LEDGER_REASON = "tower_defense_reward";
 const MAX_DAILY_ATTEMPTS = Number.MAX_SAFE_INTEGER;
 
 @Injectable()
@@ -105,7 +105,7 @@ export class TowerDefenseService {
     const reward = await this.getOrCreateReward(userId);
     const used = this.attemptsUsedToday(reward);
     if (used >= MAX_DAILY_ATTEMPTS) {
-      throw badRequest("TD_RUN_LIMIT_EXCEEDED", "오늘 도전 횟수를 모두 사용했습니다.");
+      throw badRequest("TD_RUN_LIMIT_EXCEEDED", "・､・・・・・巐滕・・ｼ ・ｨ・・・ｬ・ｩ嵂溢慣・壱共.");
     }
 
     await this.prisma.userReward.update({
@@ -125,7 +125,7 @@ export class TowerDefenseService {
     const rewards = await Promise.all(uniqueIds.map((id) => this.getOrCreateReward(id)));
     const blocked = rewards.find((reward) => this.attemptsUsedToday(reward) >= MAX_DAILY_ATTEMPTS);
     if (blocked) {
-      throw badRequest("TD_RUN_LIMIT_EXCEEDED", "오늘 도전 횟수를 모두 사용한 참가자가 있습니다.");
+      throw badRequest("TD_RUN_LIMIT_EXCEEDED", "・､・・・・・巐滕・・ｼ ・ｨ・・・ｬ・ｩ﨑・・ｸ・・専ｰ ・溢慣・壱共.");
     }
   }
 
@@ -160,11 +160,11 @@ export class TowerDefenseService {
   async submitResult(userId: string, wavesCleared: number) {
     const reward = await this.getOrCreateReward(userId);
     if (!reward.tdActiveRunStartedAt) {
-      throw badRequest("TD_RUN_NOT_STARTED", "시작되지 않은 게임입니다.");
+      throw badRequest("TD_RUN_NOT_STARTED", "・懍梠・們ｧ ・喜捩 ・護桷・・笈・､.");
     }
     const elapsed = Date.now() - reward.tdActiveRunStartedAt.getTime();
     if (elapsed < MIN_RUN_MS) {
-      throw badRequest("TD_RUN_TOO_FAST", "비정상적으로 빠른 진행입니다.");
+      throw badRequest("TD_RUN_TOO_FAST", "・・菩メ・・愍・・・・ｸ ・・哩・・笈・､.");
     }
 
     const clampedWave = Math.max(0, Math.min(WAVE_COUNT, Math.floor(wavesCleared)));
@@ -184,15 +184,19 @@ export class TowerDefenseService {
     });
 
     if (kp > 0) {
-      void logPointsChange(this.prisma, userId, kp, TD_KP_LEDGER_REASON);
+      void logPointsChange(this.prisma, userId, kp, TD_KP_LEDGER_REASON, {
+        source: "tower-defense",
+        sourceId: `wave:${clampedWave}`,
+        idempotencyKey: `tower-defense:client:${userId}:${reward.tdActiveRunStartedAt.getTime()}`,
+      });
     }
     if (isNewRecord) {
       void this.notifications
         .create({
           userId,
           type: "achievement",
-          title: "타워 디펜스 신기록!",
-          body: `${clampedWave}웨이브까지 도달했습니다.`,
+          title: "夋・・・被慈・､ ・・ｰ・・",
+          body: `${clampedWave}・ｨ・ｴ・語ｹ護ｧ ・・峡嵂溢慣・壱共.`,
           link: "/tower-defense",
         })
         .catch(() => undefined);
@@ -233,15 +237,19 @@ export class TowerDefenseService {
     });
 
     if (kp > 0) {
-      void logPointsChange(this.prisma, userId, kp, TD_KP_LEDGER_REASON);
+      void logPointsChange(this.prisma, userId, kp, TD_KP_LEDGER_REASON, {
+        source: "tower-defense",
+        sourceId: `wave:${clampedWave}`,
+        idempotencyKey: `tower-defense:server:${userId}:${reward.tdActiveRunStartedAt?.getTime() ?? Date.now()}`,
+      });
     }
     if (isNewRecord) {
       void this.notifications
         .create({
           userId,
           type: "achievement",
-          title: "타워 디펜스 신기록!",
-          body: `${clampedWave}웨이브까지 도달했습니다.`,
+          title: "夋・・・被慈・､ ・・ｰ・・",
+          body: `${clampedWave}・ｨ・ｴ・語ｹ護ｧ ・・峡嵂溢慣・壱共.`,
           link: "/tower-defense",
         })
         .catch(() => undefined);
@@ -260,7 +268,7 @@ export class TowerDefenseService {
     };
   }
 
-  /** 최고 웨이브 기준 상위 20명 — challenge-rankings(rewards.service.ts)와 동일 패턴 */
+  /** ・懋ｳ ・ｨ・ｴ・・・ｰ・ ・・怱 20・・窶・challenge-rankings(rewards.service.ts)・ ・呷攵 甯ｨ奓ｴ */
   async getRankings() {
     const rows = await this.prisma.userReward.findMany({
       where: { tdBestWave: { gt: 0 } },

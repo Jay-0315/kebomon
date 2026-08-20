@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { isSuspensionExpired, reactivateIfExpired } from "../auth/suspension.util";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
@@ -367,7 +367,10 @@ export class AdminUsersService {
     );
 
     const pointsDelta = next.missionPoints - (current?.missionPoints ?? 0);
-    void logPointsChange(this.prisma, targetId, pointsDelta, `관리자 조정${dto.reason ? `: ${dto.reason}` : ""}`);
+    void logPointsChange(this.prisma, targetId, pointsDelta, `admin_adjust${dto.reason ? `:${dto.reason}` : ""}`, {
+      source: "admin",
+      sourceId: `adjust:${requesterId}:${targetId}`,
+    });
 
     const changes = (Object.keys(REWARD_FIELD_LABELS) as (keyof typeof rewardSelect)[])
       .map((key) => {
@@ -421,7 +424,10 @@ export class AdminUsersService {
 
     const results = await Promise.allSettled(
       allUserIds.map(async (userId) => {
-        void logPointsChange(this.prisma, userId, delta, `전체 지급${dto.reason ? `: ${dto.reason}` : ""}`);
+        void logPointsChange(this.prisma, userId, delta, `admin_bulk_adjust${dto.reason ? `:${dto.reason}` : ""}`, {
+          source: "admin",
+          sourceId: `bulk:${requesterId}`,
+        });
         await this.notifications.create({
           userId,
           type: "notice",
@@ -474,7 +480,10 @@ export class AdminUsersService {
 
     const results = await Promise.allSettled(
       validIds.map(async (userId) => {
-        void logPointsChange(this.prisma, userId, delta, `선택 지급${dto.reason ? `: ${dto.reason}` : ""}`);
+        void logPointsChange(this.prisma, userId, delta, `admin_selected_adjust${dto.reason ? `:${dto.reason}` : ""}`, {
+          source: "admin",
+          sourceId: `selected:${requesterId}`,
+        });
         await this.notifications.create({
           userId,
           type: "notice",

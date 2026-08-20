@@ -20,12 +20,16 @@ export class AdminOperationsController {
   getRewardLogs(
     @Query("q") q?: string,
     @Query("reason") reason?: string,
+    @Query("source") source?: string,
+    @Query("sourceId") sourceId?: string,
     @Query("direction") direction?: "earned" | "spent" | "all",
     @Query("page") page?: string,
   ) {
     return this.adminOperationsService.getRewardLogs({
       q,
       reason,
+      source,
+      sourceId,
       direction,
       page: page ? Number(page) : 1,
     });

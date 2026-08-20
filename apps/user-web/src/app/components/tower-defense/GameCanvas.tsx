@@ -342,6 +342,9 @@ function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHei
   const ownerId = viewUserId ?? selfUserId;
   const visibleSlots = useMemo(() => snapshot?.slots.filter((slot) => !ownerId || slot.ownerUserId === ownerId) ?? [], [ownerId, snapshot]);
   const visibleTowers = useMemo(() => snapshot?.towers.filter((tower) => !ownerId || tower.ownerUserId === ownerId) ?? [], [ownerId, snapshot]);
+  const towerBySlotId = useMemo(() => new Map(visibleTowers.map((tower) => [tower.slotId, tower])), [visibleTowers]);
+  const towerById = useMemo(() => new Map(visibleTowers.map((tower) => [tower.id, tower])), [visibleTowers]);
+  const slotById = useMemo(() => new Map(visibleSlots.map((slot) => [slot.id, slot])), [visibleSlots]);
 
   useEffect(() => {
     snapshotArrivedAtRef.current = Date.now();
@@ -358,8 +361,8 @@ function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHei
       const visibleMonsters = snapshot.monsters.filter((monster) => !ownerId || monster.ownerUserId === ownerId);
       const visibleProjectiles = snapshot.projectiles.filter((projectile) => !ownerId || projectile.ownerUserId === ownerId);
       const isOwnView = !!ownerId && ownerId === selfUserId;
-      const hoverSlot = hoverSlotId ? visibleSlots.find((s) => s.id === hoverSlotId) : null;
-      const selectedTower = selectedTowerId ? visibleTowers.find((t) => t.id === selectedTowerId) : null;
+      const hoverSlot = hoverSlotId ? slotById.get(hoverSlotId) ?? null : null;
+      const selectedTower = selectedTowerId ? towerById.get(selectedTowerId) ?? null : null;
       const extrapolateSeconds = Math.min(0.32, Math.max(0, (now - snapshotArrivedAtRef.current) / 1000));
 
       ctx.clearRect(0, 0, W, H);
@@ -369,7 +372,7 @@ function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHei
       for (const zone of snapshot.placementZones ?? []) drawZone(ctx, zone);
 
       for (const slot of visibleSlots) {
-        const occupied = visibleTowers.find((t) => t.id === slot.occupiedBy);
+        const occupied = slot.occupiedBy ? towerById.get(slot.occupiedBy) : towerBySlotId.get(slot.id);
         const isHover = hoverSlotId === slot.id;
         const isSelected = occupied?.id === selectedTowerId;
         const invalid = isHover && (!isOwnView || (!!slot.occupiedBy && !isSelected));
@@ -392,7 +395,7 @@ function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHei
       }
 
       if (selectedTower) {
-        const slot = visibleSlots.find((s) => s.id === selectedTower.slotId);
+        const slot = slotById.get(selectedTower.slotId);
         if (slot) {
           ctx.fillStyle = "rgba(34, 211, 238, 0.025)";
           ctx.strokeStyle = "rgba(103, 232, 249, 0.16)";
@@ -407,7 +410,7 @@ function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHei
       }
 
       for (const tower of visibleTowers) {
-        const slot = visibleSlots.find((s) => s.id === tower.slotId);
+        const slot = slotById.get(tower.slotId);
         if (!slot) continue;
         const rarityColor = RARITY_FILL[tower.rarity] ?? "#94a3b8";
         const typeColor = TYPE_GLOW[tower.unitType] ?? "#86efac";
@@ -529,7 +532,7 @@ function GameCanvas({ snapshot, viewUserId, selfUserId, selectedTowerId, fullHei
 
     drawFrame();
     return () => window.cancelAnimationFrame(frame);
-  }, [hoverSlotId, ownerId, selfUserId, snapshot, selectedTowerId, visibleSlots, visibleTowers]);
+  }, [hoverSlotId, ownerId, selfUserId, snapshot, selectedTowerId, slotById, towerById, towerBySlotId, visibleSlots, visibleTowers]);
 
   const handlePointer = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot) return;
