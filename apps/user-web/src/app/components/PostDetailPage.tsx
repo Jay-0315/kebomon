@@ -375,7 +375,7 @@ export default function PostDetailPage() {
   }
 
   return (
-    <div className="space-y-4 pb-28 lg:pb-4">
+    <div className="mx-auto w-full max-w-5xl space-y-4 pb-28 lg:mr-24 lg:max-w-[calc(100%_-_6rem)] lg:pb-4 xl:mx-auto xl:max-w-5xl">
       {/* 상단 네비 */}
       <div className="flex items-center gap-3">
         <button
@@ -514,7 +514,7 @@ export default function PostDetailPage() {
       </div>
 
       {/* 댓글 작성 폼 */}
-      <div ref={formRef} className="bg-card rounded border border-border p-4 md:pr-24 lg:pr-28">
+      <div ref={formRef} className="bg-card rounded border border-border p-4">
         {(replyTo || editingComment) && (
           <div className="flex items-center justify-between mb-3 p-2 bg-muted/60 rounded text-xs text-muted-foreground">
             <span>
