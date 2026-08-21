@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Gavel } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useAppData } from "../context/AppDataContext";
@@ -47,6 +47,7 @@ interface PriceHistoryEntry {
 }
 
 const DURATION_OPTIONS = [6, 12, 24, 48] as const;
+const AUCTION_LIST_REFRESH_MS = 8000;
 
 function minNextBid(listing: AuctionListing): number {
   if (listing.currentBid === null) return listing.startPrice;
@@ -140,32 +141,54 @@ export default function AuctionPage() {
     }
   };
 
-  const loadListings = () => {
+  const loadListings = useCallback(() => {
     api
       .get<AuctionListing[]>("/auction/listings")
       .then(setListings)
       .catch(() => undefined);
-  };
+  }, []);
 
-  const loadMine = () => {
+  const loadMine = useCallback(() => {
     api
       .get<{ selling: AuctionListing[]; bidding: AuctionListing[] }>("/auction/mine")
       .then(setMyListings)
       .catch(() => undefined);
-  };
+  }, []);
 
-  const loadHistory = () => {
+  const loadHistory = useCallback(() => {
     api
       .get<PriceHistoryEntry[]>("/auction/history")
       .then(setHistory)
       .catch(() => undefined);
-  };
+  }, []);
 
   useEffect(() => {
     loadListings();
     loadMine();
     loadHistory();
-  }, []);
+  }, [loadHistory, loadListings, loadMine]);
+
+  useEffect(() => {
+    if (tab !== "browse") return undefined;
+
+    loadListings();
+    const interval = window.setInterval(loadListings, AUCTION_LIST_REFRESH_MS);
+
+    const refreshVisibleListings = () => {
+      if (document.visibilityState === "visible") {
+        loadListings();
+      }
+    };
+
+    document.addEventListener("visibilitychange", refreshVisibleListings);
+    window.addEventListener("focus", loadListings);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshVisibleListings);
+      window.removeEventListener("focus", loadListings);
+    };
+  }, [loadListings, tab]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);

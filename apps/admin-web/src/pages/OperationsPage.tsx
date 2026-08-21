@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
   Area,
@@ -10,7 +10,9 @@ import {
   YAxis,
 } from "recharts";
 import LoadingState from "../components/LoadingState";
+import { useLang } from "../context/LangContext";
 import { api } from "../lib/api";
+import type { TranslationKey } from "../lib/i18n";
 
 type OperationsSummary = {
   eventSettings: {
@@ -55,18 +57,6 @@ type BalanceLogRow = {
   createdAt: string;
 };
 
-const KPI_LABELS: Record<string, string> = {
-  activeUsers14d: "14일 활성 유저",
-  communityPosts14d: "커뮤니티 게시글",
-  comments14d: "댓글",
-  arenaBattles14d: "아레나 전투",
-  duelPlayers14d: "카드배틀 참여자",
-  towerDefensePlayers14d: "타워디펜스 참여자",
-  fishingPlayers14d: "낚시 참여자",
-  roguePlayers14d: "로그라이크 참여자",
-  expeditionPlayers14d: "원정 참여자",
-};
-
 const SOURCE_OPTIONS = [
   "admin",
   "auction",
@@ -80,6 +70,26 @@ const SOURCE_OPTIONS = [
   "attendance",
   "community",
 ];
+
+const KPI_KEYS: Record<string, TranslationKey> = {
+  activeUsers14d: "operations.kpi.active_users_14d",
+  communityPosts14d: "operations.kpi.community_posts_14d",
+  comments14d: "operations.kpi.comments_14d",
+  arenaBattles14d: "operations.kpi.arena_battles_14d",
+  duelPlayers14d: "operations.kpi.duel_players_14d",
+  towerDefensePlayers14d: "operations.kpi.tower_defense_players_14d",
+  fishingPlayers14d: "operations.kpi.fishing_players_14d",
+  roguePlayers14d: "operations.kpi.rogue_players_14d",
+  expeditionPlayers14d: "operations.kpi.expedition_players_14d",
+};
+
+const REASON_KEYS: Record<string, TranslationKey> = {
+  gacha_pull: "operations.reason.gacha_pull",
+  auction_settle_refund: "operations.reason.auction_settle_refund",
+  auction_seller_payout: "operations.reason.auction_seller_payout",
+  auction_bid: "operations.reason.auction_bid",
+  auction_bid_refund: "operations.reason.auction_bid_refund",
+};
 
 function formatDate(value: string) {
   const d = new Date(value);
@@ -102,7 +112,7 @@ function PageButton({
   onClick,
 }: {
   disabled: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -117,6 +127,7 @@ function PageButton({
 }
 
 export default function OperationsPage() {
+  const { t } = useLang();
   const [summary, setSummary] = useState<OperationsSummary | null>(null);
   const [rewardLogs, setRewardLogs] = useState<RewardLogResponse | null>(null);
   const [balanceLogs, setBalanceLogs] = useState<{ logs: BalanceLogRow[]; page: number; totalPages: number } | null>(null);
@@ -129,12 +140,24 @@ export default function OperationsPage() {
   const [direction, setDirection] = useState<"all" | "earned" | "spent">("all");
   const [error, setError] = useState<string | null>(null);
 
+  const labelKpi = (key: string) => (KPI_KEYS[key] ? t(KPI_KEYS[key]) : key);
+  const labelReason = (value: string) => {
+    const direct = REASON_KEYS[value];
+    if (direct) return t(direct);
+    if (value.includes("가챠") || value.includes("뽑기")) return t("operations.reason.gacha_pull");
+    if (value.includes("원정")) return t("operations.reason.expedition_reward");
+    if (value.includes("출석")) return t("operations.reason.attendance_reward");
+    if (value.includes("낚시")) return t("operations.reason.fishing_reward");
+    if (value.includes("타워") || value.includes("디펜스")) return t("operations.reason.tower_defense_reward");
+    return value;
+  };
+
   async function loadSummary() {
     setError(null);
     try {
       setSummary(await api.get<OperationsSummary>("/admin/operations/summary"));
     } catch {
-      setError("운영 현황을 불러오지 못했습니다.");
+      setError(t("operations.error_load"));
     }
   }
 
@@ -166,12 +189,12 @@ export default function OperationsPage() {
 
   const eventLinks = useMemo(
     () => [
-      { label: "배너 설정", to: "/banners", desc: "노출 기간, 활성 상태, 시즌 배너 관리" },
-      { label: "가챠 설정", to: "/gacha-config", desc: "픽업/확률/교배 설정 관리" },
-      { label: "시즌 설정", to: "/season", desc: "랭킹 보상, 시즌 보상, 테두리 지급 관리" },
-      { label: "점검 설정", to: "/maintenance", desc: "공지, 접근 제한, 점검 종료 시간 관리" },
+      { label: t("operations.link_banners"), to: "/banners", desc: t("operations.link_banners_desc") },
+      { label: t("operations.link_gacha"), to: "/gacha-config", desc: t("operations.link_gacha_desc") },
+      { label: t("operations.link_season"), to: "/season", desc: t("operations.link_season_desc") },
+      { label: t("operations.link_maintenance"), to: "/maintenance", desc: t("operations.link_maintenance_desc") },
     ],
-    [],
+    [t],
   );
 
   if (error) return <p className="text-sm text-red-400">{error}</p>;
@@ -180,23 +203,21 @@ export default function OperationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">운영 현황</h1>
-        <p className="mt-1 text-sm text-[var(--fg-faint)]">
-          이벤트 설정, 콘텐츠 KPI, 포인트 원장, 관리자 변경 이력을 확인합니다.
-        </p>
+        <h1 className="text-lg font-semibold">{t("operations.title")}</h1>
+        <p className="mt-1 text-sm text-[var(--fg-faint)]">{t("operations.subtitle")}</p>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">이벤트 설정 바로가기</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("operations.event_shortcuts")}</h2>
         <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="활성 배너" value={summary.eventSettings.activeBanners} />
-          <StatCard label="예약 배너" value={summary.eventSettings.scheduledBanners} />
+          <StatCard label={t("operations.active_banners")} value={summary.eventSettings.activeBanners} />
+          <StatCard label={t("operations.scheduled_banners")} value={summary.eventSettings.scheduledBanners} />
           <StatCard
-            label="점검 상태"
+            label={t("operations.maintenance_status")}
             value={summary.eventSettings.maintenanceEnabled ? "ON" : "OFF"}
             hint={summary.eventSettings.maintenanceEndsAt ? new Date(summary.eventSettings.maintenanceEndsAt).toLocaleString() : undefined}
           />
-          <StatCard label="관리 메뉴" value={eventLinks.length} hint="운영 설정 화면으로 이동" />
+          <StatCard label={t("operations.admin_menu")} value={eventLinks.length} hint={t("operations.admin_menu_hint")} />
         </div>
         <div className="grid gap-3 lg:grid-cols-4">
           {eventLinks.map((link) => (
@@ -214,7 +235,7 @@ export default function OperationsPage() {
 
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg border border-[var(--border)] p-4">
-          <h2 className="mb-3 text-sm font-semibold">포인트 변동 추이</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("operations.points_trend")}</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={summary.pointsTrend} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
@@ -230,12 +251,12 @@ export default function OperationsPage() {
         </div>
 
         <div className="rounded-lg border border-[var(--border)] p-4">
-          <h2 className="mb-3 text-sm font-semibold">최근 원장 사유</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("operations.recent_reasons")}</h2>
           <div className="space-y-2">
-            {summary.rewardReasons.map((r) => (
-              <div key={r.reason} className="flex items-center justify-between rounded-md bg-[var(--bg-soft)] px-3 py-2 text-sm">
-                <span className="min-w-0 flex-1 truncate">{r.reason}</span>
-                <span className={r.totalDelta >= 0 ? "text-emerald-400" : "text-red-400"}>{r.totalDelta.toLocaleString()}</span>
+            {summary.rewardReasons.map((row) => (
+              <div key={row.reason} className="flex items-center justify-between rounded-md bg-[var(--bg-soft)] px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate">{labelReason(row.reason)}</span>
+                <span className={row.totalDelta >= 0 ? "text-emerald-400" : "text-red-400"}>{row.totalDelta.toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -243,30 +264,30 @@ export default function OperationsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">콘텐츠 KPI</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("operations.content_kpi")}</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
           {Object.entries(summary.kpis).map(([key, value]) => (
-            <StatCard key={key} label={KPI_LABELS[key] ?? key} value={value} />
+            <StatCard key={key} label={labelKpi(key)} value={value} />
           ))}
         </div>
       </section>
 
       <section className="rounded-lg border border-[var(--border)] p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">포인트 원장 검색</h2>
-          <span className="text-xs text-[var(--fg-faint)]">source/sourceId 기반 콘텐츠별 추적 지원</span>
+          <h2 className="text-sm font-semibold">{t("operations.reward_log_search")}</h2>
+          <span className="text-xs text-[var(--fg-faint)]">{t("operations.reward_log_hint")}</span>
         </div>
         <div className="mb-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="이름 / 이메일 / userId"
+            placeholder={t("operations.search_user_placeholder")}
             className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
           />
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="reason"
+            placeholder={t("operations.reason_placeholder")}
             className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
           />
           <select
@@ -274,7 +295,7 @@ export default function OperationsPage() {
             onChange={(e) => setSource(e.target.value)}
             className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none"
           >
-            <option value="">source 전체</option>
+            <option value="">{t("operations.source_all")}</option>
             {SOURCE_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -292,9 +313,9 @@ export default function OperationsPage() {
             onChange={(e) => setDirection(e.target.value as "all" | "earned" | "spent")}
             className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none"
           >
-            <option value="all">전체</option>
-            <option value="earned">지급</option>
-            <option value="spent">차감</option>
+            <option value="all">{t("operations.direction_all")}</option>
+            <option value="earned">{t("operations.direction_earned")}</option>
+            <option value="spent">{t("operations.direction_spent")}</option>
           </select>
           <button
             onClick={() => {
@@ -303,19 +324,19 @@ export default function OperationsPage() {
             }}
             className="rounded-md bg-[#b7607e] px-3 py-1.5 text-sm text-white hover:bg-[#a2536e]"
           >
-            검색
+            {t("common.search")}
           </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="text-[var(--fg-muted)]">
               <tr>
-                <th className="px-2 py-2">User</th>
-                <th className="px-2 py-2">Delta</th>
+                <th className="px-2 py-2">{t("operations.col_user")}</th>
+                <th className="px-2 py-2">{t("operations.col_delta")}</th>
                 <th className="px-2 py-2">Source</th>
-                <th className="px-2 py-2">Reason</th>
+                <th className="px-2 py-2">{t("operations.col_reason")}</th>
                 <th className="px-2 py-2">Idempotency</th>
-                <th className="px-2 py-2">Date</th>
+                <th className="px-2 py-2">{t("operations.col_date")}</th>
               </tr>
             </thead>
             <tbody>
@@ -332,7 +353,7 @@ export default function OperationsPage() {
                     <p>{log.source ?? "-"}</p>
                     <p className="text-xs text-[var(--fg-faint)]">{log.sourceId ?? "-"}</p>
                   </td>
-                  <td className="px-2 py-2 text-[var(--fg-muted)]">{log.reason}</td>
+                  <td className="px-2 py-2 text-[var(--fg-muted)]">{labelReason(log.reason)}</td>
                   <td className="max-w-[220px] truncate px-2 py-2 text-xs text-[var(--fg-faint)]">{log.idempotencyKey ?? "-"}</td>
                   <td className="whitespace-nowrap px-2 py-2 text-[var(--fg-muted)]">{new Date(log.createdAt).toLocaleString()}</td>
                 </tr>
@@ -340,7 +361,7 @@ export default function OperationsPage() {
               {rewardLogs?.logs.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-2 py-6 text-center text-[var(--fg-faint)]">
-                    검색 결과가 없습니다.
+                    {t("common.no_results")}
                   </td>
                 </tr>
               )}
@@ -357,7 +378,7 @@ export default function OperationsPage() {
                 void loadRewardLogs(next);
               }}
             >
-              이전
+              {t("common.prev")}
             </PageButton>
             <span className="text-sm text-[var(--fg-muted)]">
               {rewardLogs.page} / {rewardLogs.totalPages}
@@ -370,22 +391,22 @@ export default function OperationsPage() {
                 void loadRewardLogs(next);
               }}
             >
-              다음
+              {t("common.next")}
             </PageButton>
           </div>
         )}
       </section>
 
       <section className="rounded-lg border border-[var(--border)] p-4">
-        <h2 className="mb-3 text-sm font-semibold">관리자 변경 이력</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("operations.admin_change_history")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-[var(--fg-muted)]">
               <tr>
-                <th className="px-2 py-2">Action</th>
-                <th className="px-2 py-2">Target</th>
-                <th className="px-2 py-2">Detail</th>
-                <th className="px-2 py-2">Date</th>
+                <th className="px-2 py-2">{t("operations.col_action")}</th>
+                <th className="px-2 py-2">{t("operations.col_target")}</th>
+                <th className="px-2 py-2">{t("operations.col_detail")}</th>
+                <th className="px-2 py-2">{t("operations.col_date")}</th>
               </tr>
             </thead>
             <tbody>
@@ -412,7 +433,7 @@ export default function OperationsPage() {
                 void loadBalanceHistory(next);
               }}
             >
-              이전
+              {t("common.prev")}
             </PageButton>
             <span className="text-sm text-[var(--fg-muted)]">
               {balanceLogs.page} / {balanceLogs.totalPages}
@@ -425,7 +446,7 @@ export default function OperationsPage() {
                 void loadBalanceHistory(next);
               }}
             >
-              다음
+              {t("common.next")}
             </PageButton>
           </div>
         )}
