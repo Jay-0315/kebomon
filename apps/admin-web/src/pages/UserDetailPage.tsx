@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { api } from "../lib/api";
-import { isSuperAdmin } from "../lib/auth";
+import LoadingState from "../components/LoadingState";
 import RewardAdjustModal, { type RewardSummary } from "../components/RewardAdjustModal";
 import SuspendUserModal from "../components/SuspendUserModal";
 import { useLang } from "../context/LangContext";
 import { useToast } from "../context/ToastContext";
-import LoadingState from "../components/LoadingState";
+import { api } from "../lib/api";
+import { isSuperAdmin } from "../lib/auth";
 import type { TranslationKey } from "../lib/i18n";
 
 type UserDetail = {
@@ -49,6 +49,14 @@ const SUSPENSION_ACTION_KEY: Record<SuspensionHistoryRow["action"], TranslationK
   AUTO_EXPIRED: "userDetail.auto_expired",
 };
 
+const REASON_KEYS: Record<string, TranslationKey> = {
+  gacha_pull: "operations.reason.gacha_pull",
+  auction_settle_refund: "operations.reason.auction_settle_refund",
+  auction_seller_payout: "operations.reason.auction_seller_payout",
+  auction_bid: "operations.reason.auction_bid",
+  auction_bid_refund: "operations.reason.auction_bid_refund",
+};
+
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-lg border border-[var(--border)] p-3">
@@ -61,7 +69,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { showToast } = useToast();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityLog | null>(null);
@@ -72,6 +80,41 @@ export default function UserDetailPage() {
   const [showSuspend, setShowSuspend] = useState(false);
   const [titleIdInput, setTitleIdInput] = useState("");
   const [grantingTitle, setGrantingTitle] = useState(false);
+
+  const dateLocale = lang === "ja" ? "ja-JP" : lang === "en" ? "en-US" : "ko-KR";
+  const formatDateTime = (value: string) => new Date(value).toLocaleString(dateLocale);
+  const formatDate = (value: string) => new Date(value).toLocaleDateString(dateLocale);
+
+  const labelRole = (role: string) => {
+    if (role === "SUPER_ADMIN") return t("users.role_super_admin");
+    if (role === "ADMIN") return t("users.role_admin");
+    if (role === "USER") return t("users.role_user");
+    return role;
+  };
+
+  const labelStatus = (status: string) => {
+    if (status === "ACTIVE") return t("users.status_active");
+    if (status === "SUSPENDED") return t("users.status_suspended");
+    return status;
+  };
+
+  const labelPostCategory = (category: string) => {
+    if (category === "brag") return t("userDetail.category_brag");
+    if (category === "tip") return t("userDetail.category_tip");
+    if (category === "chat") return t("userDetail.category_chat");
+    return category;
+  };
+
+  const labelReason = (value: string) => {
+    const key = REASON_KEYS[value];
+    if (key) return t(key);
+    if (value.includes("가챠") || value.includes("뽑기")) return t("operations.reason.gacha_pull");
+    if (value.includes("원정")) return t("operations.reason.expedition_reward");
+    if (value.includes("출석")) return t("operations.reason.attendance_reward");
+    if (value.includes("낚시")) return t("operations.reason.fishing_reward");
+    if (value.includes("타워") || value.includes("디펜스")) return t("operations.reason.tower_defense_reward");
+    return value;
+  };
 
   async function load() {
     if (!id) return;
@@ -94,17 +137,17 @@ export default function UserDetailPage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function toggleRole() {
     if (!user) return;
     const nextRole = user.role === "ADMIN" ? "USER" : "ADMIN";
-    if (!window.confirm(t("users.confirm_role_change", { email: user.email, role: nextRole }))) return;
+    if (!window.confirm(t("users.confirm_role_change", { email: user.email, role: labelRole(nextRole) }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/role`, { role: nextRole });
-      load();
+      void load();
     } catch {
       showToast(t("users.error_role_change"), "error");
     }
@@ -115,7 +158,7 @@ export default function UserDetailPage() {
     if (!window.confirm(t("users.confirm_unsuspend", { email: user.email }))) return;
     try {
       await api.patch(`/admin/users/${user.id}/status`, { status: "ACTIVE" });
-      load();
+      void load();
     } catch {
       showToast(t("users.error_unsuspend"), "error");
     }
@@ -132,7 +175,7 @@ export default function UserDetailPage() {
     try {
       await api.post(`/admin/users/${user.id}/titles`, { titleId });
       setTitleIdInput("");
-      load();
+      void load();
     } catch {
       showToast(t("userDetail.error_title_grant"), "error");
     } finally {
@@ -145,7 +188,7 @@ export default function UserDetailPage() {
     if (!window.confirm(t("userDetail.confirm_title_revoke", { id: titleId }))) return;
     try {
       await api.delete(`/admin/users/${user.id}/titles/${titleId}`);
-      load();
+      void load();
     } catch {
       showToast(t("userDetail.error_title_revoke"), "error");
     }
@@ -170,21 +213,19 @@ export default function UserDetailPage() {
             <p className="text-sm text-[var(--fg-muted)]">{user.email}</p>
             <p className="mt-1 text-xs text-[var(--fg-faint)]">
               {t("userDetail.joined_and_login", {
-                date: new Date(user.createdAt).toLocaleDateString(),
-                login: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "-",
+                date: formatDate(user.createdAt),
+                login: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "-",
               })}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs">{user.role}</span>
+            <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs">{labelRole(user.role)}</span>
             <span className="text-xs">
-              {user.status}
+              {labelStatus(user.status)}
               {user.status === "SUSPENDED" && (
                 <span className="ml-1 text-[var(--fg-faint)]">
                   (
-                  {user.suspendedUntil
-                    ? `~${new Date(user.suspendedUntil).toLocaleString("ko-KR")}`
-                    : t("userDetail.permanent")}
+                  {user.suspendedUntil ? `~${formatDateTime(user.suspendedUntil)}` : t("userDetail.permanent")}
                   {user.suspendedReason ? ` · ${user.suspendedReason}` : ""}
                   )
                 </span>
@@ -203,7 +244,7 @@ export default function UserDetailPage() {
             </button>
           )}
           <button
-            onClick={() => (user.status === "SUSPENDED" ? unsuspend() : setShowSuspend(true))}
+            onClick={() => (user.status === "SUSPENDED" ? void unsuspend() : setShowSuspend(true))}
             className="rounded border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
           >
             {user.status === "SUSPENDED" ? t("users.unsuspend") : t("users.suspend")}
@@ -250,11 +291,11 @@ export default function UserDetailPage() {
           <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_posts")}</p>
         ) : (
           <ul className="space-y-2">
-            {user.posts.map((p) => (
-              <li key={p.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
-                <p className="line-clamp-2">{p.content}</p>
+            {user.posts.map((post) => (
+              <li key={post.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                <p className="line-clamp-2">{post.content}</p>
                 <p className="mt-1 text-xs text-[var(--fg-faint)]">
-                  {p.category} · {new Date(p.createdAt).toLocaleString()}
+                  {labelPostCategory(post.category)} · {formatDateTime(post.createdAt)}
                 </p>
               </li>
             ))}
@@ -269,14 +310,14 @@ export default function UserDetailPage() {
             <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_history")}</p>
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto">
-              {activityLog.points.map((p) => (
-                <li key={p.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
-                  <span className={p.delta > 0 ? "text-emerald-400" : "text-red-400"}>
-                    {p.delta > 0 ? "+" : ""}
-                    {p.delta}P
+              {activityLog.points.map((point) => (
+                <li key={point.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                  <span className={point.delta > 0 ? "text-emerald-400" : "text-red-400"}>
+                    {point.delta > 0 ? "+" : ""}
+                    {point.delta}P
                   </span>{" "}
-                  · {p.reason}
-                  <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(p.createdAt).toLocaleString()}</p>
+                  · {labelReason(point.reason)}
+                  <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{formatDateTime(point.createdAt)}</p>
                 </li>
               ))}
             </ul>
@@ -289,10 +330,10 @@ export default function UserDetailPage() {
             <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_history")}</p>
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto">
-              {activityLog.characters.map((c, i) => (
-                <li key={`${c.characterId}-${i}`} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
-                  {t("userDetail.character_obtained", { name: c.name })}
-                  <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(c.obtainedAt).toLocaleString()}</p>
+              {activityLog.characters.map((character, index) => (
+                <li key={`${character.characterId}-${index}`} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                  {t("userDetail.character_obtained", { name: character.name })}
+                  <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{formatDateTime(character.obtainedAt)}</p>
                 </li>
               ))}
             </ul>
@@ -306,16 +347,16 @@ export default function UserDetailPage() {
           <p className="text-sm text-[var(--fg-faint)]">{t("userDetail.no_history")}</p>
         ) : (
           <ul className="max-h-64 space-y-2 overflow-y-auto">
-            {suspensionHistory.map((h) => (
-              <li key={h.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
-                <span className={h.action === "SUSPENDED" ? "text-red-400" : "text-emerald-400"}>
-                  {t(SUSPENSION_ACTION_KEY[h.action])}
+            {suspensionHistory.map((history) => (
+              <li key={history.id} className="border-t border-[var(--border)] pt-2 text-sm first:border-t-0 first:pt-0">
+                <span className={history.action === "SUSPENDED" ? "text-red-400" : "text-emerald-400"}>
+                  {t(SUSPENSION_ACTION_KEY[history.action])}
                 </span>
-                {h.reason && <> · {h.reason}</>}
-                {h.action === "SUSPENDED" && (
-                  <> · {h.suspendedUntil ? `~${new Date(h.suspendedUntil).toLocaleString("ko-KR")}` : t("userDetail.permanent")}</>
+                {history.reason && <> · {history.reason}</>}
+                {history.action === "SUSPENDED" && (
+                  <> · {history.suspendedUntil ? `~${formatDateTime(history.suspendedUntil)}` : t("userDetail.permanent")}</>
                 )}
-                <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{new Date(h.createdAt).toLocaleString()}</p>
+                <p className="mt-0.5 text-xs text-[var(--fg-faint)]">{formatDateTime(history.createdAt)}</p>
               </li>
             ))}
           </ul>
@@ -337,11 +378,11 @@ export default function UserDetailPage() {
                   <span>
                     #{title.titleId}
                     <span className="ml-2 text-xs text-[var(--fg-faint)]">
-                      {new Date(title.obtainedAt).toLocaleString()}
+                      {formatDateTime(title.obtainedAt)}
                     </span>
                   </span>
                   <button
-                    onClick={() => revokeTitle(title.titleId)}
+                    onClick={() => void revokeTitle(title.titleId)}
                     className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
                   >
                     {t("userDetail.revoke_title")}
@@ -355,12 +396,12 @@ export default function UserDetailPage() {
               type="number"
               min={1}
               value={titleIdInput}
-              onChange={(e) => setTitleIdInput(e.target.value)}
+              onChange={(event) => setTitleIdInput(event.target.value)}
               placeholder={t("userDetail.title_id_placeholder")}
               className="w-40 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[#b7607e]"
             />
             <button
-              onClick={grantTitle}
+              onClick={() => void grantTitle()}
               disabled={grantingTitle}
               className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50"
             >

@@ -81,6 +81,19 @@ export default function UsersPage() {
   const [bulkRewardOpen, setBulkRewardOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const labelRole = (role: string) => {
+    if (role === "SUPER_ADMIN") return t("users.role_super_admin");
+    if (role === "ADMIN") return t("users.role_admin");
+    if (role === "USER") return t("users.role_user");
+    return role;
+  };
+
+  const labelStatus = (status: string) => {
+    if (status === "ACTIVE") return t("users.status_active");
+    if (status === "SUSPENDED") return t("users.status_suspended");
+    return status;
+  };
+
   async function load(p: number) {
     setLoading(true);
     setError(null);
@@ -195,8 +208,8 @@ export default function UsersPage() {
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
           <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.role_all")}</option>
-          <option value="USER" className="bg-[var(--bg-elevated)] text-[var(--fg)]">USER</option>
-          <option value="ADMIN" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ADMIN</option>
+          <option value="USER" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.role_user")}</option>
+          <option value="ADMIN" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.role_admin")}</option>
         </select>
         <select
           value={statusFilter}
@@ -204,8 +217,8 @@ export default function UsersPage() {
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
           <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.status_all")}</option>
-          <option value="ACTIVE" className="bg-[var(--bg-elevated)] text-[var(--fg)]">ACTIVE</option>
-          <option value="SUSPENDED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">SUSPENDED</option>
+          <option value="ACTIVE" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.status_active")}</option>
+          <option value="SUSPENDED" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("users.status_suspended")}</option>
         </select>
         <button
           onClick={handleExportCsv}
@@ -269,7 +282,7 @@ export default function UsersPage() {
                   </Link>
                 </td>
                 <td className="px-3 py-2">{u.email}</td>
-                <td className="px-3 py-2">{u.role}</td>
+                <td className="px-3 py-2">{labelRole(u.role)}</td>
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-1.5" title={u.online ? t("users.online") : t("users.offline")}>
                     <span
