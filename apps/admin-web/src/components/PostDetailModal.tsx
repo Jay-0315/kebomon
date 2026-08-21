@@ -11,6 +11,12 @@ export type PostDetail = {
   author: { id: string; name: string; email: string } | null;
 };
 
+const CATEGORY_LABEL_KEY = {
+  brag: "community.category_brag",
+  tip: "community.category_tip",
+  chat: "community.category_chat",
+} as const;
+
 export default function PostDetailModal({
   post,
   onClose,
@@ -19,6 +25,7 @@ export default function PostDetailModal({
   onClose: () => void;
 }) {
   const { t } = useLang();
+  const categoryKey = CATEGORY_LABEL_KEY[post.category as keyof typeof CATEGORY_LABEL_KEY];
   return (
     <Modal onClose={onClose} maxWidth="lg" scrollable closeOnBackdrop>
         <div className="mb-4 flex items-start justify-between gap-2">
@@ -30,7 +37,7 @@ export default function PostDetailModal({
               </span>
             </h2>
             <p className="mt-1 text-xs text-[var(--fg-faint)]">
-              {post.category} · {t("community.col_likes")} {post.likesCount} ·{" "}
+              {categoryKey ? t(categoryKey) : post.category} · {t("community.col_likes")} {post.likesCount} ·{" "}
               {new Date(post.createdAt).toLocaleString()}
             </p>
           </div>

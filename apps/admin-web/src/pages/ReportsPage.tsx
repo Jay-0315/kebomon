@@ -41,6 +41,44 @@ const STATUS_LABEL_KEY: Record<ReportRow["status"], TranslationKey> = {
   DISMISSED: "reports.status_dismissed",
 };
 
+const REPORT_REASON_LABEL_KEY: Record<string, TranslationKey> = {
+  "스팸/도배": "reports.reason_spam",
+  "욕설/혐오 발언": "reports.reason_abuse",
+  "음란물/유해 콘텐츠": "reports.reason_sexual",
+  "사기/사칭": "reports.reason_scam",
+  "기타": "reports.reason_etc",
+  "부적절한 프로필 사진/소개글": "reports.reason_user_profile",
+  "사칭/사기": "reports.reason_user_impersonation",
+  "악성 유저(어뷰징 등)": "reports.reason_user_abuse",
+  "スパム/荒らし": "reports.reason_spam",
+  "暴言/ヘイトスピーチ": "reports.reason_abuse",
+  "わいせつ/有害コンテンツ": "reports.reason_sexual",
+  "詐欺/なりすまし": "reports.reason_scam",
+  "その他": "reports.reason_etc",
+  "不適切なプロフィール写真/自己紹介": "reports.reason_user_profile",
+  "なりすまし/詐欺": "reports.reason_user_impersonation",
+  "悪質ユーザー(不正行為など)": "reports.reason_user_abuse",
+  Spam: "reports.reason_spam",
+  "Abusive language / hate speech": "reports.reason_abuse",
+  "Sexual / harmful content": "reports.reason_sexual",
+  "Scam / impersonation": "reports.reason_scam",
+  Other: "reports.reason_etc",
+  "Inappropriate profile photo/bio": "reports.reason_user_profile",
+  "Impersonation/Scam": "reports.reason_user_impersonation",
+  "Malicious user (abuse/cheating)": "reports.reason_user_abuse",
+};
+
+function formatReportReason(reason: string, t: (key: TranslationKey) => string) {
+  const bracketMatch = reason.match(/^\[([^\]]+)\]\s*(.*)$/);
+  if (bracketMatch) {
+    const [, rawLabel, detail] = bracketMatch;
+    const key = REPORT_REASON_LABEL_KEY[rawLabel.trim()];
+    return key ? `[${t(key)}]${detail ? ` ${detail}` : ""}` : reason;
+  }
+  const key = REPORT_REASON_LABEL_KEY[reason.trim()];
+  return key ? t(key) : reason;
+}
+
 function PreviewCell({ report }: { report: ReportRow }) {
   const { t } = useLang();
   const p = report.preview;
@@ -160,7 +198,7 @@ export default function ReportsPage() {
                 <td className="px-3 py-2">
                   <PreviewCell report={r} />
                 </td>
-                <td className="px-3 py-2 max-w-xs">{r.reason}</td>
+                <td className="px-3 py-2 max-w-xs">{formatReportReason(r.reason, t)}</td>
                 <td className="px-3 py-2">{t(STATUS_LABEL_KEY[r.status])}</td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--fg-muted)]">
                   {new Date(r.createdAt).toLocaleDateString()}

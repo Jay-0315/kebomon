@@ -19,6 +19,12 @@ const stripHtml = (html: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const CATEGORY_LABEL_KEY = {
+  brag: "community.category_brag",
+  tip: "community.category_tip",
+  chat: "community.category_chat",
+} as const;
+
 export default function CommunityPostsPage() {
   const { t } = useLang();
   const { showToast } = useToast();
@@ -81,9 +87,9 @@ export default function CommunityPostsPage() {
           className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm"
         >
           <option value="" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("community.category_all")}</option>
-          <option value="brag" className="bg-[var(--bg-elevated)] text-[var(--fg)]">brag</option>
-          <option value="tip" className="bg-[var(--bg-elevated)] text-[var(--fg)]">tip</option>
-          <option value="chat" className="bg-[var(--bg-elevated)] text-[var(--fg)]">chat</option>
+          <option value="brag" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("community.category_brag")}</option>
+          <option value="tip" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("community.category_tip")}</option>
+          <option value="chat" className="bg-[var(--bg-elevated)] text-[var(--fg)]">{t("community.category_chat")}</option>
         </select>
         <button type="submit" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)]">
           {t("common.search")}
@@ -109,7 +115,11 @@ export default function CommunityPostsPage() {
               <tr key={p.id} className="border-t border-[var(--border)]">
                 <td className="px-3 py-2 whitespace-nowrap">{p.author?.name ?? "-"}</td>
                 <td className="max-w-md truncate px-3 py-2 text-[var(--fg-muted)]">{stripHtml(p.content) || t("community.no_content")}</td>
-                <td className="px-3 py-2">{p.category}</td>
+                <td className="px-3 py-2">
+                  {CATEGORY_LABEL_KEY[p.category as keyof typeof CATEGORY_LABEL_KEY]
+                    ? t(CATEGORY_LABEL_KEY[p.category as keyof typeof CATEGORY_LABEL_KEY])
+                    : p.category}
+                </td>
                 <td className="px-3 py-2">{p.likesCount}</td>
                 <td className="px-3 py-2 text-[var(--fg-muted)] whitespace-nowrap">
                   {new Date(p.createdAt).toLocaleDateString()}

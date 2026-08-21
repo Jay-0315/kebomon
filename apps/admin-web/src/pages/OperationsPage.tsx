@@ -305,7 +305,7 @@ export default function OperationsPage() {
           <input
             value={sourceId}
             onChange={(e) => setSourceId(e.target.value)}
-            placeholder="sourceId"
+            placeholder={t("operations.source_id_placeholder")}
             className="rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[#b7607e]"
           />
           <select
@@ -333,9 +333,9 @@ export default function OperationsPage() {
               <tr>
                 <th className="px-2 py-2">{t("operations.col_user")}</th>
                 <th className="px-2 py-2">{t("operations.col_delta")}</th>
-                <th className="px-2 py-2">Source</th>
+                <th className="px-2 py-2">{t("operations.col_source")}</th>
                 <th className="px-2 py-2">{t("operations.col_reason")}</th>
-                <th className="px-2 py-2">Idempotency</th>
+                <th className="px-2 py-2">{t("operations.col_idempotency")}</th>
                 <th className="px-2 py-2">{t("operations.col_date")}</th>
               </tr>
             </thead>
